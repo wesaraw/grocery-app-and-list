@@ -187,11 +187,30 @@ let showingHistory = false;
 let globalItems = [];
 let gridContainer;
 
+function resizeWindowToContent() {
+  try {
+    const width = Math.min(
+      screen.availWidth,
+      document.documentElement.scrollWidth + 20
+    );
+    const height = Math.min(
+      screen.availHeight,
+      document.documentElement.scrollHeight + 20
+    );
+    chrome.windows.getCurrent(win => {
+      chrome.windows.update(win.id, { width, height });
+    });
+  } catch (e) {
+    // ignore if chrome APIs are unavailable
+  }
+}
+
 function showGrid() {
   showingHistory = false;
   document.getElementById('view-purchases').textContent = 'Purchase History';
   gridContainer.innerHTML = '';
   gridContainer.appendChild(buildGrid(globalItems));
+  resizeWindowToContent();
 }
 
 function showPurchaseHistory() {
@@ -199,6 +218,7 @@ function showPurchaseHistory() {
   document.getElementById('view-purchases').textContent = 'Timeline View';
   gridContainer.innerHTML = '';
   gridContainer.appendChild(buildPurchaseList(globalItems));
+  resizeWindowToContent();
 }
 
 async function init() {
@@ -239,6 +259,50 @@ async function init() {
       showPurchaseHistory();
     }
   });
+
+  chrome.storage.onChanged.addListener(async (changes, area) => {
+    if (area !== 'local') return;
+    let updated = false;
+    if (changes.purchases) {
+      const map = changes.purchases.newValue || {};
+      globalItems.forEach(it => {
+        it.purchases = map[it.name] || [];
+      });
+      updated = true;
+    }
+    if (changes.currentStock) {
+      const stockArr = changes.currentStock.newValue || [];
+      const stockMap = {};
+      stockArr.forEach(s => {
+        stockMap[s.name] = s.amount;
+      });
+      globalItems.forEach(it => {
+        if (stockMap[it.name] != null) {
+          it.starting_stock = stockMap[it.name];
+        }
+      });
+      updated = true;
+    }
+    if (updated) {
+      if (showingHistory) {
+        showPurchaseHistory();
+      } else {
+        showGrid();
+      }
+    }
+  });
+
+  try {
+    chrome.runtime.onMessage.addListener(msg => {
+      if (msg && msg.type === 'inventory-updated') {
+        if (showingHistory) {
+          showPurchaseHistory();
+        } else {
+          showGrid();
+        }
+      }
+    });
+  } catch (_) {}
 
   document.getElementById('add-purchase').addEventListener('click', () => {
     const name = document.getElementById('purchase-item').value;

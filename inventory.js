@@ -39,26 +39,31 @@ function createItemRow(name, amount, unit, purchasesMap, week) {
   const input = document.createElement('input');
   input.type = 'number';
   input.placeholder = 'New';
-  input.addEventListener('keydown', async e => {
-    if (e.key === 'Enter') {
-      const val = parseFloat(input.value);
-      if (!isNaN(val)) {
-        const diff = val - amount;
-        if (diff !== 0) {
-          if (!purchasesMap[name]) purchasesMap[name] = [];
-          purchasesMap[name].push({
-            purchase_week: week,
-            quantity_purchased: diff,
-            date_added: new Date().toISOString()
-          });
-          await savePurchases(purchasesMap);
-          amount = val;
-        }
-        span.textContent = `${name} - ${amount} ${unit}`;
-        input.value = '';
+  async function commitChange() {
+    const val = parseFloat(input.value);
+    if (!isNaN(val)) {
+      const diff = val - amount;
+      if (diff !== 0) {
+        if (!purchasesMap[name]) purchasesMap[name] = [];
+        purchasesMap[name].push({
+          purchase_week: week,
+          quantity_purchased: diff,
+          date_added: new Date().toISOString()
+        });
+        await savePurchases(purchasesMap);
+        try {
+          chrome.runtime.sendMessage({ type: 'inventory-updated' });
+        } catch (_) {}
+        amount = val;
       }
+      span.textContent = `${name} - ${amount} ${unit}`;
+      input.value = '';
     }
+  }
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') commitChange();
   });
+  input.addEventListener('blur', commitChange);
   div.appendChild(document.createTextNode(' '));
   div.appendChild(input);
 
