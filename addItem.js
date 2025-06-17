@@ -47,6 +47,20 @@ const loadStock = () => loadArray('currentStock', STOCK_PATH);
 const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
 const loadStoreSelections = () => loadArray(STORE_SELECTION_KEY, STORE_SELECTION_PATH);
 
+function loadPurchases() {
+  return new Promise(resolve => {
+    chrome.storage.local.get('purchases', data => {
+      resolve(data.purchases || {});
+    });
+  });
+}
+
+function savePurchases(map) {
+  return new Promise(resolve => {
+    chrome.storage.local.set({ purchases: map }, () => resolve());
+  });
+}
+
 function loadConsumed() {
   return new Promise(async resolve => {
     chrome.storage.local.get('consumedThisYear', async data => {
@@ -75,14 +89,16 @@ async function commit() {
   const monthly = parseFloat(document.getElementById('monthly').value) || 0;
   const shelf = parseFloat(document.getElementById('shelf').value) || 12;
   const stockAmt = parseFloat(document.getElementById('stock').value) || 0;
+  const week = parseInt(document.getElementById('week').value, 10) || 1;
 
-  const [needs, consumption, stock, expiration, consumed, storeSelections] = await Promise.all([
+  const [needs, consumption, stock, expiration, consumed, storeSelections, purchases] = await Promise.all([
     loadNeeds(),
     loadConsumption(),
     loadStock(),
     loadExpiration(),
     loadConsumed(),
-    loadStoreSelections()
+    loadStoreSelections(),
+    loadPurchases()
   ]);
 
   needs.push({
@@ -153,13 +169,21 @@ async function commit() {
     }
   );
 
+  if (!purchases[name]) purchases[name] = [];
+  purchases[name].push({
+    purchase_week: week,
+    quantity_purchased: stockAmt,
+    date_added: new Date().toISOString()
+  });
+
   await Promise.all([
     save('yearlyNeeds', needs),
     save('monthlyConsumption', consumption),
     save('currentStock', stock),
     save('expirationData', expiration),
     save('consumedThisYear', consumed),
-    save(STORE_SELECTION_KEY, storeSelections)
+    save(STORE_SELECTION_KEY, storeSelections),
+    savePurchases(purchases)
   ]);
 
   window.close();
