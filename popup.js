@@ -293,11 +293,6 @@ function getPackCount(product) {
   return m ? parseInt(m[1], 10) : 1;
 }
 
-function getCurrentWeek() {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), 0, 1);
-  return Math.floor((now - start) / (7 * 24 * 60 * 60 * 1000)) + 1;
-}
 
 async function loadPurchases() {
   return new Promise(resolve => {
