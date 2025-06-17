@@ -1,14 +1,28 @@
+import { getStockForWeek } from './timeline.js';
+
 export function calculatePurchaseNeeds(
   needs,
   consumption,
   stock,
   expiration,
-  consumedYear = []
+  consumedYear = [],
+  purchases = {},
+  week = 1
 ) {
-  const stockMap = new Map(stock.map(i => [i.name, i]));
   const consMap = new Map(consumption.map(i => [i.name, i]));
   const expMap = new Map(expiration.map(i => [i.name, i]));
   const consumedMap = new Map(consumedYear.map(i => [i.name, i]));
+
+  const timelineItems = needs.map(item => ({
+    name: item.name,
+    weekly_consumption:
+      (consMap.get(item.name)?.monthly_consumption ?? 0) / 4.33,
+    expiration_weeks: (expMap.get(item.name)?.shelf_life_months ?? 12) * 4.33,
+    starting_stock: stock.find(s => s.name === item.name)?.amount ?? 0
+  }));
+
+  const futureStock = getStockForWeek(timelineItems, purchases, week);
+  const stockMap = new Map(futureStock.map(i => [i.name, i]));
 
   return needs.map(item => {
     const cons = consMap.get(item.name)?.monthly_consumption ?? 0;
