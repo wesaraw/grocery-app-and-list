@@ -404,3 +404,12 @@ function openAddItem() {
 }
 
 document.getElementById("addItem").addEventListener("click", openAddItem);
+
+function openRemoveItem() {
+  const url = chrome.runtime.getURL('removeItem.html');
+  chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
+}
+
+document
+  .getElementById('removeItem')
+  .addEventListener('click', openRemoveItem);
