@@ -17,7 +17,7 @@
     "https://www.hannaford.com/*"
   ],
   "action": {
-    "default_popup": "popup.html"
+    "default_popup": "launcher.html"
   },
   "background": {
     "service_worker": "background.js"
