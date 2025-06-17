@@ -9,6 +9,18 @@ const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
 const CONSUMED_PATH = 'consumedThisYear';
 
+async function loadPurchases() {
+  return new Promise(resolve => {
+    try {
+      chrome.storage.local.get('purchases', data => {
+        resolve(data.purchases || {});
+      });
+    } catch (e) {
+      resolve({});
+    }
+  });
+}
+
 function loadArray(key, path) {
   return new Promise(async resolve => {
     chrome.storage.local.get(key, async data => {
@@ -39,6 +51,12 @@ async function loadStock() {
   });
 }
 
+function getCurrentWeek() {
+  const start = new Date(new Date().getFullYear(), 0, 1);
+  const today = new Date();
+  return Math.ceil(((today - start) / 86400000 + start.getDay() + 1) / 7);
+}
+
 async function loadConsumed() {
   return new Promise(async resolve => {
     chrome.storage.local.get(CONSUMED_PATH, async data => {
@@ -55,16 +73,17 @@ async function loadConsumed() {
 }
 
 async function getData() {
-  const [needs, selections, consumption, stock, expiration, consumed] =
+  const [needs, selections, consumption, stock, expiration, consumed, purchases] =
     await Promise.all([
       loadNeeds(),
       loadJSON(STORE_SELECTION_PATH),
       loadMonthlyConsumption(),
       loadStock(),
       loadExpiration(),
-      loadConsumed()
+      loadConsumed(),
+      loadPurchases()
     ]);
-  return { needs, selections, consumption, stock, expiration, consumed };
+  return { needs, selections, consumption, stock, expiration, consumed, purchases };
 }
 
 const finalMap = new Map();
@@ -73,6 +92,7 @@ let consumptionData = [];
 let expirationData = [];
 let stockData = [];
 let consumedYearData = [];
+let purchasesData = {};
 
 function getFinal(itemName) {
   const key = `final_${encodeURIComponent(itemName)}`;
@@ -90,19 +110,23 @@ function getFinalProduct(itemName) {
 
 async function init() {
   await initUomTable();
-  const { needs, selections, consumption, stock, expiration, consumed } =
+  const { needs, selections, consumption, stock, expiration, consumed, purchases } =
     await getData();
   needsData = needs;
   consumptionData = consumption;
   expirationData = expiration;
   stockData = stock;
   consumedYearData = consumed;
+  purchasesData = purchases;
+  const week = getCurrentWeek();
   const purchaseInfo = calculatePurchaseNeeds(
     needs,
     consumption,
     stock,
     expiration,
-    consumed
+    consumed,
+    purchases,
+    week
   );
   const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
   const itemsContainer = document.getElementById('items');
@@ -201,7 +225,9 @@ async function refreshNeeds(stock = stockData, consumed = consumedYearData) {
     consumptionData,
     stock,
     expirationData,
-    consumed
+    consumed,
+    purchasesData,
+    getCurrentWeek()
   );
   const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
   needsData.forEach(item => {
