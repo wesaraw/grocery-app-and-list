@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Add Item</title>
+  <style>
+    body { font-family: Arial, sans-serif; width: 300px; }
+    .field { margin-bottom: 10px; }
+    label { display: block; }
+  </style>
+</head>
+<body>
+  <h1>Add Item</h1>
+  <div class="field">
+    <label>Item Name <input id="name" type="text"></label>
+  </div>
+  <div class="field">
+    <label>Yearly Need <input id="yearly" type="number" step="any"></label>
+  </div>
+  <div class="field">
+    <label>Home Unit <input id="unit" type="text"></label>
+  </div>
+  <div class="field">
+    <label><input id="whole" type="checkbox"> Treat as Whole Unit</label>
+  </div>
+  <div class="field">
+    <label>Monthly Consumption <input id="monthly" type="number" step="any"></label>
+  </div>
+  <div class="field">
+    <label>Shelf Life (months) <input id="shelf" type="number" step="any"></label>
+  </div>
+  <div class="field">
+    <label>Current Stock <input id="stock" type="number" step="any"></label>
+  </div>
+  <button id="commit">Commit</button>
+  <script type="module" src="addItem.js"></script>
+</body>
+</html>

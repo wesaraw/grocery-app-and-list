@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Grocery Price Checker</title>
+  <style>
+    body { font-family: Arial, sans-serif; width: 300px; }
+    li { margin-bottom: 10px; }
+    .final-product-img {
+      width: 50px;
+      height: 50px;
+      object-fit: contain;
+      background: #ccc;
+      vertical-align: middle;
+      display: none;
+    }
+    #header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>Grocery Items</h1>
+    <div>
+      <button id="commit">Commit</button>
+      <button id="editInventory">Edit Inventory</button>
+      <button id="editConsumption">Edit Consumption</button>
+      <button id="addItem">Add Item</button>
+    </div>
+  </div>
+  <ul id="items"></ul>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

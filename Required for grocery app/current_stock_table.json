@@ -1,0 +1,762 @@
+[
+  {
+    "name":"Air Fryer Vegetables Seasoned Frozen Foods",
+    "amount":0.8,
+    "unit":"each"
+  },
+  {
+    "name":"Bagels 6 count Bakery & Bread",
+    "amount":2.86,
+    "unit":"each"
+  },
+  {
+    "name":"Bags Freezer",
+    "amount":14.4,
+    "unit":"each"
+  },
+  {
+    "name":"Bags Quart",
+    "amount":1.54,
+    "unit":"each"
+  },
+  {
+    "name":"Kraft Macaroni & Cheese Original Flavor Packaged Meals",
+    "amount":0.46,
+    "unit":"each"
+  },
+  {
+    "name":"Minute Rice White Side Dishes",
+    "amount":0.4,
+    "unit":"each"
+  },
+  {
+    "name":"Cream of Wheat Instant Maple Brown Sugar Breakfast Cereals",
+    "amount":0.92,
+    "unit":"each"
+  },
+  {
+    "name":"Bread Sandwich Bakery & Bread",
+    "amount":4.8,
+    "unit":"slice"
+  },
+  {
+    "name":"Pedigree DentaStix  Pet Supplies",
+    "amount":11.23,
+    "unit":"each"
+  },
+  {
+    "name":"Cilantro  Produce",
+    "amount":0.05,
+    "unit":"each"
+  },
+  {
+    "name":"Brown Sugar  Baking & Cooking",
+    "amount":1.48,
+    "unit":"oz"
+  },
+  {
+    "name":"Bob Evans Macaroni & Cheese  Packaged Meals",
+    "amount":0.8,
+    "unit":"each"
+  },
+  {
+    "name":"Cheese Shredded Cheddar Dairy",
+    "amount":3.2,
+    "unit":"oz"
+  },
+  {
+    "name":"Purell Hand Sanitizer  Health & Beauty",
+    "amount":3.32,
+    "unit":"oz"
+  },
+  {
+    "name":"Cheese White Sharp, Shredded Dairy",
+    "amount":2.22,
+    "unit":"oz"
+  },
+  {
+    "name":"Beef Strip Steak Meat",
+    "amount":0.18,
+    "unit":"oz"
+  },
+  {
+    "name":"Cottage Cheese Small Curd Dairy",
+    "amount":8.86,
+    "unit":"oz"
+  },
+  {
+    "name":"Flour  Baking & Cooking",
+    "amount":0.3,
+    "unit":"oz"
+  },
+  {
+    "name":"Bell Peppers  Produce",
+    "amount":0.37,
+    "unit":"each"
+  },
+  {
+    "name":"Garlic  Produce",
+    "amount":0.05,
+    "unit":"each"
+  },
+  {
+    "name":"Ginger  Produce",
+    "amount":0.05,
+    "unit":"each"
+  },
+  {
+    "name":"Cheese Muenster, Sliced Dairy",
+    "amount":4.55,
+    "unit":"slices"
+  },
+  {
+    "name":"Heavy Cream  Dairy",
+    "amount":0.1,
+    "unit":"oz"
+  },
+  {
+    "name":"Cheese String Dairy",
+    "amount":9.6,
+    "unit":"each"
+  },
+  {
+    "name":"Ground Beef Angus Sirloin Meat",
+    "amount":0.37,
+    "unit":"oz"
+  },
+  {
+    "name":"Kale  Produce",
+    "amount":0.03,
+    "unit":"each"
+  },
+  {
+    "name":"Lime Juice  Beverages",
+    "amount":0.46,
+    "unit":"oz"
+  },
+  {
+    "name":"Milk Gallon 1 Dairy",
+    "amount":0.8,
+    "unit":"gallon"
+  },
+  {
+    "name":"Mushrooms Shiitake Produce",
+    "amount":5.54,
+    "unit":"oz"
+  },
+  {
+    "name":"Imitation Crab  Seafood",
+    "amount":11.2,
+    "unit":"oz"
+  },
+  {
+    "name":"Paper Bowl 20 oz",
+    "amount":6.65,
+    "unit":"each"
+  },
+  {
+    "name":"Paper Plate Everyday 10.06",
+    "amount":11.54,
+    "unit":"each"
+  },
+  {
+    "name":"Paper Plate Everyday 6.87",
+    "amount":11.82,
+    "unit":"each"
+  },
+  {
+    "name":"Potatoes Baby Produce",
+    "amount":1.1,
+    "unit":"oz"
+  },
+  {
+    "name":"Pet Treats Pill Pockets Pet Supplies",
+    "amount":11.23,
+    "unit":"each"
+  },
+  {
+    "name":"Sausage Sweet Meat",
+    "amount":4.43,
+    "unit":"oz"
+  },
+  {
+    "name":"Potatoes Red Produce",
+    "amount":3.7,
+    "unit":"oz"
+  },
+  {
+    "name":"Potatoes Russet Produce",
+    "amount":7.88,
+    "unit":"oz"
+  },
+  {
+    "name":"Potatoes Yams Produce",
+    "amount":0.74,
+    "unit":"oz"
+  },
+  {
+    "name":"Pretzel Frozen Frozen Foods",
+    "amount":2.4,
+    "unit":"each"
+  },
+  {
+    "name":"Sugar Snap Peas  Produce",
+    "amount":1.38,
+    "unit":"oz"
+  },
+  {
+    "name":"Sriracha Hot Chili Sauce,  Condiments Sauces",
+    "amount":0.26,
+    "unit":"oz"
+  },
+  {
+    "name":"Birds Eye Skillet Meals  Frozen Foods",
+    "amount":0.4,
+    "unit":"each"
+  },
+  {
+    "name":"Tortillas  Bakery & Bread",
+    "amount":0.92,
+    "unit":"each"
+  },
+  {
+    "name":"Aleia's Bread Crumbs Italian, Gluten Free Baking Supplies",
+    "amount":2.4,
+    "unit":"oz"
+  },
+  {
+    "name":"Argo Corn Starch 100 Pure Baking Supplies",
+    "amount":0.5,
+    "unit":"oz"
+  },
+  {
+    "name":"Arm & Hammer Baking Soda Pure Baking Supplies",
+    "amount":0.98,
+    "unit":"oz"
+  },
+  {
+    "name":"Barilla Pasta Fettuccine Pasta",
+    "amount":0.25,
+    "unit":"each"
+  },
+  {
+    "name":"Bertolli Vinegar Balsamic Vinegars",
+    "amount":0.13,
+    "unit":"oz"
+  },
+  {
+    "name":"Betty Crocker Cookie Mix Snickerdoodle Baking Supplies",
+    "amount":0.18,
+    "unit":"each"
+  },
+  {
+    "name":"Charmin Toilet Paper Strong",
+    "amount":44.3,
+    "unit":"sheets"
+  },
+  {
+    "name":"Foxy Romaine Hearts  Fresh Produce",
+    "amount":0.74,
+    "unit":"each"
+  },
+  {
+    "name":"Botticelli Pasta Sauce Traditional Premium Pasta Sauce",
+    "amount":0.37,
+    "unit":"each"
+  },
+  {
+    "name":"Bounty Paper Towels",
+    "amount":2.77,
+    "unit":"sheets"
+  },
+  {
+    "name":"Bragg Apple Cider Vinegar Organic Vinegars",
+    "amount":0.25,
+    "unit":"oz"
+  },
+  {
+    "name":"Bumble Bee Canned Tuna Albacore Light Canned Seafood",
+    "amount":0.18,
+    "unit":"each"
+  },
+  {
+    "name":"Cabot Butter Salted Dairy",
+    "amount":2.95,
+    "unit":"oz"
+  },
+  {
+    "name":"Campbell's Soup Chicken Noodle Soup",
+    "amount":0.18,
+    "unit":"each"
+  },
+  {
+    "name":"Cape Cod Chips",
+    "amount":22.4,
+    "unit":"oz"
+  },
+  {
+    "name":"Cascade Dishwasher Detergent Platinum",
+    "amount":2.86,
+    "unit":"oz"
+  },
+  {
+    "name":"Gold Peak Tea Zero Sugar Beverages",
+    "amount":189.8,
+    "unit":"oz"
+  },
+  {
+    "name":"Cheerios Cereal Strawberry Banana Breakfast Cereals",
+    "amount":1.38,
+    "unit":"oz"
+  },
+  {
+    "name":"Chex Cereal Corn Breakfast Cereals",
+    "amount":1.1,
+    "unit":"oz"
+  },
+  {
+    "name":"Chips Ahoy Cookies Chocolate Chip Snacks",
+    "amount":14.56,
+    "unit":"oz"
+  },
+  {
+    "name":"Chosen Foods Oil Organic Avocado, Coconut & Safflower Cooking Oils",
+    "amount":0.26,
+    "unit":"oz"
+  },
+  {
+    "name":"Coffee-mate Iced Coffee French Vanilla Beverages",
+    "amount":4.06,
+    "unit":"oz"
+  },
+  {
+    "name":"Heinz Ketchup Tomato Condiments",
+    "amount":3.1,
+    "unit":"oz"
+  },
+  {
+    "name":"Philadelphia Cream Cheese Spread Original Dairy",
+    "amount":1.48,
+    "unit":"oz"
+  },
+  {
+    "name":"Store brand Cheddar Cheese Medium Sliced,  Dairy",
+    "amount":5.7,
+    "unit":"oz"
+  },
+  {
+    "name":"Daisy Sour Cream  Dairy",
+    "amount":0.86,
+    "unit":"oz"
+  },
+  {
+    "name":"Dawn Dishwand Ultra Soap Dispensing Cleaning Supplies",
+    "amount":0.02,
+    "unit":"oz"
+  },
+  {
+    "name":"Dawn Dishwashing Liquid Platinum Refreshing Rain Cleaning Supplies",
+    "amount":13.2,
+    "unit":"oz"
+  },
+  {
+    "name":"Store brand Parmesan Cheese Grated,  Dairy",
+    "amount":0.74,
+    "unit":"oz"
+  },
+  {
+    "name":"Diamond of California Pecans Finely Diced Baking Nuts",
+    "amount":0.1,
+    "unit":"oz"
+  },
+  {
+    "name":"Domino Powdered Sugar Premium Cane Baking Supplies",
+    "amount":0.5,
+    "unit":"oz"
+  },
+  {
+    "name":"Filippo Berio Olive Oil Extra Light Cooking Oils",
+    "amount":0.77,
+    "unit":"oz"
+  },
+  {
+    "name":"Stouffer's Mac N Cheese Bites  Frozen Foods",
+    "amount":1.3,
+    "unit":"oz"
+  },
+  {
+    "name":"Frank's RedHot Sauce Original Condiments Sauces",
+    "amount":0.35,
+    "unit":"oz"
+  },
+  {
+    "name":"French's Mustard Classic Yellow Condiments",
+    "amount":0.15,
+    "unit":"oz"
+  },
+  {
+    "name":"Frenches Fried Onions Crispy  Condiments",
+    "amount":0.18,
+    "unit":"oz"
+  },
+  {
+    "name":"Glad Trash Bags 13 Gallon, forceflex, fresh clean Cleaning",
+    "amount":1.85,
+    "unit":"each"
+  },
+  {
+    "name":"Broccoli Frozen Frozen Foods",
+    "amount":0.8,
+    "unit":"each"
+  },
+  {
+    "name":"Green Mountain Coffee K-Cup Pods Nantucket Blend, Medium Roast Coffee & Tea",
+    "amount":5.62,
+    "unit":"each"
+  },
+  {
+    "name":"Grey Poupon Mustard Dijon Condiments",
+    "amount":0.5,
+    "unit":"oz"
+  },
+  {
+    "name":"Gulden's Mustard Spicy Brown Condiments",
+    "amount":0.18,
+    "unit":"oz"
+  },
+  {
+    "name":"Hamburger Helper Pasta Meal Deluxe Beef Stroganoff Packaged Meals",
+    "amount":0.2,
+    "unit":"each"
+  },
+  {
+    "name":"Hamburger Helper Pasta Meal Potatoes Stroganoff Packaged Meals",
+    "amount":0.2,
+    "unit":"each"
+  },
+  {
+    "name":"Hass Avocados 4 ct Fresh Produce",
+    "amount":0.18,
+    "unit":"each"
+  },
+  {
+    "name":"Ice Cream  Frozen Foods",
+    "amount":0.8,
+    "unit":"pint"
+  },
+  {
+    "name":"Hellmann's Mayonnaise Real Condiments Spreads",
+    "amount":2.77,
+    "unit":"oz"
+  },
+  {
+    "name":"Hellmann's Mayonnaise Real Squeeze Bottle Condiments",
+    "amount":1.23,
+    "unit":"oz"
+  },
+  {
+    "name":"Hellmann's Mayonnaise Spicy Condiments",
+    "amount":0.18,
+    "unit":"oz"
+  },
+  {
+    "name":"Hershey's Cocoa  Baking Supplies",
+    "amount":0.06,
+    "unit":"oz"
+  },
+  {
+    "name":"Hershey's Syrup Genuine Chocolate Flavor Condiments Syrups",
+    "amount":4.43,
+    "unit":"oz"
+  },
+  {
+    "name":"Hormel Canned Chicken Breast  Canned Meats",
+    "amount":0.02,
+    "unit":"each"
+  },
+  {
+    "name":"Del Monte Mixed Vegetables  Canned",
+    "amount":0.37,
+    "unit":"each"
+  },
+  {
+    "name":"I Can't Believe It's Not Butter! Butter Spray Original Spreads",
+    "amount":1.48,
+    "unit":"oz"
+  },
+  {
+    "name":"I Can't Believe It's Not Butter! Butter Substitute  Spreads",
+    "amount":8.3,
+    "unit":"oz"
+  },
+  {
+    "name":"Idahoan Mashed Potatoes Loaded Baked Side Dishes",
+    "amount":0.26,
+    "unit":"each"
+  },
+  {
+    "name":"Jif Peanut Butter Creamy Spreads",
+    "amount":2.46,
+    "unit":"oz"
+  },
+  {
+    "name":"Ken's Steak House Blue Cheese Dressing Chunky Condiments Dressings",
+    "amount":0.5,
+    "unit":"oz"
+  },
+  {
+    "name":"Kerrygold Butter Pure Irish, Unsalted Dairy",
+    "amount":0.5,
+    "unit":"oz"
+  },
+  {
+    "name":"Kikkoman Marinade & Sauce Teriyaki Condiments Sauces",
+    "amount":0.23,
+    "unit":"oz"
+  },
+  {
+    "name":"Beef Steak Tips Meat",
+    "amount":0.18,
+    "unit":"oz"
+  },
+  {
+    "name":"Kozy Shack Rice Pudding Original Recipe, Gluten Free Dairy",
+    "amount":4.8,
+    "unit":"oz"
+  },
+  {
+    "name":"Lindy Italian Ice  Frozen Foods",
+    "amount":8.5,
+    "unit":"oz"
+  },
+  {
+    "name":"Krusteaz Muffin Mix Cranberry Baking Supplies",
+    "amount":0.02,
+    "unit":"oz"
+  },
+  {
+    "name":"Lea & Perrins Worcestershire Sauce The Original Condiments Sauces",
+    "amount":0.08,
+    "unit":"oz"
+  },
+  {
+    "name":"Libbys Pumpkin 100 pure Canned",
+    "amount":0.23,
+    "unit":"oz"
+  },
+  {
+    "name":"Store Brand Mushrooms Stems and Pieces  Canned",
+    "amount":2.95,
+    "unit":"oz"
+  },
+  {
+    "name":"McCormick Cream of Tartar  Baking Supplies",
+    "amount":0.02,
+    "unit":"oz"
+  },
+  {
+    "name":"Milk-Bone Flavor Snacks  Pet Supplies",
+    "amount":7.22,
+    "unit":"oz"
+  },
+  {
+    "name":"Bread Sour Dough Bakery & Bread",
+    "amount":12.8,
+    "unit":"oz"
+  },
+  {
+    "name":"Monster Energy Drink  Beverages",
+    "amount":5.62,
+    "unit":"each"
+  },
+  {
+    "name":"Mott's Applesauce  Snacks Fruits",
+    "amount":3.2,
+    "unit":"oz"
+  },
+  {
+    "name":"Mrs. Butterworth's Syrup Extra Buttery Condiments Syrups",
+    "amount":0.74,
+    "unit":"oz"
+  },
+  {
+    "name":"Mt. Olive Pickles Bread & Butter Chips Condiments Pickles",
+    "amount":0.18,
+    "unit":"oz"
+  },
+  {
+    "name":"Nature's Promise Garlic Minced Cooking Ingredients",
+    "amount":0.98,
+    "unit":"oz"
+  },
+  {
+    "name":"Nestle Nesquik Chocolate Beverage Mixes",
+    "amount":7.02,
+    "unit":"oz"
+  },
+  {
+    "name":"Nudges Grillers  Pet Supplies",
+    "amount":1.48,
+    "unit":"oz"
+  },
+  {
+    "name":"Ocean Spray Cranberry Sauce Jellied Canned Fruits",
+    "amount":0.43,
+    "unit":"oz"
+  },
+  {
+    "name":"Pace Salsa Chunky Mild Condiments",
+    "amount":4.43,
+    "unit":"oz"
+  },
+  {
+    "name":"Paper Plate Everyday 8.5",
+    "amount":19.7,
+    "unit":"each"
+  },
+  {
+    "name":"College Inn Beef Stock  Broth & Bouillon",
+    "amount":0.98,
+    "unit":"oz"
+  },
+  {
+    "name":"Perdue Chicken Breast Cutlets  Meat & Poultry",
+    "amount":2.22,
+    "unit":"oz"
+  },
+  {
+    "name":"Hormel Corned Beef Hash Mary Kitchen Canned Meats",
+    "amount":0.11,
+    "unit":"oz"
+  },
+  {
+    "name":"Pepsi Soda Zero Beverages",
+    "amount":19.2,
+    "unit":"each"
+  },
+  {
+    "name":"Progresso Soup Traditional Chickarina Soup",
+    "amount":0.02,
+    "unit":"each"
+  },
+  {
+    "name":"Progresso Soup Traditional Chicken & Wild Rice Soup",
+    "amount":0.03,
+    "unit":"each"
+  },
+  {
+    "name":"Planters Peanuts Cocktail Snacks",
+    "amount":0.25,
+    "unit":"oz"
+  },
+  {
+    "name":"Quaker Instant Oatmeal Strawberries n Cream Breakfast Cereals",
+    "amount":0.86,
+    "unit":"each"
+  },
+  {
+    "name":"Spectrum Sesame Oil Organic Toasted Cooking Oils",
+    "amount":0.25,
+    "unit":"oz"
+  },
+  {
+    "name":"Spice Islands Almond Extract Pure Baking Supplies",
+    "amount":0.03,
+    "unit":"oz"
+  },
+  {
+    "name":"Store brand Apple Cider Vinegar  Vinegars",
+    "amount":0.98,
+    "unit":"oz"
+  },
+  {
+    "name":"Store brand Baking Powder Double Acting,  Baking Supplies",
+    "amount":0.25,
+    "unit":"oz"
+  },
+  {
+    "name":"Tuttorosso Tomatoes Diced, Canned Canned Goods",
+    "amount":0.1,
+    "unit":"each"
+  },
+  {
+    "name":"College Inn Chicken Broth  Broth & Bouillon",
+    "amount":0.98,
+    "unit":"oz"
+  },
+  {
+    "name":"Kikkoman Soy Sauce Less Sodium Condiments Sauces",
+    "amount":0.46,
+    "unit":"oz"
+  },
+  {
+    "name":"Store brand Parmesan Cheese Shredded Dairy",
+    "amount":0.55,
+    "unit":"oz"
+  },
+  {
+    "name":"Store brand Ricotta Cheese Brand  Sargento Dairy",
+    "amount":2.95,
+    "unit":"oz"
+  },
+  {
+    "name":"Store brand Spinach Washed Fresh Produce",
+    "amount":1.48,
+    "unit":"oz"
+  },
+  {
+    "name":"Store brand Vanilla Extract Pure Baking Supplies",
+    "amount":0.03,
+    "unit":"oz"
+  },
+  {
+    "name":"Store brand Vinegar White Vinegars",
+    "amount":3.94,
+    "unit":"oz"
+  },
+  {
+    "name":"Frozen Vegetables Peas and Corn Frozen Foods",
+    "amount":0.06,
+    "unit":"each"
+  },
+  {
+    "name":"Sweet Baby Ray's Barbecue Sauce  Condiments Sauces",
+    "amount":0.62,
+    "unit":"oz"
+  },
+  {
+    "name":"Sweet Baby Ray's Sauce Sweet Teriyaki Condiments Sauces",
+    "amount":0.14,
+    "unit":"oz"
+  },
+  {
+    "name":"Taste of Inspirations Gnocchi Potato, Made in Italy Pasta",
+    "amount":0.1,
+    "unit":"each"
+  },
+  {
+    "name":"Tostitos Salsa Chunky Mild Snacks Condiments",
+    "amount":0.37,
+    "unit":"oz"
+  },
+  {
+    "name":"Paper Bowl 10 oz",
+    "amount":3.23,
+    "unit":"each"
+  },
+  {
+    "name":"Wilton Candy Melts Light Cocoa Baking Supplies",
+    "amount":1.1,
+    "unit":"each"
+  },
+  {
+    "name":"Wish-Bone Dressing House Italian Condiments Dressings",
+    "amount":0.28,
+    "unit":"oz"
+  },
+  {
+    "name":"Yoo-hoo Chocolate Drink",
+    "amount":4.92,
+    "unit":"each"
+  }
+]

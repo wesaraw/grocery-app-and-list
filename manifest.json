@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "Grocery Price Checker",
+  "description": "Find the cheapest grocery items across local stores.",
+  "version": "0.1",
+  "permissions": [
+    "storage",
+    "tabs",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://stopandshop.com/*",
+    "https://www.walmart.com/*",
+    "https://www.amazon.com/*",
+    "https://www.shaws.com/*",
+    "https://shopping.rochebros.com/*",
+    "https://www.hannaford.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://stopandshop.com/*",
+        "https://www.walmart.com/*",
+        "https://www.amazon.com/*",
+        "https://www.shaws.com/*",
+        "https://shopping.rochebros.com/*",
+        "https://www.hannaford.com/*"
+      ],
+      "js": [
+        "contentScript.js"
+      ]
+    }
+  ]
+}
