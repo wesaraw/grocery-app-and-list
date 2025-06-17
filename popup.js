@@ -129,6 +129,7 @@ async function init() {
     week
   );
   const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
+  const stockMap = new Map(stock.map(i => [i.name, i]));
   const itemsContainer = document.getElementById('items');
 
   needs.forEach(item => {
@@ -152,6 +153,9 @@ async function init() {
     finalImg.width = 50;
     finalImg.height = 50;
     finalImg.style.display = 'none';
+    const currentQty = stockMap.get(item.name)?.amount || 0;
+    const weeklyNeed = item.total_needed_year ? item.total_needed_year / 52 : 0;
+    li.style.display = currentQty < weeklyNeed ? 'list-item' : 'none';
     getFinal(item.name).then(async store => {
       const product = await getFinalProduct(item.name);
       if (store) {
@@ -178,7 +182,7 @@ async function init() {
     });
     li.appendChild(finalSpan);
     li.appendChild(finalImg);
-    finalMap.set(item.name, { btn, span: finalSpan, img: finalImg });
+    finalMap.set(item.name, { li, btn, span: finalSpan, img: finalImg });
     itemsContainer.appendChild(li);
   });
 }
@@ -230,6 +234,7 @@ async function refreshNeeds(stock = stockData, consumed = consumedYearData) {
     getCurrentWeek()
   );
   const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
+  const stockMap = new Map(stock.map(i => [i.name, i]));
   needsData.forEach(item => {
     const rec = finalMap.get(item.name);
     if (rec && rec.btn) {
@@ -238,6 +243,9 @@ async function refreshNeeds(stock = stockData, consumed = consumedYearData) {
       const amountText =
         info && !isNaN(needAmt) ? ` (Need: ${needAmt} ${info.home_unit})` : '';
       rec.btn.textContent = item.name + amountText;
+      const qty = stockMap.get(item.name)?.amount || 0;
+      const weekly = item.total_needed_year ? item.total_needed_year / 52 : 0;
+      rec.li.style.display = qty < weekly ? 'list-item' : 'none';
     }
   });
 }
