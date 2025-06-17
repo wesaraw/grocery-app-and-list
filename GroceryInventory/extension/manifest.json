@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Grocery Inventory Timeline",
+  "version": "1.0",
+  "description": "Track grocery inventory over 52 weeks.",
+  "permissions": ["storage"],
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
