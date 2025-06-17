@@ -99,7 +99,7 @@ function createItemRow(item, map, history, overrides) {
 
   const input = document.createElement('input');
   input.type = 'number';
-  input.placeholder = 'New';
+  input.placeholder = 'Change';
 
   const weekInput = document.createElement('input');
   weekInput.type = 'number';
@@ -109,18 +109,16 @@ function createItemRow(item, map, history, overrides) {
   weekInput.className = 'week-input';
   input.addEventListener('keydown', async e => {
     if (e.key === 'Enter') {
-      const val = parseFloat(input.value);
+      const change = parseFloat(input.value);
       const week = parseInt(weekInput.value, 10);
-      if (!isNaN(val) && !isNaN(week)) {
-        const old = item.amount;
-        const diff = val - old;
-        item.amount = val;
+      if (!isNaN(change) && !isNaN(week)) {
+        item.amount += change;
         span.textContent = `${item.name} - ${item.amount} ${item.unit}`;
         const arr = history[item.name] || [];
-        arr.unshift({ id: Date.now(), date: new Date().toLocaleDateString(), diff });
+        arr.unshift({ id: Date.now(), date: new Date().toLocaleDateString(), diff: change });
         history[item.name] = arr;
         if (!overrides[item.name]) overrides[item.name] = {};
-        overrides[item.name][week] = diff;
+        overrides[item.name][week] = (overrides[item.name][week] || 0) + change;
         await saveConsumption(Array.from(map.values()));
         await saveHistory(history);
         await saveOverrides(overrides);
