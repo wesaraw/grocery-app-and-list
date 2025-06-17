@@ -1,6 +1,21 @@
 import { loadJSON } from './utils/dataLoader.js';
+import { getStockForWeek } from './utils/timelineHelper.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
+
+async function loadPurchases() {
+  return new Promise(resolve => {
+    chrome.storage.local.get('purchases', data => {
+      resolve(data.purchases || {});
+    });
+  });
+}
+
+function savePurchases(map) {
+  return new Promise(resolve => {
+    chrome.storage.local.set({ purchases: map }, () => resolve());
+  });
+}
 
 async function loadStock() {
   return new Promise(async resolve => {
@@ -14,18 +29,11 @@ async function loadStock() {
     });
   });
 }
-
-function saveStock(stock) {
-  return new Promise(resolve => {
-    chrome.storage.local.set({ currentStock: stock }, () => resolve());
-  });
-}
-
-function createItemRow(item, stockMap) {
+function createItemRow(name, amount, unit, purchasesMap, week) {
   const div = document.createElement('div');
   div.className = 'item';
   const span = document.createElement('span');
-  span.textContent = `${item.name} - ${item.amount} ${item.unit}`;
+  span.textContent = `${name} - ${amount} ${unit}`;
   div.appendChild(span);
 
   const input = document.createElement('input');
@@ -35,9 +43,18 @@ function createItemRow(item, stockMap) {
     if (e.key === 'Enter') {
       const val = parseFloat(input.value);
       if (!isNaN(val)) {
-        item.amount = val;
-        span.textContent = `${item.name} - ${item.amount} ${item.unit}`;
-        await saveStock(Array.from(stockMap.values()));
+        const diff = val - amount;
+        if (diff !== 0) {
+          if (!purchasesMap[name]) purchasesMap[name] = [];
+          purchasesMap[name].push({
+            purchase_week: week,
+            quantity_purchased: diff,
+            date_added: new Date().toISOString()
+          });
+          await savePurchases(purchasesMap);
+          amount = val;
+        }
+        span.textContent = `${name} - ${amount} ${unit}`;
         input.value = '';
       }
     }
@@ -48,14 +65,30 @@ function createItemRow(item, stockMap) {
   return div;
 }
 
-async function init() {
-  const container = document.getElementById('inventory');
-  const stock = await loadStock();
-  const stockMap = new Map(stock.map(i => [i.name, i]));
+let baseStock = [];
+let purchasesMap = {};
 
-  stock.forEach(item => {
-    const row = createItemRow(item, stockMap);
+function renderWeek(week) {
+  const container = document.getElementById('inventory');
+  container.innerHTML = '';
+  const stockForWeek = getStockForWeek(baseStock, purchasesMap, week);
+  baseStock.forEach(item => {
+    const amt = stockForWeek.get(item.name) || 0;
+    const row = createItemRow(item.name, amt, item.unit, purchasesMap, week);
     container.appendChild(row);
+  });
+}
+
+async function init() {
+  const weekInput = document.getElementById('week-number');
+  baseStock = await loadStock();
+  purchasesMap = await loadPurchases();
+
+  renderWeek(parseInt(weekInput.value, 10) || 1);
+
+  weekInput.addEventListener('change', () => {
+    const w = parseInt(weekInput.value, 10) || 1;
+    renderWeek(w);
   });
 }
 
