@@ -294,13 +294,6 @@ function getPackCount(product) {
 }
 
 
-async function loadPurchases() {
-  return new Promise(resolve => {
-    chrome.storage.local.get('purchases', data => {
-      resolve(data.purchases || {});
-    });
-  });
-}
 
 async function savePurchases(map) {
   return new Promise(resolve => {
