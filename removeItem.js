@@ -116,6 +116,10 @@ async function removeItem(name) {
     saveHistory(history)
   ]);
 
+  try {
+    chrome.runtime.sendMessage({ type: 'inventory-updated' });
+  } catch (_) {}
+
   chrome.storage.local.remove([
     `final_${encodeURIComponent(name)}`,
     `final_product_${encodeURIComponent(name)}`
