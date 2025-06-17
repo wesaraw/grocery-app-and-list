@@ -1,7 +1,9 @@
 import { loadJSON } from './utils/dataLoader.js';
-import { getStockForWeek } from './utils/timelineHelper.js';
+import { getStockForWeek } from './utils/timeline.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
+const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
+const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
 
 async function loadPurchases() {
   return new Promise(resolve => {
@@ -28,6 +30,34 @@ async function loadStock() {
       }
     });
   });
+}
+
+function loadArray(key, path) {
+  return new Promise(async resolve => {
+    chrome.storage.local.get(key, async data => {
+      if (data[key]) {
+        resolve(data[key]);
+      } else {
+        const arr = await loadJSON(path);
+        resolve(arr);
+      }
+    });
+  });
+}
+
+const loadConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
+const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
+
+function buildTimelineItems(stock, consumption, expiration) {
+  const consMap = new Map(consumption.map(c => [c.name, c]));
+  const expMap = new Map(expiration.map(e => [e.name, e]));
+  return stock.map(s => ({
+    name: s.name,
+    weekly_consumption:
+      (consMap.get(s.name)?.monthly_consumption || 0) / 4.33,
+    expiration_weeks: (expMap.get(s.name)?.shelf_life_months || 12) * 4.33,
+    starting_stock: s.amount
+  }));
 }
 function createItemRow(name, amount, unit, purchasesMap, week) {
   const div = document.createElement('div');
@@ -72,11 +102,19 @@ function createItemRow(name, amount, unit, purchasesMap, week) {
 
 let baseStock = [];
 let purchasesMap = {};
+let consumptionData = [];
+let expirationData = [];
 
 function renderWeek(week) {
   const container = document.getElementById('inventory');
   container.innerHTML = '';
-  const stockForWeek = getStockForWeek(baseStock, purchasesMap, week);
+  const timelineItems = buildTimelineItems(
+    baseStock,
+    consumptionData,
+    expirationData
+  );
+  const stockArr = getStockForWeek(timelineItems, purchasesMap, week);
+  const stockForWeek = new Map(stockArr.map(i => [i.name, i.amount]));
   baseStock.forEach(item => {
     const amt = stockForWeek.get(item.name) || 0;
     const row = createItemRow(item.name, amt, item.unit, purchasesMap, week);
@@ -86,8 +124,12 @@ function renderWeek(week) {
 
 async function init() {
   const weekInput = document.getElementById('week-number');
-  baseStock = await loadStock();
-  purchasesMap = await loadPurchases();
+  [baseStock, purchasesMap, consumptionData, expirationData] = await Promise.all([
+    loadStock(),
+    loadPurchases(),
+    loadConsumption(),
+    loadExpiration()
+  ]);
 
   renderWeek(parseInt(weekInput.value, 10) || 1);
 
