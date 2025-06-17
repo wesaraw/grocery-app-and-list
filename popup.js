@@ -260,6 +260,44 @@ chrome.storage.onChanged.addListener((changes, area) => {
     consumedYearData = newConsumed;
     refreshNeeds(stockData, newConsumed);
   }
+  if (area === 'local' && changes.purchases) {
+    purchasesData = changes.purchases.newValue || {};
+    refreshNeeds(stockData, consumedYearData);
+  }
+  Object.keys(changes).forEach(key => {
+    if (key.startsWith('final_') || key.startsWith('final_product_')) {
+      const item = decodeURIComponent(key.replace(/^final(_product)?_/, ''));
+      const rec = finalMap.get(item);
+      if (rec) {
+        Promise.all([getFinal(item), getFinalProduct(item)]).then(([store, product]) => {
+          const { span, img } = rec;
+          span.textContent = store ? ` - ${store}` : '';
+          if (product) {
+            let pStr =
+              product.priceNumber != null
+                ? `$${product.priceNumber.toFixed(2)}`
+                : product.price;
+            let qStr =
+              product.convertedQty != null
+                ? `${product.convertedQty.toFixed(2)} oz`
+                : product.size;
+            let uStr =
+              product.pricePerUnit != null
+                ? `$${product.pricePerUnit.toFixed(2)}/oz`
+                : product.unit;
+            span.textContent += ` - ${product.name} - ${pStr} - ${qStr} - ${uStr}`;
+            img.src = product.image || '';
+            img.alt = product.name || '';
+            img.style.display = 'inline';
+          } else {
+            img.style.display = 'none';
+            img.src = '';
+            img.alt = '';
+          }
+        });
+      }
+    }
+  });
   if (
     area === 'local' &&
     (changes.yearlyNeeds || changes.monthlyConsumption || changes.expirationData)
