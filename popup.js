@@ -293,16 +293,30 @@ function getPackCount(product) {
   return m ? parseInt(m[1], 10) : 1;
 }
 
-async function saveStock(stock) {
+function getCurrentWeek() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 1);
+  return Math.floor((now - start) / (7 * 24 * 60 * 60 * 1000)) + 1;
+}
+
+async function loadPurchases() {
   return new Promise(resolve => {
-    chrome.storage.local.set({ currentStock: stock }, () => resolve());
+    chrome.storage.local.get('purchases', data => {
+      resolve(data.purchases || {});
+    });
+  });
+}
+
+async function savePurchases(map) {
+  return new Promise(resolve => {
+    chrome.storage.local.set({ purchases: map }, () => resolve());
   });
 }
 
 async function commitSelections() {
-  const stock = await loadStock();
-  const stockMap = new Map(stock.map(i => [i.name, i]));
+  const purchases = await loadPurchases();
   const commitItems = [];
+  const currentWeek = getCurrentWeek();
 
   for (const item of needsData) {
     const { store, product } = await loadCommitData(item.name);
@@ -322,16 +336,16 @@ async function commitSelections() {
       }
     }
 
-    const entry = stockMap.get(item.name);
-    if (entry) {
-      entry.amount = (parseFloat(entry.amount) || 0) + amount;
-    } else {
-      stockMap.set(item.name, { name: item.name, amount, unit: item.home_unit });
-    }
+    if (!purchases[item.name]) purchases[item.name] = [];
+    purchases[item.name].push({
+      purchase_week: currentWeek,
+      quantity_purchased: amount
+    });
+
     commitItems.push({ item: item.name, store, product, amount, unit: item.home_unit });
   }
 
-  await saveStock(Array.from(stockMap.values()));
+  await savePurchases(purchases);
   chrome.storage.local.set({ lastCommitItems: commitItems });
 
   const url = chrome.runtime.getURL('shoppingList.html');
