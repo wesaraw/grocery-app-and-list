@@ -17,6 +17,18 @@ async function loadPurchases() {
   });
 }
 
+async function loadOverrides() {
+  return new Promise(resolve => {
+    try {
+      chrome.storage.local.get('consumptionOverrides', data => {
+        resolve(data.consumptionOverrides || {});
+      });
+    } catch (e) {
+      resolve({});
+    }
+  });
+}
+
 async function savePurchases(map) {
   return new Promise(resolve => {
     try {
@@ -192,10 +204,21 @@ function showPurchaseHistory() {
 async function init() {
   const data = await loadData();
   const items = buildItemMap(data.needs, data.expiration, data.stock);
-  const savedMap = await loadPurchases();
+  const [savedMap, overridesMap] = await Promise.all([
+    loadPurchases(),
+    loadOverrides()
+  ]);
   items.forEach(it => {
     if (savedMap[it.name]) {
       it.purchases = savedMap[it.name];
+    }
+    if (overridesMap[it.name]) {
+      const weekMap = {};
+      Object.keys(overridesMap[it.name]).forEach(w => {
+        const diff = overridesMap[it.name][w];
+        weekMap[w] = it.weekly_consumption ? diff / it.weekly_consumption : 0;
+      });
+      it.overrideWeeks = weekMap;
     }
   });
   const datalist = document.getElementById('item-list');

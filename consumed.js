@@ -44,6 +44,20 @@ async function loadHistory() {
   });
 }
 
+async function loadOverrides() {
+  return new Promise(resolve => {
+    chrome.storage.local.get('consumptionOverrides', data => {
+      resolve(data.consumptionOverrides || {});
+    });
+  });
+}
+
+function saveOverrides(overrides) {
+  return new Promise(resolve => {
+    chrome.storage.local.set({ consumptionOverrides: overrides }, () => resolve());
+  });
+}
+
 function saveHistory(hist) {
   return new Promise(resolve => {
     chrome.storage.local.set({ consumedHistory: hist }, () => resolve());
@@ -76,7 +90,7 @@ function updateHistoryList(name, ul, span, map, history) {
   });
 }
 
-function createItemRow(item, map, history) {
+function createItemRow(item, map, history, overrides) {
   const div = document.createElement('div');
   div.className = 'item';
   const span = document.createElement('span');
@@ -86,10 +100,18 @@ function createItemRow(item, map, history) {
   const input = document.createElement('input');
   input.type = 'number';
   input.placeholder = 'New';
+
+  const weekInput = document.createElement('input');
+  weekInput.type = 'number';
+  weekInput.placeholder = 'Week';
+  weekInput.min = 1;
+  weekInput.max = 52;
+  weekInput.className = 'week-input';
   input.addEventListener('keydown', async e => {
     if (e.key === 'Enter') {
       const val = parseFloat(input.value);
-      if (!isNaN(val)) {
+      const week = parseInt(weekInput.value, 10);
+      if (!isNaN(val) && !isNaN(week)) {
         const old = item.amount;
         const diff = val - old;
         item.amount = val;
@@ -97,15 +119,21 @@ function createItemRow(item, map, history) {
         const arr = history[item.name] || [];
         arr.unshift({ id: Date.now(), date: new Date().toLocaleDateString(), diff });
         history[item.name] = arr;
+        if (!overrides[item.name]) overrides[item.name] = {};
+        overrides[item.name][week] = diff;
         await saveConsumption(Array.from(map.values()));
         await saveHistory(history);
+        await saveOverrides(overrides);
         updateHistoryList(item.name, ul, span, map, history);
         input.value = '';
+        weekInput.value = '';
       }
     }
   });
   div.appendChild(document.createTextNode(' '));
   div.appendChild(input);
+  div.appendChild(document.createTextNode(' '));
+  div.appendChild(weekInput);
 
   const ul = document.createElement('ul');
   ul.className = 'history';
@@ -117,10 +145,11 @@ function createItemRow(item, map, history) {
 
 async function init() {
   const container = document.getElementById('consumption');
-  const [consumed, history, needs] = await Promise.all([
+  const [consumed, history, needs, overrides] = await Promise.all([
     loadConsumption(),
     loadHistory(),
-    loadNeeds()
+    loadNeeds(),
+    loadOverrides()
   ]);
   const map = new Map(consumed.map(i => [i.name, i]));
   // ensure all needs exist
@@ -134,10 +163,11 @@ async function init() {
   // render in needs order
   needs.forEach(n => {
     const item = map.get(n.name);
-    const row = createItemRow(item, map, history);
+    const row = createItemRow(item, map, history, overrides);
     container.appendChild(row);
   });
   await saveConsumption(Array.from(map.values()));
+  await saveOverrides(overrides);
 }
 
 document.addEventListener('DOMContentLoaded', init);
