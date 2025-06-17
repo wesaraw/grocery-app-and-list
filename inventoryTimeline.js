@@ -39,11 +39,29 @@ async function savePurchases(map) {
   });
 }
 
+function loadArray(key, path) {
+  return new Promise(async resolve => {
+    try {
+      chrome.storage.local.get(key, async data => {
+        if (data[key]) {
+          resolve(data[key]);
+        } else {
+          const arr = await loadJSON(path);
+          resolve(arr);
+        }
+      });
+    } catch (e) {
+      const arr = await loadJSON(path);
+      resolve(arr);
+    }
+  });
+}
+
 async function loadData() {
   const [needs, expiration, stock] = await Promise.all([
-    loadJSON('Required for grocery app/yearly_needs_with_manual_flags.json'),
-    loadJSON('Required for grocery app/expiration_times_full.json'),
-    loadJSON('Required for grocery app/current_stock_table.json')
+    loadArray('yearlyNeeds', 'Required for grocery app/yearly_needs_with_manual_flags.json'),
+    loadArray('expirationData', 'Required for grocery app/expiration_times_full.json'),
+    loadArray('currentStock', 'Required for grocery app/current_stock_table.json')
   ]);
   return { needs, expiration, stock };
 }
@@ -187,6 +205,47 @@ let showingHistory = false;
 let globalItems = [];
 let gridContainer;
 
+async function fetchItems() {
+  const data = await loadData();
+  const items = buildItemMap(data.needs, data.expiration, data.stock);
+  const [savedMap, overridesMap] = await Promise.all([
+    loadPurchases(),
+    loadOverrides()
+  ]);
+  items.forEach(it => {
+    if (savedMap[it.name]) {
+      it.purchases = savedMap[it.name];
+    }
+    if (overridesMap[it.name]) {
+      const weekMap = {};
+      Object.keys(overridesMap[it.name]).forEach(w => {
+        const diff = overridesMap[it.name][w];
+        weekMap[w] = it.weekly_consumption ? diff / it.weekly_consumption : 0;
+      });
+      it.overrideWeeks = weekMap;
+    }
+  });
+  return items;
+}
+
+async function refreshItems() {
+  globalItems = await fetchItems();
+  const datalist = document.getElementById('item-list');
+  if (datalist) {
+    datalist.innerHTML = '';
+    globalItems.forEach(it => {
+      const opt = document.createElement('option');
+      opt.value = it.name;
+      datalist.appendChild(opt);
+    });
+  }
+  if (showingHistory) {
+    showPurchaseHistory();
+  } else {
+    showGrid();
+  }
+}
+
 function resizeWindowToContent() {
   try {
     const width = Math.min(
@@ -222,35 +281,8 @@ function showPurchaseHistory() {
 }
 
 async function init() {
-  const data = await loadData();
-  const items = buildItemMap(data.needs, data.expiration, data.stock);
-  const [savedMap, overridesMap] = await Promise.all([
-    loadPurchases(),
-    loadOverrides()
-  ]);
-  items.forEach(it => {
-    if (savedMap[it.name]) {
-      it.purchases = savedMap[it.name];
-    }
-    if (overridesMap[it.name]) {
-      const weekMap = {};
-      Object.keys(overridesMap[it.name]).forEach(w => {
-        const diff = overridesMap[it.name][w];
-        weekMap[w] = it.weekly_consumption ? diff / it.weekly_consumption : 0;
-      });
-      it.overrideWeeks = weekMap;
-    }
-  });
-  const datalist = document.getElementById('item-list');
-  items.forEach(it => {
-    const opt = document.createElement('option');
-    opt.value = it.name;
-    datalist.appendChild(opt);
-  });
-
   gridContainer = document.getElementById('grid-container');
-  globalItems = items;
-  showGrid();
+  await refreshItems();
 
   document.getElementById('view-purchases').addEventListener('click', () => {
     if (showingHistory) {
@@ -262,24 +294,17 @@ async function init() {
 
   chrome.storage.onChanged.addListener(async (changes, area) => {
     if (area !== 'local') return;
+
+    if (changes.yearlyNeeds || changes.expirationData || changes.currentStock) {
+      await refreshItems();
+      return;
+    }
+
     let updated = false;
     if (changes.purchases) {
       const map = changes.purchases.newValue || {};
       globalItems.forEach(it => {
         it.purchases = map[it.name] || [];
-      });
-      updated = true;
-    }
-    if (changes.currentStock) {
-      const stockArr = changes.currentStock.newValue || [];
-      const stockMap = {};
-      stockArr.forEach(s => {
-        stockMap[s.name] = s.amount;
-      });
-      globalItems.forEach(it => {
-        if (stockMap[it.name] != null) {
-          it.starting_stock = stockMap[it.name];
-        }
       });
       updated = true;
     }
