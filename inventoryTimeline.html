@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Grocery Timeline</title>
+  <link rel="stylesheet" href="inventoryTimeline.css">
+</head>
+<body>
+  <h1>Grocery Inventory Timeline</h1>
+  <div id="controls">
+    <label>Item:
+      <input type="text" id="purchase-item" list="item-list" />
+      <datalist id="item-list"></datalist>
+    </label>
+    <label>Week:
+      <input type="number" id="purchase-week" min="1" max="52" value="1" />
+    </label>
+    <label>Qty:
+      <input type="number" id="purchase-qty" value="1" />
+    </label>
+    <button id="add-purchase">Add Purchase</button>
+    <button id="view-purchases">Purchase History</button>
+  </div>
+  <div id="grid-container"></div>
+  <script src="inventoryTimeline.js"></script>
+</body>
+</html>
