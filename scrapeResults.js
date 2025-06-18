@@ -1,5 +1,51 @@
+import { convert } from './utils/uomConverter.js';
+
 function storageKey(type, item, store) {
   return `${type}_${encodeURIComponent(item)}_${encodeURIComponent(store)}`;
+}
+
+function loadCoupons() {
+  return new Promise(resolve => {
+    chrome.storage.local.get('coupons', data => {
+      resolve(data.coupons || {});
+    });
+  });
+}
+
+function getCurrentWeek() {
+  const start = new Date(new Date().getFullYear(), 0, 1);
+  const today = new Date();
+  return Math.ceil(((today - start) / 86400000 + start.getDay() + 1) / 7);
+}
+
+function applyCoupon(prod, coupons, week) {
+  const coupon = (coupons || []).find(
+    c => week >= c.startWeek && week <= c.endWeek
+  );
+  if (!coupon || prod.priceNumber == null) return { ...prod };
+  let price = prod.priceNumber;
+  if (coupon.type === 'percent') {
+    price = price * (1 - coupon.value / 100);
+  } else if (coupon.type === 'fixedOff') {
+    price = price - coupon.value;
+  } else if (coupon.type === 'fixedPrice') {
+    price = coupon.value;
+  }
+  if (price < 0) price = 0;
+  const copy = { ...prod };
+  copy.priceNumber = price;
+  copy.price = `$${price.toFixed(2)}`;
+  if (copy.convertedQty != null) {
+    copy.pricePerUnit = price / copy.convertedQty;
+  } else if (copy.sizeQty != null && copy.sizeUnit) {
+    const oz = convert(copy.sizeQty, copy.sizeUnit, 'oz');
+    if (!isNaN(oz)) {
+      copy.convertedQty = oz;
+      copy.pricePerUnit = price / oz;
+      copy.unit = 'oz';
+    }
+  }
+  return copy;
 }
 
 function loadProducts(item, store) {
@@ -37,8 +83,10 @@ const PLACEHOLDER_IMG =
 
 title.textContent = `${item} - ${store}`;
 
-loadProducts(item, store).then(products => {
-  const filtered = products.filter(p => nameMatchesProduct(p.name, item));
+Promise.all([loadProducts(item, store), loadCoupons()]).then(([products, coupons]) => {
+  const week = getCurrentWeek();
+  const adjusted = products.map(p => applyCoupon(p, coupons[item], week));
+  const filtered = adjusted.filter(p => nameMatchesProduct(p.name, item));
   if (filtered.length === 0) {
     container.textContent = 'No products found.';
     return;
