@@ -3,23 +3,13 @@ import {
   sortItemsByCategory,
   renderItemsWithCategoryHeaders
 } from './utils/sortByCategory.js';
+import { loadNeedsWithDefaults } from './utils/needsLoader.js';
 
 const NEEDS_KEY = 'yearlyNeeds';
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 
-function loadNeeds() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get(NEEDS_KEY, async data => {
-      if (data[NEEDS_KEY]) {
-        resolve(data[NEEDS_KEY]);
-      } else {
-        const needs = await loadJSON(NEEDS_PATH);
-        resolve(needs);
-      }
-    });
-  });
-}
+const loadNeeds = () => loadNeedsWithDefaults();
 
 async function loadConsumption() {
   return new Promise(async resolve => {

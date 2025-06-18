@@ -4,6 +4,7 @@ import {
   sortItemsByCategory,
   renderItemsWithCategoryHeaders
 } from './utils/sortByCategory.js';
+import { loadNeedsWithDefaults } from './utils/needsLoader.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -52,7 +53,7 @@ function loadArray(key, path) {
 
 const loadConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
 const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
-const loadNeeds = () => loadArray('yearlyNeeds', NEEDS_PATH);
+const loadNeeds = () => loadNeedsWithDefaults();
 
 function buildTimelineItems(stock, consumption, expiration) {
   const consMap = new Map(consumption.map(c => [c.name, c]));
