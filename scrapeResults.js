@@ -1,4 +1,81 @@
-import { convert } from './utils/uomConverter.js';
+import { loadJSON } from './utils/dataLoader.js';
+import { initUomTable, convert } from './utils/uomConverter.js';
+
+const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
+const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
+
+function loadArray(key, path) {
+  return new Promise(async resolve => {
+    chrome.storage.local.get(key, async data => {
+      if (data[key]) {
+        resolve(data[key]);
+      } else {
+        const arr = await loadJSON(path);
+        resolve(arr);
+      }
+    });
+  });
+}
+
+const loadNeeds = () => loadArray('yearlyNeeds', YEARLY_NEEDS_PATH);
+const loadMonthlyConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
+
+let needsData = [];
+let consumptionMap = new Map();
+
+function getPackCount(product) {
+  let m = product?.name?.match(/(\d+)\s*(?:pack|ct|count)/i);
+  if (!m && product?.size) {
+    m = product.size.match(/pack\s*of\s*(\d+)/i);
+    if (!m) {
+      m = product.size.match(/(\d+)\s*(?:pack|ct|count)/i);
+    }
+  }
+  if (!m && product?.unit) {
+    m = product.unit.match(/pack\s*of\s*(\d+)/i);
+    if (!m) {
+      m = product.unit.match(/(\d+)\s*(?:pack|ct|count)/i);
+    }
+  }
+  return m ? parseInt(m[1], 10) : 1;
+}
+
+function pricePerHomeUnit(itemName, product) {
+  const item = needsData.find(n => n.name === itemName);
+  if (!item || !product) return null;
+  const pack = getPackCount(product);
+  const unit = item.home_unit ? item.home_unit.toLowerCase() : 'each';
+  if (unit === 'each') {
+    return product.priceNumber != null ? product.priceNumber / pack : null;
+  }
+  let pricePerOz = product.pricePerUnit;
+  if (pricePerOz == null && product.priceNumber != null) {
+    let ozQty = null;
+    if (product.convertedQty != null) {
+      ozQty = product.convertedQty * pack;
+    } else if (product.sizeQty != null && product.sizeUnit) {
+      ozQty = convert(product.sizeQty * pack, product.sizeUnit, 'oz');
+    }
+    if (ozQty != null) {
+      pricePerOz = product.priceNumber / ozQty;
+    }
+  }
+  if (pricePerOz != null) {
+    const ozPerUnit = convert(1, item.home_unit, 'oz');
+    if (!isNaN(ozPerUnit) && ozPerUnit > 0) {
+      return pricePerOz * ozPerUnit;
+    }
+  }
+  return null;
+}
+
+function monthlyCost(itemName, product) {
+  const cons = consumptionMap.get(itemName);
+  if (!cons) return null;
+  const unitPrice = pricePerHomeUnit(itemName, product);
+  if (unitPrice == null) return null;
+  return unitPrice * (cons.monthly_consumption || 0);
+}
 
 function storageKey(type, item, store) {
   return `${type}_${encodeURIComponent(item)}_${encodeURIComponent(store)}`;
@@ -92,7 +169,18 @@ const PLACEHOLDER_IMG =
 
 title.textContent = `${item} - ${store}`;
 
-Promise.all([loadProducts(item, store), loadCoupons()]).then(([products, coupons]) => {
+async function init() {
+  await initUomTable();
+  const [products, coupons, needs, consumption] = await Promise.all([
+    loadProducts(item, store),
+    loadCoupons(),
+    loadNeeds(),
+    loadMonthlyConsumption()
+  ]);
+
+  needsData = needs;
+  consumptionMap = new Map(consumption.map(c => [c.name, c]));
+
   const week = getCurrentWeek();
   const adjusted = products.map(p => applyCoupon(p, coupons[item], week, store));
   const filtered = adjusted.filter(p => nameMatchesProduct(p.name, item));
@@ -124,8 +212,10 @@ Promise.all([loadProducts(item, store), loadCoupons()]).then(([products, coupons
     let pStr = prod.priceNumber != null ? `$${prod.priceNumber.toFixed(2)}` : prod.price;
     let qStr = prod.convertedQty != null ? `${prod.convertedQty.toFixed(2)} oz` : prod.size;
     let uStr = prod.pricePerUnit != null ? `$${prod.pricePerUnit.toFixed(2)}/oz` : prod.unit;
+    const cost = monthlyCost(item, prod);
+    const costStr = cost != null ? ` - $${cost.toFixed(2)}/mo` : '';
     const info = document.createElement('span');
-    info.textContent = `${prod.name} - ${pStr} - ${qStr} - ${uStr}`;
+    info.textContent = `${prod.name} - ${pStr} - ${qStr} - ${uStr}${costStr}`;
     div.appendChild(info);
 
     const btn = document.createElement('button');
@@ -149,4 +239,6 @@ Promise.all([loadProducts(item, store), loadCoupons()]).then(([products, coupons
     div.appendChild(btn);
     container.appendChild(div);
   });
-});
+}
+
+init();
