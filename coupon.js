@@ -29,13 +29,16 @@ function saveCoupons(map) {
   });
 }
 
+const STORES = ['Stop & Shop', 'Walmart', 'Amazon', 'Shaws', 'Roche Bros', 'Hannaford'];
+
 function createList(itemName, couponsMap) {
   const ul = document.createElement('ul');
   function refresh() {
     ul.innerHTML = '';
     (couponsMap[itemName] || []).forEach((c, idx) => {
       const li = document.createElement('li');
-      li.textContent = `${c.type} ${c.value} w${c.startWeek}-${c.endWeek}`;
+      const store = c.store || 'ALL';
+      li.textContent = `${c.type} ${c.value} w${c.startWeek}-${c.endWeek} (${store})`;
       const del = document.createElement('button');
       del.textContent = 'X';
       del.addEventListener('click', async () => {
@@ -87,6 +90,14 @@ function createRow(item, couponsMap) {
   end.max = 52;
   end.className = 'week';
 
+  const storeSelect = document.createElement('select');
+  ['ALL', ...STORES].forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s;
+    opt.textContent = s;
+    storeSelect.appendChild(opt);
+  });
+
   const btn = document.createElement('button');
   btn.textContent = 'Submit';
 
@@ -113,14 +124,22 @@ function createRow(item, couponsMap) {
     } else {
       return;
     }
+    const store = storeSelect.value || 'ALL';
     if (!couponsMap[item.name]) couponsMap[item.name] = [];
-    couponsMap[item.name].push({ type, value, startWeek: sWeek, endWeek: eWeek });
+    couponsMap[item.name].push({
+      type,
+      value,
+      startWeek: sWeek,
+      endWeek: eWeek,
+      store
+    });
     await saveCoupons(couponsMap);
     pct.value = '';
     off.value = '';
     fixed.value = '';
     start.value = '';
     end.value = '';
+    storeSelect.value = 'ALL';
     refresh();
   });
 
@@ -133,6 +152,8 @@ function createRow(item, couponsMap) {
   div.appendChild(start);
   div.appendChild(document.createTextNode(' '));
   div.appendChild(end);
+  div.appendChild(document.createTextNode(' '));
+  div.appendChild(storeSelect);
   div.appendChild(document.createTextNode(' '));
   div.appendChild(btn);
   div.appendChild(ul);
