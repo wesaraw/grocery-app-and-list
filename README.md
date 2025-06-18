@@ -45,9 +45,10 @@ step‑by‑step.
    your pantry amounts are updated.
 9. Use **Edit Inventory** to change what you have on hand.
 10. Use **Edit Consumption** to record how much you used this year.
-11. Click **Add Item** if you want to track something new.
-12. Click **Remove Item** to delete an item you no longer want to track.
-13. Click **Coupons** to manage temporary discounts for each item.
+11. Use **Edit Consumption Plan** to adjust monthly or yearly targets.
+12. Click **Add Item** if you want to track something new.
+13. Click **Remove Item** to delete an item you no longer want to track.
+14. Click **Coupons** to manage temporary discounts for each item.
 
 That’s it! You can close the windows when you are done. The add-on keeps the
 information so you can refer to it later.
@@ -71,3 +72,7 @@ chrome.storage.local.get('purchases', data => {
 ```
 
 Chrome stores this data in a database under your profile directory. **It is tied to the extension ID**, so the ID must remain the same across updates. This repository includes a `key` field in `manifest.json` that keeps the ID constant even if you reload the extension from a fresh checkout. If you remove or change this key, Chrome will treat it as a brand new extension and any saved data will not be loaded.
+
+### Weeks per Month
+
+Several calculations convert monthly amounts to weekly values. The extension uses `4.33` weeks per month (stored in `utils/constants.js` as `WEEKS_PER_MONTH`) as a simple average.

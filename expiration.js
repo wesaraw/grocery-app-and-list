@@ -3,6 +3,7 @@ import {
   sortItemsByCategory,
   renderItemsWithCategoryHeaders
 } from './utils/sortByCategory.js';
+import { WEEKS_PER_MONTH } from './utils/constants.js';
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
@@ -30,11 +31,11 @@ function saveExpiration(arr) {
 }
 
 function weeksFromMonths(months) {
-  return months * 4.33;
+  return months * WEEKS_PER_MONTH;
 }
 
 function monthsFromWeeks(weeks) {
-  return weeks / 4.33;
+  return weeks / WEEKS_PER_MONTH;
 }
 
 function createRow(item, expMap, expArr) {

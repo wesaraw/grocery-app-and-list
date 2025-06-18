@@ -1,5 +1,6 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { getStockForWeek } from './utils/timeline.js';
+import { WEEKS_PER_MONTH } from './utils/constants.js';
 import {
   sortItemsByCategory,
   renderItemsWithCategoryHeaders
@@ -60,8 +61,9 @@ function buildTimelineItems(stock, consumption, expiration) {
   return stock.map(s => ({
     name: s.name,
     weekly_consumption:
-      (consMap.get(s.name)?.monthly_consumption || 0) / 4.33,
-    expiration_weeks: (expMap.get(s.name)?.shelf_life_months || 12) * 4.33,
+      (consMap.get(s.name)?.monthly_consumption || 0) / WEEKS_PER_MONTH,
+    expiration_weeks:
+      (expMap.get(s.name)?.shelf_life_months || 12) * WEEKS_PER_MONTH,
     starting_stock: s.amount
   }));
 }
