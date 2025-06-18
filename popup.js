@@ -224,6 +224,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         img.style.display = 'inline';
       }
     }
+  } else if (message.type === 'plan-updated') {
+    location.reload();
   }
 });
 
@@ -402,6 +404,15 @@ function openConsumption() {
 document
   .getElementById('editConsumption')
   .addEventListener('click', openConsumption);
+
+function openConsumptionPlan() {
+  const url = chrome.runtime.getURL('consumptionPlan.html');
+  chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
+}
+
+document
+  .getElementById('editConsumptionPlan')
+  .addEventListener('click', openConsumptionPlan);
 
 function openAddItem() {
   const url = chrome.runtime.getURL("addItem.html");

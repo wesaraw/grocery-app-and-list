@@ -361,7 +361,7 @@ async function init() {
 
   try {
     chrome.runtime.onMessage.addListener(msg => {
-      if (msg && msg.type === 'inventory-updated') {
+      if (msg && (msg.type === 'inventory-updated' || msg.type === 'plan-updated')) {
         if (showingHistory) {
           showPurchaseHistory();
         } else {
