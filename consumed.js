@@ -64,7 +64,7 @@ function saveHistory(hist) {
   });
 }
 
-function updateHistoryList(name, ul, span, map, history) {
+function updateHistoryList(name, ul, span, map, history, overrides) {
   ul.innerHTML = '';
   const entries = history[name] || [];
   entries.forEach(entry => {
@@ -80,9 +80,19 @@ function updateHistoryList(name, ul, span, map, history) {
       const idx = arr.findIndex(e => e.id === entry.id);
       if (idx !== -1) arr.splice(idx, 1);
       history[name] = arr;
+      if (entry.week !== undefined && overrides[name] && overrides[name][entry.week] !== undefined) {
+        overrides[name][entry.week] -= entry.diff;
+        if (Math.abs(overrides[name][entry.week]) < 1e-9) {
+          delete overrides[name][entry.week];
+        }
+        if (Object.keys(overrides[name]).length === 0) {
+          delete overrides[name];
+        }
+      }
       await saveConsumption(Array.from(map.values()));
       await saveHistory(history);
-      updateHistoryList(name, ul, span, map, history);
+      await saveOverrides(overrides);
+      updateHistoryList(name, ul, span, map, history, overrides);
     });
     li.appendChild(document.createTextNode(' '));
     li.appendChild(btn);
@@ -115,14 +125,14 @@ function createItemRow(item, map, history, overrides) {
         item.amount += change;
         span.textContent = `${item.name} - ${item.amount} ${item.unit}`;
         const arr = history[item.name] || [];
-        arr.unshift({ id: Date.now(), date: new Date().toLocaleDateString(), diff: change });
+        arr.unshift({ id: Date.now(), date: new Date().toLocaleDateString(), diff: change, week });
         history[item.name] = arr;
         if (!overrides[item.name]) overrides[item.name] = {};
         overrides[item.name][week] = (overrides[item.name][week] || 0) + change;
         await saveConsumption(Array.from(map.values()));
         await saveHistory(history);
         await saveOverrides(overrides);
-        updateHistoryList(item.name, ul, span, map, history);
+        updateHistoryList(item.name, ul, span, map, history, overrides);
         input.value = '';
         weekInput.value = '';
       }
@@ -136,7 +146,7 @@ function createItemRow(item, map, history, overrides) {
   const ul = document.createElement('ul');
   ul.className = 'history';
   div.appendChild(ul);
-  updateHistoryList(item.name, ul, span, map, history);
+  updateHistoryList(item.name, ul, span, map, history, overrides);
 
   return div;
 }
