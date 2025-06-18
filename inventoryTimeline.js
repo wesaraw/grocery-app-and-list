@@ -85,6 +85,7 @@ function buildItemMap(needs, expiration, stock) {
 
   return needs.map(n => ({
     name: n.name,
+    category: n.category || '',
     units_per_purchase: 1,
     weekly_consumption: n.total_needed_year / 52,
     expiration_weeks: expMap[n.name] || 52,
