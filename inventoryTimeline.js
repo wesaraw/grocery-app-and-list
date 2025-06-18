@@ -216,16 +216,15 @@ async function fetchItems() {
     if (savedMap[it.name]) {
       it.purchases = savedMap[it.name];
     }
-    if (overridesMap[it.name]) {
-      const weekMap = {};
-      Object.keys(overridesMap[it.name]).forEach(w => {
-        const diff = overridesMap[it.name][w];
-        weekMap[w] = it.weekly_consumption
-          ? 1 + diff / it.weekly_consumption
-          : 1;
-      });
-      it.overrideWeeks = weekMap;
-    }
+    const data = overridesMap[it.name] || {};
+    const weekMap = {};
+    Object.keys(data).forEach(w => {
+      const diff = data[w];
+      weekMap[w] = it.weekly_consumption
+        ? 1 + diff / it.weekly_consumption
+        : 1;
+    });
+    it.overrideWeeks = weekMap;
   });
   return items;
 }
@@ -311,15 +310,15 @@ async function init() {
       updated = true;
     }
     if (changes.consumptionOverrides || changes.consumedThisYear) {
-      const overridesMap = (changes.consumptionOverrides && changes.consumptionOverrides.newValue) || {};
+      const overridesMap = await loadOverrides();
       globalItems.forEach(it => {
         const data = overridesMap[it.name] || {};
         const weekMap = {};
         Object.keys(data).forEach(w => {
-        const diff = data[w];
-        weekMap[w] = it.weekly_consumption
-          ? 1 + diff / it.weekly_consumption
-          : 1;
+          const diff = data[w];
+          weekMap[w] = it.weekly_consumption
+            ? 1 + diff / it.weekly_consumption
+            : 1;
         });
         it.overrideWeeks = weekMap;
       });
