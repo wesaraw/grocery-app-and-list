@@ -57,6 +57,17 @@ function loadArray(key, path) {
   });
 }
 
+function sortItemsByCategory(arr) {
+  return arr.slice().sort((a, b) => {
+    const catA = (a.category || '').toLowerCase();
+    const catB = (b.category || '').toLowerCase();
+    if (catA === catB) {
+      return a.name.localeCompare(b.name);
+    }
+    return catA.localeCompare(catB);
+  });
+}
+
 async function loadData() {
   const [needs, expiration, stock] = await Promise.all([
     loadArray('yearlyNeeds', 'Required for grocery app/yearly_needs_with_manual_flags.json'),
@@ -208,7 +219,8 @@ let gridContainer;
 
 async function fetchItems() {
   const data = await loadData();
-  const items = buildItemMap(data.needs, data.expiration, data.stock);
+  const sortedNeeds = sortItemsByCategory(data.needs);
+  const items = buildItemMap(sortedNeeds, data.expiration, data.stock);
   const [savedMap, overridesMap] = await Promise.all([
     loadPurchases(),
     loadOverrides()

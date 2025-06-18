@@ -1,6 +1,7 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { calculatePurchaseNeeds } from './utils/purchaseCalculator.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
+import { sortItemsByCategory } from './utils/sortByCategory.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
@@ -113,6 +114,7 @@ async function init() {
   const { needs, selections, consumption, stock, expiration, consumed, purchases } =
     await getData();
   needsData = needs;
+  const sortedNeeds = sortItemsByCategory(needs);
   consumptionData = consumption;
   expirationData = expiration;
   stockData = stock;
@@ -132,7 +134,7 @@ async function init() {
   const stockMap = new Map(stock.map(i => [i.name, i]));
   const itemsContainer = document.getElementById('items');
 
-  needs.forEach(item => {
+  sortedNeeds.forEach(item => {
     const li = document.createElement('li');
     const info = purchaseMap.get(item.name);
     const needAmt = info ? Math.round(info.toBuy) : null;

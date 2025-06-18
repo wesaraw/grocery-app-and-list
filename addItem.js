@@ -90,6 +90,7 @@ async function commit() {
   const shelf = parseFloat(document.getElementById('shelf').value) || 12;
   const stockAmt = parseFloat(document.getElementById('stock').value) || 0;
   const week = parseInt(document.getElementById('week').value, 10) || 1;
+  const category = document.getElementById('category').value.trim();
 
   const [needs, consumption, stock, expiration, consumed, storeSelections, purchases] = await Promise.all([
     loadNeeds(),
@@ -105,7 +106,8 @@ async function commit() {
     name,
     total_needed_year: yearly,
     home_unit: unit,
-    treat_as_whole_unit: whole
+    treat_as_whole_unit: whole,
+    category
   });
   consumption.push({ name, monthly_consumption: monthly, unit });
   stock.push({ name, amount: stockAmt, unit });

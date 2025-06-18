@@ -1,4 +1,5 @@
 import { loadJSON } from './utils/dataLoader.js';
+import { sortItemsByCategory } from './utils/sortByCategory.js';
 
 const NEEDS_KEY = 'yearlyNeeds';
 
@@ -162,9 +163,10 @@ async function init() {
     loadNeeds(),
     loadOverrides()
   ]);
+  const sortedNeeds = sortItemsByCategory(needs);
   const map = new Map(consumed.map(i => [i.name, i]));
   // ensure all needs exist
-  needs.forEach(n => {
+  sortedNeeds.forEach(n => {
     if (!map.has(n.name)) {
       const it = { name: n.name, amount: 0, unit: n.home_unit };
       map.set(n.name, it);
@@ -172,7 +174,7 @@ async function init() {
     }
   });
   // render in needs order
-  needs.forEach(n => {
+  sortedNeeds.forEach(n => {
     const item = map.get(n.name);
     const weekly = n.total_needed_year ? n.total_needed_year / 52 : 0;
     const row = createItemRow(item, map, history, overrides, weekly);

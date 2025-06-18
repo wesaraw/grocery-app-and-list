@@ -1,4 +1,5 @@
 import { loadJSON } from './utils/dataLoader.js';
+import { sortItemsByCategory } from './utils/sortByCategory.js';
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
@@ -71,9 +72,10 @@ function createRow(item, expMap, expArr) {
 
 async function init() {
   const [needs, expiration] = await Promise.all([loadNeeds(), loadExpiration()]);
+  const sortedNeeds = sortItemsByCategory(needs);
   const expMap = new Map(expiration.map(e => [e.name, e]));
   const container = document.getElementById('expirations');
-  needs.forEach(n => {
+  sortedNeeds.forEach(n => {
     const row = createRow(n, expMap, expiration);
     container.appendChild(row);
   });
