@@ -403,6 +403,15 @@ document
   .getElementById('editConsumption')
   .addEventListener('click', openConsumption);
 
+function openPlanEditor() {
+  const url = chrome.runtime.getURL('editPlan.html');
+  chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
+}
+
+document
+  .getElementById('editPlan')
+  .addEventListener('click', openPlanEditor);
+
 function openAddItem() {
   const url = chrome.runtime.getURL("addItem.html");
   chrome.windows.create({ url, type: "popup", width: 400, height: 600 });

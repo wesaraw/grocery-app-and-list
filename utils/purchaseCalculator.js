@@ -1,4 +1,5 @@
 import { getStockForWeek } from './timeline.js';
+import { WEEKS_PER_MONTH } from './constants.js';
 
 export function calculatePurchaseNeeds(
   needs,
@@ -16,8 +17,9 @@ export function calculatePurchaseNeeds(
   const timelineItems = needs.map(item => ({
     name: item.name,
     weekly_consumption:
-      (consMap.get(item.name)?.monthly_consumption ?? 0) / 4.33,
-    expiration_weeks: (expMap.get(item.name)?.shelf_life_months ?? 12) * 4.33,
+      (consMap.get(item.name)?.monthly_consumption ?? 0) / WEEKS_PER_MONTH,
+    expiration_weeks:
+      (expMap.get(item.name)?.shelf_life_months ?? 12) * WEEKS_PER_MONTH,
     starting_stock: stock.find(s => s.name === item.name)?.amount ?? 0
   }));
 
