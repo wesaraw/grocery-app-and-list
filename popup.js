@@ -93,6 +93,7 @@ async function getData() {
 const finalMap = new Map();
 let needsData = [];
 let consumptionData = [];
+let consumptionMap = new Map();
 let expirationData = [];
 let stockData = [];
 let consumedYearData = [];
@@ -119,6 +120,7 @@ async function init() {
   needsData = needs;
   const sortedNeeds = sortItemsByCategory(needs);
   consumptionData = consumption;
+  consumptionMap = new Map(consumption.map(c => [c.name, c]));
   expirationData = expiration;
   stockData = stock;
   consumedYearData = consumed;
@@ -163,27 +165,7 @@ async function init() {
     li.style.display = currentQty < weeklyNeed ? 'list-item' : 'none';
     getFinal(item.name).then(async store => {
       const product = await getFinalProduct(item.name);
-      if (store) {
-        finalSpan.textContent = ` - ${store}`;
-      }
-      if (product) {
-        let pStr =
-          product.priceNumber != null
-            ? `$${product.priceNumber.toFixed(2)}`
-            : product.price;
-        let qStr =
-          product.convertedQty != null
-            ? `${product.convertedQty.toFixed(2)} oz`
-            : product.size;
-        let uStr =
-          product.pricePerUnit != null
-            ? `$${product.pricePerUnit.toFixed(2)}/oz`
-            : product.unit;
-        finalSpan.textContent += ` - ${product.name} - ${pStr} - ${qStr} - ${uStr}`;
-        finalImg.src = product.image || '';
-        finalImg.alt = product.name || '';
-        finalImg.style.display = 'inline';
-      }
+      updateFinalInfo(item.name, finalSpan, finalImg, store, product);
     });
     li.appendChild(finalSpan);
     li.appendChild(finalImg);
@@ -203,26 +185,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const rec = finalMap.get(message.item);
     if (rec) {
       const { span, img } = rec;
-      span.textContent = ` - ${message.store}`;
-      if (message.product) {
-        const product = message.product;
-        let pStr =
-          product.priceNumber != null
-            ? `$${product.priceNumber.toFixed(2)}`
-            : product.price;
-        let qStr =
-          product.convertedQty != null
-            ? `${product.convertedQty.toFixed(2)} oz`
-            : product.size;
-        let uStr =
-          product.pricePerUnit != null
-            ? `$${product.pricePerUnit.toFixed(2)}/oz`
-            : product.unit;
-        span.textContent += ` - ${product.name} - ${pStr} - ${qStr} - ${uStr}`;
-        img.src = product.image || '';
-        img.alt = product.name || '';
-        img.style.display = 'inline';
-      }
+      updateFinalInfo(message.item, span, img, message.store, message.product);
     }
   }
 });
@@ -276,29 +239,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
       if (rec) {
         Promise.all([getFinal(item), getFinalProduct(item)]).then(([store, product]) => {
           const { span, img } = rec;
-          span.textContent = store ? ` - ${store}` : '';
-          if (product) {
-            let pStr =
-              product.priceNumber != null
-                ? `$${product.priceNumber.toFixed(2)}`
-                : product.price;
-            let qStr =
-              product.convertedQty != null
-                ? `${product.convertedQty.toFixed(2)} oz`
-                : product.size;
-            let uStr =
-              product.pricePerUnit != null
-                ? `$${product.pricePerUnit.toFixed(2)}/oz`
-                : product.unit;
-            span.textContent += ` - ${product.name} - ${pStr} - ${qStr} - ${uStr}`;
-            img.src = product.image || '';
-            img.alt = product.name || '';
-            img.style.display = 'inline';
-          } else {
-            img.style.display = 'none';
-            img.src = '';
-            img.alt = '';
-          }
+          updateFinalInfo(item, span, img, store, product);
         });
       }
     }
@@ -334,6 +275,78 @@ function getPackCount(product) {
     }
   }
   return m ? parseInt(m[1], 10) : 1;
+}
+
+function pricePerHomeUnit(itemName, product) {
+  const item = needsData.find(n => n.name === itemName);
+  if (!item || !product) return null;
+  const pack = getPackCount(product);
+  const unit = item.home_unit ? item.home_unit.toLowerCase() : 'each';
+  if (unit === 'each') {
+    return product.priceNumber != null ? product.priceNumber / pack : null;
+  }
+  let pricePerOz = product.pricePerUnit;
+  if (pricePerOz == null && product.priceNumber != null) {
+    let ozQty = null;
+    if (product.convertedQty != null) {
+      ozQty = product.convertedQty * pack;
+    } else if (product.sizeQty != null && product.sizeUnit) {
+      ozQty = convert(product.sizeQty * pack, product.sizeUnit, 'oz');
+    }
+    if (ozQty != null) {
+      pricePerOz = product.priceNumber / ozQty;
+    }
+  }
+  if (pricePerOz != null) {
+    const ozPerUnit = convert(1, item.home_unit, 'oz');
+    if (!isNaN(ozPerUnit) && ozPerUnit > 0) {
+      return pricePerOz * ozPerUnit;
+    }
+  }
+  return null;
+}
+
+function monthlyCost(itemName, product) {
+  const cons = consumptionMap.get(itemName);
+  if (!cons) return null;
+  const unitPrice = pricePerHomeUnit(itemName, product);
+  if (unitPrice == null) return null;
+  return unitPrice * (cons.monthly_consumption || 0);
+}
+
+function formatFinalText(itemName, store, product) {
+  let text = store ? ` - ${store}` : '';
+  if (product) {
+    let pStr =
+      product.priceNumber != null
+        ? `$${product.priceNumber.toFixed(2)}`
+        : product.price;
+    let qStr =
+      product.convertedQty != null
+        ? `${product.convertedQty.toFixed(2)} oz`
+        : product.size;
+    let uStr =
+      product.pricePerUnit != null
+        ? `$${product.pricePerUnit.toFixed(2)}/oz`
+        : product.unit;
+    const cost = monthlyCost(itemName, product);
+    const costStr = cost != null ? ` - $${cost.toFixed(2)}/mo` : '';
+    text += ` - ${product.name} - ${pStr} - ${qStr} - ${uStr}${costStr}`;
+  }
+  return text;
+}
+
+function updateFinalInfo(itemName, span, img, store, product) {
+  span.textContent = formatFinalText(itemName, store, product);
+  if (product) {
+    img.src = product.image || '';
+    img.alt = product.name || '';
+    img.style.display = 'inline';
+  } else {
+    img.style.display = 'none';
+    img.src = '';
+    img.alt = '';
+  }
 }
 
 
