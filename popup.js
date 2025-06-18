@@ -1,7 +1,6 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { calculatePurchaseNeeds } from './utils/purchaseCalculator.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
-import { openOverPriceChecker } from './utils/windowPlacement.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
@@ -145,7 +144,7 @@ async function init() {
       const url = chrome.runtime.getURL(
         `item.html?item=${encodeURIComponent(item.name)}`
       );
-      openOverPriceChecker(url);
+      chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
     });
     li.appendChild(btn);
     const finalSpan = document.createElement('span');
@@ -189,24 +188,6 @@ async function init() {
 }
 
 init();
-
-function storeBounds() {
-  try {
-    chrome.windows.getCurrent(win => {
-      chrome.storage.local.set({
-        priceCheckerBounds: {
-          left: win.left,
-          top: win.top,
-          width: win.width,
-          height: win.height
-        }
-      });
-    });
-  } catch (_) {}
-}
-
-storeBounds();
-window.addEventListener('resize', storeBounds);
 
 // Listen for scraped data sent from content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -394,14 +375,14 @@ async function commitSelections() {
   chrome.storage.local.set({ lastCommitItems: commitItems });
 
   const url = chrome.runtime.getURL('shoppingList.html');
-  openOverPriceChecker(url);
+  chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
 }
 
 document.getElementById('commit').addEventListener('click', commitSelections);
 
 function openInventory() {
   const url = chrome.runtime.getURL('inventory.html');
-  openOverPriceChecker(url);
+  chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
 }
 
 document
@@ -410,7 +391,7 @@ document
 
 function openConsumption() {
   const url = chrome.runtime.getURL('consumed.html');
-  openOverPriceChecker(url);
+  chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
 }
 
 document
@@ -419,14 +400,14 @@ document
 
 function openAddItem() {
   const url = chrome.runtime.getURL("addItem.html");
-  openOverPriceChecker(url);
+  chrome.windows.create({ url, type: "popup", width: 400, height: 600 });
 }
 
 document.getElementById("addItem").addEventListener("click", openAddItem);
 
 function openRemoveItem() {
   const url = chrome.runtime.getURL('removeItem.html');
-  openOverPriceChecker(url);
+  chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
 }
 
 document
@@ -435,7 +416,7 @@ document
 
 function openCouponManager() {
   const url = chrome.runtime.getURL('coupon.html');
-  openOverPriceChecker(url);
+  chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
 }
 
 document
