@@ -1,5 +1,8 @@
 import { loadJSON } from './utils/dataLoader.js';
-import { sortItemsByCategory } from './utils/sortByCategory.js';
+import {
+  sortItemsByCategory,
+  renderItemsWithCategoryHeaders
+} from './utils/sortByCategory.js';
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 
@@ -165,10 +168,9 @@ async function init() {
   const container = document.getElementById('coupons');
   const [needs, coupons] = await Promise.all([loadNeeds(), loadCoupons()]);
   const sortedNeeds = sortItemsByCategory(needs);
-  sortedNeeds.forEach(n => {
-    const row = createRow(n, coupons);
-    container.appendChild(row);
-  });
+  renderItemsWithCategoryHeaders(sortedNeeds, container, n =>
+    createRow(n, coupons)
+  );
   await saveCoupons(coupons);
 }
 

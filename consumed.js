@@ -1,5 +1,8 @@
 import { loadJSON } from './utils/dataLoader.js';
-import { sortItemsByCategory } from './utils/sortByCategory.js';
+import {
+  sortItemsByCategory,
+  renderItemsWithCategoryHeaders
+} from './utils/sortByCategory.js';
 
 const NEEDS_KEY = 'yearlyNeeds';
 
@@ -174,11 +177,10 @@ async function init() {
     }
   });
   // render in needs order
-  sortedNeeds.forEach(n => {
+  renderItemsWithCategoryHeaders(sortedNeeds, container, n => {
     const item = map.get(n.name);
     const weekly = n.total_needed_year ? n.total_needed_year / 52 : 0;
-    const row = createItemRow(item, map, history, overrides, weekly);
-    container.appendChild(row);
+    return createItemRow(item, map, history, overrides, weekly);
   });
   await saveConsumption(Array.from(map.values()));
   await saveOverrides(overrides);
