@@ -1,4 +1,5 @@
 import { loadJSON } from './utils/dataLoader.js';
+import { sortItemsByCategory } from './utils/sortByCategory.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -158,8 +159,9 @@ function createListItem(name) {
 
 async function init() {
   const items = await loadNeeds();
+  const sortedItems = sortItemsByCategory(items);
   const ul = document.getElementById('items');
-  items.forEach(it => {
+  sortedItems.forEach(it => {
     ul.appendChild(createListItem(it.name));
   });
 }

@@ -1,9 +1,11 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { getStockForWeek } from './utils/timeline.js';
+import { sortItemsByCategory } from './utils/sortByCategory.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
+const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 
 async function loadPurchases() {
   return new Promise(resolve => {
@@ -47,6 +49,7 @@ function loadArray(key, path) {
 
 const loadConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
 const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
+const loadNeeds = () => loadArray('yearlyNeeds', NEEDS_PATH);
 
 function buildTimelineItems(stock, consumption, expiration) {
   const consMap = new Map(consumption.map(c => [c.name, c]));
@@ -104,6 +107,8 @@ let baseStock = [];
 let purchasesMap = {};
 let consumptionData = [];
 let expirationData = [];
+let categoryMap = new Map();
+let needsData = [];
 
 function renderWeek(week) {
   const container = document.getElementById('inventory');
@@ -115,7 +120,10 @@ function renderWeek(week) {
   );
   const stockArr = getStockForWeek(timelineItems, purchasesMap, week);
   const stockForWeek = new Map(stockArr.map(i => [i.name, i.amount]));
-  baseStock.forEach(item => {
+  const sortedStock = sortItemsByCategory(
+    baseStock.map(it => ({ ...it, category: categoryMap.get(it.name) || '' }))
+  );
+  sortedStock.forEach(item => {
     const amt = stockForWeek.get(item.name) || 0;
     const row = createItemRow(item.name, amt, item.unit, purchasesMap, week);
     container.appendChild(row);
@@ -124,12 +132,14 @@ function renderWeek(week) {
 
 async function init() {
   const weekInput = document.getElementById('week-number');
-  [baseStock, purchasesMap, consumptionData, expirationData] = await Promise.all([
+  [baseStock, purchasesMap, consumptionData, expirationData, needsData] = await Promise.all([
     loadStock(),
     loadPurchases(),
     loadConsumption(),
-    loadExpiration()
+    loadExpiration(),
+    loadNeeds()
   ]);
+  categoryMap = new Map(needsData.map(n => [n.name, n.category || '']));
 
   renderWeek(parseInt(weekInput.value, 10) || 1);
 
