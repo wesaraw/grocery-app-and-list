@@ -437,6 +437,13 @@ document
   .getElementById('editExpirations')
   .addEventListener('click', openExpirationEditor);
 
+function openPlanEditor() {
+  const url = chrome.runtime.getURL('plan.html');
+  chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
+}
+
+document.getElementById('editPlan').addEventListener('click', openPlanEditor);
+
 function openCouponManager() {
   const url = chrome.runtime.getURL('coupon.html');
   chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
