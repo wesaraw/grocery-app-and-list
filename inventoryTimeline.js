@@ -333,7 +333,12 @@ async function init() {
   chrome.storage.onChanged.addListener(async (changes, area) => {
     if (area !== 'local') return;
 
-    if (changes.yearlyNeeds || changes.expirationData || changes.currentStock) {
+    if (
+      changes.yearlyNeeds ||
+      changes.expirationData ||
+      changes.currentStock ||
+      changes.monthlyConsumption
+    ) {
       await refreshItems();
       return;
     }
@@ -371,13 +376,9 @@ async function init() {
   });
 
   try {
-    chrome.runtime.onMessage.addListener(msg => {
+    chrome.runtime.onMessage.addListener(async msg => {
       if (msg && msg.type === 'inventory-updated') {
-        if (showingHistory) {
-          showPurchaseHistory();
-        } else {
-          showGrid();
-        }
+        await refreshItems();
       }
     });
   } catch (_) {}
