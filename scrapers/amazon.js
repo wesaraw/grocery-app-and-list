@@ -40,7 +40,7 @@ export function scrapeAmazon() {
     let unit = null;
     for (const field of fields) {
       if (!field) continue;
-      const m = field.match(/([\d.]+)[\s-]*(oz|ounce|fluid ounce|fl oz|g|gram|kg|ml|l)/i);
+      const m = field.match(/([\d.]+)[\s-]*(oz|ounce|fluid ounce|fl oz|g|gram|kg|ml|l|gal|gallon|gallons)\b/i);
       if (m) {
         unitSize = parseFloat(m[1]);
         unit = m[2].toLowerCase();
@@ -51,6 +51,7 @@ export function scrapeAmazon() {
       unit = unit.replace(/\s+/g, '');
       if (unit === 'ounce' || unit === 'ounces' || unit === 'floz' || unit === 'fluidounce' || unit === 'flounce') unit = 'oz';
       else if (unit === 'gram') unit = 'g';
+      else if (unit === 'gallon' || unit === 'gallons') unit = 'gal';
     }
 
     const packFields = [name, unitText, sizeText];
@@ -108,6 +109,11 @@ export function scrapeAmazon() {
         pricePerUnit = priceNumber / packCount;
       }
     } else if (!unitText && priceNumber != null && packCount) {
+      pricePerUnit = priceNumber / packCount;
+      unitType = 'count';
+    }
+
+    if (pricePerUnit == null && priceNumber != null && packCount > 1) {
       pricePerUnit = priceNumber / packCount;
       unitType = 'count';
     }
