@@ -6,8 +6,7 @@
   "permissions": [
     "storage",
     "tabs",
-    "activeTab",
-    "system.display"
+    "activeTab"
   ],
   "host_permissions": [
     "https://stopandshop.com/*",
