@@ -13,34 +13,25 @@ export function calculatePurchaseNeeds(
   const expMap = new Map(expiration.map(i => [i.name, i]));
   const consumedMap = new Map(consumedYear.map(i => [i.name, i]));
 
-  const timelineItems = needs.map(item => {
-    const monthlyCons =
-      item.total_needed_year != null
-        ? item.total_needed_year / 12
-        : consMap.get(item.name)?.monthly_consumption ?? 0;
-    return {
-      name: item.name,
-      weekly_consumption: monthlyCons / 4.33,
-      expiration_weeks: (expMap.get(item.name)?.shelf_life_months ?? 12) * 4.33,
-      starting_stock: stock.find(s => s.name === item.name)?.amount ?? 0
-    };
-  });
+  const timelineItems = needs.map(item => ({
+    name: item.name,
+    weekly_consumption:
+      (consMap.get(item.name)?.monthly_consumption ?? 0) / 4.33,
+    expiration_weeks: (expMap.get(item.name)?.shelf_life_months ?? 12) * 4.33,
+    starting_stock: stock.find(s => s.name === item.name)?.amount ?? 0
+  }));
 
   const futureStock = getStockForWeek(timelineItems, purchases, week);
   const stockMap = new Map(futureStock.map(i => [i.name, i]));
 
   return needs.map(item => {
-    const monthlyCons =
-      item.total_needed_year != null
-        ? item.total_needed_year / 12
-        : consMap.get(item.name)?.monthly_consumption ?? 0;
+    const cons = consMap.get(item.name)?.monthly_consumption ?? 0;
     const shelfLife = expMap.get(item.name)?.shelf_life_months ?? 12;
     const current = stockMap.get(item.name)?.amount ?? 0;
     const consumed = consumedMap.get(item.name)?.amount ?? 0;
 
-    const requiredForPeriod = monthlyCons * shelfLife;
-    const totalYear = item.total_needed_year ?? monthlyCons * 12;
-    const yearlyRemaining = totalYear - consumed;
+    const requiredForPeriod = cons * shelfLife;
+    const yearlyRemaining = (item.total_needed_year ?? requiredForPeriod) - consumed;
     let toBuy = Math.min(requiredForPeriod, yearlyRemaining) - current;
     if (item.treat_as_whole_unit) {
       toBuy = Math.ceil(toBuy);
