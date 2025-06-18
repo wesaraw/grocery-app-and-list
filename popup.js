@@ -1,6 +1,7 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { calculatePurchaseNeeds } from './utils/purchaseCalculator.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
+import { openInPriceCheckerArea } from './utils/windowLayout.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
@@ -144,7 +145,7 @@ async function init() {
       const url = chrome.runtime.getURL(
         `item.html?item=${encodeURIComponent(item.name)}`
       );
-      chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
+      openInPriceCheckerArea(url, 600);
     });
     li.appendChild(btn);
     const finalSpan = document.createElement('span');
@@ -375,14 +376,14 @@ async function commitSelections() {
   chrome.storage.local.set({ lastCommitItems: commitItems });
 
   const url = chrome.runtime.getURL('shoppingList.html');
-  chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
+  openInPriceCheckerArea(url, 600);
 }
 
 document.getElementById('commit').addEventListener('click', commitSelections);
 
 function openInventory() {
   const url = chrome.runtime.getURL('inventory.html');
-  chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
+  openInPriceCheckerArea(url, 600);
 }
 
 document
@@ -391,7 +392,7 @@ document
 
 function openConsumption() {
   const url = chrome.runtime.getURL('consumed.html');
-  chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
+  openInPriceCheckerArea(url, 600);
 }
 
 document
@@ -400,14 +401,14 @@ document
 
 function openAddItem() {
   const url = chrome.runtime.getURL("addItem.html");
-  chrome.windows.create({ url, type: "popup", width: 400, height: 600 });
+  openInPriceCheckerArea(url, 600);
 }
 
 document.getElementById("addItem").addEventListener("click", openAddItem);
 
 function openRemoveItem() {
   const url = chrome.runtime.getURL('removeItem.html');
-  chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
+  openInPriceCheckerArea(url, 600);
 }
 
 document
@@ -416,7 +417,7 @@ document
 
 function openCouponManager() {
   const url = chrome.runtime.getURL('coupon.html');
-  chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
+  openInPriceCheckerArea(url, 600);
 }
 
 document
