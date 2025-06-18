@@ -250,16 +250,20 @@ async function refreshItems() {
 
 function resizeWindowToContent() {
   try {
-    const width = Math.min(
-      screen.availWidth,
-      document.documentElement.scrollWidth + 20
-    );
-    const height = Math.min(
-      screen.availHeight,
-      document.documentElement.scrollHeight + 20
-    );
-    chrome.windows.getCurrent(win => {
-      chrome.windows.update(win.id, { width, height });
+    chrome.storage.local.get('priceCheckerBounds', data => {
+      const b = data.priceCheckerBounds;
+      let width = screen.availWidth;
+      let left = 0;
+      if (b) {
+        width = Math.max(200, screen.availWidth - (b.left + b.width));
+        left = b.left + b.width;
+      }
+      const height = screen.availHeight;
+      chrome.windows.getCurrent(win => {
+        const opts = { width, height };
+        if (b) opts.left = left;
+        chrome.windows.update(win.id, opts);
+      });
     });
   } catch (e) {
     // ignore if chrome APIs are unavailable
