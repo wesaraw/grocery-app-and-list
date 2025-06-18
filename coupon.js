@@ -3,21 +3,11 @@ import {
   sortItemsByCategory,
   renderItemsWithCategoryHeaders
 } from './utils/sortByCategory.js';
+import { loadNeedsWithDefaults } from './utils/needsLoader.js';
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 
-function loadNeeds() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get('yearlyNeeds', async data => {
-      if (data.yearlyNeeds) {
-        resolve(data.yearlyNeeds);
-      } else {
-        const needs = await loadJSON(NEEDS_PATH);
-        resolve(needs);
-      }
-    });
-  });
-}
+const loadNeeds = () => loadNeedsWithDefaults();
 
 function loadCoupons() {
   return new Promise(resolve => {
