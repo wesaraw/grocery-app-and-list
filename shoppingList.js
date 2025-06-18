@@ -1,5 +1,3 @@
-import { openInPriceCheckerArea } from './utils/windowLayout.js';
-
 function loadCommitItems() {
   return new Promise(resolve => {
     chrome.storage.local.get('lastCommitItems', data => {
@@ -80,7 +78,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           const btn = document.createElement('button');
           btn.textContent = 'View';
           btn.addEventListener('click', () => {
-            openInPriceCheckerArea(it.product.link, 800);
+            chrome.windows.create({ url: it.product.link, type: 'popup', width: 800, height: 800 });
           });
           li.appendChild(btn);
         }
