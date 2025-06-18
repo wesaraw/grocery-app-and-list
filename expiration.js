@@ -3,7 +3,6 @@ import {
   sortItemsByCategory,
   renderItemsWithCategoryHeaders
 } from './utils/sortByCategory.js';
-import { loadNeedsWithDefaults } from './utils/needsLoader.js';
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
@@ -21,7 +20,7 @@ function loadArray(key, path) {
   });
 }
 
-const loadNeeds = () => loadNeedsWithDefaults();
+const loadNeeds = () => loadArray('yearlyNeeds', NEEDS_PATH);
 const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
 
 function saveExpiration(arr) {
