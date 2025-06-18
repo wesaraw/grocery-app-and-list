@@ -1,6 +1,5 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { initUomTable } from './utils/uomConverter.js';
-import { openOverPriceChecker } from './utils/windowPlacement.js';
 
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
 const STORE_SELECTION_KEY = 'storeSelections';
@@ -119,7 +118,7 @@ async function init() {
         `scrapeResults.html?item=${encodeURIComponent(itemName)}&store=${encodeURIComponent(entry.store)}`
       );
       setTimeout(() => {
-        openOverPriceChecker(url);
+        chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
       }, 1000);
     });
     header.appendChild(scrapeBtn);
