@@ -51,3 +51,23 @@ step‑by‑step.
 
 That’s it! You can close the windows when you are done. The add-on keeps the
 information so you can refer to it later.
+
+## Saving your data
+
+The add-on keeps track of your inventory, consumption, and shopping list selections using Chrome's `chrome.storage.local` API. This means the data lives inside your browser profile, not inside the extension files themselves. When you update or reload the extension, your information stays intact.
+
+Example code from the extension:
+
+```javascript
+// Save purchases
+chrome.storage.local.set({ purchases: map }, () => {
+  console.log('Inventory saved');
+});
+
+// Load purchases
+chrome.storage.local.get('purchases', data => {
+  console.log('Inventory loaded:', data.purchases);
+});
+```
+
+Chrome stores this data in a database under your profile directory. **It is tied to the extension ID**, so the ID must remain the same across updates. This repository includes a `key` field in `manifest.json` that keeps the ID constant even if you reload the extension from a fresh checkout. If you remove or change this key, Chrome will treat it as a brand new extension and any saved data will not be loaded.
