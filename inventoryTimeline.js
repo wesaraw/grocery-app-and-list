@@ -155,7 +155,8 @@ function buildGrid(items) {
     const weeks = simulateItem(item, overrides);
     const row = document.createElement('tr');
     const th = document.createElement('th');
-    th.innerHTML = `${item.name}<br/><span class="exp-weeks">${item.expiration_weeks}w</span>`;
+    th.innerHTML = `${item.name}<br/><span class="exp-weeks">${item.expiration_weeks}w</span>` +
+      `<br/><span class="weekly-cons">${item.weekly_consumption.toFixed(2)}/wk</span>`;
     row.appendChild(th);
     weeks.forEach(w => {
       const td = document.createElement('td');
