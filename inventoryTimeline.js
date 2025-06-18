@@ -68,11 +68,9 @@ function sortItemsByCategory(arr) {
   });
 }
 
-import { loadNeedsWithDefaults } from './utils/needsLoader.js';
-
 async function loadData() {
   const [needs, expiration, stock] = await Promise.all([
-    loadNeedsWithDefaults(),
+    loadArray('yearlyNeeds', 'Required for grocery app/yearly_needs_with_manual_flags.json'),
     loadArray('expirationData', 'Required for grocery app/expiration_times_full.json'),
     loadArray('currentStock', 'Required for grocery app/current_stock_table.json')
   ]);
