@@ -422,3 +422,12 @@ function openCouponManager() {
 document
   .getElementById('couponBtn')
   .addEventListener('click', openCouponManager);
+
+function openBackupManager() {
+  const url = chrome.runtime.getURL('backup.html');
+  chrome.windows.create({ url, type: 'popup', width: 400, height: 400 });
+}
+
+document
+  .getElementById('backupBtn')
+  .addEventListener('click', openBackupManager);
