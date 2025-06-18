@@ -314,9 +314,8 @@ function scrapeAmazon() {
     const priceText = tile
       .querySelector('span.a-price span.a-offscreen')?.innerText?.trim();
     const unitText = tile
-      .querySelector(
-        'span.a-size-base.a-color-secondary span.a-price.a-text-price span.a-offscreen'
-      )?.innerText?.trim();
+      .querySelector('span.a-size-base.a-color-secondary')
+      ?.innerText?.trim();
     const countText = tile
       .querySelector('span.a-size-base.a-color-base')?.innerText?.trim();
 
@@ -332,11 +331,20 @@ function scrapeAmazon() {
     let pricePerUnit = null;
     let unitType = null;
     if (unitText) {
-      const m = unitText.match(/\$([\d.]+)\s*\/\s*(\w+)/);
+      const m = unitText.match(/\$([\d.]+).*\/(\w+)/);
       if (m) {
         pricePerUnit = parseFloat(m[1]);
-        unitType = m[2];
+        unitType = m[2].toLowerCase();
       }
+    }
+
+    if ((unitType === 'count' || unitType === 'ct') && priceNumber != null) {
+      if (pricePerUnit == null) {
+        pricePerUnit = priceNumber / packCount;
+      }
+    } else if (!unitText && priceNumber != null && packCount) {
+      pricePerUnit = priceNumber / packCount;
+      unitType = 'count';
     }
 
     let sizeQty = unitInfo.unitSize;
@@ -348,11 +356,7 @@ function scrapeAmazon() {
       convertedQty = sizeQty * UNIT_FACTORS[sizeUnit];
       if (priceNumber != null && totalQty != null) {
         const totalConverted = totalQty * UNIT_FACTORS[sizeUnit];
-        if (
-          pricePerUnit == null ||
-          /count/i.test(unitText) ||
-          (unitType && /count/i.test(unitType))
-        ) {
+        if (pricePerUnit == null && unitType !== 'count' && unitType !== 'ct') {
           pricePerUnit = priceNumber / totalConverted;
           unitType = 'oz';
         }
