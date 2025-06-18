@@ -1027,5 +1027,40 @@
     "home_unit": "each",
     "treat_as_whole_unit": false,
     "category": "Beverages"
+  },
+  {
+    "name": "Cape Cod Chips",
+    "total_needed_year": 1454.9,
+    "home_unit": "oz",
+    "treat_as_whole_unit": false,
+    "category": "Pantry"
+  },
+  {
+    "name": "Charmin Toilet Paper Strong",
+    "total_needed_year": 2877.6,
+    "home_unit": "sheets",
+    "treat_as_whole_unit": false,
+    "category": "Household"
+  },
+  {
+    "name": "Gold Peak Tea Zero Sugar Beverages",
+    "total_needed_year": 12327.5,
+    "home_unit": "oz",
+    "treat_as_whole_unit": false,
+    "category": "Beverages"
+  },
+  {
+    "name": "Paper Plate Everyday 8.5",
+    "total_needed_year": 1279.2,
+    "home_unit": "each",
+    "treat_as_whole_unit": false,
+    "category": "Household"
+  },
+  {
+    "name": "Pepsi Soda Zero Beverages",
+    "total_needed_year": 1247.0,
+    "home_unit": "each",
+    "treat_as_whole_unit": false,
+    "category": "Beverages"
   }
 ]
