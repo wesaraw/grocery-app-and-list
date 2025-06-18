@@ -8,3 +8,7 @@ th, td { border: 1px solid #ccc; padding: 2px 4px; text-align: center; }
 .red { background-color: #ffcdd2; }
 .exp-weeks { font-size: 0.8em; color: #666; }
 .weekly-cons { font-size: 0.8em; color: #666; }
+.category-header {
+  border-top: 1px solid #ccc;
+  text-align: left;
+}

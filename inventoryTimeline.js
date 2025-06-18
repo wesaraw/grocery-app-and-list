@@ -160,7 +160,19 @@ function buildGrid(items) {
   }
   grid.appendChild(header);
 
+  let lastCat = null;
   items.forEach(item => {
+    const cat = item.category || 'Other';
+    if (cat !== lastCat) {
+      lastCat = cat;
+      const catRow = document.createElement('tr');
+      const thCat = document.createElement('th');
+      thCat.colSpan = 53;
+      thCat.className = 'category-header';
+      thCat.textContent = cat;
+      catRow.appendChild(thCat);
+      grid.appendChild(catRow);
+    }
     const overrides = {};
     if (item.overrideWeeks) Object.assign(overrides, item.overrideWeeks);
     const weeks = simulateItem(item, overrides);

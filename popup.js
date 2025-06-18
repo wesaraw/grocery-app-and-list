@@ -1,7 +1,10 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { calculatePurchaseNeeds } from './utils/purchaseCalculator.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
-import { sortItemsByCategory } from './utils/sortByCategory.js';
+import {
+  sortItemsByCategory,
+  renderItemsWithCategoryHeaders
+} from './utils/sortByCategory.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
@@ -134,7 +137,7 @@ async function init() {
   const stockMap = new Map(stock.map(i => [i.name, i]));
   const itemsContainer = document.getElementById('items');
 
-  sortedNeeds.forEach(item => {
+  renderItemsWithCategoryHeaders(sortedNeeds, itemsContainer, item => {
     const li = document.createElement('li');
     const info = purchaseMap.get(item.name);
     const needAmt = info ? Math.round(info.toBuy) : null;
@@ -185,7 +188,7 @@ async function init() {
     li.appendChild(finalSpan);
     li.appendChild(finalImg);
     finalMap.set(item.name, { li, btn, span: finalSpan, img: finalImg });
-    itemsContainer.appendChild(li);
+    return li;
   });
 }
 

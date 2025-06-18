@@ -1,6 +1,9 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { getStockForWeek } from './utils/timeline.js';
-import { sortItemsByCategory } from './utils/sortByCategory.js';
+import {
+  sortItemsByCategory,
+  renderItemsWithCategoryHeaders
+} from './utils/sortByCategory.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -123,10 +126,9 @@ function renderWeek(week) {
   const sortedStock = sortItemsByCategory(
     baseStock.map(it => ({ ...it, category: categoryMap.get(it.name) || '' }))
   );
-  sortedStock.forEach(item => {
+  renderItemsWithCategoryHeaders(sortedStock, container, item => {
     const amt = stockForWeek.get(item.name) || 0;
-    const row = createItemRow(item.name, amt, item.unit, purchasesMap, week);
-    container.appendChild(row);
+    return createItemRow(item.name, amt, item.unit, purchasesMap, week);
   });
 }
 

@@ -1,5 +1,8 @@
 import { loadJSON } from './utils/dataLoader.js';
-import { sortItemsByCategory } from './utils/sortByCategory.js';
+import {
+  sortItemsByCategory,
+  renderItemsWithCategoryHeaders
+} from './utils/sortByCategory.js';
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
@@ -75,10 +78,9 @@ async function init() {
   const sortedNeeds = sortItemsByCategory(needs);
   const expMap = new Map(expiration.map(e => [e.name, e]));
   const container = document.getElementById('expirations');
-  sortedNeeds.forEach(n => {
-    const row = createRow(n, expMap, expiration);
-    container.appendChild(row);
-  });
+  renderItemsWithCategoryHeaders(sortedNeeds, container, n =>
+    createRow(n, expMap, expiration)
+  );
 }
 
 document.addEventListener('DOMContentLoaded', init);
