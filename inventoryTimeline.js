@@ -250,19 +250,21 @@ async function refreshItems() {
 
 function resizeWindowToContent() {
   try {
-    chrome.storage.local.get('priceCheckerBounds', data => {
-      const b = data.priceCheckerBounds;
-      let width = screen.availWidth;
-      let left = 0;
-      if (b) {
-        width = Math.max(200, screen.availWidth - (b.left + b.width));
-        left = b.left + b.width;
-      }
-      const height = screen.availHeight;
-      chrome.windows.getCurrent(win => {
-        const opts = { width, height };
-        if (b) opts.left = left;
-        chrome.windows.update(win.id, opts);
+    chrome.storage.local.get('layoutInfo', data => {
+      const info = data.layoutInfo;
+      chrome.system.display.getInfo(displays => {
+        const height = screen.availHeight;
+        let width = screen.availWidth;
+        let left = 0;
+        if (info) {
+          width = Math.max(200, screen.availWidth - (info.left + info.width));
+          left = info.left + info.width;
+        }
+        chrome.windows.getCurrent(win => {
+          const opts = { width, height };
+          if (info) opts.left = left;
+          chrome.windows.update(win.id, opts);
+        });
       });
     });
   } catch (e) {
