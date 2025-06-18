@@ -18,9 +18,12 @@ function getCurrentWeek() {
   return Math.ceil(((today - start) / 86400000 + start.getDay() + 1) / 7);
 }
 
-function applyCoupon(prod, coupons, week) {
+function applyCoupon(prod, coupons, week, store) {
   const coupon = (coupons || []).find(
-    c => week >= c.startWeek && week <= c.endWeek
+    c =>
+      week >= c.startWeek &&
+      week <= c.endWeek &&
+      (!c.store || c.store === 'ALL' || c.store === store)
   );
   if (!coupon || prod.priceNumber == null) return { ...prod };
   let price = prod.priceNumber;
@@ -91,7 +94,7 @@ title.textContent = `${item} - ${store}`;
 
 Promise.all([loadProducts(item, store), loadCoupons()]).then(([products, coupons]) => {
   const week = getCurrentWeek();
-  const adjusted = products.map(p => applyCoupon(p, coupons[item], week));
+  const adjusted = products.map(p => applyCoupon(p, coupons[item], week, store));
   const filtered = adjusted.filter(p => nameMatchesProduct(p.name, item));
   if (filtered.length === 0) {
     container.textContent = 'No products found.';
