@@ -190,6 +190,24 @@ async function init() {
 
 init();
 
+function storeBounds() {
+  try {
+    chrome.windows.getCurrent(win => {
+      chrome.storage.local.set({
+        priceCheckerBounds: {
+          left: win.left,
+          top: win.top,
+          width: win.width,
+          height: win.height
+        }
+      });
+    });
+  } catch (_) {}
+}
+
+storeBounds();
+window.addEventListener('resize', storeBounds);
+
 // Listen for scraped data sent from content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'scrapedData') {
