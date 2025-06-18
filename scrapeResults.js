@@ -35,7 +35,13 @@ function applyCoupon(prod, coupons, week) {
   const copy = { ...prod };
   copy.priceNumber = price;
   copy.price = `$${price.toFixed(2)}`;
-  if (copy.convertedQty != null) {
+
+  if (prod.priceNumber != null && prod.pricePerUnit != null) {
+    // Preserve any prior unit price adjustments (pack size, home unit, etc.)
+    // by scaling the original unit price by the price change ratio.
+    copy.pricePerUnit =
+      prod.pricePerUnit * (price / prod.priceNumber);
+  } else if (copy.convertedQty != null) {
     copy.pricePerUnit = price / copy.convertedQty;
   } else if (copy.sizeQty != null && copy.sizeUnit) {
     const oz = convert(copy.sizeQty, copy.sizeUnit, 'oz');
