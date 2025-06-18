@@ -414,6 +414,15 @@ document
   .getElementById('removeItem')
   .addEventListener('click', openRemoveItem);
 
+function openExpirationEditor() {
+  const url = chrome.runtime.getURL('expiration.html');
+  chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
+}
+
+document
+  .getElementById('editExpirations')
+  .addEventListener('click', openExpirationEditor);
+
 function openCouponManager() {
   const url = chrome.runtime.getURL('coupon.html');
   chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
