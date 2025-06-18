@@ -47,6 +47,7 @@ step‑by‑step.
 10. Use **Edit Consumption** to record how much you used this year.
 11. Click **Add Item** if you want to track something new.
 12. Click **Remove Item** to delete an item you no longer want to track.
+13. Click **Coupons** to manage temporary discounts for each item.
 
 That’s it! You can close the windows when you are done. The add-on keeps the
 information so you can refer to it later.
