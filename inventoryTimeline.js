@@ -220,7 +220,9 @@ async function fetchItems() {
       const weekMap = {};
       Object.keys(overridesMap[it.name]).forEach(w => {
         const diff = overridesMap[it.name][w];
-        weekMap[w] = it.weekly_consumption ? diff / it.weekly_consumption : 0;
+        weekMap[w] = it.weekly_consumption
+          ? 1 + diff / it.weekly_consumption
+          : 1;
       });
       it.overrideWeeks = weekMap;
     }
@@ -314,8 +316,10 @@ async function init() {
         const data = overridesMap[it.name] || {};
         const weekMap = {};
         Object.keys(data).forEach(w => {
-          const diff = data[w];
-          weekMap[w] = it.weekly_consumption ? diff / it.weekly_consumption : 0;
+        const diff = data[w];
+        weekMap[w] = it.weekly_consumption
+          ? 1 + diff / it.weekly_consumption
+          : 1;
         });
         it.overrideWeeks = weekMap;
       });
