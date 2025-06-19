@@ -243,7 +243,9 @@ async function init() {
     if (selected) {
       let pStr = selected.priceNumber != null ? `$${selected.priceNumber.toFixed(2)}` : selected.price;
       let qStr = selected.convertedQty != null ? `${selected.convertedQty.toFixed(2)} oz` : selected.size;
-      let uStr = selected.pricePerUnit != null ? `$${selected.pricePerUnit.toFixed(2)}/oz` : selected.unit;
+      let uStr = selected.pricePerUnit != null
+        ? `$${selected.pricePerUnit.toFixed(2)}/${selected.unitType || 'oz'}`
+        : selected.unit;
       const cost = monthlyCost(itemName, selected);
       const costStr = cost != null ? ` - $${cost.toFixed(2)}/mo` : '';
       info.textContent = `${selected.name} - ${pStr} - ${qStr} - ${uStr}${costStr}`;
@@ -283,7 +285,7 @@ async function init() {
             : selected.size;
         let uStr =
           selected.pricePerUnit != null
-            ? `$${selected.pricePerUnit.toFixed(2)}/oz`
+            ? `$${selected.pricePerUnit.toFixed(2)}/${selected.unitType || 'oz'}`
             : selected.unit;
         const cost = monthlyCost(itemName, selected);
         const costStr = cost != null ? ` - $${cost.toFixed(2)}/mo` : '';

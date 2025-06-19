@@ -34,6 +34,27 @@ export function scrapeStopAndShop() {
     tray: 1,
     unit: 1
   };
+  const COUNT_UNITS = new Set([
+    'ea',
+    'ct',
+    'pkg',
+    'box',
+    'can',
+    'bag',
+    'bottle',
+    'stick',
+    'roll',
+    'bar',
+    'pouch',
+    'jar',
+    'packet',
+    'sleeve',
+    'slice',
+    'piece',
+    'tube',
+    'tray',
+    'unit'
+  ]);
 
   const products = [];
   const tiles = document.querySelectorAll('li.tile.product-cell.product-grid-cell');
@@ -94,7 +115,7 @@ export function scrapeStopAndShop() {
         unitType = m[3].toLowerCase().replace(/\s+/g, '');
         if (unitType === 'floz') unitType = 'oz';
         const factor = UNIT_FACTORS[unitType];
-        if (factor) {
+        if (factor && !COUNT_UNITS.has(unitType)) {
           pricePerUnit = pricePerUnit / factor;
           unitType = 'oz';
         }
@@ -104,11 +125,16 @@ export function scrapeStopAndShop() {
     if (sizeQty != null && sizeUnit) {
       const factor = UNIT_FACTORS[sizeUnit.toLowerCase()];
       if (factor) {
-        convertedQty = sizeQty * factor;
+        const isCount = COUNT_UNITS.has(sizeUnit.toLowerCase());
+        if (!isCount) {
+          convertedQty = sizeQty * factor;
+        }
         if (priceNumber != null && pricePerUnit == null) {
-          const totalConverted = convertedQty * packCount;
-          pricePerUnit = priceNumber / totalConverted;
-          unitType = 'oz';
+          const total = isCount
+            ? sizeQty * packCount
+            : (convertedQty * packCount);
+          pricePerUnit = priceNumber / total;
+          unitType = isCount ? sizeUnit.toLowerCase() : 'oz';
         }
       }
     }

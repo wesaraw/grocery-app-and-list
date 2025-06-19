@@ -43,7 +43,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const span = document.createElement('span');
         let pStr = it.product?.priceNumber != null ? `$${it.product.priceNumber.toFixed(2)}` : it.product?.price || '';
         let qStr = it.product?.convertedQty != null ? `${it.product.convertedQty.toFixed(2)} oz` : it.product?.size || '';
-        let uStr = it.product?.pricePerUnit != null ? `$${it.product.pricePerUnit.toFixed(2)}/oz` : it.product?.unit || '';
+        let uStr =
+          it.product?.pricePerUnit != null
+            ? `$${it.product.pricePerUnit.toFixed(2)}/${it.product.unitType || 'oz'}`
+            : it.product?.unit || '';
         const amt = it.amount != null ? `${it.amount.toFixed(2)} ${it.unit}` : '';
         span.textContent = `${it.item} - ${it.product?.name || ''} - ${pStr} - ${qStr} - ${uStr} - ${amt}`;
         li.appendChild(span);

@@ -33,6 +33,27 @@ export function scrapeWalmart() {
     tray: 1,
     unit: 1
   };
+  const COUNT_UNITS = new Set([
+    'ea',
+    'ct',
+    'pkg',
+    'box',
+    'can',
+    'bag',
+    'bottle',
+    'stick',
+    'roll',
+    'bar',
+    'pouch',
+    'jar',
+    'packet',
+    'sleeve',
+    'slice',
+    'piece',
+    'tube',
+    'tray',
+    'unit'
+  ]);
 
   const products = [];
   const tiles = document.querySelectorAll('[data-testid="list-view"] > div');
@@ -55,13 +76,18 @@ export function scrapeWalmart() {
       sizeUnit = sizeMatch[2].replace(/\s+/g, '');
       const factor = UNIT_FACTORS[sizeUnit.toLowerCase()];
       if (factor) {
-        convertedQty = sizeQty * factor;
-        unitType = 'oz';
+        const isCount = COUNT_UNITS.has(sizeUnit.toLowerCase());
+        if (!isCount) {
+          convertedQty = sizeQty * factor;
+        }
+        unitType = isCount ? sizeUnit.toLowerCase() : 'oz';
         if (price) {
           const p = parseFloat(price.replace(/[^0-9.]/g, ''));
           if (!isNaN(p)) {
-            const totalConverted = convertedQty * packCount;
-            pricePerUnit = p / totalConverted;
+            const total = isCount
+              ? sizeQty * packCount
+              : (convertedQty * packCount);
+            pricePerUnit = p / total;
           }
         }
       }
@@ -76,7 +102,7 @@ export function scrapeWalmart() {
         pricePerUnit = priceVal / qty;
         unitType = match[3].toLowerCase();
         const factor = UNIT_FACTORS[unitType];
-        if (factor) {
+        if (factor && !COUNT_UNITS.has(unitType)) {
           pricePerUnit = pricePerUnit / factor;
           unitType = 'oz';
         }

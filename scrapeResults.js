@@ -211,7 +211,9 @@ async function init() {
 
     let pStr = prod.priceNumber != null ? `$${prod.priceNumber.toFixed(2)}` : prod.price;
     let qStr = prod.convertedQty != null ? `${prod.convertedQty.toFixed(2)} oz` : prod.size;
-    let uStr = prod.pricePerUnit != null ? `$${prod.pricePerUnit.toFixed(2)}/oz` : prod.unit;
+    let uStr = prod.pricePerUnit != null
+      ? `$${prod.pricePerUnit.toFixed(2)}/${prod.unitType || 'oz'}`
+      : prod.unit;
     const cost = monthlyCost(item, prod);
     const costStr = cost != null ? ` - $${cost.toFixed(2)}/mo` : '';
     const info = document.createElement('span');
