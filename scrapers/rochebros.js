@@ -45,7 +45,7 @@ export function scrapeRocheBros() {
     const addToCartId = addBtn?.id || addBtn?.getAttribute('data-test-id') || '';
     const priceText = tile.querySelector('[data-test="amount"] span')?.innerText?.trim();
     const sizeText = tile.querySelector('.cell-product-size')?.innerText?.trim();
-    const unitText = tile.querySelector('[data-test="per-unit-price"]')?.innerText?.trim();
+    let unitText = tile.querySelector('[data-test="per-unit-price"]')?.innerText?.trim();
     const imageEl = tile.querySelector('.cell-image');
     const image =
       imageEl?.getAttribute('data-src') ||
@@ -74,10 +74,13 @@ export function scrapeRocheBros() {
     let unitType = null;
     let pricePerUnit = null;
     if (unitText) {
-      const m = unitText.match(/\$([\d.]+)\s*\/\s*(fl\s*oz|oz|lb|g|kg|ml|l|gal|qt|pt|cup|tbsp|tsp|ea|ct|pkg|box|can|bag|bottle|stick|roll|bar|pouch|jar|packet|sleeve|slice|piece|tube|tray|unit)/i);
+      const clean = unitText.replace(/^[\s(]+|[\s)]+$/g, '');
+      const m = clean.match(/\$([\d.]+)\s*\/\s*(fl\s*oz|oz|lb|kg|ml|l|gal|ga|gl|g|qt|pt|cup|tbsp|tsp|ea|ct|pkg|box|can|bag|bottle|stick|roll|bar|pouch|jar|packet|sleeve|slice|piece|tube|tray|unit)/i);
       if (m) {
         pricePerUnit = parseFloat(m[1]);
         unitType = m[2].toLowerCase().replace(/\s+/g, '');
+        if (unitType === 'floz') unitType = 'oz';
+        if (unitType === 'gl') unitType = 'gal';
         const factor = UNIT_FACTORS[unitType];
         if (factor) {
           pricePerUnit = pricePerUnit / factor;
