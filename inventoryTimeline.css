@@ -1,8 +1,23 @@
-body { font-family: Arial, sans-serif; overflow-x: auto; }
+body { font-family: Arial, sans-serif; overflow: auto; }
 #controls { margin-bottom: 10px; }
-#grid-container { overflow-x: auto; }
+#grid-container { overflow: auto; max-height: 80vh; position: relative; }
 table { border-collapse: collapse; }
 th, td { border: 1px solid #ccc; padding: 2px 4px; text-align: center; }
+.item-label {
+  position: sticky;
+  left: 0;
+  background: #fff;
+  z-index: 1;
+}
+tr:first-child th {
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 2;
+}
+tr:first-child th.item-label {
+  z-index: 3;
+}
 .green { background-color: #c8e6c9; }
 .yellow { background-color: #fff9c4; }
 .red { background-color: #ffcdd2; }
