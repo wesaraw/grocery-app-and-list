@@ -1,9 +1,12 @@
 import { loadJSON } from './utils/dataLoader.js';
-import { initUomTable } from './utils/uomConverter.js';
+import { initUomTable, convert } from './utils/uomConverter.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
 const STORE_SELECTION_KEY = 'storeSelections';
+
+const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
+const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
 
 // Grey placeholder used until real product images load
 const PLACEHOLDER_IMG =
@@ -36,6 +39,79 @@ async function loadStoreSelections() {
       }
     });
   });
+}
+
+function loadArray(key, path) {
+  return new Promise(async resolve => {
+    chrome.storage.local.get(key, async data => {
+      if (data[key]) {
+        resolve(data[key]);
+      } else {
+        const arr = await loadJSON(path);
+        resolve(arr);
+      }
+    });
+  });
+}
+
+const loadNeeds = () => loadArray('yearlyNeeds', YEARLY_NEEDS_PATH);
+const loadConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
+
+let needsData = [];
+let consumptionMap = new Map();
+
+function getPackCount(product) {
+  let m = product?.name?.match(/(\d+)\s*(?:pack|ct|count)/i);
+  if (!m && product?.size) {
+    m = product.size.match(/pack\s*of\s*(\d+)/i);
+    if (!m) {
+      m = product.size.match(/(\d+)\s*(?:pack|ct|count)/i);
+    }
+  }
+  if (!m && product?.unit) {
+    m = product.unit.match(/pack\s*of\s*(\d+)/i);
+    if (!m) {
+      m = product.unit.match(/(\d+)\s*(?:pack|ct|count)/i);
+    }
+  }
+  return m ? parseInt(m[1], 10) : 1;
+}
+
+function pricePerHomeUnit(itemName, product) {
+  const item = needsData.find(n => n.name === itemName);
+  if (!item || !product) return null;
+  const pack = getPackCount(product);
+  const unit = item.home_unit ? item.home_unit.toLowerCase() : 'each';
+  if (unit === 'each') {
+    return product.priceNumber != null ? product.priceNumber / pack : null;
+  }
+  let pricePerOz = product.pricePerUnit;
+  if (pricePerOz == null && product.priceNumber != null) {
+    let ozQty = null;
+    if (product.convertedQty != null) {
+      ozQty = product.convertedQty * pack;
+    } else if (product.sizeQty != null && product.sizeUnit) {
+      ozQty = convert(product.sizeQty * pack, product.sizeUnit, 'oz');
+    }
+    if (ozQty != null) {
+      pricePerOz = product.priceNumber / ozQty;
+    }
+  }
+  if (pricePerOz != null) {
+    const ozPerUnit = convert(1, item.home_unit, 'oz');
+    if (!isNaN(ozPerUnit) && ozPerUnit > 0) {
+      return pricePerOz * ozPerUnit;
+    }
+  }
+  return null;
+}
+
+function monthlyCost(itemName, product) {
+  const cons = consumptionMap.get(itemName);
+  if (!cons) return null;
+  const unitPrice = pricePerHomeUnit(itemName, product);
+  if (unitPrice == null) return null;
+  return unitPrice * (cons.monthly_consumption || 0);
 }
 
 async function getStoreEntries(itemName) {
@@ -76,6 +152,13 @@ async function init() {
   await initUomTable();
   const params = new URLSearchParams(location.search);
   const itemName = params.get('item');
+
+  const [needs, consumption] = await Promise.all([
+    loadNeeds(),
+    loadConsumption()
+  ]);
+  needsData = needs;
+  consumptionMap = new Map(consumption.map(c => [c.name, c]));
   document.getElementById('itemName').textContent = itemName;
   document.getElementById('back').addEventListener('click', () => {
     window.close();
@@ -161,7 +244,9 @@ async function init() {
       let pStr = selected.priceNumber != null ? `$${selected.priceNumber.toFixed(2)}` : selected.price;
       let qStr = selected.convertedQty != null ? `${selected.convertedQty.toFixed(2)} oz` : selected.size;
       let uStr = selected.pricePerUnit != null ? `$${selected.pricePerUnit.toFixed(2)}/oz` : selected.unit;
-      info.textContent = `${selected.name} - ${pStr} - ${qStr} - ${uStr}`;
+      const cost = monthlyCost(itemName, selected);
+      const costStr = cost != null ? ` - $${cost.toFixed(2)}/mo` : '';
+      info.textContent = `${selected.name} - ${pStr} - ${qStr} - ${uStr}${costStr}`;
       img.src = selected.image || PLACEHOLDER_IMG;
       img.alt = selected.name;
       img.style.display = 'block';
@@ -200,7 +285,9 @@ async function init() {
           selected.pricePerUnit != null
             ? `$${selected.pricePerUnit.toFixed(2)}/oz`
             : selected.unit;
-        rec.info.textContent = `${selected.name} - ${pStr} - ${qStr} - ${uStr}`;
+        const cost = monthlyCost(itemName, selected);
+        const costStr = cost != null ? ` - $${cost.toFixed(2)}/mo` : '';
+        rec.info.textContent = `${selected.name} - ${pStr} - ${qStr} - ${uStr}${costStr}`;
         rec.img.src = selected.image || PLACEHOLDER_IMG;
         rec.img.alt = selected.name;
         rec.img.style.display = 'block';
