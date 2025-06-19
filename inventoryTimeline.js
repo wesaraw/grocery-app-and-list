@@ -1,11 +1,5 @@
 import { WEEKS_PER_MONTH } from './utils/constants.js';
-
-function openWindow(path, width = 400, height = 600) {
-  try {
-    const url = chrome.runtime.getURL(path);
-    chrome.windows.create({ url, type: 'popup', width, height });
-  } catch (_) {}
-}
+import { openOrFocusWindow } from './utils/windowUtils.js';
 
 async function loadJSON(path) {
   const url = chrome.runtime.getURL(path);
@@ -408,34 +402,34 @@ async function init() {
   });
 
   document.getElementById('commit').addEventListener('click', () => {
-    openWindow('shoppingList.html');
+    openOrFocusWindow('shoppingList.html');
   });
   document.getElementById('editInventory').addEventListener('click', () => {
-    openWindow('inventory.html');
+    openOrFocusWindow('inventory.html');
   });
   document.getElementById('editConsumption').addEventListener('click', () => {
-    openWindow('consumed.html');
+    openOrFocusWindow('consumed.html');
   });
   document.getElementById('editPlan').addEventListener('click', () => {
-    openWindow('editPlan.html');
+    openOrFocusWindow('editPlan.html');
   });
   document.getElementById('addItem').addEventListener('click', () => {
-    openWindow('addItem.html');
+    openOrFocusWindow('addItem.html');
   });
   document.getElementById('removeItem').addEventListener('click', () => {
-    openWindow('removeItem.html');
+    openOrFocusWindow('removeItem.html');
   });
   document.getElementById('editCategory').addEventListener('click', () => {
-    openWindow('editCategory.html');
+    openOrFocusWindow('editCategory.html');
   });
   document.getElementById('editExpirations').addEventListener('click', () => {
-    openWindow('expiration.html');
+    openOrFocusWindow('expiration.html');
   });
   document.getElementById('couponBtn').addEventListener('click', () => {
-    openWindow('coupon.html');
+    openOrFocusWindow('coupon.html');
   });
   document.getElementById('backupBtn').addEventListener('click', () => {
-    openWindow('backup.html', 400, 400);
+    openOrFocusWindow('backup.html', 400, 400);
   });
 }
 
