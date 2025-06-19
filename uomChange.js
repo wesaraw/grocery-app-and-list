@@ -28,12 +28,15 @@ let needs = [];
 let consumption = [];
 let stock = [];
 let rows = [];
-let changed = false;
 
-function markChanged() {
-  if (!changed) {
-    changed = true;
-    document.getElementById('saveBtn').classList.remove('hidden');
+function updateSaveVisibility(row) {
+  const newUnit = row.input.value.trim();
+  const unitChanged = newUnit && newUnit !== row.item.home_unit;
+  const wholeChanged = row.chk.checked !== row.item.treat_as_whole_unit;
+  if (unitChanged || wholeChanged) {
+    row.saveBtn.classList.remove('hidden');
+  } else {
+    row.saveBtn.classList.add('hidden');
   }
 }
 
@@ -54,29 +57,31 @@ function buildRow(item) {
   chk.type = 'checkbox';
   chk.checked = item.treat_as_whole_unit;
   checkTd.appendChild(chk);
+  const saveTd = document.createElement('td');
+  const saveBtn = document.createElement('button');
+  saveBtn.textContent = 'Save';
+  saveBtn.className = 'hidden';
+  saveTd.appendChild(saveBtn);
+  const row = { tr, input, chk, item, saveBtn };
 
-  input.addEventListener('input', () => {
-    if (input.value.trim() && input.value.trim() !== item.home_unit) {
-      markChanged();
-    }
-  });
-  chk.addEventListener('change', () => {
-    if (chk.checked !== item.treat_as_whole_unit) markChanged();
-  });
+  input.addEventListener('input', () => updateSaveVisibility(row));
+  chk.addEventListener('change', () => updateSaveVisibility(row));
+  saveBtn.addEventListener('click', () => saveRow(row));
 
   tr.appendChild(nameTd);
   tr.appendChild(homeTd);
   tr.appendChild(inputTd);
   tr.appendChild(wholeTd);
   tr.appendChild(checkTd);
+  tr.appendChild(saveTd);
 
-  return { tr, input, chk, item };
+  return row;
 }
 
 function addCategoryRow(tbody, cat) {
   const tr = document.createElement('tr');
   const th = document.createElement('th');
-  th.colSpan = 5;
+  th.colSpan = 6;
   th.className = 'category-header';
   th.textContent = cat;
   tr.appendChild(th);
@@ -104,30 +109,29 @@ async function init() {
   });
 }
 
-async function saveChanges() {
-  rows.forEach(r => {
-    const newUnit = r.input.value.trim();
-    const changedUnit = newUnit && newUnit !== r.item.home_unit;
-    const changedWhole = r.chk.checked !== r.item.treat_as_whole_unit;
-    if (changedUnit) {
-      r.item.home_unit = newUnit;
-      const cons = consumption.find(c => c.name === r.item.name);
-      if (cons) cons.unit = newUnit;
-      const st = stock.find(s => s.name === r.item.name);
-      if (st) st.unit = newUnit;
-    }
-    if (changedWhole) {
-      r.item.treat_as_whole_unit = r.chk.checked;
-    }
-  });
+async function saveRow(row) {
+  const newUnit = row.input.value.trim();
+  const changedUnit = newUnit && newUnit !== row.item.home_unit;
+  const changedWhole = row.chk.checked !== row.item.treat_as_whole_unit;
+  if (!changedUnit && !changedWhole) return;
+
+  if (changedUnit) {
+    row.item.home_unit = newUnit;
+    const cons = consumption.find(c => c.name === row.item.name);
+    if (cons) cons.unit = newUnit;
+    const st = stock.find(s => s.name === row.item.name);
+    if (st) st.unit = newUnit;
+  }
+  if (changedWhole) {
+    row.item.treat_as_whole_unit = row.chk.checked;
+  }
+
   await Promise.all([
     save('yearlyNeeds', needs),
     save('monthlyConsumption', consumption),
     save('currentStock', stock)
   ]);
-  document.getElementById('saveBtn').classList.add('hidden');
-  changed = false;
+  row.saveBtn.classList.add('hidden');
 }
 
 document.addEventListener('DOMContentLoaded', init);
-document.getElementById('saveBtn').addEventListener('click', saveChanges);
