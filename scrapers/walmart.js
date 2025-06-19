@@ -34,6 +34,28 @@ export function scrapeWalmart() {
     unit: 1
   };
 
+  const COUNT_UNITS = new Set([
+    'ea',
+    'ct',
+    'pkg',
+    'box',
+    'can',
+    'bag',
+    'bottle',
+    'stick',
+    'roll',
+    'bar',
+    'pouch',
+    'jar',
+    'packet',
+    'sleeve',
+    'slice',
+    'piece',
+    'tube',
+    'tray',
+    'unit'
+  ]);
+
   const products = [];
   const tiles = document.querySelectorAll('[data-testid="list-view"] > div');
   tiles.forEach((tile, i) => {
@@ -55,13 +77,24 @@ export function scrapeWalmart() {
       sizeUnit = sizeMatch[2].replace(/\s+/g, '');
       const factor = UNIT_FACTORS[sizeUnit.toLowerCase()];
       if (factor) {
-        convertedQty = sizeQty * factor;
-        unitType = 'oz';
-        if (price) {
-          const p = parseFloat(price.replace(/[^0-9.]/g, ''));
-          if (!isNaN(p)) {
-            const totalConverted = convertedQty * packCount;
-            pricePerUnit = p / totalConverted;
+        if (!COUNT_UNITS.has(sizeUnit.toLowerCase())) {
+          convertedQty = sizeQty * factor;
+          unitType = 'oz';
+          if (price) {
+            const p = parseFloat(price.replace(/[^0-9.]/g, ''));
+            if (!isNaN(p)) {
+              const totalConverted = convertedQty * packCount;
+              pricePerUnit = p / totalConverted;
+            }
+          }
+        } else {
+          unitType = sizeUnit.toLowerCase();
+          if (price) {
+            const p = parseFloat(price.replace(/[^0-9.]/g, ''));
+            if (!isNaN(p)) {
+              const totalCount = sizeQty * packCount;
+              pricePerUnit = p / totalCount;
+            }
           }
         }
       }
@@ -76,7 +109,7 @@ export function scrapeWalmart() {
         pricePerUnit = priceVal / qty;
         unitType = match[3].toLowerCase();
         const factor = UNIT_FACTORS[unitType];
-        if (factor) {
+        if (factor && !COUNT_UNITS.has(unitType)) {
           pricePerUnit = pricePerUnit / factor;
           unitType = 'oz';
         }
