@@ -83,7 +83,8 @@ function getPackCount(product) {
     const s = sanitize(str);
     return (
       s.match(/(\d+)\s*[-\u2011\u2012\u2013\u2014]?\s*(?:pack|pk|ct|count)/i) ||
-      s.match(/pack\s*of\s*(\d+)/i)
+      s.match(/pack\s*of\s*(\d+)/i) ||
+      s.match(/(\d+)\s*[-x\u00d7]\s*\d+/i)
     );
   };
 
