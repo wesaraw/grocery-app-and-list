@@ -35,6 +35,21 @@ export function scrapeHannaford() {
     unit: 1
   };
 
+  const UNIT_ALIASES = {
+    quart: 'qt',
+    quarts: 'qt',
+    pint: 'pt',
+    pints: 'pt',
+    liter: 'l',
+    liters: 'l',
+    litre: 'l',
+    litres: 'l',
+    pound: 'lb',
+    pounds: 'lb',
+    ounce: 'oz',
+    ounces: 'oz'
+  };
+
   const products = [];
   const tiles = document.querySelectorAll('div.catalog-product');
   tiles.forEach(tile => {
@@ -61,7 +76,14 @@ export function scrapeHannaford() {
     let unitQty = null;
     let unitType = null;
     if (unitText) {
-      const clean = unitText.replace(/[^0-9./a-zA-Z]/g, '');
+      let normalized = unitText.toLowerCase();
+      normalized = normalized.replace(/per\s+/g, '');
+      normalized = normalized.replace(/-/g, ' ');
+      for (const [word, abbr] of Object.entries(UNIT_ALIASES)) {
+        const r = new RegExp(`\\b${word}\\b`, 'g');
+        normalized = normalized.replace(r, abbr);
+      }
+      const clean = normalized.replace(/[^0-9./a-zA-Z]/g, '');
       const match = clean.match(/([\d.]+)\/(fl\s*oz|oz|lb|g|kg|ml|l|gal|qt|pt|cup|tbsp|tsp|ea|ct|pkg|box|can|bag|bottle|stick|roll|bar|pouch|jar|packet|sleeve|slice|piece|tube|tray|unit)/i);
       if (match) {
         unitQty = parseFloat(match[1]);
@@ -73,7 +95,13 @@ export function scrapeHannaford() {
     let sizeQty = null;
     let sizeUnit = null;
     if (sizeText) {
-      const m = sizeText.match(/([\d.]+)\s*(fl\s*oz|oz|lb|g|kg|ml|l|gal|qt|pt|cup|tbsp|tsp|ea|ct|pkg|box|can|bag|bottle|stick|roll|bar|pouch|jar|packet|sleeve|slice|piece|tube|tray|unit)/i);
+      let normalized = sizeText.toLowerCase();
+      normalized = normalized.replace(/-/g, ' ');
+      for (const [word, abbr] of Object.entries(UNIT_ALIASES)) {
+        const r = new RegExp(`\\b${word}\\b`, 'g');
+        normalized = normalized.replace(r, abbr);
+      }
+      const m = normalized.match(/([\d.]+)\s*(fl\s*oz|oz|lb|g|kg|ml|l|gal|qt|pt|cup|tbsp|tsp|ea|ct|pkg|box|can|bag|bottle|stick|roll|bar|pouch|jar|packet|sleeve|slice|piece|tube|tray|unit)/i);
       if (m) {
         sizeQty = parseFloat(m[1]);
         sizeUnit = m[2].toLowerCase().replace(/\s+/g, '');
