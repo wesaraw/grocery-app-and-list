@@ -431,6 +431,9 @@ async function init() {
   document.getElementById('backupBtn').addEventListener('click', () => {
     openOrFocusWindow('backup.html', 400, 400);
   });
+  document.getElementById('uomChange').addEventListener('click', () => {
+    openOrFocusWindow('uomChange.html');
+  });
 }
 
 document.addEventListener('DOMContentLoaded', init);
