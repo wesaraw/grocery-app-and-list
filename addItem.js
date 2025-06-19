@@ -110,7 +110,9 @@ async function commit() {
     category
   });
   consumption.push({ name, monthly_consumption: monthly, unit });
-  stock.push({ name, amount: stockAmt, unit });
+  // keep item in currentStock list without treating the initial quantity
+  // as starting stock (which would create a week 1 purchase)
+  stock.push({ name, amount: 0, unit });
   expiration.push({ name, shelf_life_months: shelf });
   consumed.push({ name, amount: 0, unit });
 
