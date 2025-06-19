@@ -1,4 +1,5 @@
 import { loadJSON } from './utils/dataLoader.js';
+import { sortItemsByCategory } from './utils/sortByCategory.js';
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -72,6 +73,16 @@ function buildRow(item) {
   return { tr, input, chk, item };
 }
 
+function addCategoryRow(tbody, cat) {
+  const tr = document.createElement('tr');
+  const th = document.createElement('th');
+  th.colSpan = 5;
+  th.className = 'category-header';
+  th.textContent = cat;
+  tr.appendChild(th);
+  tbody.appendChild(tr);
+}
+
 async function init() {
   [needs, consumption, stock] = await Promise.all([
     loadArray('yearlyNeeds', NEEDS_PATH),
@@ -79,7 +90,14 @@ async function init() {
     loadArray('currentStock', STOCK_PATH)
   ]);
   const tbody = document.getElementById('uom-list');
-  needs.forEach(n => {
+  const sorted = sortItemsByCategory(needs);
+  let lastCat = null;
+  sorted.forEach(n => {
+    const cat = n.category || 'Other';
+    if (cat !== lastCat) {
+      lastCat = cat;
+      addCategoryRow(tbody, cat);
+    }
     const row = buildRow(n);
     rows.push(row);
     tbody.appendChild(row.tr);
