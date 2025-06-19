@@ -60,20 +60,36 @@ const loadConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
 let needsData = [];
 let consumptionMap = new Map();
 
+// Examples that should return 12:
+//   "12 pack"
+//   "12 pk"
+//   "12-pk"
+//   "12‑pk"       (non-breaking hyphen)
+//   "12&nbsp;pk"    (HTML entity)
+//   "pack of 12"
+//   "<span>12</span> pack"
+// The function strips simple HTML tags and handles various punctuation between
+// the number and the pack keyword.
 function getPackCount(product) {
-  let m = product?.name?.match(/(\d+)\s*(?:pack|ct|count)/i);
-  if (!m && product?.size) {
-    m = product.size.match(/pack\s*of\s*(\d+)/i);
-    if (!m) {
-      m = product.size.match(/(\d+)\s*(?:pack|ct|count)/i);
-    }
-  }
-  if (!m && product?.unit) {
-    m = product.unit.match(/pack\s*of\s*(\d+)/i);
-    if (!m) {
-      m = product.unit.match(/(\d+)\s*(?:pack|ct|count)/i);
-    }
-  }
+  const sanitize = str =>
+    str
+      ?.replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;|&#160;/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  const matchPack = str => {
+    if (!str) return null;
+    const s = sanitize(str);
+    return (
+      s.match(/(\d+)\s*[-\u2011\u2012\u2013\u2014]?\s*(?:pack|pk|ct|count)/i) ||
+      s.match(/pack\s*of\s*(\d+)/i)
+    );
+  };
+
+  let m = matchPack(product?.name);
+  if (!m) m = matchPack(product?.size);
+  if (!m) m = matchPack(product?.unit);
   return m ? parseInt(m[1], 10) : 1;
 }
 
