@@ -48,6 +48,9 @@ export function scrapeStopAndShop() {
     const image = tile.querySelector('img')?.src || '';
     const link = tile.querySelector('a[href*="/product/"]')?.href || '';
 
+    const packMatch = name?.match(/(?:pack\s*of\s*)?(\d+)\s*(?:pk|pack|ct|count)/i) || name?.match(/(\d+)\s*[xX]/);
+    const packCount = packMatch ? parseInt(packMatch[1], 10) : 1;
+
     let unitQty = null;
     let unitType = null;
     if (perUnitText) {
@@ -79,12 +82,32 @@ export function scrapeStopAndShop() {
 
     let convertedQty = null;
     let pricePerUnit = null;
+
+    if (perUnitText) {
+      const m = perUnitText.match(/\$([\d.]+)\/?\s*([\d.]*)\s*(\w+)/);
+      if (m) {
+        let priceVal = parseFloat(m[1]);
+        const qtyVal = parseFloat(m[2]);
+        const qty = !isNaN(qtyVal) && qtyVal !== 0 ? qtyVal : 1;
+        pricePerUnit = priceVal / qty;
+        unitType = m[3].toLowerCase().replace(/\s+/g, '');
+        if (unitType === 'floz') unitType = 'oz';
+        const factor = UNIT_FACTORS[unitType];
+        if (factor) {
+          pricePerUnit = pricePerUnit / factor;
+          unitType = 'oz';
+        }
+      }
+    }
+
     if (sizeQty != null && sizeUnit) {
       const factor = UNIT_FACTORS[sizeUnit.toLowerCase()];
       if (factor) {
         convertedQty = sizeQty * factor;
-        if (priceNumber != null) {
-          pricePerUnit = priceNumber / convertedQty;
+        if (priceNumber != null && pricePerUnit == null) {
+          const totalConverted = convertedQty * packCount;
+          pricePerUnit = priceNumber / totalConverted;
+          unitType = 'oz';
         }
       }
     }
