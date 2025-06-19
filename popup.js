@@ -464,3 +464,11 @@ function openBackupManager() {
 document
   .getElementById('backupBtn')
   .addEventListener('click', openBackupManager);
+
+function openUomChange() {
+  openOrFocusWindow('uomChange.html');
+}
+
+document
+  .getElementById('uomChange')
+  .addEventListener('click', openUomChange);
