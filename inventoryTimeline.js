@@ -159,6 +159,7 @@ function buildGrid(items) {
   const header = document.createElement('tr');
   const firstTh = document.createElement('th');
   firstTh.textContent = 'Item';
+  firstTh.className = 'item-label';
   header.appendChild(firstTh);
   for (let w=1; w<=52; w++) {
     const th = document.createElement('th');
@@ -185,6 +186,7 @@ function buildGrid(items) {
     const weeks = simulateItem(item, overrides);
     const row = document.createElement('tr');
     const th = document.createElement('th');
+    th.className = 'item-label';
     th.innerHTML = `${item.name}<br/><span class="exp-weeks">${item.expiration_weeks}w</span>` +
       `<br/><span class="weekly-cons">${item.weekly_consumption.toFixed(2)}/wk</span>`;
     row.appendChild(th);
