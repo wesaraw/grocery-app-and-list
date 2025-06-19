@@ -7,6 +7,7 @@ export function scrapeAmazon() {
     ml: 0.033814,
     l: 33.814,
     gal: 128,
+    ga: 128,
     qt: 32,
     pt: 16,
     cup: 8,
@@ -60,7 +61,7 @@ export function scrapeAmazon() {
       if (!field) continue;
       let m = field.match(/pack\s*of\s*(\d+)/i);
       if (!m) m = field.match(/(\d+)\s*[xX]/);
-      if (!m) m = field.match(/(\d+)\s*(?:pack|ct|count)/i);
+      if (!m) m = field.match(/(\d+)\s*(?:pack|pk|ct|count)/i);
       if (m) {
         packCount = parseInt(m[1], 10);
         break;

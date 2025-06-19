@@ -9,6 +9,7 @@ function scrapeStopAndShop() {
     ml: 0.033814,
     l: 33.814,
     gal: 128,
+    ga: 128,
     qt: 32,
     pt: 16,
     cup: 8,
@@ -127,6 +128,7 @@ function scrapeWalmart() {
     ml: 0.033814,
     l: 33.814,
     gal: 128,
+    ga: 128,
     qt: 32,
     pt: 16,
     cup: 8,
@@ -157,7 +159,7 @@ function scrapeWalmart() {
   const tiles = document.querySelectorAll('[data-testid="list-view"] > div');
   tiles.forEach((tile, i) => {
     const name = tile.querySelector('[data-automation-id="product-title"]')?.innerText?.trim();
-    const packMatch = name?.match(/(\d+)\s*pack/i);
+    const packMatch = name?.match(/(\d+)\s*(?:pack|pk)/i);
     const packCount = packMatch ? parseInt(packMatch[1], 10) : 1;
     const priceMatch = tile.querySelector('[data-automation-id="product-price"]')?.innerText?.match(/\$?\d+\.\d{2}/);
     const price = priceMatch ? priceMatch[0] : null;
@@ -242,6 +244,7 @@ function scrapeAmazon() {
     ml: 0.033814,
     l: 33.814,
     gal: 128,
+    ga: 128,
     qt: 32,
     pt: 16,
     cup: 8,
@@ -295,7 +298,7 @@ function scrapeAmazon() {
       if (!field) continue;
       let m = field.match(/pack\s*of\s*(\d+)/i);
       if (!m) m = field.match(/(\d+)\s*[xX]/);
-      if (!m) m = field.match(/(\d+)\s*(?:pack|ct|count)/i);
+      if (!m) m = field.match(/(\d+)\s*(?:pack|pk|ct|count)/i);
       if (m) {
         packCount = parseInt(m[1], 10);
         break;
@@ -399,6 +402,7 @@ function scrapeShaws() {
     ml: 0.033814,
     l: 33.814,
     gal: 128,
+    ga: 128,
     qt: 32,
     pt: 16,
     cup: 8,
@@ -504,6 +508,7 @@ function scrapeRocheBros() {
     ml: 0.033814,
     l: 33.814,
     gal: 128,
+    ga: 128,
     qt: 32,
     pt: 16,
     cup: 8,
@@ -613,6 +618,7 @@ function scrapeHannaford() {
     ml: 0.033814,
     l: 33.814,
     gal: 128,
+    ga: 128,
     qt: 32,
     pt: 16,
     cup: 8,

@@ -38,7 +38,7 @@ export function scrapeWalmart() {
   const tiles = document.querySelectorAll('[data-testid="list-view"] > div');
   tiles.forEach((tile, i) => {
     const name = tile.querySelector('[data-automation-id="product-title"]')?.innerText?.trim();
-    const packMatch = name?.match(/(\d+)\s*pack/i);
+    const packMatch = name?.match(/(\d+)\s*(?:pack|pk)/i);
     const packCount = packMatch ? parseInt(packMatch[1], 10) : 1;
     const priceMatch = tile.querySelector('[data-automation-id="product-price"]')?.innerText?.match(/\$?\d+\.\d{2}/);
     const price = priceMatch ? priceMatch[0] : null;
