@@ -62,7 +62,7 @@ function buildRow(item) {
   saveBtn.textContent = 'Save';
   saveBtn.className = 'hidden';
   saveTd.appendChild(saveBtn);
-  const row = { tr, input, chk, item, saveBtn };
+  const row = { tr, input, chk, item, saveBtn, homeTd, wholeTd };
 
   input.addEventListener('input', () => updateSaveVisibility(row));
   chk.addEventListener('change', () => updateSaveVisibility(row));
@@ -121,9 +121,11 @@ async function saveRow(row) {
     if (cons) cons.unit = newUnit;
     const st = stock.find(s => s.name === row.item.name);
     if (st) st.unit = newUnit;
+    row.homeTd.textContent = newUnit;
   }
   if (changedWhole) {
     row.item.treat_as_whole_unit = row.chk.checked;
+    row.wholeTd.textContent = row.item.treat_as_whole_unit;
   }
 
   await Promise.all([
