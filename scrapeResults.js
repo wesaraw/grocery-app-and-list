@@ -69,6 +69,13 @@ function pricePerHomeUnit(itemName, product) {
   return null;
 }
 
+function homeUnitLabel(itemName) {
+  const item = needsData.find(n => n.name === itemName);
+  if (!item || !item.home_unit) return null;
+  const u = item.home_unit.toLowerCase();
+  return u === 'each' ? 'ea' : u;
+}
+
 function monthlyCost(itemName, product) {
   const cons = consumptionMap.get(itemName);
   if (!cons) return null;
@@ -190,9 +197,9 @@ async function init() {
   }
 
   const sorted = [...filtered].sort((a, b) => {
-    const aPrice = a.pricePerUnit ?? Infinity;
-    const bPrice = b.pricePerUnit ?? Infinity;
-    return aPrice - bPrice;
+    const aPrice = pricePerHomeUnit(item, a);
+    const bPrice = pricePerHomeUnit(item, b);
+    return (aPrice ?? Infinity) - (bPrice ?? Infinity);
   });
 
   sorted.forEach(prod => {
@@ -211,7 +218,9 @@ async function init() {
 
     let pStr = prod.priceNumber != null ? `$${prod.priceNumber.toFixed(2)}` : prod.price;
     let qStr = prod.convertedQty != null ? `${prod.convertedQty.toFixed(2)} oz` : prod.size;
-    let uStr = prod.pricePerUnit != null ? `$${prod.pricePerUnit.toFixed(2)}/oz` : prod.unit;
+    const unitPrice = pricePerHomeUnit(item, prod);
+    const label = homeUnitLabel(item) || prod.unit;
+    let uStr = unitPrice != null ? `$${unitPrice.toFixed(2)}/${label}` : prod.unit;
     const cost = monthlyCost(item, prod);
     const costStr = cost != null ? ` - $${cost.toFixed(2)}/mo` : '';
     const info = document.createElement('span');
