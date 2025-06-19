@@ -1,3 +1,8 @@
+#header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
 body { font-family: Arial, sans-serif; overflow: auto; }
 #controls { margin-bottom: 10px; }
 #grid-container { overflow: auto; max-height: 80vh; position: relative; }
