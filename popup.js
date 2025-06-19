@@ -1,6 +1,7 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { calculatePurchaseNeeds } from './utils/purchaseCalculator.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
+import { openOrFocusWindow } from './utils/windowUtils.js';
 import {
   sortItemsByCategory,
   renderItemsWithCategoryHeaders
@@ -148,10 +149,7 @@ async function init() {
     const btn = document.createElement('button');
     btn.textContent = item.name + amountText;
     btn.addEventListener('click', () => {
-      const url = chrome.runtime.getURL(
-        `item.html?item=${encodeURIComponent(item.name)}`
-      );
-      chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
+      openOrFocusWindow(`item.html?item=${encodeURIComponent(item.name)}`);
     });
     li.appendChild(btn);
     const finalSpan = document.createElement('span');
@@ -392,15 +390,13 @@ async function commitSelections() {
   await savePurchases(purchases);
   chrome.storage.local.set({ lastCommitItems: commitItems });
 
-  const url = chrome.runtime.getURL('shoppingList.html');
-  chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
+  openOrFocusWindow('shoppingList.html');
 }
 
 document.getElementById('commit').addEventListener('click', commitSelections);
 
 function openInventory() {
-  const url = chrome.runtime.getURL('inventory.html');
-  chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
+  openOrFocusWindow('inventory.html');
 }
 
 document
@@ -408,8 +404,7 @@ document
   .addEventListener('click', openInventory);
 
 function openConsumption() {
-  const url = chrome.runtime.getURL('consumed.html');
-  chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
+  openOrFocusWindow('consumed.html');
 }
 
 document
@@ -417,8 +412,7 @@ document
   .addEventListener('click', openConsumption);
 
 function openPlanEditor() {
-  const url = chrome.runtime.getURL('editPlan.html');
-  chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
+  openOrFocusWindow('editPlan.html');
 }
 
 document
@@ -426,15 +420,13 @@ document
   .addEventListener('click', openPlanEditor);
 
 function openAddItem() {
-  const url = chrome.runtime.getURL("addItem.html");
-  chrome.windows.create({ url, type: "popup", width: 400, height: 600 });
+  openOrFocusWindow('addItem.html');
 }
 
 document.getElementById("addItem").addEventListener("click", openAddItem);
 
 function openRemoveItem() {
-  const url = chrome.runtime.getURL('removeItem.html');
-  chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
+  openOrFocusWindow('removeItem.html');
 }
 
 document
@@ -442,8 +434,7 @@ document
   .addEventListener('click', openRemoveItem);
 
 function openCategoryEditor() {
-  const url = chrome.runtime.getURL('editCategory.html');
-  chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
+  openOrFocusWindow('editCategory.html');
 }
 
 document
@@ -451,8 +442,7 @@ document
   .addEventListener('click', openCategoryEditor);
 
 function openExpirationEditor() {
-  const url = chrome.runtime.getURL('expiration.html');
-  chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
+  openOrFocusWindow('expiration.html');
 }
 
 document
@@ -460,8 +450,7 @@ document
   .addEventListener('click', openExpirationEditor);
 
 function openCouponManager() {
-  const url = chrome.runtime.getURL('coupon.html');
-  chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
+  openOrFocusWindow('coupon.html');
 }
 
 document
@@ -469,8 +458,7 @@ document
   .addEventListener('click', openCouponManager);
 
 function openBackupManager() {
-  const url = chrome.runtime.getURL('backup.html');
-  chrome.windows.create({ url, type: 'popup', width: 400, height: 400 });
+  openOrFocusWindow('backup.html', 400, 400);
 }
 
 document

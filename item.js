@@ -1,5 +1,6 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { initUomTable } from './utils/uomConverter.js';
+import { openOrFocusWindow } from './utils/windowUtils.js';
 
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
 const STORE_SELECTION_KEY = 'storeSelections';
@@ -114,11 +115,9 @@ async function init() {
       if (rec && rec.tabId) {
         chrome.tabs.sendMessage(rec.tabId, { type: 'triggerScrape' });
       }
-      const url = chrome.runtime.getURL(
-        `scrapeResults.html?item=${encodeURIComponent(itemName)}&store=${encodeURIComponent(entry.store)}`
-      );
+      const path = `scrapeResults.html?item=${encodeURIComponent(itemName)}&store=${encodeURIComponent(entry.store)}`;
       setTimeout(() => {
-        chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
+        openOrFocusWindow(path);
       }, 1000);
     });
     header.appendChild(scrapeBtn);

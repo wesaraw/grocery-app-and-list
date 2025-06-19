@@ -1,6 +1,7 @@
+import { openOrFocusWindow } from './utils/windowUtils.js';
+
 function openWindow(path) {
-  const url = chrome.runtime.getURL(path);
-  chrome.windows.create({ url, type: 'popup', width: 400, height: 600 });
+  openOrFocusWindow(path);
 }
 
 document.getElementById('open-price-checker').addEventListener('click', () => {
