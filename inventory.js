@@ -1,5 +1,5 @@
 import { loadJSON } from './utils/dataLoader.js';
-import { getStockForWeek } from './utils/timeline.js';
+import { getStockBeforeWeek } from './utils/timeline.js';
 import { WEEKS_PER_MONTH } from './utils/constants.js';
 import {
   sortItemsByCategory,
@@ -71,7 +71,7 @@ function createItemRow(name, amount, unit, purchasesMap, week) {
   const div = document.createElement('div');
   div.className = 'item';
   const span = document.createElement('span');
-  span.textContent = `${name} - ${amount} ${unit}`;
+  span.textContent = `${name} - ${amount.toFixed(2)} ${unit}`;
   div.appendChild(span);
 
   const input = document.createElement('input');
@@ -94,7 +94,7 @@ function createItemRow(name, amount, unit, purchasesMap, week) {
         } catch (_) {}
         amount = val;
       }
-      span.textContent = `${name} - ${amount} ${unit}`;
+      span.textContent = `${name} - ${amount.toFixed(2)} ${unit}`;
       input.value = '';
     }
   }
@@ -123,7 +123,7 @@ function renderWeek(week) {
     consumptionData,
     expirationData
   );
-  const stockArr = getStockForWeek(timelineItems, purchasesMap, week);
+  const stockArr = getStockBeforeWeek(timelineItems, purchasesMap, week);
   const stockForWeek = new Map(stockArr.map(i => [i.name, i.amount]));
   const sortedStock = sortItemsByCategory(
     baseStock.map(it => ({ ...it, category: categoryMap.get(it.name) || '' }))
