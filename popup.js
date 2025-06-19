@@ -321,11 +321,11 @@ function formatFinalText(itemName, store, product) {
         : product.price;
     let qStr =
       product.convertedQty != null
-        ? `${product.convertedQty.toFixed(2)} oz`
+        ? `${product.convertedQty.toFixed(2)} ${product.unitType || 'oz'}`
         : product.size;
     let uStr =
       product.pricePerUnit != null
-        ? `$${product.pricePerUnit.toFixed(2)}/oz`
+        ? `$${product.pricePerUnit.toFixed(2)}/${product.unitType || 'oz'}`
         : product.unit;
     const cost = monthlyCost(itemName, product);
     const costStr = cost != null ? ` - $${cost.toFixed(2)}/mo` : '';
