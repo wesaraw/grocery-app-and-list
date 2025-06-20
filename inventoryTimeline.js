@@ -173,14 +173,15 @@ function buildGrid(items) {
   let headerRow = null;
   let itemRows = [];
 
-  function finalizeHeader() {
-    if (!headerRow) return;
-    const th = headerRow.querySelector('.category-header');
+  function finalizeHeader(row, rows) {
+    if (!row) return;
+    const th = row.querySelector('.category-header');
     th.style.cursor = 'pointer';
+    const associatedRows = rows.slice();
     th.addEventListener('click', () => {
-      const hidden = headerRow.dataset.hidden === 'true';
-      headerRow.dataset.hidden = hidden ? 'false' : 'true';
-      itemRows.forEach(r => {
+      const hidden = row.dataset.hidden === 'true';
+      row.dataset.hidden = hidden ? 'false' : 'true';
+      associatedRows.forEach(r => {
         r.style.display = hidden ? '' : 'none';
       });
     });
@@ -189,7 +190,7 @@ function buildGrid(items) {
   items.forEach(item => {
     const cat = item.category || 'Other';
     if (cat !== lastCat) {
-      finalizeHeader();
+      finalizeHeader(headerRow, itemRows);
       lastCat = cat;
       headerRow = document.createElement('tr');
       const thCat = document.createElement('th');
@@ -218,7 +219,7 @@ function buildGrid(items) {
     grid.appendChild(row);
     itemRows.push(row);
   });
-  finalizeHeader();
+  finalizeHeader(headerRow, itemRows);
   return grid;
 }
 
