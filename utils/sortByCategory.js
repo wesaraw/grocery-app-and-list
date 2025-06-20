@@ -16,11 +16,13 @@ export function renderItemsWithCategoryHeaders(items, container, renderFn) {
 
   function finalizeHeader() {
     if (!header) return;
-    header.style.cursor = 'pointer';
-    header.addEventListener('click', () => {
-      const hidden = header.dataset.hidden === 'true';
-      header.dataset.hidden = hidden ? 'false' : 'true';
-      nodes.forEach(n => {
+    const curHeader = header;
+    const curNodes = [...nodes];
+    curHeader.style.cursor = 'pointer';
+    curHeader.addEventListener('click', () => {
+      const hidden = curHeader.dataset.hidden === 'true';
+      curHeader.dataset.hidden = hidden ? 'false' : 'true';
+      curNodes.forEach(n => {
         n.style.display = hidden ? '' : 'none';
       });
     });
