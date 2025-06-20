@@ -35,6 +35,18 @@ export function calculatePurchaseNeeds(
     futurePurchasesMap.set(name, total);
   });
 
+  const purchasesWithinMap = new Map();
+  needs.forEach(item => {
+    const expWeeks =
+      (expMap.get(item.name)?.shelf_life_months ?? 12) * WEEKS_PER_MONTH;
+    const horizon = week + Math.ceil(expWeeks);
+    const list = purchases[item.name] || [];
+    const total = list
+      .filter(p => p.purchase_week >= week && p.purchase_week < horizon)
+      .reduce((sum, p) => sum + (p.quantity_purchased || 0), 0);
+    purchasesWithinMap.set(item.name, total);
+  });
+
   return needs.map(item => {
     const yearlyAmount =
       item.total_needed_year ??
@@ -42,9 +54,30 @@ export function calculatePurchaseNeeds(
 
     const required = (yearlyAmount / 52) * weeksRemaining;
 
-    const onHand = (stockMap.get(item.name) || 0) + (futurePurchasesMap.get(item.name) || 0);
+    const onHand =
+      (stockMap.get(item.name) || 0) + (futurePurchasesMap.get(item.name) || 0);
 
-    let toBuy = required - onHand;
+    // calculate gating amount based on expiration
+    const weeklyCons =
+      (consMap.get(item.name)?.monthly_consumption ?? 0) / WEEKS_PER_MONTH;
+    const expWeeks =
+      (expMap.get(item.name)?.shelf_life_months ?? 12) * WEEKS_PER_MONTH;
+    const horizon = week + Math.ceil(expWeeks);
+
+    const horizonStock = getStockBeforeWeek(
+      [timelineItems.find(t => t.name === item.name)],
+      { [item.name]: purchases[item.name] || [] },
+      horizon
+    )[0]?.amount ?? 0;
+
+    const purchasesWithin = purchasesWithinMap.get(item.name) || 0;
+    const currentQty = stockMap.get(item.name) || 0;
+    const consumedExisting = currentQty + purchasesWithin - horizonStock;
+    const capacity = weeklyCons * (horizon - week);
+    let toBuyExpiration = capacity - consumedExisting;
+    if (toBuyExpiration < 0) toBuyExpiration = 0;
+
+    let toBuy = Math.min(required - onHand, toBuyExpiration);
     if (item.treat_as_whole_unit) {
       toBuy = Math.ceil(toBuy);
     }
