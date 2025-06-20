@@ -90,6 +90,7 @@ function addCategoryRow(tbody, cat) {
   th.textContent = cat;
   tr.appendChild(th);
   tbody.appendChild(tr);
+  return tr;
 }
 
 async function init() {
@@ -104,19 +105,38 @@ async function init() {
   function render() {
     tbody.innerHTML = '';
     let lastCat = null;
+    let headerRow = null;
+    let itemRows = [];
     const arr = filterText
       ? allNeeds.filter(n => n.name.toLowerCase().includes(filterText))
       : allNeeds;
+    function finalizeHeader() {
+      if (!headerRow) return;
+      const th = headerRow.querySelector('.category-header');
+      th.style.cursor = 'pointer';
+      th.addEventListener('click', () => {
+        const hidden = headerRow.dataset.hidden === 'true';
+        headerRow.dataset.hidden = hidden ? 'false' : 'true';
+        itemRows.forEach(r => {
+          r.style.display = hidden ? '' : 'none';
+        });
+      });
+    }
+
     arr.forEach(n => {
       const cat = n.category || 'Other';
       if (cat !== lastCat) {
+        finalizeHeader();
         lastCat = cat;
-        addCategoryRow(tbody, cat);
+        headerRow = addCategoryRow(tbody, cat);
+        itemRows = [];
       }
       const row = buildRow(n);
       rows.push(row);
+      itemRows.push(row.tr);
       tbody.appendChild(row.tr);
     });
+    finalizeHeader();
   }
 
   render();

@@ -170,17 +170,35 @@ function buildGrid(items) {
   grid.appendChild(header);
 
   let lastCat = null;
+  let headerRow = null;
+  let itemRows = [];
+
+  function finalizeHeader() {
+    if (!headerRow) return;
+    const th = headerRow.querySelector('.category-header');
+    th.style.cursor = 'pointer';
+    th.addEventListener('click', () => {
+      const hidden = headerRow.dataset.hidden === 'true';
+      headerRow.dataset.hidden = hidden ? 'false' : 'true';
+      itemRows.forEach(r => {
+        r.style.display = hidden ? '' : 'none';
+      });
+    });
+  }
+
   items.forEach(item => {
     const cat = item.category || 'Other';
     if (cat !== lastCat) {
+      finalizeHeader();
       lastCat = cat;
-      const catRow = document.createElement('tr');
+      headerRow = document.createElement('tr');
       const thCat = document.createElement('th');
       thCat.colSpan = 53;
       thCat.className = 'category-header';
       thCat.textContent = cat;
-      catRow.appendChild(thCat);
-      grid.appendChild(catRow);
+      headerRow.appendChild(thCat);
+      grid.appendChild(headerRow);
+      itemRows = [];
     }
     const overrides = {};
     if (item.overrideWeeks) Object.assign(overrides, item.overrideWeeks);
@@ -198,7 +216,9 @@ function buildGrid(items) {
       row.appendChild(td);
     });
     grid.appendChild(row);
+    itemRows.push(row);
   });
+  finalizeHeader();
   return grid;
 }
 
