@@ -7,6 +7,13 @@ const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
 const STORE_SELECTION_KEY = 'storeSelections';
 
+const DEFAULTS = {
+  yearly: 12,
+  unit: 'each',
+  monthly: 1,
+  shelf: 6
+};
+
 const STORE_LINKS = {
   'Stop & Shop': name =>
     `https://stopandshop.com/product-search/${name
@@ -27,6 +34,20 @@ const STORE_LINKS = {
   Hannaford: name =>
     `https://www.hannaford.com/search/product?form_state=searchForm&keyword=${name.replace(/ /g, '+')}&ieDummyTextField=&productTypeId=P`
 };
+
+function getCurrentWeek() {
+  const start = new Date(new Date().getFullYear(), 0, 1);
+  const today = new Date();
+  return Math.ceil(((today - start) / 86400000 + start.getDay() + 1) / 7);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('yearly').placeholder = DEFAULTS.yearly;
+  document.getElementById('unit').placeholder = DEFAULTS.unit;
+  document.getElementById('monthly').placeholder = DEFAULTS.monthly;
+  document.getElementById('shelf').placeholder = DEFAULTS.shelf;
+  document.getElementById('week').placeholder = getCurrentWeek();
+});
 
 function loadArray(key, path) {
   return new Promise(async resolve => {
@@ -80,17 +101,46 @@ function save(key, value) {
   });
 }
 
+function highlightError(el) {
+  el.classList.add('error');
+  setTimeout(() => el.classList.remove('error'), 1000);
+}
+
 async function commit() {
-  const name = document.getElementById('name').value.trim();
-  if (!name) return;
-  const yearly = parseFloat(document.getElementById('yearly').value) || 0;
-  const unit = document.getElementById('unit').value.trim() || 'each';
+  const nameEl = document.getElementById('name');
+  const stockEl = document.getElementById('stock');
+  const categoryEl = document.getElementById('category');
+
+  const name = nameEl.value.trim();
+  const stockVal = stockEl.value.trim();
+  const category = categoryEl.value.trim();
+
+  let hasError = false;
+  if (!name) {
+    highlightError(nameEl);
+    hasError = true;
+  }
+  if (!stockVal) {
+    highlightError(stockEl);
+    hasError = true;
+  }
+  if (!category) {
+    highlightError(categoryEl);
+    hasError = true;
+  }
+  if (hasError) {
+    document.getElementById('warning').style.display = 'block';
+    return;
+  }
+  document.getElementById('warning').style.display = 'none';
+
+  const yearly = parseFloat(document.getElementById('yearly').value) || DEFAULTS.yearly;
+  const unit = document.getElementById('unit').value.trim() || DEFAULTS.unit;
   const whole = document.getElementById('whole').checked;
-  const monthly = parseFloat(document.getElementById('monthly').value) || 0;
-  const shelf = parseFloat(document.getElementById('shelf').value) || 12;
-  const stockAmt = parseFloat(document.getElementById('stock').value) || 0;
-  const week = parseInt(document.getElementById('week').value, 10) || 1;
-  const category = document.getElementById('category').value.trim();
+  const monthly = parseFloat(document.getElementById('monthly').value) || DEFAULTS.monthly;
+  const shelf = parseFloat(document.getElementById('shelf').value) || DEFAULTS.shelf;
+  const stockAmt = parseFloat(stockVal);
+  const week = parseInt(document.getElementById('week').value, 10) || getCurrentWeek();
 
   const [needs, consumption, stock, expiration, consumed, storeSelections, purchases] = await Promise.all([
     loadNeeds(),

@@ -7,6 +7,14 @@
     body { font-family: Arial, sans-serif; width: 300px; }
     .field { margin-bottom: 10px; }
     label { display: block; }
+    .error {
+      animation: blink-bg 1s ease-in-out 0s 2;
+      background-color: #ffcdd2;
+    }
+    @keyframes blink-bg {
+      0%, 100% { background-color: #ffcdd2; }
+      50% { background-color: #fff; }
+    }
   </style>
 </head>
 <body>
@@ -15,19 +23,19 @@
     <label>Item Name <input id="name" type="text"></label>
   </div>
   <div class="field">
-    <label>Yearly Need <input id="yearly" type="number" step="any"></label>
+    <label>Yearly Need <input id="yearly" type="number" step="any" placeholder="12"></label>
   </div>
   <div class="field">
-    <label>Home Unit <input id="unit" type="text"></label>
+    <label>Home Unit <input id="unit" type="text" placeholder="each"></label>
   </div>
   <div class="field">
     <label><input id="whole" type="checkbox"> Treat as Whole Unit</label>
   </div>
   <div class="field">
-    <label>Monthly Consumption <input id="monthly" type="number" step="any"></label>
+    <label>Monthly Consumption <input id="monthly" type="number" step="any" placeholder="1"></label>
   </div>
   <div class="field">
-    <label>Shelf Life (months) <input id="shelf" type="number" step="any"></label>
+    <label>Shelf Life (months) <input id="shelf" type="number" step="any" placeholder="6"></label>
   </div>
   <div class="field">
     <label>Current Stock <input id="stock" type="number" step="any"></label>
@@ -39,6 +47,7 @@
     <label>Category <input id="category" type="text"></label>
   </div>
   <button id="commit">Commit</button>
+  <div id="warning" style="color: red; display: none;">Incomplete data</div>
   <script type="module" src="addItem.js"></script>
 </body>
 </html>
