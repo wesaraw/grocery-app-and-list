@@ -157,17 +157,20 @@ function simulateItem(item, overrides) {
 
 function buildGrid(items) {
   const grid = document.createElement('table');
+  const thead = document.createElement('thead');
   const header = document.createElement('tr');
   const firstTh = document.createElement('th');
   firstTh.textContent = 'Item';
   firstTh.className = 'item-label';
   header.appendChild(firstTh);
-  for (let w=1; w<=52; w++) {
+  for (let w = 1; w <= 52; w++) {
     const th = document.createElement('th');
     th.textContent = w;
     header.appendChild(th);
   }
-  grid.appendChild(header);
+  thead.appendChild(header);
+  grid.appendChild(thead);
+  const tbody = document.createElement('tbody');
 
   let lastCat = null;
   let headerRow = null;
@@ -202,7 +205,7 @@ function buildGrid(items) {
       thCat.className = 'category-header';
       thCat.textContent = cat;
       headerRow.appendChild(thCat);
-      grid.appendChild(headerRow);
+      tbody.appendChild(headerRow);
       itemRows = [];
     }
     const overrides = {};
@@ -220,10 +223,11 @@ function buildGrid(items) {
       td.innerHTML = `${w.qty}<br/>⏰ ${w.weeksToExpiration}`;
       row.appendChild(td);
     });
-    grid.appendChild(row);
+    tbody.appendChild(row);
     itemRows.push(row);
   });
   finalizeHeader(headerRow, itemRows);
+  grid.appendChild(tbody);
   return grid;
 }
 
