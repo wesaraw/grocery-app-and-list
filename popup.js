@@ -99,6 +99,7 @@ let expirationData = [];
 let stockData = [];
 let consumedYearData = [];
 let purchasesData = {};
+let hideZeroItems = false;
 
 function getFinal(itemName) {
   const key = `final_${encodeURIComponent(itemName)}`;
@@ -160,7 +161,10 @@ async function init() {
     finalImg.style.display = 'none';
     const currentQty = stockMap.get(item.name)?.amount || 0;
     const weeklyNeed = item.total_needed_year ? item.total_needed_year / 52 : 0;
-    li.style.display = currentQty < weeklyNeed ? 'list-item' : 'none';
+    const showByStock = currentQty < weeklyNeed;
+    const showByNeed =
+      !hideZeroItems || (needAmt != null && needAmt > 0);
+    li.style.display = showByStock && showByNeed ? 'list-item' : 'none';
     getFinal(item.name).then(async store => {
       const product = await getFinalProduct(item.name);
       updateFinalInfo(item.name, finalSpan, finalImg, store, product);
@@ -211,7 +215,9 @@ async function refreshNeeds(stock = stockData, consumed = consumedYearData) {
       rec.btn.textContent = item.name + amountText;
       const qty = stockMap.get(item.name)?.amount || 0;
       const weekly = item.total_needed_year ? item.total_needed_year / 52 : 0;
-      rec.li.style.display = qty < weekly ? 'list-item' : 'none';
+      const showByStock = qty < weekly;
+      const showByNeed = !hideZeroItems || (needAmt != null && needAmt > 0);
+      rec.li.style.display = showByStock && showByNeed ? 'list-item' : 'none';
     }
   });
 }
@@ -472,3 +478,15 @@ function openUomChange() {
 document
   .getElementById('uomChange')
   .addEventListener('click', openUomChange);
+
+function toggleZeroItems() {
+  hideZeroItems = !hideZeroItems;
+  const btn = document.getElementById('toggleZero');
+  btn.textContent = hideZeroItems ? 'Show Zero Qty' : 'Hide Zero Qty';
+  refreshNeeds();
+}
+
+document
+  .getElementById('toggleZero')
+  .addEventListener('click', toggleZeroItems);
+document.getElementById('toggleZero').textContent = 'Hide Zero Qty';
