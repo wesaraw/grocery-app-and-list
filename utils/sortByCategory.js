@@ -11,16 +11,37 @@ export function sortItemsByCategory(arr) {
 
 export function renderItemsWithCategoryHeaders(items, container, renderFn) {
   let lastCat = null;
+  let header = null;
+  let nodes = [];
+
+  function finalizeHeader() {
+    if (!header) return;
+    header.style.cursor = 'pointer';
+    header.addEventListener('click', () => {
+      const hidden = header.dataset.hidden === 'true';
+      header.dataset.hidden = hidden ? 'false' : 'true';
+      nodes.forEach(n => {
+        n.style.display = hidden ? '' : 'none';
+      });
+    });
+  }
+
   items.forEach(item => {
     const cat = item.category || 'Other';
     if (cat !== lastCat) {
+      finalizeHeader();
       lastCat = cat;
-      const header = document.createElement('h3');
+      header = document.createElement('h3');
       header.className = 'category-header';
       header.textContent = cat;
+      nodes = [];
       container.appendChild(header);
     }
     const node = renderFn(item);
-    if (node) container.appendChild(node);
+    if (node) {
+      nodes.push(node);
+      container.appendChild(node);
+    }
   });
+  finalizeHeader();
 }
