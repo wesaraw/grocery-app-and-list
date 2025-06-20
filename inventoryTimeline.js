@@ -175,6 +175,10 @@ function buildGrid(items) {
 
   function finalizeHeader(row, rows) {
     if (!row) return;
+    row.dataset.hidden = 'true';
+    rows.forEach(r => {
+      r.style.display = 'none';
+    });
     const th = row.querySelector('.category-header');
     th.style.cursor = 'pointer';
     const associatedRows = rows.slice();

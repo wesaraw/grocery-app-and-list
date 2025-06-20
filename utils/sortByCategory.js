@@ -18,6 +18,10 @@ export function renderItemsWithCategoryHeaders(items, container, renderFn) {
     if (!header) return;
     const curHeader = header;
     const curNodes = [...nodes];
+    curHeader.dataset.hidden = 'true';
+    curNodes.forEach(n => {
+      n.style.display = 'none';
+    });
     curHeader.style.cursor = 'pointer';
     curHeader.addEventListener('click', () => {
       const hidden = curHeader.dataset.hidden === 'true';
