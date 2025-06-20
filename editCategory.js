@@ -4,6 +4,10 @@ import { sortItemsByCategory, renderItemsWithCategoryHeaders } from './utils/sor
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const NEEDS_KEY = 'yearlyNeeds';
 
+let filterText = '';
+let allNeeds = [];
+let container;
+
 function loadNeeds() {
   return new Promise(async resolve => {
     chrome.storage.local.get(NEEDS_KEY, async data => {
@@ -51,10 +55,24 @@ function createRow(item, needs) {
 }
 
 async function init() {
+  container = document.getElementById('categories');
   const needs = await loadNeeds();
-  const sorted = sortItemsByCategory(needs);
-  const container = document.getElementById('categories');
-  renderItemsWithCategoryHeaders(sorted, container, item => createRow(item, needs));
+  allNeeds = sortItemsByCategory(needs);
+
+  function render() {
+    container.innerHTML = '';
+    const arr = filterText
+      ? allNeeds.filter(n => n.name.toLowerCase().includes(filterText))
+      : allNeeds;
+    renderItemsWithCategoryHeaders(arr, container, item => createRow(item, needs));
+  }
+
+  render();
+
+  document.getElementById('searchBox').addEventListener('input', () => {
+    filterText = document.getElementById('searchBox').value.trim().toLowerCase();
+    render();
+  });
 }
 
 document.addEventListener('DOMContentLoaded', init);

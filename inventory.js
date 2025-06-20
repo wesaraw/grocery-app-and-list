@@ -114,6 +114,7 @@ let consumptionData = [];
 let expirationData = [];
 let categoryMap = new Map();
 let needsData = [];
+let filterText = '';
 
 function renderWeek(week) {
   const container = document.getElementById('inventory');
@@ -128,7 +129,10 @@ function renderWeek(week) {
   const sortedStock = sortItemsByCategory(
     baseStock.map(it => ({ ...it, category: categoryMap.get(it.name) || '' }))
   );
-  renderItemsWithCategoryHeaders(sortedStock, container, item => {
+  const filtered = filterText
+    ? sortedStock.filter(it => it.name.toLowerCase().includes(filterText))
+    : sortedStock;
+  renderItemsWithCategoryHeaders(filtered, container, item => {
     const amt = stockForWeek.get(item.name) || 0;
     return createItemRow(item.name, amt, item.unit, purchasesMap, week);
   });
@@ -146,6 +150,11 @@ async function init() {
   categoryMap = new Map(needsData.map(n => [n.name, n.category || '']));
 
   renderWeek(parseInt(weekInput.value, 10) || 1);
+
+  document.getElementById('searchBox').addEventListener('input', () => {
+    filterText = document.getElementById('searchBox').value.trim().toLowerCase();
+    renderWeek(parseInt(weekInput.value, 10) || 1);
+  });
 
   weekInput.addEventListener('change', () => {
     const w = parseInt(weekInput.value, 10) || 1;

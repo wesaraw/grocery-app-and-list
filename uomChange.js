@@ -5,6 +5,10 @@ const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 
+let filterText = '';
+let allNeeds = [];
+let tbody;
+
 function loadArray(key, path) {
   return new Promise(async resolve => {
     chrome.storage.local.get(key, async data => {
@@ -94,18 +98,32 @@ async function init() {
     loadArray('monthlyConsumption', CONSUMPTION_PATH),
     loadArray('currentStock', STOCK_PATH)
   ]);
-  const tbody = document.getElementById('uom-list');
-  const sorted = sortItemsByCategory(needs);
-  let lastCat = null;
-  sorted.forEach(n => {
-    const cat = n.category || 'Other';
-    if (cat !== lastCat) {
-      lastCat = cat;
-      addCategoryRow(tbody, cat);
-    }
-    const row = buildRow(n);
-    rows.push(row);
-    tbody.appendChild(row.tr);
+  tbody = document.getElementById('uom-list');
+  allNeeds = sortItemsByCategory(needs);
+
+  function render() {
+    tbody.innerHTML = '';
+    let lastCat = null;
+    const arr = filterText
+      ? allNeeds.filter(n => n.name.toLowerCase().includes(filterText))
+      : allNeeds;
+    arr.forEach(n => {
+      const cat = n.category || 'Other';
+      if (cat !== lastCat) {
+        lastCat = cat;
+        addCategoryRow(tbody, cat);
+      }
+      const row = buildRow(n);
+      rows.push(row);
+      tbody.appendChild(row.tr);
+    });
+  }
+
+  render();
+
+  document.getElementById('searchBox').addEventListener('input', () => {
+    filterText = document.getElementById('searchBox').value.trim().toLowerCase();
+    render();
   });
 }
 

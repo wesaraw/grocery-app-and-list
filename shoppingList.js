@@ -16,6 +16,7 @@ const STORE_LINKS = {
 
 document.addEventListener('DOMContentLoaded', async () => {
   const container = document.getElementById('list');
+  const itemsNodes = [];
   const items = await loadCommitItems();
   if (items.length === 0) {
     container.textContent = 'No items committed.';
@@ -89,7 +90,19 @@ document.addEventListener('DOMContentLoaded', async () => {
           li.appendChild(btn);
         }
         ul.appendChild(li);
+        itemsNodes.push({ el: li, name: it.item });
       });
       container.appendChild(ul);
     });
+
+  const search = document.getElementById('searchBox');
+  if (search) {
+    search.addEventListener('input', () => {
+      const text = search.value.trim().toLowerCase();
+      itemsNodes.forEach(({ el, name }) => {
+        el.style.display =
+          !text || name.toLowerCase().includes(text) ? 'flex' : 'none';
+      });
+    });
+  }
 });
