@@ -12,6 +12,7 @@ const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandsh
 const STORE_SELECTION_KEY = 'storeSelections';
 
 let filterText = '';
+const headerState = {};
 let allItems = [];
 let ul;
 
@@ -174,7 +175,7 @@ async function init() {
     const arr = filterText
       ? allItems.filter(it => it.name.toLowerCase().includes(filterText))
       : allItems;
-    renderItemsWithCategoryHeaders(arr, ul, it => createListItem(it.name));
+    renderItemsWithCategoryHeaders(arr, ul, it => createListItem(it.name), headerState);
   }
 
   render();

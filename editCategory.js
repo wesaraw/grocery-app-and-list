@@ -5,6 +5,7 @@ const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json
 const NEEDS_KEY = 'yearlyNeeds';
 
 let filterText = '';
+const headerState = {};
 let allNeeds = [];
 let container;
 
@@ -64,7 +65,12 @@ async function init() {
     const arr = filterText
       ? allNeeds.filter(n => n.name.toLowerCase().includes(filterText))
       : allNeeds;
-    renderItemsWithCategoryHeaders(arr, container, item => createRow(item, needs));
+    renderItemsWithCategoryHeaders(
+      arr,
+      container,
+      item => createRow(item, needs),
+      headerState
+    );
   }
 
   render();

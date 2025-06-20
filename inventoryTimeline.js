@@ -155,7 +155,7 @@ function simulateItem(item, overrides) {
   return weeks;
 }
 
-function buildGrid(items) {
+function buildGrid(items, headerState = {}) {
   const grid = document.createElement('table');
   const thead = document.createElement('thead');
   const header = document.createElement('tr');
@@ -176,28 +176,30 @@ function buildGrid(items) {
   let headerRow = null;
   let itemRows = [];
 
-  function finalizeHeader(row, rows) {
+  function finalizeHeader(cat, row, rows) {
     if (!row) return;
-    row.dataset.hidden = 'true';
+    const hidden = headerState[cat] !== undefined ? headerState[cat] : true;
+    row.dataset.hidden = hidden ? 'true' : 'false';
     rows.forEach(r => {
-      r.style.display = 'none';
+      r.style.display = hidden ? 'none' : '';
     });
     const th = row.querySelector('.category-header');
     th.style.cursor = 'pointer';
     const associatedRows = rows.slice();
     th.addEventListener('click', () => {
-      const hidden = row.dataset.hidden === 'true';
-      row.dataset.hidden = hidden ? 'false' : 'true';
+      const isHidden = row.dataset.hidden === 'true';
+      row.dataset.hidden = isHidden ? 'false' : 'true';
       associatedRows.forEach(r => {
-        r.style.display = hidden ? '' : 'none';
+        r.style.display = isHidden ? '' : 'none';
       });
+      headerState[cat] = !isHidden;
     });
   }
 
   items.forEach(item => {
     const cat = item.category || 'Other';
     if (cat !== lastCat) {
-      finalizeHeader(headerRow, itemRows);
+      finalizeHeader(lastCat, headerRow, itemRows);
       lastCat = cat;
       headerRow = document.createElement('tr');
       const thCat = document.createElement('th');
@@ -226,7 +228,7 @@ function buildGrid(items) {
     tbody.appendChild(row);
     itemRows.push(row);
   });
-  finalizeHeader(headerRow, itemRows);
+  finalizeHeader(lastCat, headerRow, itemRows);
   grid.appendChild(tbody);
   return grid;
 }
@@ -267,6 +269,7 @@ function saveAllPurchases(items) {
 let showingHistory = false;
 let globalItems = [];
 let gridContainer;
+const headerState = {};
 
 async function fetchItems() {
   const data = await loadData();
@@ -348,7 +351,7 @@ function showGrid(items = globalItems) {
   showingHistory = false;
   document.getElementById('view-purchases').textContent = 'Purchase History';
   gridContainer.innerHTML = '';
-  gridContainer.appendChild(buildGrid(items));
+  gridContainer.appendChild(buildGrid(items, headerState));
   resizeWindowToContent();
 }
 
