@@ -283,7 +283,15 @@ async function refreshItems() {
   if (showingHistory) {
     showPurchaseHistory();
   } else {
-    showGrid();
+    const text = filterText.trim();
+    if (text) {
+      const filtered = globalItems.filter(it =>
+        it.name.toLowerCase().includes(text)
+      );
+      showGrid(filtered);
+    } else {
+      showGrid();
+    }
   }
 }
 
@@ -305,11 +313,13 @@ function resizeWindowToContent() {
   }
 }
 
-function showGrid() {
+let filterText = '';
+
+function showGrid(items = globalItems) {
   showingHistory = false;
   document.getElementById('view-purchases').textContent = 'Purchase History';
   gridContainer.innerHTML = '';
-  gridContainer.appendChild(buildGrid(globalItems));
+  gridContainer.appendChild(buildGrid(items));
   resizeWindowToContent();
 }
 
@@ -325,9 +335,19 @@ async function init() {
   gridContainer = document.getElementById('grid-container');
   await refreshItems();
 
+  function applyFilter() {
+    filterText = document.getElementById('purchase-item').value.trim().toLowerCase();
+    if (showingHistory) return;
+    const items = filterText
+      ? globalItems.filter(it => it.name.toLowerCase().includes(filterText))
+      : globalItems;
+    showGrid(items);
+  }
+
   document.getElementById('view-purchases').addEventListener('click', () => {
     if (showingHistory) {
       showGrid();
+      if (filterText.trim()) applyFilter();
     } else {
       showPurchaseHistory();
     }
@@ -373,7 +393,7 @@ async function init() {
       if (showingHistory) {
         showPurchaseHistory();
       } else {
-        showGrid();
+        applyFilter();
       }
     }
   });
@@ -397,9 +417,11 @@ async function init() {
     if (showingHistory) {
       showPurchaseHistory();
     } else {
-      showGrid();
+      applyFilter();
     }
   });
+
+  document.getElementById('purchase-item').addEventListener('input', applyFilter);
 
   document.getElementById('commit').addEventListener('click', () => {
     openOrFocusWindow('shoppingList.html');
