@@ -31,4 +31,12 @@ thead th.item-label {
 .category-header {
   border-top: 1px solid #ccc;
   text-align: left;
+  position: sticky;
+  left: 0;
+  background: #fff;
+  z-index: 1;
+}
+
+.category-spacer {
+  border-top: 1px solid #ccc;
 }

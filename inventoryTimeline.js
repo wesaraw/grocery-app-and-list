@@ -183,16 +183,18 @@ function buildGrid(items, headerState = {}) {
     rows.forEach(r => {
       r.style.display = hidden ? 'none' : '';
     });
-    const th = row.querySelector('.category-header');
-    th.style.cursor = 'pointer';
-    const associatedRows = rows.slice();
-    th.addEventListener('click', () => {
-      const isHidden = row.dataset.hidden === 'true';
-      row.dataset.hidden = isHidden ? 'false' : 'true';
-      associatedRows.forEach(r => {
-        r.style.display = isHidden ? '' : 'none';
+    const cells = row.querySelectorAll('.category-header, .category-spacer');
+    cells.forEach(cell => {
+      cell.style.cursor = 'pointer';
+      const associatedRows = rows.slice();
+      cell.addEventListener('click', () => {
+        const isHidden = row.dataset.hidden === 'true';
+        row.dataset.hidden = isHidden ? 'false' : 'true';
+        associatedRows.forEach(r => {
+          r.style.display = isHidden ? '' : 'none';
+        });
+        headerState[cat] = !isHidden;
       });
-      headerState[cat] = !isHidden;
     });
   }
 
@@ -203,10 +205,13 @@ function buildGrid(items, headerState = {}) {
       lastCat = cat;
       headerRow = document.createElement('tr');
       const thCat = document.createElement('th');
-      thCat.colSpan = 53;
-      thCat.className = 'category-header';
+      thCat.className = 'category-header item-label';
       thCat.textContent = cat;
       headerRow.appendChild(thCat);
+      const thFill = document.createElement('th');
+      thFill.colSpan = 52;
+      thFill.className = 'category-spacer';
+      headerRow.appendChild(thFill);
       tbody.appendChild(headerRow);
       itemRows = [];
     }
