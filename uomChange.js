@@ -6,6 +6,7 @@ const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.jso
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 
 let filterText = '';
+const headerState = {};
 let allNeeds = [];
 let tbody;
 
@@ -110,27 +111,30 @@ async function init() {
     const arr = filterText
       ? allNeeds.filter(n => n.name.toLowerCase().includes(filterText))
       : allNeeds;
-    function finalizeHeader() {
-      if (!headerRow) return;
-      headerRow.dataset.hidden = 'true';
-      itemRows.forEach(r => {
-        r.style.display = 'none';
+    function finalizeHeader(cat, row, rowsArr) {
+      if (!row) return;
+      const hidden =
+        headerState[cat] !== undefined ? headerState[cat] : true;
+      row.dataset.hidden = hidden ? 'true' : 'false';
+      rowsArr.forEach(r => {
+        r.style.display = hidden ? 'none' : '';
       });
-      const th = headerRow.querySelector('.category-header');
+      const th = row.querySelector('.category-header');
       th.style.cursor = 'pointer';
       th.addEventListener('click', () => {
-        const hidden = headerRow.dataset.hidden === 'true';
-        headerRow.dataset.hidden = hidden ? 'false' : 'true';
-        itemRows.forEach(r => {
-          r.style.display = hidden ? '' : 'none';
+        const isHidden = row.dataset.hidden === 'true';
+        row.dataset.hidden = isHidden ? 'false' : 'true';
+        rowsArr.forEach(r => {
+          r.style.display = isHidden ? '' : 'none';
         });
+        headerState[cat] = !isHidden;
       });
     }
 
     arr.forEach(n => {
       const cat = n.category || 'Other';
       if (cat !== lastCat) {
-        finalizeHeader();
+        finalizeHeader(lastCat, headerRow, itemRows);
         lastCat = cat;
         headerRow = addCategoryRow(tbody, cat);
         itemRows = [];
@@ -140,7 +144,7 @@ async function init() {
       itemRows.push(row.tr);
       tbody.appendChild(row.tr);
     });
-    finalizeHeader();
+    finalizeHeader(lastCat, headerRow, itemRows);
   }
 
   render();

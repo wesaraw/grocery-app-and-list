@@ -9,6 +9,7 @@ const NEEDS_KEY = 'yearlyNeeds';
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 
 let filterText = '';
+const headerState = {};
 let allNeeds = [];
 let globalMap;
 let globalHistory;
@@ -194,7 +195,7 @@ async function init() {
       const item = globalMap.get(n.name);
       const weekly = n.total_needed_year ? n.total_needed_year / 52 : 0;
       return createItemRow(item, globalMap, globalHistory, globalOverrides, weekly);
-    });
+    }, headerState);
   }
 
   render();

@@ -101,6 +101,7 @@ let consumedYearData = [];
 let purchasesData = {};
 let hideZeroItems = false;
 let filterText = '';
+const headerState = {};
 
 function getFinal(itemName) {
   const key = `final_${encodeURIComponent(itemName)}`;
@@ -174,7 +175,7 @@ async function init() {
     li.appendChild(finalImg);
     finalMap.set(item.name, { li, btn, span: finalSpan, img: finalImg });
     return li;
-  });
+  }, headerState);
 }
 
 init();

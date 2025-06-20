@@ -115,6 +115,7 @@ let expirationData = [];
 let categoryMap = new Map();
 let needsData = [];
 let filterText = '';
+const headerState = {};
 
 function renderWeek(week) {
   const container = document.getElementById('inventory');
@@ -135,7 +136,7 @@ function renderWeek(week) {
   renderItemsWithCategoryHeaders(filtered, container, item => {
     const amt = stockForWeek.get(item.name) || 0;
     return createItemRow(item.name, amt, item.unit, purchasesMap, week);
-  });
+  }, headerState);
 }
 
 async function init() {

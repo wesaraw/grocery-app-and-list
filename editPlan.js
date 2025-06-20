@@ -5,6 +5,7 @@ const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json
 const CONS_PATH = 'Required for grocery app/monthly_consumption_table.json';
 
 let filterText = '';
+const headerState = {};
 let allNeeds = [];
 let needsMap;
 let consMap;
@@ -103,8 +104,11 @@ async function init() {
       ? allNeeds.filter(n => n.name.toLowerCase().includes(filterText))
       : allNeeds;
     container.innerHTML = '';
-    renderItemsWithCategoryHeaders(arr, container, item =>
-      createRow(item, needsMap, consMap, needs, consumption)
+    renderItemsWithCategoryHeaders(
+      arr,
+      container,
+      item => createRow(item, needsMap, consMap, needs, consumption),
+      headerState
     );
   }
 

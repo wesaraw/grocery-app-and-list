@@ -9,33 +9,38 @@ export function sortItemsByCategory(arr) {
   });
 }
 
-export function renderItemsWithCategoryHeaders(items, container, renderFn) {
+export function renderItemsWithCategoryHeaders(
+  items,
+  container,
+  renderFn,
+  headerState = {}
+) {
   let lastCat = null;
   let header = null;
   let nodes = [];
 
-  function finalizeHeader() {
-    if (!header) return;
-    const curHeader = header;
-    const curNodes = [...nodes];
-    curHeader.dataset.hidden = 'true';
-    curNodes.forEach(n => {
-      n.style.display = 'none';
+  function finalizeHeader(cat, hdr, nodesForHeader) {
+    if (!hdr) return;
+    const hidden = headerState[cat] !== undefined ? headerState[cat] : true;
+    hdr.dataset.hidden = hidden ? 'true' : 'false';
+    nodesForHeader.forEach(n => {
+      n.style.display = hidden ? 'none' : '';
     });
-    curHeader.style.cursor = 'pointer';
-    curHeader.addEventListener('click', () => {
-      const hidden = curHeader.dataset.hidden === 'true';
-      curHeader.dataset.hidden = hidden ? 'false' : 'true';
-      curNodes.forEach(n => {
-        n.style.display = hidden ? '' : 'none';
+    hdr.style.cursor = 'pointer';
+    hdr.addEventListener('click', () => {
+      const isHidden = hdr.dataset.hidden === 'true';
+      hdr.dataset.hidden = isHidden ? 'false' : 'true';
+      nodesForHeader.forEach(n => {
+        n.style.display = isHidden ? '' : 'none';
       });
+      headerState[cat] = !isHidden;
     });
   }
 
   items.forEach(item => {
     const cat = item.category || 'Other';
     if (cat !== lastCat) {
-      finalizeHeader();
+      finalizeHeader(lastCat, header, nodes);
       lastCat = cat;
       header = document.createElement('h3');
       header.className = 'category-header';
@@ -49,5 +54,5 @@ export function renderItemsWithCategoryHeaders(items, container, renderFn) {
       container.appendChild(node);
     }
   });
-  finalizeHeader();
+  finalizeHeader(lastCat, header, nodes);
 }
