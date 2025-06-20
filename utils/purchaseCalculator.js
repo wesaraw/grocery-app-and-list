@@ -1,4 +1,4 @@
-import { getStockForWeek } from './timeline.js';
+import { getStockBeforeWeek } from './timeline.js';
 import { WEEKS_PER_MONTH } from './constants.js';
 
 export function calculatePurchaseNeeds(
@@ -12,7 +12,6 @@ export function calculatePurchaseNeeds(
 ) {
   const consMap = new Map(consumption.map(i => [i.name, i]));
   const expMap = new Map(expiration.map(i => [i.name, i]));
-  const consumedMap = new Map(consumedYear.map(i => [i.name, i]));
 
   const timelineItems = needs.map(item => ({
     name: item.name,
@@ -23,18 +22,29 @@ export function calculatePurchaseNeeds(
     starting_stock: stock.find(s => s.name === item.name)?.amount ?? 0
   }));
 
-  const futureStock = getStockForWeek(timelineItems, purchases, week);
-  const stockMap = new Map(futureStock.map(i => [i.name, i]));
+  const stockBefore = getStockBeforeWeek(timelineItems, purchases, week);
+  const stockMap = new Map(stockBefore.map(i => [i.name, i.amount]));
+
+  const weeksRemaining = 52 - week + 1;
+
+  const futurePurchasesMap = new Map();
+  Object.keys(purchases).forEach(name => {
+    const total = purchases[name]
+      .filter(p => p.purchase_week >= week)
+      .reduce((sum, p) => sum + (p.quantity_purchased || 0), 0);
+    futurePurchasesMap.set(name, total);
+  });
 
   return needs.map(item => {
-    const cons = consMap.get(item.name)?.monthly_consumption ?? 0;
-    const shelfLife = expMap.get(item.name)?.shelf_life_months ?? 12;
-    const current = stockMap.get(item.name)?.amount ?? 0;
-    const consumed = consumedMap.get(item.name)?.amount ?? 0;
+    const yearlyAmount =
+      item.total_needed_year ??
+      (consMap.get(item.name)?.monthly_consumption ?? 0) * 12;
 
-    const requiredForPeriod = cons * shelfLife;
-    const yearlyRemaining = (item.total_needed_year ?? requiredForPeriod) - consumed;
-    let toBuy = Math.min(requiredForPeriod, yearlyRemaining) - current;
+    const required = (yearlyAmount / 52) * weeksRemaining;
+
+    const onHand = (stockMap.get(item.name) || 0) + (futurePurchasesMap.get(item.name) || 0);
+
+    let toBuy = required - onHand;
     if (item.treat_as_whole_unit) {
       toBuy = Math.ceil(toBuy);
     }
