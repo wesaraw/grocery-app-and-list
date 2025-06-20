@@ -14,13 +14,13 @@ th, td { border: 1px solid #ccc; padding: 2px 4px; text-align: center; }
   background: #fff;
   z-index: 1;
 }
-tr:first-child th {
+thead th {
   position: sticky;
   top: 0;
   background: #fff;
   z-index: 2;
 }
-tr:first-child th.item-label {
+thead th.item-label {
   z-index: 3;
 }
 .green { background-color: #c8e6c9; }
