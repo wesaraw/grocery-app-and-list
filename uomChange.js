@@ -112,6 +112,10 @@ async function init() {
       : allNeeds;
     function finalizeHeader() {
       if (!headerRow) return;
+      headerRow.dataset.hidden = 'true';
+      itemRows.forEach(r => {
+        r.style.display = 'none';
+      });
       const th = headerRow.querySelector('.category-header');
       th.style.cursor = 'pointer';
       th.addEventListener('click', () => {
