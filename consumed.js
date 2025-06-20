@@ -8,6 +8,13 @@ const NEEDS_KEY = 'yearlyNeeds';
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 
+let filterText = '';
+let allNeeds = [];
+let globalMap;
+let globalHistory;
+let globalOverrides;
+let container;
+
 function loadNeeds() {
   return new Promise(async resolve => {
     chrome.storage.local.get(NEEDS_KEY, async data => {
@@ -159,31 +166,45 @@ function createItemRow(item, map, history, overrides, weekly) {
 }
 
 async function init() {
-  const container = document.getElementById('consumption');
+  container = document.getElementById('consumption');
   const [consumed, history, needs, overrides] = await Promise.all([
     loadConsumption(),
     loadHistory(),
     loadNeeds(),
     loadOverrides()
   ]);
-  const sortedNeeds = sortItemsByCategory(needs);
-  const map = new Map(consumed.map(i => [i.name, i]));
-  // ensure all needs exist
-  sortedNeeds.forEach(n => {
-    if (!map.has(n.name)) {
+  allNeeds = sortItemsByCategory(needs);
+  globalMap = new Map(consumed.map(i => [i.name, i]));
+  globalHistory = history;
+  globalOverrides = overrides;
+  allNeeds.forEach(n => {
+    if (!globalMap.has(n.name)) {
       const it = { name: n.name, amount: 0, unit: n.home_unit };
-      map.set(n.name, it);
+      globalMap.set(n.name, it);
       consumed.push(it);
     }
   });
-  // render in needs order
-  renderItemsWithCategoryHeaders(sortedNeeds, container, n => {
-    const item = map.get(n.name);
-    const weekly = n.total_needed_year ? n.total_needed_year / 52 : 0;
-    return createItemRow(item, map, history, overrides, weekly);
+
+  function render() {
+    container.innerHTML = '';
+    const filtered = filterText
+      ? allNeeds.filter(n => n.name.toLowerCase().includes(filterText))
+      : allNeeds;
+    renderItemsWithCategoryHeaders(filtered, container, n => {
+      const item = globalMap.get(n.name);
+      const weekly = n.total_needed_year ? n.total_needed_year / 52 : 0;
+      return createItemRow(item, globalMap, globalHistory, globalOverrides, weekly);
+    });
+  }
+
+  render();
+  await saveConsumption(Array.from(globalMap.values()));
+  await saveOverrides(globalOverrides);
+
+  document.getElementById('searchBox').addEventListener('input', () => {
+    filterText = document.getElementById('searchBox').value.trim().toLowerCase();
+    render();
   });
-  await saveConsumption(Array.from(map.values()));
-  await saveOverrides(overrides);
 }
 
 document.addEventListener('DOMContentLoaded', init);

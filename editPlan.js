@@ -4,6 +4,12 @@ import { sortItemsByCategory, renderItemsWithCategoryHeaders } from './utils/sor
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONS_PATH = 'Required for grocery app/monthly_consumption_table.json';
 
+let filterText = '';
+let allNeeds = [];
+let needsMap;
+let consMap;
+let container;
+
 function loadArray(key, path) {
   return new Promise(async resolve => {
     chrome.storage.local.get(key, async data => {
@@ -86,14 +92,27 @@ function createRow(item, needsMap, consMap, needsArr, consArr) {
 }
 
 async function init() {
-  const container = document.getElementById('plans');
+  container = document.getElementById('plans');
   const [needs, consumption] = await Promise.all([loadNeeds(), loadConsumption()]);
-  const sortedNeeds = sortItemsByCategory(needs);
-  const needsMap = new Map(needs.map(n => [n.name, n]));
-  const consMap = new Map(consumption.map(c => [c.name, c]));
-  renderItemsWithCategoryHeaders(sortedNeeds, container, item =>
-    createRow(item, needsMap, consMap, needs, consumption)
-  );
+  allNeeds = sortItemsByCategory(needs);
+  needsMap = new Map(needs.map(n => [n.name, n]));
+  consMap = new Map(consumption.map(c => [c.name, c]));
+
+  function render() {
+    const arr = filterText
+      ? allNeeds.filter(n => n.name.toLowerCase().includes(filterText))
+      : allNeeds;
+    container.innerHTML = '';
+    renderItemsWithCategoryHeaders(arr, container, item =>
+      createRow(item, needsMap, consMap, needs, consumption)
+    );
+  }
+
+  render();
+  document.getElementById('searchBox').addEventListener('input', () => {
+    filterText = document.getElementById('searchBox').value.trim().toLowerCase();
+    render();
+  });
 }
 
 document.addEventListener('DOMContentLoaded', init);

@@ -6,6 +6,11 @@ import {
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 
+let filterText = '';
+let allNeeds = [];
+let container;
+let couponsMap;
+
 function loadNeeds() {
   return new Promise(async resolve => {
     chrome.storage.local.get('yearlyNeeds', async data => {
@@ -165,13 +170,26 @@ function createRow(item, couponsMap) {
 }
 
 async function init() {
-  const container = document.getElementById('coupons');
+  container = document.getElementById('coupons');
   const [needs, coupons] = await Promise.all([loadNeeds(), loadCoupons()]);
-  const sortedNeeds = sortItemsByCategory(needs);
-  renderItemsWithCategoryHeaders(sortedNeeds, container, n =>
-    createRow(n, coupons)
-  );
-  await saveCoupons(coupons);
+  allNeeds = sortItemsByCategory(needs);
+  couponsMap = coupons;
+
+  function render() {
+    container.innerHTML = '';
+    const arr = filterText
+      ? allNeeds.filter(n => n.name.toLowerCase().includes(filterText))
+      : allNeeds;
+    renderItemsWithCategoryHeaders(arr, container, n => createRow(n, couponsMap));
+  }
+
+  render();
+  await saveCoupons(couponsMap);
+
+  document.getElementById('searchBox').addEventListener('input', () => {
+    filterText = document.getElementById('searchBox').value.trim().toLowerCase();
+    render();
+  });
 }
 
 document.addEventListener('DOMContentLoaded', init);

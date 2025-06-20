@@ -8,6 +8,10 @@ import { WEEKS_PER_MONTH } from './utils/constants.js';
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
 
+let filterText = '';
+let allNeeds = [];
+let container;
+
 function loadArray(key, path) {
   return new Promise(async resolve => {
     chrome.storage.local.get(key, async data => {
@@ -75,13 +79,27 @@ function createRow(item, expMap, expArr) {
 }
 
 async function init() {
+  container = document.getElementById('expirations');
   const [needs, expiration] = await Promise.all([loadNeeds(), loadExpiration()]);
-  const sortedNeeds = sortItemsByCategory(needs);
+  allNeeds = sortItemsByCategory(needs);
   const expMap = new Map(expiration.map(e => [e.name, e]));
-  const container = document.getElementById('expirations');
-  renderItemsWithCategoryHeaders(sortedNeeds, container, n =>
-    createRow(n, expMap, expiration)
-  );
+
+  function render() {
+    container.innerHTML = '';
+    const arr = filterText
+      ? allNeeds.filter(n => n.name.toLowerCase().includes(filterText))
+      : allNeeds;
+    renderItemsWithCategoryHeaders(arr, container, n =>
+      createRow(n, expMap, expiration)
+    );
+  }
+
+  render();
+
+  document.getElementById('searchBox').addEventListener('input', () => {
+    filterText = document.getElementById('searchBox').value.trim().toLowerCase();
+    render();
+  });
 }
 
 document.addEventListener('DOMContentLoaded', init);

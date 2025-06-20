@@ -100,6 +100,7 @@ let stockData = [];
 let consumedYearData = [];
 let purchasesData = {};
 let hideZeroItems = false;
+let filterText = '';
 
 function getFinal(itemName) {
   const key = `final_${encodeURIComponent(itemName)}`;
@@ -205,6 +206,7 @@ async function refreshNeeds(stock = stockData, consumed = consumedYearData) {
   );
   const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
   const stockMap = new Map(stock.map(i => [i.name, i]));
+  const text = filterText.trim().toLowerCase();
   needsData.forEach(item => {
     const rec = finalMap.get(item.name);
     if (rec && rec.btn) {
@@ -217,7 +219,9 @@ async function refreshNeeds(stock = stockData, consumed = consumedYearData) {
       const weekly = item.total_needed_year ? item.total_needed_year / 52 : 0;
       const showByStock = qty < weekly;
       const showByNeed = !hideZeroItems || (needAmt != null && needAmt > 0);
-      rec.li.style.display = showByStock && showByNeed ? 'list-item' : 'none';
+      const match = !text || item.name.toLowerCase().includes(text);
+      rec.li.style.display =
+        showByStock && showByNeed && match ? 'list-item' : 'none';
     }
   });
 }
@@ -490,3 +494,8 @@ document
   .getElementById('toggleZero')
   .addEventListener('click', toggleZeroItems);
 document.getElementById('toggleZero').textContent = 'Hide Zero Qty';
+
+document.getElementById('searchBox').addEventListener('input', () => {
+  filterText = document.getElementById('searchBox').value;
+  refreshNeeds();
+});

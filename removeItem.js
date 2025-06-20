@@ -11,6 +11,10 @@ const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
 const STORE_SELECTION_KEY = 'storeSelections';
 
+let filterText = '';
+let allItems = [];
+let ul;
+
 function loadArray(key, path) {
   return new Promise(async resolve => {
     chrome.storage.local.get(key, async data => {
@@ -161,12 +165,24 @@ function createListItem(name) {
 }
 
 async function init() {
+  ul = document.getElementById('items');
   const items = await loadNeeds();
-  const sortedItems = sortItemsByCategory(items);
-  const ul = document.getElementById('items');
-  renderItemsWithCategoryHeaders(sortedItems, ul, it =>
-    createListItem(it.name)
-  );
+  allItems = sortItemsByCategory(items);
+
+  function render() {
+    ul.innerHTML = '';
+    const arr = filterText
+      ? allItems.filter(it => it.name.toLowerCase().includes(filterText))
+      : allItems;
+    renderItemsWithCategoryHeaders(arr, ul, it => createListItem(it.name));
+  }
+
+  render();
+
+  document.getElementById('searchBox').addEventListener('input', () => {
+    filterText = document.getElementById('searchBox').value.trim().toLowerCase();
+    render();
+  });
 }
 
 document.addEventListener('DOMContentLoaded', init);
