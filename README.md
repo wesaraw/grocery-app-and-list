@@ -76,3 +76,28 @@ Chrome stores this data in a database under your profile directory. **It is tied
 ### Weeks per Month
 
 Several calculations convert monthly amounts to weekly values. The extension uses `4.33` weeks per month (stored in `utils/constants.js` as `WEEKS_PER_MONTH`) as a simple average.
+
+### Meal Lists
+
+Lunch and dinner meals share the same list. The app refers to this combined list
+as **Lunch/Dinner**, so plan your weekly meal counts accordingly. For example,
+there are typically 14 lunch/dinner spots in a week (7 lunches and 7 dinners),
+and the combined list covers all of them.
+
+### Meal Math
+
+Meal planning uses the following formula to determine how many times a meal is prepared:
+
+`A × (B × C) × 52` = yearly spots for the category
+
+`(yearly spots / D) / 12` = monthly spots for a single meal
+
+where:
+- `A` is the number of meals of that category served **per day**
+- `B` is the number of people eating that category
+- `C` is the number of days per week they eat it
+- `D` is the number of different meals in the category
+
+Multiply the monthly spots by an ingredient's serving size to get the monthly amount needed.
+
+The file `utils/mealMath.js` exposes helpers and a `DEFAULT_MEALS_PER_DAY` object. Lunch and dinner share the `lunchDinner` key. Its default value is `2` (two meals each day), but you can adjust these counts per person in the future.
