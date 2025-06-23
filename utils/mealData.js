@@ -4,15 +4,10 @@ export const MEAL_TYPES = {
     path: 'Required for grocery app/breakfast_meals.json',
     label: 'Breakfast'
   },
-  lunch: {
-    key: 'lunchMeals',
-    path: 'Required for grocery app/lunch_meals.json',
-    label: 'Lunch'
-  },
-  dinner: {
-    key: 'dinnerMeals',
-    path: 'Required for grocery app/dinner_meals.json',
-    label: 'Dinner'
+  lunchDinner: {
+    key: 'lunchDinnerMeals',
+    path: 'Required for grocery app/lunch_dinner_meals.json',
+    label: 'Lunch/Dinner'
   },
   snack: {
     key: 'snackMeals',
@@ -24,4 +19,12 @@ export const MEAL_TYPES = {
     path: 'Required for grocery app/dessert_meals.json',
     label: 'Dessert'
   }
+};
+
+// Default daily meal counts used by mealMath.js
+export const DEFAULT_MEALS_PER_DAY = {
+  breakfast: 1,
+  lunchDinner: 2, // lunch and dinner combined
+  snack: 1,
+  dessert: 1
 };
