@@ -11,3 +11,7 @@ document.getElementById('open-price-checker').addEventListener('click', () => {
 document.getElementById('open-inventory-timeline').addEventListener('click', () => {
   openWindow('inventoryTimeline.html');
 });
+
+document.getElementById('open-meal-planner').addEventListener('click', () => {
+  openWindow('mealPlanner.html');
+});
