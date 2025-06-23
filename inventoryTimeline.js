@@ -493,6 +493,9 @@ async function init() {
   document.getElementById('uomChange').addEventListener('click', () => {
     openOrFocusWindow('uomChange.html');
   });
+  document.getElementById('mealPlanner').addEventListener('click', () => {
+    openOrFocusWindow('mealPlanner.html');
+  });
 }
 
 document.addEventListener('DOMContentLoaded', init);
