@@ -149,6 +149,12 @@ function updateInventoryDisplay() {
 
 async function init() {
   document.getElementById('title').textContent = `${label} Meals`;
+  const addBtn = document.getElementById('addMeal');
+  if (addBtn) {
+    addBtn.addEventListener('click', () => {
+      openOrFocusWindow(`addMeal.html?type=${type}`);
+    });
+  }
   const tbody = document.getElementById('mealBody');
   const [meals, stock] = await Promise.all([loadMeals(), loadStock()]);
   inventorySet = new Set(stock.map(s => s.name));
