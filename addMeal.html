@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Add Meal</title>
+  <style>
+    body { font-family: Arial, sans-serif; width: 400px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #ccc; padding: 4px; }
+    input[type="text"], select { width: 100%; box-sizing: border-box; }
+    .error {
+      animation: blink-bg 1s ease-in-out 0s 2;
+      background-color: #ffcdd2;
+    }
+    @keyframes blink-bg {
+      0%, 100% { background-color: #ffcdd2; }
+      50% { background-color: #fff; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Add Meal</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Meal Name</th>
+        <th>Ingredient</th>
+        <th>Amount</th>
+        <th>Unit</th>
+      </tr>
+    </thead>
+    <tbody id="mealBody"></tbody>
+  </table>
+  <button id="submit">Submit</button>
+  <div id="warning" style="color:red; display:none;">Please complete all fields.</div>
+  <script type="module" src="addMeal.js"></script>
+</body>
+</html>

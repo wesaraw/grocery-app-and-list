@@ -1,0 +1,146 @@
+import { loadJSON } from './utils/dataLoader.js';
+import { MEAL_TYPES } from './utils/mealData.js';
+import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
+
+const MEAL_KEY = MEAL_TYPES.lunchDinner.key;
+const MEAL_PATH = MEAL_TYPES.lunchDinner.path;
+const UOM_PATH = 'Required for grocery app/uom_conversion_table.json';
+
+function loadMeals() {
+  return new Promise(async resolve => {
+    chrome.storage.local.get(MEAL_KEY, async data => {
+      if (data[MEAL_KEY]) {
+        resolve(data[MEAL_KEY]);
+      } else {
+        const arr = await loadJSON(MEAL_PATH);
+        resolve(arr);
+      }
+    });
+  });
+}
+
+function saveMeals(arr) {
+  return new Promise(resolve => {
+    chrome.storage.local.set({ [MEAL_KEY]: arr }, () => resolve());
+  });
+}
+
+async function loadUnits() {
+  const data = await loadJSON(UOM_PATH);
+  return Object.keys(data);
+}
+
+function createRow(units) {
+  const tr = document.createElement('tr');
+  const mealTd = document.createElement('td');
+  const mealInput = document.createElement('input');
+  mealInput.type = 'text';
+  mealTd.appendChild(mealInput);
+
+  const ingTd = document.createElement('td');
+  const ingInput = document.createElement('input');
+  ingInput.type = 'text';
+  ingTd.appendChild(ingInput);
+
+  const amtTd = document.createElement('td');
+  const amtInput = document.createElement('input');
+  amtInput.type = 'text';
+  amtTd.appendChild(amtInput);
+
+  const unitTd = document.createElement('td');
+  const select = document.createElement('select');
+  units.forEach(u => {
+    const opt = document.createElement('option');
+    opt.value = u;
+    opt.textContent = u;
+    select.appendChild(opt);
+  });
+  unitTd.appendChild(select);
+
+  tr.appendChild(mealTd);
+  tr.appendChild(ingTd);
+  tr.appendChild(amtTd);
+  tr.appendChild(unitTd);
+
+  return { tr, mealInput, ingInput, amtInput, select };
+}
+
+function highlightError(el) {
+  el.classList.add('error');
+  setTimeout(() => el.classList.remove('error'), 1000);
+}
+
+function anyFilled(row) {
+  return (
+    row.mealInput.value.trim() ||
+    row.ingInput.value.trim() ||
+    row.amtInput.value.trim()
+  );
+}
+
+async function init() {
+  const units = await loadUnits();
+  const tbody = document.getElementById('mealBody');
+  const rows = [];
+
+  function addRow() {
+    const row = createRow(units);
+    rows.push(row);
+    tbody.appendChild(row.tr);
+
+    function checkAddNext() {
+      if (rows[rows.length - 1] === row && anyFilled(row)) {
+        addRow();
+      }
+    }
+
+    row.mealInput.addEventListener('input', checkAddNext);
+    row.ingInput.addEventListener('input', checkAddNext);
+    row.amtInput.addEventListener('input', checkAddNext);
+    row.select.addEventListener('change', checkAddNext);
+  }
+
+  addRow();
+
+  document.getElementById('submit').addEventListener('click', async () => {
+    const validRows = [];
+    let hasError = false;
+    rows.forEach(row => {
+      const meal = row.mealInput.value.trim();
+      const ing = row.ingInput.value.trim();
+      const amt = row.amtInput.value.trim();
+      const unit = row.select.value;
+      if (!meal && !ing && !amt) {
+        return;
+      }
+      if (!meal || !ing || !amt) {
+        if (!meal) highlightError(row.mealInput);
+        if (!ing) highlightError(row.ingInput);
+        if (!amt) highlightError(row.amtInput);
+        hasError = true;
+        return;
+      }
+      validRows.push({ meal, ing, amt, unit });
+    });
+    if (hasError || !validRows.length) {
+      document.getElementById('warning').style.display = 'block';
+      return;
+    }
+    document.getElementById('warning').style.display = 'none';
+
+    const mealName = validRows[0].meal;
+    const ingredients = validRows.map(r => ({
+      name: r.ing,
+      amount: `${r.amt} ${r.unit}`,
+      serving_size: `${r.amt} ${r.unit}`
+    }));
+
+    const meals = await loadMeals();
+    meals.push({ name: mealName, ingredients });
+    await saveMeals(meals);
+    await calculateAndSaveMealNeeds();
+    window.close();
+  });
+}
+
+document.addEventListener('DOMContentLoaded', init);
