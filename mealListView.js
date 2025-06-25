@@ -1,5 +1,6 @@
 import { MEAL_TYPES } from './utils/mealData.js';
 import { loadJSON } from './utils/dataLoader.js';
+import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 
 const params = new URLSearchParams(location.search);
 const type = params.get('type') || 'breakfast';
@@ -33,6 +34,7 @@ function createRow(meal, arr) {
   chk.addEventListener('change', async () => {
     meal.active = chk.checked;
     await saveMeals(arr);
+    await calculateAndSaveMealNeeds();
   });
   useTd.appendChild(chk);
   const nameTd = document.createElement('td');
@@ -58,6 +60,7 @@ async function init() {
   meals.forEach(meal => {
     tbody.appendChild(createRow(meal, meals));
   });
+  await calculateAndSaveMealNeeds();
 }
 
 document.addEventListener('DOMContentLoaded', init);

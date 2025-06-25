@@ -51,12 +51,24 @@ function loadArray(key, path) {
   });
 }
 
+function loadStoredArray(key) {
+  return new Promise(resolve => {
+    chrome.storage.local.get(key, data => resolve(data[key] || []));
+  });
+}
+
 const loadConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
+const loadMealPlanMonth = () => loadStoredArray('mealPlanMonthly');
 const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
 const loadNeeds = () => loadArray('yearlyNeeds', NEEDS_PATH);
 
-function buildTimelineItems(stock, consumption, expiration) {
+function buildTimelineItems(stock, consumption, expiration, mealMonth) {
   const consMap = new Map(consumption.map(c => [c.name, c]));
+  (mealMonth || []).forEach(m => {
+    const rec = consMap.get(m.name);
+    if (rec) rec.monthly_consumption += m.monthly_consumption;
+    else consMap.set(m.name, { name: m.name, monthly_consumption: m.monthly_consumption });
+  });
   const expMap = new Map(expiration.map(e => [e.name, e]));
   return stock.map(s => ({
     name: s.name,
@@ -111,6 +123,7 @@ function createItemRow(name, amount, unit, purchasesMap, week) {
 let baseStock = [];
 let purchasesMap = {};
 let consumptionData = [];
+let mealMonthData = [];
 let expirationData = [];
 let categoryMap = new Map();
 let needsData = [];
@@ -123,7 +136,8 @@ function renderWeek(week) {
   const timelineItems = buildTimelineItems(
     baseStock,
     consumptionData,
-    expirationData
+    expirationData,
+    mealMonthData
   );
   const stockArr = getStockBeforeWeek(timelineItems, purchasesMap, week);
   const stockForWeek = new Map(stockArr.map(i => [i.name, i.amount]));
@@ -141,10 +155,11 @@ function renderWeek(week) {
 
 async function init() {
   const weekInput = document.getElementById('week-number');
-  [baseStock, purchasesMap, consumptionData, expirationData, needsData] = await Promise.all([
+  [baseStock, purchasesMap, consumptionData, mealMonthData, expirationData, needsData] = await Promise.all([
     loadStock(),
     loadPurchases(),
     loadConsumption(),
+    loadMealPlanMonth(),
     loadExpiration(),
     loadNeeds()
   ]);
