@@ -1,10 +1,15 @@
 import { MEAL_TYPES } from './utils/mealData.js';
 import { loadJSON } from './utils/dataLoader.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
+import { openOrFocusWindow } from './utils/windowUtils.js';
+
+const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 
 const params = new URLSearchParams(location.search);
 const type = params.get('type') || 'breakfast';
 const { key, path, label } = MEAL_TYPES[type] || MEAL_TYPES.breakfast;
+
+let inventorySet = new Set();
 
 function loadMeals() {
   return new Promise(async resolve => {
@@ -14,6 +19,19 @@ function loadMeals() {
       } else {
         const arr = await loadJSON(path);
         resolve(arr);
+      }
+    });
+  });
+}
+
+function loadStock() {
+  return new Promise(async resolve => {
+    chrome.storage.local.get('currentStock', async data => {
+      if (data.currentStock) {
+        resolve(data.currentStock);
+      } else {
+        const stock = await loadJSON(STOCK_PATH);
+        resolve(stock);
       }
     });
   });
@@ -58,8 +76,20 @@ function createRows(meal, arr) {
     const amtTd = document.createElement('td');
     amtTd.textContent = ing.amount || ing.serving_size || '';
 
+    const actionTd = document.createElement('td');
+    if (ing.name && !inventorySet.has(ing.name)) {
+      ingTd.style.color = 'red';
+      const btn = document.createElement('button');
+      btn.textContent = 'add';
+      btn.addEventListener('click', () => {
+        openOrFocusWindow(`addItem.html?name=${encodeURIComponent(ing.name)}`);
+      });
+      actionTd.appendChild(btn);
+    }
+
     tr.appendChild(ingTd);
     tr.appendChild(amtTd);
+    tr.appendChild(actionTd);
     rows.push(tr);
   });
 
@@ -79,10 +109,12 @@ function createRows(meal, arr) {
     nameTd.textContent = meal.name || '';
     const ingTd = document.createElement('td');
     const amtTd = document.createElement('td');
+    const actionTd = document.createElement('td');
     tr.appendChild(useTd);
     tr.appendChild(nameTd);
     tr.appendChild(ingTd);
     tr.appendChild(amtTd);
+    tr.appendChild(actionTd);
     rows.push(tr);
   }
 
@@ -92,7 +124,8 @@ function createRows(meal, arr) {
 async function init() {
   document.getElementById('title').textContent = `${label} Meals`;
   const tbody = document.getElementById('mealBody');
-  const meals = await loadMeals();
+  const [meals, stock] = await Promise.all([loadMeals(), loadStock()]);
+  inventorySet = new Set(stock.map(s => s.name));
   meals.forEach(meal => {
     const rows = createRows(meal, meals);
     rows.forEach(row => tbody.appendChild(row));

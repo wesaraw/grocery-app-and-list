@@ -47,6 +47,14 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('monthly').placeholder = DEFAULTS.monthly;
   document.getElementById('shelf').placeholder = DEFAULTS.shelf;
   document.getElementById('week').placeholder = getCurrentWeek();
+
+  const params = new URLSearchParams(location.search);
+  const name = params.get('name');
+  if (name) {
+    document.getElementById('name').value = name;
+    const nameEl = document.getElementById('name');
+    nameEl.focus();
+  }
 });
 
 function loadArray(key, path) {
