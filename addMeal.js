@@ -2,8 +2,10 @@ import { loadJSON } from './utils/dataLoader.js';
 import { MEAL_TYPES } from './utils/mealData.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 
-const MEAL_KEY = MEAL_TYPES.lunchDinner.key;
-const MEAL_PATH = MEAL_TYPES.lunchDinner.path;
+const params = new URLSearchParams(location.search);
+const mealType = params.get('type') || 'lunchDinner';
+const { key: MEAL_KEY, path: MEAL_PATH, label } =
+  MEAL_TYPES[mealType] || MEAL_TYPES.lunchDinner;
 const UOM_PATH = 'Required for grocery app/uom_conversion_table.json';
 
 function loadMeals() {
@@ -79,6 +81,8 @@ function anyFilled(row) {
 }
 
 async function init() {
+  const titleEl = document.getElementById('title');
+  if (titleEl) titleEl.textContent = `Add ${label} Meal`;
   const units = await loadUnits();
   const tbody = document.getElementById('mealBody');
   const rows = [];
