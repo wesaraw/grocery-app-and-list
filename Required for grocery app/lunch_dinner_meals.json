@@ -1,1 +1,239 @@
-[]
+[
+  {
+    "name": "Lemon Herb Chicken",
+    "ingredients": [
+      {"name": "Olive Oil", "amount": "1 tbsp", "serving_size": "1 tbsp"},
+      {"name": "Lemon Juice", "amount": "1 tsp", "serving_size": "1 tsp"},
+      {"name": "Dried Thyme", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Garlic Powder", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Salt", "amount": "pinch", "serving_size": "pinch"},
+      {"name": "Black Pepper", "amount": "pinch", "serving_size": "pinch"},
+      {"name": "Baby Potatoes", "amount": "1 cup", "serving_size": "1 cup"},
+      {"name": "Green Beans", "amount": "1 cup", "serving_size": "1 cup"},
+      {"name": "Butter", "amount": "1 tbsp", "serving_size": "1 tbsp"},
+      {"name": "Garlic", "amount": "1 clove", "serving_size": "1 clove"}
+    ]
+  },
+  {
+    "name": "Honey Garlic Chicken",
+    "ingredients": [
+      {"name": "Soy Sauce", "amount": "1 tbsp", "serving_size": "1 tbsp"},
+      {"name": "Honey", "amount": "1 tbsp", "serving_size": "1 tbsp"},
+      {"name": "Garlic Powder", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Chili Flakes", "amount": "pinch", "serving_size": "pinch"},
+      {"name": "White Rice", "amount": "1/2 cup", "serving_size": "1/2 cup"},
+      {"name": "Carrots", "amount": "1/2 cup", "serving_size": "1/2 cup"},
+      {"name": "Sugar Snap Peas", "amount": "1/2 cup", "serving_size": "1/2 cup"},
+      {"name": "Soy Sauce", "amount": "1 tsp", "serving_size": "1 tsp"},
+      {"name": "Oil", "amount": "1 tsp", "serving_size": "1 tsp"}
+    ]
+  },
+  {
+    "name": "Cajun-Spiced Chicken",
+    "ingredients": [
+      {"name": "Cajun Seasoning", "amount": "1 tsp", "serving_size": "1 tsp"},
+      {"name": "Paprika", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Garlic Powder", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Oil", "amount": "1 tsp", "serving_size": "1 tsp"},
+      {"name": "Red Beans", "amount": "1/2 cup", "serving_size": "1/2 cup"},
+      {"name": "Corn", "amount": "1 ear", "serving_size": "1 ear"},
+      {"name": "Cumin", "amount": "1/4 tsp", "serving_size": "1/4 tsp"},
+      {"name": "Garlic", "amount": "1 clove", "serving_size": "1 clove"},
+      {"name": "Oil", "amount": "1 tsp", "serving_size": "1 tsp"}
+    ]
+  },
+  {
+    "name": "BBQ Chicken",
+    "ingredients": [
+      {"name": "BBQ Sauce", "amount": "1 tbsp", "serving_size": "1 tbsp"},
+      {"name": "Smoked Paprika", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Garlic Powder", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Sweet Potato", "amount": "1 medium", "serving_size": "1 medium"},
+      {"name": "Oil", "amount": "1 tsp", "serving_size": "1 tsp"},
+      {"name": "Coleslaw Mix", "amount": "1 cup", "serving_size": "1 cup"},
+      {"name": "Mayonnaise", "amount": "1 tbsp", "serving_size": "1 tbsp"},
+      {"name": "Vinegar", "amount": "1 tsp", "serving_size": "1 tsp"}
+    ]
+  },
+  {
+    "name": "Teriyaki Chicken",
+    "ingredients": [
+      {"name": "Teriyaki Sauce", "amount": "1 tbsp", "serving_size": "1 tbsp"},
+      {"name": "Sesame Oil", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Garlic", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Ginger", "amount": "pinch", "serving_size": "pinch"},
+      {"name": "Cooked Rice", "amount": "1/2 cup", "serving_size": "1/2 cup"},
+      {"name": "Egg", "amount": "1", "serving_size": "1"},
+      {"name": "Frozen Peas", "amount": "1/4 cup", "serving_size": "1/4 cup"},
+      {"name": "Soy Sauce", "amount": "1 tbsp", "serving_size": "1 tbsp"},
+      {"name": "Sesame Oil", "amount": "1 tsp", "serving_size": "1 tsp"}
+    ]
+  },
+  {
+    "name": "Chicken Tikka",
+    "ingredients": [
+      {"name": "Plain Yogurt", "amount": "1 tbsp", "serving_size": "1 tbsp"},
+      {"name": "Garam Masala", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Paprika", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Turmeric", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Garlic Ginger Paste", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Salt", "amount": "pinch", "serving_size": "pinch"},
+      {"name": "Red Lentils", "amount": "1/2 cup", "serving_size": "1/2 cup"},
+      {"name": "Turmeric", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Cumin", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Onion", "amount": "1/2", "serving_size": "1/2"},
+      {"name": "Garlic", "amount": "1 clove", "serving_size": "1 clove"},
+      {"name": "Flatbread", "amount": "1", "serving_size": "1"}
+    ]
+  },
+  {
+    "name": "Garlic Parmesan Chicken",
+    "ingredients": [
+      {"name": "Olive Oil", "amount": "1 tbsp", "serving_size": "1 tbsp"},
+      {"name": "Garlic Powder", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Parmesan Cheese", "amount": "1 tbsp", "serving_size": "1 tbsp"},
+      {"name": "Parsley", "amount": "dash", "serving_size": "dash"},
+      {"name": "Pasta", "amount": "1/2 cup", "serving_size": "1/2 cup"},
+      {"name": "Butter", "amount": "1 tbsp", "serving_size": "1 tbsp"},
+      {"name": "Lemon Juice", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Spinach", "amount": "1 cup", "serving_size": "1 cup"}
+    ]
+  },
+  {
+    "name": "Buffalo Chicken",
+    "ingredients": [
+      {"name": "Hot Sauce", "amount": "1 tbsp", "serving_size": "1 tbsp"},
+      {"name": "Butter", "amount": "1/2 tbsp", "serving_size": "1/2 tbsp"},
+      {"name": "Garlic Powder", "amount": "1/4 tsp", "serving_size": "1/4 tsp"},
+      {"name": "Cauliflower", "amount": "1/2 cup", "serving_size": "1/2 cup"},
+      {"name": "Broccoli", "amount": "1/2 cup", "serving_size": "1/2 cup"},
+      {"name": "Oil", "amount": "1 tbsp", "serving_size": "1 tbsp"},
+      {"name": "Ranch Dressing", "amount": "1 tbsp", "serving_size": "1 tbsp"}
+    ]
+  },
+  {
+    "name": "Greek Yogurt Chicken",
+    "ingredients": [
+      {"name": "Greek Yogurt", "amount": "1 tbsp", "serving_size": "1 tbsp"},
+      {"name": "Lemon Juice", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Oregano", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Garlic Powder", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Cucumber", "amount": "1/2", "serving_size": "1/2"},
+      {"name": "Tomato", "amount": "1", "serving_size": "1"},
+      {"name": "Red Onion", "amount": "1/4", "serving_size": "1/4"},
+      {"name": "Vinegar", "amount": "1 tsp", "serving_size": "1 tsp"},
+      {"name": "Pita", "amount": "1", "serving_size": "1"}
+    ]
+  },
+  {
+    "name": "Korean Gochujang Chicken",
+    "ingredients": [
+      {"name": "Gochujang", "amount": "1 tsp", "serving_size": "1 tsp"},
+      {"name": "Soy Sauce", "amount": "1/2 tbsp", "serving_size": "1/2 tbsp"},
+      {"name": "Honey", "amount": "1 tsp", "serving_size": "1 tsp"},
+      {"name": "Garlic", "amount": "1/4 tsp", "serving_size": "1/4 tsp"},
+      {"name": "Cooked Rice", "amount": "1/2 cup", "serving_size": "1/2 cup"},
+      {"name": "Kimchi", "amount": "1/4 cup", "serving_size": "1/4 cup"},
+      {"name": "Sesame Oil", "amount": "1 tsp", "serving_size": "1 tsp"},
+      {"name": "Egg", "amount": "1", "serving_size": "1"}
+    ]
+  },
+  {
+    "name": "Chimichurri Chicken",
+    "ingredients": [
+      {"name": "Parsley", "amount": "1 tbsp", "serving_size": "1 tbsp"},
+      {"name": "Red Wine Vinegar", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Garlic", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Olive Oil", "amount": "1 tbsp", "serving_size": "1 tbsp"},
+      {"name": "Chili Flakes", "amount": "pinch", "serving_size": "pinch"},
+      {"name": "Black Beans", "amount": "1/2 cup", "serving_size": "1/2 cup"},
+      {"name": "Bell Pepper", "amount": "1/2", "serving_size": "1/2"},
+      {"name": "Lime Juice", "amount": "1 tsp", "serving_size": "1 tsp"}
+    ]
+  },
+  {
+    "name": "Italian Balsamic Chicken",
+    "ingredients": [
+      {"name": "Balsamic Vinegar", "amount": "1 tbsp", "serving_size": "1 tbsp"},
+      {"name": "Olive Oil", "amount": "1 tsp", "serving_size": "1 tsp"},
+      {"name": "Italian Seasoning", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Garlic Powder", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Zucchini", "amount": "1 small", "serving_size": "1 small"},
+      {"name": "Orzo", "amount": "1/2 cup", "serving_size": "1/2 cup"},
+      {"name": "Olive Oil", "amount": "1 tbsp", "serving_size": "1 tbsp"}
+    ]
+  },
+  {
+    "name": "Pineapple Soy Chicken",
+    "ingredients": [
+      {"name": "Pineapple Juice", "amount": "1 tbsp", "serving_size": "1 tbsp"},
+      {"name": "Soy Sauce", "amount": "1 tsp", "serving_size": "1 tsp"},
+      {"name": "Garlic", "amount": "1/4 tsp", "serving_size": "1/4 tsp"},
+      {"name": "Ginger Powder", "amount": "1/4 tsp", "serving_size": "1/4 tsp"},
+      {"name": "Rice", "amount": "1/2 cup", "serving_size": "1/2 cup"},
+      {"name": "Coconut Milk", "amount": "1/4 cup", "serving_size": "1/4 cup"},
+      {"name": "Bok Choy", "amount": "1 cup", "serving_size": "1 cup"}
+    ]
+  },
+  {
+    "name": "Moroccan-Spiced Chicken",
+    "ingredients": [
+      {"name": "Olive Oil", "amount": "1 tsp", "serving_size": "1 tsp"},
+      {"name": "Cinnamon", "amount": "1/4 tsp", "serving_size": "1/4 tsp"},
+      {"name": "Cumin", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Paprika", "amount": "1/4 tsp", "serving_size": "1/4 tsp"},
+      {"name": "Salt", "amount": "pinch", "serving_size": "pinch"},
+      {"name": "Couscous", "amount": "1/2 cup", "serving_size": "1/2 cup"},
+      {"name": "Raisins", "amount": "1 tbsp", "serving_size": "1 tbsp"},
+      {"name": "Carrots", "amount": "1/2 cup", "serving_size": "1/2 cup"},
+      {"name": "Honey", "amount": "1 tsp", "serving_size": "1 tsp"}
+    ]
+  },
+  {
+    "name": "Ranch-Dusted Chicken",
+    "ingredients": [
+      {"name": "Ranch Seasoning Mix", "amount": "1 tsp", "serving_size": "1 tsp"},
+      {"name": "Oil", "amount": "1 tsp", "serving_size": "1 tsp"},
+      {"name": "Potato", "amount": "1 medium", "serving_size": "1 medium"},
+      {"name": "Butter", "amount": "1 tbsp", "serving_size": "1 tbsp"},
+      {"name": "Frozen Peas & Corn", "amount": "1/2 cup", "serving_size": "1/2 cup"}
+    ]
+  },
+  {
+    "name": "Jamaican Jerk Chicken",
+    "ingredients": [
+      {"name": "Jerk Seasoning", "amount": "1 tsp", "serving_size": "1 tsp"},
+      {"name": "Brown Sugar", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Lime Juice", "amount": "1 tsp", "serving_size": "1 tsp"},
+      {"name": "Oil", "amount": "1 tsp", "serving_size": "1 tsp"},
+      {"name": "Rice", "amount": "1/2 cup", "serving_size": "1/2 cup"},
+      {"name": "Kidney Beans", "amount": "1/2 cup", "serving_size": "1/2 cup"},
+      {"name": "Plantain", "amount": "1 small", "serving_size": "1 small"}
+    ]
+  },
+  {
+    "name": "Mustard Dill Chicken",
+    "ingredients": [
+      {"name": "Dijon Mustard", "amount": "1 tsp", "serving_size": "1 tsp"},
+      {"name": "Dill", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Vinegar", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Oil", "amount": "1 tsp", "serving_size": "1 tsp"},
+      {"name": "Egg Noodles", "amount": "1/2 cup", "serving_size": "1/2 cup"},
+      {"name": "Brussels Sprouts", "amount": "1 cup", "serving_size": "1 cup"},
+      {"name": "Butter", "amount": "1 tbsp", "serving_size": "1 tbsp"}
+    ]
+  },
+  {
+    "name": "Coconut Curry Chicken",
+    "ingredients": [
+      {"name": "Coconut Milk", "amount": "1 tbsp", "serving_size": "1 tbsp"},
+      {"name": "Curry Powder", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Garlic", "amount": "1/4 tsp", "serving_size": "1/4 tsp"},
+      {"name": "Oil", "amount": "1/2 tsp", "serving_size": "1/2 tsp"},
+      {"name": "Basmati Rice", "amount": "1/2 cup", "serving_size": "1/2 cup"},
+      {"name": "Chickpeas", "amount": "1/2 cup", "serving_size": "1/2 cup"},
+      {"name": "Spinach", "amount": "1 cup", "serving_size": "1 cup"},
+      {"name": "Cumin", "amount": "1/2 tsp", "serving_size": "1/2 tsp"}
+    ]
+  }
+]
