@@ -2,7 +2,6 @@ import { loadJSON } from './utils/dataLoader.js';
 import { sortItemsByCategory } from './utils/sortByCategory.js';
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
-const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 
 let filterText = '';
@@ -95,9 +94,8 @@ function addCategoryRow(tbody, cat) {
 }
 
 async function init() {
-  [needs, consumption, stock] = await Promise.all([
+  [needs, stock] = await Promise.all([
     loadArray('yearlyNeeds', NEEDS_PATH),
-    loadArray('monthlyConsumption', CONSUMPTION_PATH),
     loadArray('currentStock', STOCK_PATH)
   ]);
   tbody = document.getElementById('uom-list');
@@ -176,7 +174,6 @@ async function saveRow(row) {
 
   await Promise.all([
     save('yearlyNeeds', needs),
-    save('monthlyConsumption', consumption),
     save('currentStock', stock)
   ]);
   row.saveBtn.classList.add('hidden');

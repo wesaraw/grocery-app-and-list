@@ -7,7 +7,6 @@ import {
 } from './utils/sortByCategory.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
-const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 
@@ -57,23 +56,17 @@ function loadStoredArray(key) {
   });
 }
 
-const loadConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
-const loadMealPlanMonth = () => loadStoredArray('mealPlanMonthly');
+const loadMealPlanYear = () => loadStoredArray('mealPlanYearly');
 const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
 const loadNeeds = () => loadArray('yearlyNeeds', NEEDS_PATH);
 
-function buildTimelineItems(stock, consumption, expiration, mealMonth) {
-  const consMap = new Map(consumption.map(c => [c.name, c]));
-  (mealMonth || []).forEach(m => {
-    const rec = consMap.get(m.name);
-    if (rec) rec.monthly_consumption += m.monthly_consumption;
-    else consMap.set(m.name, { name: m.name, monthly_consumption: m.monthly_consumption });
-  });
+function buildTimelineItems(stock, expiration, mealYear) {
+  const mealMap = new Map((mealYear || []).map(m => [m.name, m.total_needed_year]));
   const expMap = new Map(expiration.map(e => [e.name, e]));
   return stock.map(s => ({
     name: s.name,
     weekly_consumption:
-      (consMap.get(s.name)?.monthly_consumption || 0) / WEEKS_PER_MONTH,
+      ((mealMap.get(s.name) || 0) + (needsData.find(n => n.name === s.name)?.total_needed_year || 0)) / 52,
     expiration_weeks:
       (expMap.get(s.name)?.shelf_life_months || 12) * WEEKS_PER_MONTH,
     starting_stock: s.amount
@@ -122,8 +115,7 @@ function createItemRow(name, amount, unit, purchasesMap, week) {
 
 let baseStock = [];
 let purchasesMap = {};
-let consumptionData = [];
-let mealMonthData = [];
+let mealYearData = [];
 let expirationData = [];
 let categoryMap = new Map();
 let needsData = [];
@@ -135,9 +127,8 @@ function renderWeek(week) {
   container.innerHTML = '';
   const timelineItems = buildTimelineItems(
     baseStock,
-    consumptionData,
     expirationData,
-    mealMonthData
+    mealYearData
   );
   const stockArr = getStockBeforeWeek(timelineItems, purchasesMap, week);
   const stockForWeek = new Map(stockArr.map(i => [i.name, i.amount]));
@@ -155,11 +146,10 @@ function renderWeek(week) {
 
 async function init() {
   const weekInput = document.getElementById('week-number');
-  [baseStock, purchasesMap, consumptionData, mealMonthData, expirationData, needsData] = await Promise.all([
+  [baseStock, purchasesMap, mealYearData, expirationData, needsData] = await Promise.all([
     loadStock(),
     loadPurchases(),
-    loadConsumption(),
-    loadMealPlanMonth(),
+    loadMealPlanYear(),
     loadExpiration(),
     loadNeeds()
   ]);

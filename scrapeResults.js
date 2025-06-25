@@ -2,7 +2,6 @@ import { loadJSON } from './utils/dataLoader.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
-const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
 
 function loadArray(key, path) {
   return new Promise(async resolve => {
@@ -18,10 +17,8 @@ function loadArray(key, path) {
 }
 
 const loadNeeds = () => loadArray('yearlyNeeds', YEARLY_NEEDS_PATH);
-const loadMonthlyConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
 
 let needsData = [];
-let consumptionMap = new Map();
 
 function getPackCount(product) {
   let m = product?.name?.match(/(\d+)\s*(?:pk|pack|ct|count)/i);
@@ -86,11 +83,12 @@ function homeUnitLabel(itemName) {
 }
 
 function monthlyCost(itemName, product) {
-  const cons = consumptionMap.get(itemName);
-  if (!cons) return null;
+  const item = needsData.find(n => n.name === itemName);
+  if (!item) return null;
   const unitPrice = pricePerHomeUnit(itemName, product);
   if (unitPrice == null) return null;
-  return unitPrice * (cons.monthly_consumption || 0);
+  const monthlyNeed = item.total_needed_year ? item.total_needed_year / 12 : 0;
+  return unitPrice * monthlyNeed;
 }
 
 function storageKey(type, item, store) {
@@ -187,15 +185,13 @@ title.textContent = `${item} - ${store}`;
 
 async function init() {
   await initUomTable();
-  const [products, coupons, needs, consumption] = await Promise.all([
+  const [products, coupons, needs] = await Promise.all([
     loadProducts(item, store),
     loadCoupons(),
-    loadNeeds(),
-    loadMonthlyConsumption()
+    loadNeeds()
   ]);
 
   needsData = needs;
-  consumptionMap = new Map(consumption.map(c => [c.name, c]));
 
   const week = getCurrentWeek();
   const adjusted = products.map(p => applyCoupon(p, coupons[item], week, store));

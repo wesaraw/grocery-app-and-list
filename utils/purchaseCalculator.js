@@ -3,20 +3,18 @@ import { WEEKS_PER_MONTH } from './constants.js';
 
 export function calculatePurchaseNeeds(
   needs,
-  consumption,
+  _consumption,
   stock,
   expiration,
   consumedYear = [],
   purchases = {},
   week = 1
 ) {
-  const consMap = new Map(consumption.map(i => [i.name, i]));
   const expMap = new Map(expiration.map(i => [i.name, i]));
 
   const timelineItems = needs.map(item => ({
     name: item.name,
-    weekly_consumption:
-      (consMap.get(item.name)?.monthly_consumption ?? 0) / WEEKS_PER_MONTH,
+    weekly_consumption: (item.total_needed_year || 0) / 52,
     expiration_weeks:
       (expMap.get(item.name)?.shelf_life_months ?? 12) * WEEKS_PER_MONTH,
     starting_stock: stock.find(s => s.name === item.name)?.amount ?? 0
@@ -48,9 +46,7 @@ export function calculatePurchaseNeeds(
   });
 
   return needs.map(item => {
-    const yearlyAmount =
-      item.total_needed_year ??
-      (consMap.get(item.name)?.monthly_consumption ?? 0) * 12;
+    const yearlyAmount = item.total_needed_year || 0;
 
     const required = (yearlyAmount / 52) * weeksRemaining;
 
@@ -58,8 +54,7 @@ export function calculatePurchaseNeeds(
       (stockMap.get(item.name) || 0) + (futurePurchasesMap.get(item.name) || 0);
 
     // calculate gating amount based on expiration
-    const weeklyCons =
-      (consMap.get(item.name)?.monthly_consumption ?? 0) / WEEKS_PER_MONTH;
+    const weeklyCons = yearlyAmount / 52;
     const expWeeks =
       (expMap.get(item.name)?.shelf_life_months ?? 12) * WEEKS_PER_MONTH;
     const horizon = week + Math.ceil(expWeeks);
