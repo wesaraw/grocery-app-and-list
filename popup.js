@@ -9,7 +9,6 @@ import {
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
-const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
 const CONSUMED_PATH = 'consumedThisYear';
@@ -40,7 +39,6 @@ function loadArray(key, path) {
 }
 
 const loadNeeds = () => loadArray('yearlyNeeds', YEARLY_NEEDS_PATH);
-const loadMonthlyConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
 const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
 
 async function loadStock() {
@@ -78,23 +76,21 @@ async function loadConsumed() {
 }
 
 async function getData() {
-  const [needs, selections, consumption, stock, expiration, consumed, purchases] =
+  const [needs, selections, stock, expiration, consumed, purchases] =
     await Promise.all([
       loadNeeds(),
       loadJSON(STORE_SELECTION_PATH),
-      loadMonthlyConsumption(),
       loadStock(),
       loadExpiration(),
       loadConsumed(),
       loadPurchases()
     ]);
-  return { needs, selections, consumption, stock, expiration, consumed, purchases };
+  return { needs, selections, stock, expiration, consumed, purchases };
 }
 
 const finalMap = new Map();
 let needsData = [];
-let consumptionData = [];
-let consumptionMap = new Map();
+
 let expirationData = [];
 let stockData = [];
 let consumedYearData = [];
@@ -119,12 +115,10 @@ function getFinalProduct(itemName) {
 
 async function init() {
   await initUomTable();
-  const { needs, selections, consumption, stock, expiration, consumed, purchases } =
+  const { needs, selections, stock, expiration, consumed, purchases } =
     await getData();
   needsData = needs;
   const sortedNeeds = sortItemsByCategory(needs);
-  consumptionData = consumption;
-  consumptionMap = new Map(consumption.map(c => [c.name, c]));
   expirationData = expiration;
   stockData = stock;
   consumedYearData = consumed;
@@ -132,7 +126,7 @@ async function init() {
   const week = getCurrentWeek();
   const purchaseInfo = calculatePurchaseNeeds(
     needs,
-    consumption,
+    [],
     stock,
     expiration,
     consumed,
@@ -198,7 +192,7 @@ async function refreshNeeds(stock = stockData, consumed = consumedYearData) {
   stockData = stock;
   const purchaseInfo = calculatePurchaseNeeds(
     needsData,
-    consumptionData,
+    [],
     stock,
     expirationData,
     consumed,
@@ -255,7 +249,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   });
   if (
     area === 'local' &&
-    (changes.yearlyNeeds || changes.monthlyConsumption || changes.expirationData)
+    (changes.yearlyNeeds || changes.expirationData)
   ) {
     location.reload();
   }
@@ -316,11 +310,12 @@ function pricePerHomeUnit(itemName, product) {
 }
 
 function monthlyCost(itemName, product) {
-  const cons = consumptionMap.get(itemName);
-  if (!cons) return null;
+  const item = needsData.find(n => n.name === itemName);
+  if (!item) return null;
   const unitPrice = pricePerHomeUnit(itemName, product);
   if (unitPrice == null) return null;
-  return unitPrice * (cons.monthly_consumption || 0);
+  const monthlyNeed = item.total_needed_year ? item.total_needed_year / 12 : 0;
+  return unitPrice * monthlyNeed;
 }
 
 function formatFinalText(itemName, store, product) {
@@ -483,6 +478,12 @@ function openUomChange() {
 document
   .getElementById('uomChange')
   .addEventListener('click', openUomChange);
+
+function openSettings() {
+  openOrFocusWindow('settings.html');
+}
+
+document.getElementById('settingsBtn').addEventListener('click', openSettings);
 
 function toggleZeroItems() {
   hideZeroItems = !hideZeroItems;

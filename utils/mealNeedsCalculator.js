@@ -53,28 +53,23 @@ export async function calculateAndSaveMealNeeds() {
   Object.keys(monthlyMap).forEach(name => {
     yearlyMap[name] = monthlyMap[name] * 12;
   });
-  const monthlyArr = Object.entries(monthlyMap).map(([name, monthly_consumption]) => ({
-    name,
-    monthly_consumption
-  }));
   const yearlyArr = Object.entries(yearlyMap).map(([name, total_needed_year]) => ({
     name,
     total_needed_year
   }));
   await new Promise(resolve => {
     chrome.storage.local.set(
-      { mealPlanMonthly: monthlyArr, mealPlanYearly: yearlyArr },
+      { mealPlanYearly: yearlyArr },
       () => resolve()
     );
   });
-  return { monthlyArr, yearlyArr };
+  return { yearlyArr };
 }
 
 export function loadMealPlanData() {
   return new Promise(resolve => {
-    chrome.storage.local.get(['mealPlanMonthly', 'mealPlanYearly'], data => {
+    chrome.storage.local.get(['mealPlanYearly'], data => {
       resolve({
-        monthly: data.mealPlanMonthly || [],
         yearly: data.mealPlanYearly || []
       });
     });
