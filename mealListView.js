@@ -25,32 +25,68 @@ function saveMeals(arr) {
   });
 }
 
-function createRow(meal, arr) {
-  const tr = document.createElement('tr');
-  const useTd = document.createElement('td');
-  const chk = document.createElement('input');
-  chk.type = 'checkbox';
-  chk.checked = meal.active !== false;
-  chk.addEventListener('change', async () => {
-    meal.active = chk.checked;
-    await saveMeals(arr);
-    await calculateAndSaveMealNeeds();
+function createRows(meal, arr) {
+  const rows = [];
+  const ingredients = meal.ingredients || [];
+
+  ingredients.forEach((ing, idx) => {
+    const tr = document.createElement('tr');
+    if (idx === 0) {
+      const useTd = document.createElement('td');
+      const chk = document.createElement('input');
+      chk.type = 'checkbox';
+      chk.checked = meal.active !== false;
+      chk.addEventListener('change', async () => {
+        meal.active = chk.checked;
+        await saveMeals(arr);
+        await calculateAndSaveMealNeeds();
+      });
+      useTd.appendChild(chk);
+      if (ingredients.length > 1) useTd.rowSpan = ingredients.length;
+
+      const nameTd = document.createElement('td');
+      nameTd.textContent = meal.name || '';
+      if (ingredients.length > 1) nameTd.rowSpan = ingredients.length;
+
+      tr.appendChild(useTd);
+      tr.appendChild(nameTd);
+    }
+
+    const ingTd = document.createElement('td');
+    ingTd.textContent = ing.name || '';
+
+    const amtTd = document.createElement('td');
+    amtTd.textContent = ing.amount || ing.serving_size || '';
+
+    tr.appendChild(ingTd);
+    tr.appendChild(amtTd);
+    rows.push(tr);
   });
-  useTd.appendChild(chk);
-  const nameTd = document.createElement('td');
-  nameTd.textContent = meal.name || '';
-  const ingTd = document.createElement('td');
-  ingTd.textContent = (meal.ingredients || []).map(i => i.name).join(', ');
-  const amtTd = document.createElement('td');
-  amtTd.textContent = (meal.ingredients || []).map(i => i.amount).join(', ');
-  const servTd = document.createElement('td');
-  servTd.textContent = (meal.ingredients || []).map(i => i.serving_size).join(', ');
-  tr.appendChild(useTd);
-  tr.appendChild(nameTd);
-  tr.appendChild(ingTd);
-  tr.appendChild(amtTd);
-  tr.appendChild(servTd);
-  return tr;
+
+  if (ingredients.length === 0) {
+    const tr = document.createElement('tr');
+    const useTd = document.createElement('td');
+    const chk = document.createElement('input');
+    chk.type = 'checkbox';
+    chk.checked = meal.active !== false;
+    chk.addEventListener('change', async () => {
+      meal.active = chk.checked;
+      await saveMeals(arr);
+      await calculateAndSaveMealNeeds();
+    });
+    useTd.appendChild(chk);
+    const nameTd = document.createElement('td');
+    nameTd.textContent = meal.name || '';
+    const ingTd = document.createElement('td');
+    const amtTd = document.createElement('td');
+    tr.appendChild(useTd);
+    tr.appendChild(nameTd);
+    tr.appendChild(ingTd);
+    tr.appendChild(amtTd);
+    rows.push(tr);
+  }
+
+  return rows;
 }
 
 async function init() {
@@ -58,7 +94,8 @@ async function init() {
   const tbody = document.getElementById('mealBody');
   const meals = await loadMeals();
   meals.forEach(meal => {
-    tbody.appendChild(createRow(meal, meals));
+    const rows = createRows(meal, meals);
+    rows.forEach(row => tbody.appendChild(row));
   });
   await calculateAndSaveMealNeeds();
 }
