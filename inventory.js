@@ -1,6 +1,7 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { getStockBeforeWeek } from './utils/timeline.js';
 import { WEEKS_PER_MONTH } from './utils/constants.js';
+import { normalizeName } from './utils/nameUtils.js';
 import {
   sortItemsByCategory,
   renderItemsWithCategoryHeaders
@@ -63,21 +64,25 @@ const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
 const loadNeeds = () => loadArray('yearlyNeeds', NEEDS_PATH);
 
 function buildTimelineItems(stock, consumption, expiration, mealMonth) {
-  const consMap = new Map(consumption.map(c => [c.name, c]));
+  const consMap = new Map(consumption.map(c => [normalizeName(c.name), c]));
   (mealMonth || []).forEach(m => {
-    const rec = consMap.get(m.name);
+    const key = normalizeName(m.name);
+    const rec = consMap.get(key);
     if (rec) rec.monthly_consumption += m.monthly_consumption;
-    else consMap.set(m.name, { name: m.name, monthly_consumption: m.monthly_consumption });
+    else consMap.set(key, { name: m.name, monthly_consumption: m.monthly_consumption });
   });
-  const expMap = new Map(expiration.map(e => [e.name, e]));
-  return stock.map(s => ({
-    name: s.name,
-    weekly_consumption:
-      (consMap.get(s.name)?.monthly_consumption || 0) / WEEKS_PER_MONTH,
-    expiration_weeks:
-      (expMap.get(s.name)?.shelf_life_months || 12) * WEEKS_PER_MONTH,
-    starting_stock: s.amount
-  }));
+  const expMap = new Map(expiration.map(e => [normalizeName(e.name), e]));
+  return stock.map(s => {
+    const key = normalizeName(s.name);
+    return {
+      name: s.name,
+      weekly_consumption:
+        (consMap.get(key)?.monthly_consumption || 0) / WEEKS_PER_MONTH,
+      expiration_weeks:
+        (expMap.get(key)?.shelf_life_months || 12) * WEEKS_PER_MONTH,
+      starting_stock: s.amount
+    };
+  });
 }
 function createItemRow(name, amount, unit, purchasesMap, week) {
   const div = document.createElement('div');

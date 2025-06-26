@@ -6,6 +6,7 @@ import {
   sortItemsByCategory,
   renderItemsWithCategoryHeaders
 } from './utils/sortByCategory.js';
+import { normalizeName } from './utils/nameUtils.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
@@ -140,7 +141,7 @@ async function init() {
   needsData = needs;
   const sortedNeeds = sortItemsByCategory(needs);
   consumptionData = consumption;
-  consumptionMap = new Map(consumption.map(c => [c.name, c]));
+  consumptionMap = new Map(consumption.map(c => [normalizeName(c.name), c]));
   expirationData = expiration;
   stockData = stock;
   consumedYearData = consumed;
@@ -335,7 +336,7 @@ function pricePerHomeUnit(itemName, product) {
 }
 
 function monthlyCost(itemName, product) {
-  const cons = consumptionMap.get(itemName);
+  const cons = consumptionMap.get(normalizeName(itemName));
   if (!cons) return null;
   const unitPrice = pricePerHomeUnit(itemName, product);
   if (unitPrice == null) return null;
