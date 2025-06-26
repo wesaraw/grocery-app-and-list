@@ -1,6 +1,5 @@
 import { getStockBeforeWeek } from './timeline.js';
 import { WEEKS_PER_MONTH } from './constants.js';
-import { normalizeName } from './nameUtils.js';
 
 export function calculatePurchaseNeeds(
   needs,
@@ -12,32 +11,26 @@ export function calculatePurchaseNeeds(
   purchases = {},
   week = 1
 ) {
-  const consMap = new Map(consumption.map(i => [normalizeName(i.name), i]));
-  const expMap = new Map(expiration.map(i => [normalizeName(i.name), i]));
+  const consMap = new Map(consumption.map(i => [i.name, i]));
+  const expMap = new Map(expiration.map(i => [i.name, i]));
 
-  const mealMap = new Map(mealYear.map(m => [normalizeName(m.name), m.total_needed_year]));
-  const mergedNeeds = needs.map(n => {
-    const key = normalizeName(n.name);
-    return {
-      ...n,
-      total_needed_year: (n.total_needed_year || 0) + (mealMap.get(key) || 0)
-    };
-  });
+  const mealMap = new Map(mealYear.map(m => [m.name, m.total_needed_year]));
+  const mergedNeeds = needs.map(n => ({
+    ...n,
+    total_needed_year: (n.total_needed_year || 0) + (mealMap.get(n.name) || 0)
+  }));
 
-  const timelineItems = mergedNeeds.map(item => {
-    const key = normalizeName(item.name);
-    return {
-      name: item.name,
-      weekly_consumption:
-        (consMap.get(key)?.monthly_consumption ?? 0) / WEEKS_PER_MONTH,
-      expiration_weeks:
-        (expMap.get(key)?.shelf_life_months ?? 12) * WEEKS_PER_MONTH,
-      starting_stock: stock.find(s => normalizeName(s.name) === key)?.amount ?? 0
-    };
-  });
+  const timelineItems = mergedNeeds.map(item => ({
+    name: item.name,
+    weekly_consumption:
+      (consMap.get(item.name)?.monthly_consumption ?? 0) / WEEKS_PER_MONTH,
+    expiration_weeks:
+      (expMap.get(item.name)?.shelf_life_months ?? 12) * WEEKS_PER_MONTH,
+    starting_stock: stock.find(s => s.name === item.name)?.amount ?? 0
+  }));
 
   const stockBefore = getStockBeforeWeek(timelineItems, purchases, week);
-  const stockMap = new Map(stockBefore.map(i => [normalizeName(i.name), i.amount]));
+  const stockMap = new Map(stockBefore.map(i => [i.name, i.amount]));
 
   const weeksRemaining = 52 - week + 1;
 
@@ -46,38 +39,36 @@ export function calculatePurchaseNeeds(
     const total = purchases[name]
       .filter(p => p.purchase_week >= week)
       .reduce((sum, p) => sum + (p.quantity_purchased || 0), 0);
-    futurePurchasesMap.set(normalizeName(name), total);
+    futurePurchasesMap.set(name, total);
   });
 
   const purchasesWithinMap = new Map();
   mergedNeeds.forEach(item => {
-    const key = normalizeName(item.name);
     const expWeeks =
-      (expMap.get(key)?.shelf_life_months ?? 12) * WEEKS_PER_MONTH;
+      (expMap.get(item.name)?.shelf_life_months ?? 12) * WEEKS_PER_MONTH;
     const horizon = week + Math.ceil(expWeeks);
     const list = purchases[item.name] || [];
     const total = list
       .filter(p => p.purchase_week >= week && p.purchase_week < horizon)
       .reduce((sum, p) => sum + (p.quantity_purchased || 0), 0);
-    purchasesWithinMap.set(key, total);
+    purchasesWithinMap.set(item.name, total);
   });
 
   return mergedNeeds.map(item => {
-    const key = normalizeName(item.name);
     const yearlyAmount =
       item.total_needed_year ??
-      (consMap.get(key)?.monthly_consumption ?? 0) * 12;
+      (consMap.get(item.name)?.monthly_consumption ?? 0) * 12;
 
     const required = (yearlyAmount / 52) * weeksRemaining;
 
     const onHand =
-      (stockMap.get(key) || 0) + (futurePurchasesMap.get(key) || 0);
+      (stockMap.get(item.name) || 0) + (futurePurchasesMap.get(item.name) || 0);
 
     // calculate gating amount based on expiration
     const weeklyCons =
-      (consMap.get(key)?.monthly_consumption ?? 0) / WEEKS_PER_MONTH;
+      (consMap.get(item.name)?.monthly_consumption ?? 0) / WEEKS_PER_MONTH;
     const expWeeks =
-      (expMap.get(key)?.shelf_life_months ?? 12) * WEEKS_PER_MONTH;
+      (expMap.get(item.name)?.shelf_life_months ?? 12) * WEEKS_PER_MONTH;
     const horizon = week + Math.ceil(expWeeks);
 
     const horizonStock = getStockBeforeWeek(
@@ -86,8 +77,8 @@ export function calculatePurchaseNeeds(
       horizon
     )[0]?.amount ?? 0;
 
-    const purchasesWithin = purchasesWithinMap.get(key) || 0;
-    const currentQty = stockMap.get(key) || 0;
+    const purchasesWithin = purchasesWithinMap.get(item.name) || 0;
+    const currentQty = stockMap.get(item.name) || 0;
     const consumedExisting = currentQty + purchasesWithin - horizonStock;
     const capacity = weeklyCons * (horizon - week);
     let toBuyExpiration = capacity - consumedExisting;

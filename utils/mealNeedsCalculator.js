@@ -1,7 +1,6 @@
 import { MEAL_TYPES, DEFAULT_MEALS_PER_DAY } from './mealData.js';
 import { loadJSON } from './dataLoader.js';
 import { calculateMonthlyMealSpots } from './mealMath.js';
-import { normalizeName } from './nameUtils.js';
 
 function parseAmount(str) {
   if (!str) return 0;
@@ -31,7 +30,6 @@ function loadMeals(type) {
 
 export async function calculateAndSaveMealNeeds() {
   const monthlyMap = {};
-  const nameLookup = {};
   for (const type of Object.keys(MEAL_TYPES)) {
     const meals = await loadMeals(type);
     const active = meals.filter(m => (m.multiplier || 0) > 0);
@@ -49,22 +47,20 @@ export async function calculateAndSaveMealNeeds() {
         const serving = parseAmount(ing.serving_size || ing.amount);
         if (!serving) return;
         const need = serving * mealSpots;
-        const key = normalizeName(ing.name);
-        if (!nameLookup[key]) nameLookup[key] = ing.name;
-        monthlyMap[key] = (monthlyMap[key] || 0) + need;
+        monthlyMap[ing.name] = (monthlyMap[ing.name] || 0) + need;
       });
     });
   }
   const yearlyMap = {};
-  Object.keys(monthlyMap).forEach(key => {
-    yearlyMap[key] = monthlyMap[key] * 12;
+  Object.keys(monthlyMap).forEach(name => {
+    yearlyMap[name] = monthlyMap[name] * 12;
   });
-  const monthlyArr = Object.entries(monthlyMap).map(([key, monthly_consumption]) => ({
-    name: nameLookup[key],
+  const monthlyArr = Object.entries(monthlyMap).map(([name, monthly_consumption]) => ({
+    name,
     monthly_consumption
   }));
-  const yearlyArr = Object.entries(yearlyMap).map(([key, total_needed_year]) => ({
-    name: nameLookup[key],
+  const yearlyArr = Object.entries(yearlyMap).map(([name, total_needed_year]) => ({
+    name,
     total_needed_year
   }));
   await new Promise(resolve => {
