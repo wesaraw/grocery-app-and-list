@@ -495,6 +495,9 @@ async function init() {
   document.getElementById('editCategory').addEventListener('click', () => {
     openOrFocusWindow('editCategory.html');
   });
+  document.getElementById('editNames').addEventListener('click', () => {
+    openOrFocusWindow('renameItem.html');
+  });
   document.getElementById('editExpirations').addEventListener('click', () => {
     openOrFocusWindow('expiration.html');
   });
