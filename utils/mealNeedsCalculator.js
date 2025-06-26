@@ -32,19 +32,21 @@ export async function calculateAndSaveMealNeeds() {
   const monthlyMap = {};
   for (const type of Object.keys(MEAL_TYPES)) {
     const meals = await loadMeals(type);
-    const active = meals.filter(m => m.active !== false);
+    const active = meals.filter(m => (m.multiplier || 0) > 0);
     if (!active.length) continue;
-    const monthlySpots = calculateMonthlyMealSpots(
+    const totalCount = active.reduce((sum, m) => sum + (m.multiplier || 1), 0);
+    const baseSpots = calculateMonthlyMealSpots(
       DEFAULT_MEALS_PER_DAY[type],
       1,
       7,
-      active.length
+      totalCount
     );
     active.forEach(meal => {
+      const mealSpots = baseSpots * (meal.multiplier || 1);
       (meal.ingredients || []).forEach(ing => {
         const serving = parseAmount(ing.serving_size || ing.amount);
         if (!serving) return;
-        const need = serving * monthlySpots;
+        const need = serving * mealSpots;
         monthlyMap[ing.name] = (monthlyMap[ing.name] || 0) + need;
       });
     });

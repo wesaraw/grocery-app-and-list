@@ -56,20 +56,27 @@ function saveMeals(arr) {
 function createRows(meal, arr) {
   const rows = [];
   const ingredients = meal.ingredients || [];
+  if (meal.multiplier === undefined) meal.multiplier = meal.active === false ? 0 : 1;
 
   ingredients.forEach((ing, idx) => {
     const tr = document.createElement('tr');
     if (idx === 0) {
       const useTd = document.createElement('td');
-      const chk = document.createElement('input');
-      chk.type = 'checkbox';
-      chk.checked = meal.active !== false;
-      chk.addEventListener('change', async () => {
-        meal.active = chk.checked;
-        await saveMeals(arr);
-        await calculateAndSaveMealNeeds();
-      });
-      useTd.appendChild(chk);
+      useTd.style.whiteSpace = 'nowrap';
+      const chks = [];
+      for (let i = 0; i < 5; i++) {
+        const chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.checked = i < (meal.multiplier || 1);
+        chk.addEventListener('change', async () => {
+          meal.multiplier = Array.from(chks).filter(c => c.checked).length;
+          meal.active = meal.multiplier > 0;
+          await saveMeals(arr);
+          await calculateAndSaveMealNeeds();
+        });
+        chks.push(chk);
+        useTd.appendChild(chk);
+      }
       if (ingredients.length > 1) useTd.rowSpan = ingredients.length;
 
       const nameTd = document.createElement('td');
@@ -108,15 +115,21 @@ function createRows(meal, arr) {
   if (ingredients.length === 0) {
     const tr = document.createElement('tr');
     const useTd = document.createElement('td');
-    const chk = document.createElement('input');
-    chk.type = 'checkbox';
-    chk.checked = meal.active !== false;
-    chk.addEventListener('change', async () => {
-      meal.active = chk.checked;
-      await saveMeals(arr);
-      await calculateAndSaveMealNeeds();
-    });
-    useTd.appendChild(chk);
+    useTd.style.whiteSpace = 'nowrap';
+    const chks = [];
+    for (let i = 0; i < 5; i++) {
+      const chk = document.createElement('input');
+      chk.type = 'checkbox';
+      chk.checked = i < (meal.multiplier || 1);
+      chk.addEventListener('change', async () => {
+        meal.multiplier = Array.from(chks).filter(c => c.checked).length;
+        meal.active = meal.multiplier > 0;
+        await saveMeals(arr);
+        await calculateAndSaveMealNeeds();
+      });
+      chks.push(chk);
+      useTd.appendChild(chk);
+    }
     const nameTd = document.createElement('td');
     nameTd.textContent = meal.name || '';
     const ingTd = document.createElement('td');
