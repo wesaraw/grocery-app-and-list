@@ -1,3 +1,6 @@
 export function normalizeName(name) {
-  return (name || '').trim().toLowerCase();
+  return (name || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
 }
