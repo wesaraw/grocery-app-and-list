@@ -77,8 +77,14 @@ async function loadConsumed() {
   });
 }
 
+function loadStoredArray(key) {
+  return new Promise(resolve => {
+    chrome.storage.local.get(key, data => resolve(data[key] || []));
+  });
+}
+
 async function getData() {
-  const [needs, selections, consumption, stock, expiration, consumed, purchases] =
+  const [needs, selections, consumption, stock, expiration, consumed, purchases, mealYear] =
     await Promise.all([
       loadNeeds(),
       loadJSON(STORE_SELECTION_PATH),
@@ -86,9 +92,10 @@ async function getData() {
       loadStock(),
       loadExpiration(),
       loadConsumed(),
-      loadPurchases()
+      loadPurchases(),
+      loadStoredArray('mealPlanYearly')
     ]);
-  return { needs, selections, consumption, stock, expiration, consumed, purchases };
+  return { needs, selections, consumption, stock, expiration, consumed, purchases, mealYear };
 }
 
 const finalMap = new Map();
@@ -98,6 +105,7 @@ let consumptionMap = new Map();
 let expirationData = [];
 let stockData = [];
 let consumedYearData = [];
+let mealYearData = [];
 let purchasesData = {};
 let hideZeroItems = false;
 let filterText = '';
@@ -119,8 +127,16 @@ function getFinalProduct(itemName) {
 
 async function init() {
   await initUomTable();
-  const { needs, selections, consumption, stock, expiration, consumed, purchases } =
-    await getData();
+  const {
+    needs,
+    selections,
+    consumption,
+    stock,
+    expiration,
+    consumed,
+    purchases,
+    mealYear
+  } = await getData();
   needsData = needs;
   const sortedNeeds = sortItemsByCategory(needs);
   consumptionData = consumption;
@@ -128,6 +144,7 @@ async function init() {
   expirationData = expiration;
   stockData = stock;
   consumedYearData = consumed;
+  mealYearData = mealYear;
   purchasesData = purchases;
   const week = getCurrentWeek();
   const purchaseInfo = calculatePurchaseNeeds(
@@ -136,6 +153,7 @@ async function init() {
     stock,
     expiration,
     consumed,
+    mealYear,
     purchases,
     week
   );
@@ -202,6 +220,7 @@ async function refreshNeeds(stock = stockData, consumed = consumedYearData) {
     stock,
     expirationData,
     consumed,
+    mealYearData,
     purchasesData,
     getCurrentWeek()
   );

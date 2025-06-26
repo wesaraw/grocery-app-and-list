@@ -7,13 +7,20 @@ export function calculatePurchaseNeeds(
   stock,
   expiration,
   consumedYear = [],
+  mealYear = [],
   purchases = {},
   week = 1
 ) {
   const consMap = new Map(consumption.map(i => [i.name, i]));
   const expMap = new Map(expiration.map(i => [i.name, i]));
 
-  const timelineItems = needs.map(item => ({
+  const mealMap = new Map(mealYear.map(m => [m.name, m.total_needed_year]));
+  const mergedNeeds = needs.map(n => ({
+    ...n,
+    total_needed_year: (n.total_needed_year || 0) + (mealMap.get(n.name) || 0)
+  }));
+
+  const timelineItems = mergedNeeds.map(item => ({
     name: item.name,
     weekly_consumption:
       (consMap.get(item.name)?.monthly_consumption ?? 0) / WEEKS_PER_MONTH,
@@ -36,7 +43,7 @@ export function calculatePurchaseNeeds(
   });
 
   const purchasesWithinMap = new Map();
-  needs.forEach(item => {
+  mergedNeeds.forEach(item => {
     const expWeeks =
       (expMap.get(item.name)?.shelf_life_months ?? 12) * WEEKS_PER_MONTH;
     const horizon = week + Math.ceil(expWeeks);
@@ -47,7 +54,7 @@ export function calculatePurchaseNeeds(
     purchasesWithinMap.set(item.name, total);
   });
 
-  return needs.map(item => {
+  return mergedNeeds.map(item => {
     const yearlyAmount =
       item.total_needed_year ??
       (consMap.get(item.name)?.monthly_consumption ?? 0) * 12;
