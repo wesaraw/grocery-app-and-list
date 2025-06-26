@@ -1,6 +1,7 @@
 import { loadJSON } from './utils/dataLoader.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
+const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
@@ -70,6 +71,7 @@ function loadArray(key, path) {
 }
 
 const loadNeeds = () => loadArray('yearlyNeeds', YEARLY_NEEDS_PATH);
+const loadConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
 const loadStock = () => loadArray('currentStock', STOCK_PATH);
 const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
 const loadStoreSelections = () => loadArray(STORE_SELECTION_KEY, STORE_SELECTION_PATH);
@@ -143,12 +145,14 @@ async function commit() {
   const yearly = parseFloat(document.getElementById('yearly').value) || DEFAULTS.yearly;
   const unit = document.getElementById('unit').value.trim() || DEFAULTS.unit;
   const whole = document.getElementById('whole').checked;
+  const monthly = parseFloat(document.getElementById('monthly').value) || DEFAULTS.monthly;
   const shelf = parseFloat(document.getElementById('shelf').value) || DEFAULTS.shelf;
   const stockAmt = parseFloat(stockVal);
   const week = parseInt(document.getElementById('week').value, 10) || getCurrentWeek();
 
-  const [needs, stock, expiration, consumed, storeSelections, purchases] = await Promise.all([
+  const [needs, consumption, stock, expiration, consumed, storeSelections, purchases] = await Promise.all([
     loadNeeds(),
+    loadConsumption(),
     loadStock(),
     loadExpiration(),
     loadConsumed(),
@@ -163,6 +167,7 @@ async function commit() {
     treat_as_whole_unit: whole,
     category
   });
+  consumption.push({ name, monthly_consumption: monthly, unit });
   // keep item in currentStock list without treating the initial quantity
   // as starting stock (which would create a week 1 purchase)
   stock.push({ name, amount: 0, unit });
@@ -235,6 +240,7 @@ async function commit() {
 
   await Promise.all([
     save('yearlyNeeds', needs),
+    save('monthlyConsumption', consumption),
     save('currentStock', stock),
     save('expirationData', expiration),
     save('consumedThisYear', consumed),

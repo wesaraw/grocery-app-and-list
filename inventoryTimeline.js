@@ -78,29 +78,34 @@ function loadStoredArray(key) {
 }
 
 async function loadData() {
-  const [needs, expiration, stock, mealYear] = await Promise.all([
+  const [needs, expiration, stock, consumption, mealYear, mealMonth] = await Promise.all([
     loadArray('yearlyNeeds', 'Required for grocery app/yearly_needs_with_manual_flags.json'),
     loadArray('expirationData', 'Required for grocery app/expiration_times_full.json'),
     loadArray('currentStock', 'Required for grocery app/current_stock_table.json'),
-    loadStoredArray('mealPlanYearly')
+    loadArray('monthlyConsumption', 'Required for grocery app/monthly_consumption_table.json'),
+    loadStoredArray('mealPlanYearly'),
+    loadStoredArray('mealPlanMonthly')
   ]);
-  return { needs, expiration, stock, mealYear };
+  return { needs, expiration, stock, consumption, mealYear, mealMonth };
 }
 
-function buildItemMap(needs, expiration, stock, mealYear) {
+function buildItemMap(needs, expiration, stock, consumption, mealMonth) {
   const expMap = {};
   expiration.forEach(e => { expMap[e.name] = e.shelf_life_months * WEEKS_PER_MONTH; });
   const stockMap = {};
   stock.forEach(s => { stockMap[s.name] = s.amount; });
-  const yearlyMap = {};
-  mealYear.forEach(m => { yearlyMap[m.name] = m.total_needed_year; });
+  const consMap = {};
+  consumption.forEach(c => { consMap[c.name] = c.monthly_consumption; });
+  (mealMonth || []).forEach(m => {
+    consMap[m.name] = (consMap[m.name] || 0) + m.monthly_consumption;
+  });
 
   return needs.map(n => ({
     name: n.name,
     category: n.category || '',
     units_per_purchase: 1,
     weekly_consumption:
-      ((n.total_needed_year || 0) + (yearlyMap[n.name] || 0)) / 52,
+      (consMap[n.name] || 0) / WEEKS_PER_MONTH,
     expiration_weeks: expMap[n.name] || 52,
     starting_stock: stockMap[n.name] || 0,
     purchases: []
@@ -404,6 +409,8 @@ async function init() {
       changes.yearlyNeeds ||
       changes.expirationData ||
       changes.currentStock ||
+      changes.monthlyConsumption ||
+      changes.mealPlanMonthly ||
       changes.mealPlanYearly
     ) {
       await refreshItems();

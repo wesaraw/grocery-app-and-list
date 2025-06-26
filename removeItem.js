@@ -5,6 +5,7 @@ import {
 } from './utils/sortByCategory.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
+const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
@@ -29,6 +30,7 @@ function loadArray(key, path) {
 }
 
 const loadNeeds = () => loadArray('yearlyNeeds', YEARLY_NEEDS_PATH);
+const loadConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
 const loadStock = () => loadArray('currentStock', STOCK_PATH);
 const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
 const loadStoreSelections = () => loadArray(STORE_SELECTION_KEY, STORE_SELECTION_PATH);
@@ -88,8 +90,9 @@ function saveHistory(history) {
 }
 
 async function removeItem(name) {
-  const [needs, stock, expiration, consumed, selections, purchases, overrides, history] = await Promise.all([
+  const [needs, consumption, stock, expiration, consumed, selections, purchases, overrides, history] = await Promise.all([
     loadNeeds(),
+    loadConsumption(),
     loadStock(),
     loadExpiration(),
     loadConsumed(),
@@ -101,6 +104,7 @@ async function removeItem(name) {
 
   const filter = arr => arr.filter(i => i.name !== name);
   const newNeeds = filter(needs);
+  const newConsumption = filter(consumption);
   const newStock = filter(stock);
   const newExpiration = filter(expiration);
   const newConsumed = filter(consumed);
@@ -111,6 +115,7 @@ async function removeItem(name) {
 
   await Promise.all([
     save('yearlyNeeds', newNeeds),
+    save('monthlyConsumption', newConsumption),
     save('currentStock', newStock),
     save('expirationData', newExpiration),
     save('consumedThisYear', newConsumed),

@@ -6,6 +6,7 @@ const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandsh
 const STORE_SELECTION_KEY = 'storeSelections';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
+const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
 
 // Grey placeholder used until real product images load
 const PLACEHOLDER_IMG =
@@ -54,8 +55,10 @@ function loadArray(key, path) {
 }
 
 const loadNeeds = () => loadArray('yearlyNeeds', YEARLY_NEEDS_PATH);
+const loadConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
 
 let needsData = [];
+let consumptionMap = new Map();
 
 // Examples that should return 12:
 //   "12 pack"
@@ -128,12 +131,11 @@ function homeUnitLabel(itemName) {
 }
 
 function monthlyCost(itemName, product) {
-  const item = needsData.find(n => n.name === itemName);
-  if (!item) return null;
+  const cons = consumptionMap.get(itemName);
+  if (!cons) return null;
   const unitPrice = pricePerHomeUnit(itemName, product);
   if (unitPrice == null) return null;
-  const monthlyNeed = item.total_needed_year ? item.total_needed_year / 12 : 0;
-  return unitPrice * monthlyNeed;
+  return unitPrice * (cons.monthly_consumption || 0);
 }
 
 async function getStoreEntries(itemName) {
@@ -175,10 +177,12 @@ async function init() {
   const params = new URLSearchParams(location.search);
   const itemName = params.get('item');
 
-  const [needs] = await Promise.all([
-    loadNeeds()
+  const [needs, consumption] = await Promise.all([
+    loadNeeds(),
+    loadConsumption()
   ]);
   needsData = needs;
+  consumptionMap = new Map(consumption.map(c => [c.name, c]));
   document.getElementById('itemName').textContent = itemName;
   document.getElementById('back').addEventListener('click', () => {
     window.close();
