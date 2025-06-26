@@ -102,18 +102,17 @@ function buildItemMap(needs, expiration, stock, consumption, mealMonth) {
     consMap[key] = (consMap[key] || 0) + m.monthly_consumption;
   });
 
-  return needs.map(n => {
+  return needs.map(n => ({
+    name: n.name,
+    category: n.category || '',
+    units_per_purchase: 1,
     const key = normalizeName(n.name);
-    return {
-      name: n.name,
-      category: n.category || '',
-      units_per_purchase: 1,
-      weekly_consumption: (consMap[key] || 0) / WEEKS_PER_MONTH,
-      expiration_weeks: expMap[key] || 52,
-      starting_stock: stockMap[key] || 0,
-      purchases: []
-    };
-  });
+    weekly_consumption:
+      (consMap[key] || 0) / WEEKS_PER_MONTH,
+    expiration_weeks: expMap[key] || 52,
+    starting_stock: stockMap[key] || 0,
+    purchases: []
+  }));
 }
 
 function simulateItem(item, overrides) {
