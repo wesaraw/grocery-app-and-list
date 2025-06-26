@@ -1,4 +1,5 @@
 import { WEEKS_PER_MONTH } from './utils/constants.js';
+import { normalizeName } from './utils/nameUtils.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 
 async function loadJSON(path) {
@@ -91,23 +92,25 @@ async function loadData() {
 
 function buildItemMap(needs, expiration, stock, consumption, mealMonth) {
   const expMap = {};
-  expiration.forEach(e => { expMap[e.name] = e.shelf_life_months * WEEKS_PER_MONTH; });
+  expiration.forEach(e => { expMap[normalizeName(e.name)] = e.shelf_life_months * WEEKS_PER_MONTH; });
   const stockMap = {};
-  stock.forEach(s => { stockMap[s.name] = s.amount; });
+  stock.forEach(s => { stockMap[normalizeName(s.name)] = s.amount; });
   const consMap = {};
-  consumption.forEach(c => { consMap[c.name] = c.monthly_consumption; });
+  consumption.forEach(c => { consMap[normalizeName(c.name)] = c.monthly_consumption; });
   (mealMonth || []).forEach(m => {
-    consMap[m.name] = (consMap[m.name] || 0) + m.monthly_consumption;
+    const key = normalizeName(m.name);
+    consMap[key] = (consMap[key] || 0) + m.monthly_consumption;
   });
 
   return needs.map(n => ({
     name: n.name,
     category: n.category || '',
     units_per_purchase: 1,
+    const key = normalizeName(n.name);
     weekly_consumption:
-      (consMap[n.name] || 0) / WEEKS_PER_MONTH,
-    expiration_weeks: expMap[n.name] || 52,
-    starting_stock: stockMap[n.name] || 0,
+      (consMap[key] || 0) / WEEKS_PER_MONTH,
+    expiration_weeks: expMap[key] || 52,
+    starting_stock: stockMap[key] || 0,
     purchases: []
   }));
 }

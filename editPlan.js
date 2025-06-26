@@ -1,6 +1,7 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { sortItemsByCategory, renderItemsWithCategoryHeaders } from './utils/sortByCategory.js';
 import { loadMealPlanData } from './utils/mealNeedsCalculator.js';
+import { normalizeName } from './utils/nameUtils.js';
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONS_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -54,10 +55,11 @@ function createRow(
   const div = document.createElement('div');
   div.className = 'item';
   const span = document.createElement('span');
-  const monthlyUser = consMap.get(item.name)?.monthly_consumption || 0;
-  const yearlyUser = needsMap.get(item.name)?.total_needed_year || 0;
-  const monthlyMeal = mealMonthMap.get(item.name) || 0;
-  const yearlyMeal = mealYearMap.get(item.name) || 0;
+  const key = normalizeName(item.name);
+  const monthlyUser = consMap.get(key)?.monthly_consumption || 0;
+  const yearlyUser = needsMap.get(key)?.total_needed_year || 0;
+  const monthlyMeal = mealMonthMap.get(key) || 0;
+  const yearlyMeal = mealYearMap.get(key) || 0;
   span.textContent = `${item.name} - ${(monthlyUser + monthlyMeal).toFixed(2)}/mo - ${(yearlyUser + yearlyMeal).toFixed(2)}/yr`;
   div.appendChild(span);
 
@@ -82,23 +84,23 @@ function createRow(
     const mVal = parseFloat(mInput.value);
     const yVal = parseFloat(yInput.value);
     if (!isNaN(mVal)) {
-      let rec = consMap.get(item.name);
+      let rec = consMap.get(key);
       if (!rec) {
         rec = { name: item.name, monthly_consumption: mVal, unit: item.home_unit };
         consArr.push(rec);
-        consMap.set(item.name, rec);
+        consMap.set(key, rec);
       } else {
         rec.monthly_consumption = mVal;
       }
     }
     if (!isNaN(yVal)) {
-      let rec = needsMap.get(item.name);
+      let rec = needsMap.get(key);
       if (rec) {
         rec.total_needed_year = yVal;
       }
     }
-    const newMonthly = consMap.get(item.name)?.monthly_consumption || 0;
-    const newYearly = needsMap.get(item.name)?.total_needed_year || 0;
+    const newMonthly = consMap.get(key)?.monthly_consumption || 0;
+    const newYearly = needsMap.get(key)?.total_needed_year || 0;
     span.textContent = `${item.name} - ${(newMonthly + monthlyMeal).toFixed(2)}/mo - ${(newYearly + yearlyMeal).toFixed(2)}/yr`;
     mInput.value = newMonthly;
     yInput.value = newYearly;
@@ -129,10 +131,10 @@ async function init() {
     loadMealPlanData()
   ]);
   allNeeds = sortItemsByCategory(needs);
-  needsMap = new Map(needs.map(n => [n.name, n]));
-  consMap = new Map(consumption.map(c => [c.name, c]));
-  mealYearMap = new Map((mealData.yearly || []).map(m => [m.name, m.total_needed_year]));
-  mealMonthMap = new Map((mealData.monthly || []).map(m => [m.name, m.monthly_consumption]));
+  needsMap = new Map(needs.map(n => [normalizeName(n.name), n]));
+  consMap = new Map(consumption.map(c => [normalizeName(c.name), c]));
+  mealYearMap = new Map((mealData.yearly || []).map(m => [normalizeName(m.name), m.total_needed_year]));
+  mealMonthMap = new Map((mealData.monthly || []).map(m => [normalizeName(m.name), m.monthly_consumption]));
 
   function render() {
     const arr = filterText
