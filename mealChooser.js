@@ -71,7 +71,8 @@ async function init() {
   let currentUser = 0;
 
   function weeklySpotsPerUser(category, userCount) {
-    const perDay = mealsPerDay[category] ?? DEFAULT_MEALS_PER_DAY[category] || 0;
+    const perDay =
+      (mealsPerDay[category] ?? DEFAULT_MEALS_PER_DAY[category]) || 0;
     const yearlySpots = perDay * (userCount * 7) * 52;
     const perPersonYear = yearlySpots / userCount;
     return perPersonYear / 52;
