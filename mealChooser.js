@@ -91,21 +91,33 @@ async function init() {
     const type = categorySelect.value;
     const meals = await loadMeals(type);
     mealButtons.innerHTML = '';
+
     const userName = users[currentUser];
     const userSlots = slots.users[userName] || {};
-    const consumed = userSlots[type] || 0;
+    let catSlots = userSlots[type];
+    if (!catSlots || typeof catSlots !== 'object') catSlots = {};
+
+    const consumedTotal = Object.values(catSlots).reduce((a, b) => a + b, 0);
     const weekly = weeklySpotsPerUser(type, users.length);
-    const remaining = weekly - consumed;
+    const remaining = weekly - consumedTotal;
     remainingDiv.textContent = `Remaining slots: ${remaining.toFixed(0)} / ${weekly}`;
     if (remaining <= 0) return;
+
+    const subscribedCount = meals.reduce((n, m) => n + (usesMeal(m, currentUser, users) ? 1 : 0), 0) || 1;
+    const perMealLimit = weekly / subscribedCount;
+
     meals.forEach(meal => {
       if (usesMeal(meal, currentUser, users)) {
+        const consumedMeal = catSlots[meal.name] || 0;
+        if (consumedMeal >= perMealLimit) return;
+
         const btn = document.createElement('button');
         btn.textContent = meal.name || '';
         btn.addEventListener('click', async () => {
           slots = await loadMealSlots();
           const rec = (slots.users[userName] = slots.users[userName] || {});
-          rec[type] = (rec[type] || 0) + 1;
+          const sub = (rec[type] = rec[type] || {});
+          sub[meal.name] = (sub[meal.name] || 0) + 1;
           await saveMealSlots(slots);
           renderMeals();
         });
