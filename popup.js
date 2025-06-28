@@ -503,6 +503,14 @@ document
   .getElementById('uomChange')
   .addEventListener('click', openUomChange);
 
+function openMealMultiplier() {
+  openOrFocusWindow('mealMultiplier.html');
+}
+
+document
+  .getElementById('mealMultiplier')
+  .addEventListener('click', openMealMultiplier);
+
 function openMealChooser() {
   openOrFocusWindow('mealChooser.html');
 }

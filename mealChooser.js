@@ -1,5 +1,5 @@
 import { loadUsers } from './utils/userData.js';
-import { MEAL_TYPES, DEFAULT_MEALS_PER_DAY } from './utils/mealData.js';
+import { MEAL_TYPES, DEFAULT_MEALS_PER_DAY, loadMealsPerDay } from './utils/mealData.js';
 import { loadJSON } from './utils/dataLoader.js';
 
 function getCurrentWeek() {
@@ -41,12 +41,6 @@ function saveMealSlots(slots) {
   });
 }
 
-function weeklySpotsPerUser(category, userCount) {
-  const perDay = DEFAULT_MEALS_PER_DAY[category] || 0;
-  const yearlySpots = perDay * (userCount * 7) * 52;
-  const perPersonYear = yearlySpots / userCount;
-  return perPersonYear / 52;
-}
 
 function usesMeal(meal, idx, userNames) {
   if (Array.isArray(meal.users)) {
@@ -73,7 +67,15 @@ async function init() {
 
   const users = await loadUsers();
   let slots = await loadMealSlots();
+  const mealsPerDay = await loadMealsPerDay();
   let currentUser = 0;
+
+  function weeklySpotsPerUser(category, userCount) {
+    const perDay = mealsPerDay[category] ?? DEFAULT_MEALS_PER_DAY[category] || 0;
+    const yearlySpots = perDay * (userCount * 7) * 52;
+    const perPersonYear = yearlySpots / userCount;
+    return perPersonYear / 52;
+  }
 
   function renderUserButtons() {
     userButtons.innerHTML = '';
