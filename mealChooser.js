@@ -138,6 +138,17 @@ async function init() {
   });
   categorySelect.addEventListener('change', renderMeals);
   renderMeals();
+
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local') {
+      if (Object.values(MEAL_TYPES).some(t => changes[t.key])) {
+        renderMeals();
+      }
+      if (changes.users) {
+        location.reload();
+      }
+    }
+  });
 }
 
 document.addEventListener('DOMContentLoaded', init);

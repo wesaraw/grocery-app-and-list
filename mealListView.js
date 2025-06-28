@@ -211,6 +211,9 @@ async function init() {
     if (area === 'local' && changes.users) {
       location.reload();
     }
+    if (area === 'local' && changes[key]) {
+      location.reload();
+    }
   });
 }
 
