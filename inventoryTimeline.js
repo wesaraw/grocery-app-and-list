@@ -510,6 +510,9 @@ async function init() {
   document.getElementById('uomChange').addEventListener('click', () => {
     openOrFocusWindow('uomChange.html');
   });
+  document.getElementById('mealMultiplier').addEventListener('click', () => {
+    openOrFocusWindow('mealMultiplier.html');
+  });
   document.getElementById('mealPlanner').addEventListener('click', () => {
     openOrFocusWindow('mealPlanner.html');
   });

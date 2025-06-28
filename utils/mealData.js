@@ -28,3 +28,17 @@ export const DEFAULT_MEALS_PER_DAY = {
   snack: 1,
   dessert: 1
 };
+
+export function loadMealsPerDay() {
+  return new Promise(resolve => {
+    chrome.storage.local.get('mealsPerDay', data => {
+      resolve({ ...DEFAULT_MEALS_PER_DAY, ...(data.mealsPerDay || {}) });
+    });
+  });
+}
+
+export function saveMealsPerDay(obj) {
+  return new Promise(resolve => {
+    chrome.storage.local.set({ mealsPerDay: obj }, () => resolve());
+  });
+}

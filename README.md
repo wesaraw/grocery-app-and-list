@@ -101,3 +101,8 @@ where:
 Multiply the monthly spots by an ingredient's serving size to get the monthly amount needed.
 
 The file `utils/mealMath.js` exposes helpers and a `DEFAULT_MEALS_PER_DAY` object. Lunch and dinner share the `lunchDinner` key. Its default value is `2` (two meals each day), but you can adjust these counts per person in the future.
+
+Use the **Meal Multiplier** button in the inventory tracker to change how many
+times each meal category is eaten per day. The popup shows the current numbers
+for Breakfast, Lunch/Dinner, Snacks, and Desserts. Enter a new value and click
+**Save** to update the multiplier used by the meal math calculations.

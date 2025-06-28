@@ -1,4 +1,4 @@
-import { MEAL_TYPES, DEFAULT_MEALS_PER_DAY } from './mealData.js';
+import { MEAL_TYPES, DEFAULT_MEALS_PER_DAY, loadMealsPerDay } from './mealData.js';
 import { loadJSON } from './dataLoader.js';
 import { calculateMonthlyMealSpots } from './mealMath.js';
 
@@ -30,13 +30,14 @@ function loadMeals(type) {
 
 export async function calculateAndSaveMealNeeds() {
   const monthlyMap = {};
+  const mealsPerDay = await loadMealsPerDay();
   for (const type of Object.keys(MEAL_TYPES)) {
     const meals = await loadMeals(type);
     const active = meals.filter(m => (m.people ?? m.multiplier ?? 1) > 0);
     if (!active.length) continue;
     const totalCount = active.length;
     const baseSpots = calculateMonthlyMealSpots(
-      DEFAULT_MEALS_PER_DAY[type],
+      mealsPerDay[type] ?? DEFAULT_MEALS_PER_DAY[type],
       1,
       7,
       totalCount
