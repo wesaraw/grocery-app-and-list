@@ -140,7 +140,7 @@ async function init() {
     }));
 
     const meals = await loadMeals();
-    meals.push({ name: mealName, ingredients, multiplier: 1 });
+    meals.push({ name: mealName, ingredients, people: 1 });
     await saveMeals(meals);
     await calculateAndSaveMealNeeds();
     window.close();

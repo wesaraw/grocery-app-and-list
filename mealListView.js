@@ -56,7 +56,7 @@ function saveMeals(arr) {
 function createRows(meal, arr) {
   const rows = [];
   const ingredients = meal.ingredients || [];
-  if (meal.multiplier === undefined) meal.multiplier = meal.active === false ? 0 : 1;
+  if (meal.people === undefined) meal.people = meal.active === false ? 0 : 1;
 
   ingredients.forEach((ing, idx) => {
     const tr = document.createElement('tr');
@@ -67,10 +67,10 @@ function createRows(meal, arr) {
       for (let i = 0; i < 5; i++) {
         const chk = document.createElement('input');
         chk.type = 'checkbox';
-        chk.checked = i < (meal.multiplier || 1);
+        chk.checked = i < (meal.people || meal.multiplier || 1);
         chk.addEventListener('change', async () => {
-          meal.multiplier = Array.from(chks).filter(c => c.checked).length;
-          meal.active = meal.multiplier > 0;
+          meal.people = Array.from(chks).filter(c => c.checked).length;
+          meal.active = meal.people > 0;
           await saveMeals(arr);
           await calculateAndSaveMealNeeds();
         });
@@ -120,10 +120,10 @@ function createRows(meal, arr) {
     for (let i = 0; i < 5; i++) {
       const chk = document.createElement('input');
       chk.type = 'checkbox';
-      chk.checked = i < (meal.multiplier || 1);
+      chk.checked = i < (meal.people || meal.multiplier || 1);
       chk.addEventListener('change', async () => {
-        meal.multiplier = Array.from(chks).filter(c => c.checked).length;
-        meal.active = meal.multiplier > 0;
+        meal.people = Array.from(chks).filter(c => c.checked).length;
+        meal.active = meal.people > 0;
         await saveMeals(arr);
         await calculateAndSaveMealNeeds();
       });
