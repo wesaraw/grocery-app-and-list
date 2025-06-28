@@ -74,7 +74,7 @@ function highlightError(el) {
 
 function anyFilled(row) {
   return (
-    row.mealInput.value.trim() ||
+    (!row.mealInput.disabled && row.mealInput.value.trim()) ||
     row.ingInput.value.trim() ||
     row.amtInput.value.trim()
   );
@@ -89,6 +89,10 @@ async function init() {
 
   function addRow() {
     const row = createRow(units);
+    if (rows.length > 0) {
+      row.mealInput.disabled = true;
+      row.mealInput.value = rows[0].mealInput.value;
+    }
     rows.push(row);
     tbody.appendChild(row.tr);
 
@@ -102,6 +106,14 @@ async function init() {
     row.ingInput.addEventListener('input', checkAddNext);
     row.amtInput.addEventListener('input', checkAddNext);
     row.select.addEventListener('change', checkAddNext);
+
+    if (rows.length === 1) {
+      row.mealInput.addEventListener('input', () => {
+        rows.slice(1).forEach(r => {
+          r.mealInput.value = row.mealInput.value;
+        });
+      });
+    }
   }
 
   addRow();
@@ -109,30 +121,34 @@ async function init() {
   document.getElementById('submit').addEventListener('click', async () => {
     const validRows = [];
     let hasError = false;
+
+    const mealName = rows[0].mealInput.value.trim();
+    if (!mealName) {
+      highlightError(rows[0].mealInput);
+      hasError = true;
+    }
+
     rows.forEach(row => {
-      const meal = row.mealInput.value.trim();
       const ing = row.ingInput.value.trim();
       const amt = row.amtInput.value.trim();
       const unit = row.select.value;
-      if (!meal && !ing && !amt) {
+      if (!ing && !amt) {
         return;
       }
-      if (!meal || !ing || !amt) {
-        if (!meal) highlightError(row.mealInput);
+      if (!ing || !amt) {
         if (!ing) highlightError(row.ingInput);
         if (!amt) highlightError(row.amtInput);
         hasError = true;
         return;
       }
-      validRows.push({ meal, ing, amt, unit });
+      validRows.push({ ing, amt, unit });
     });
-    if (hasError || !validRows.length) {
+    if (hasError || !mealName || !validRows.length) {
       document.getElementById('warning').style.display = 'block';
       return;
     }
     document.getElementById('warning').style.display = 'none';
 
-    const mealName = validRows[0].meal;
     const ingredients = validRows.map(r => ({
       name: r.ing,
       amount: `${r.amt} ${r.unit}`,
