@@ -2,6 +2,7 @@ import { MEAL_TYPES } from './utils/mealData.js';
 import { loadJSON } from './utils/dataLoader.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
+import { loadUsers } from './utils/userData.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 
@@ -11,6 +12,7 @@ const { key, path, label } = MEAL_TYPES[type] || MEAL_TYPES.breakfast;
 
 let inventorySet = new Set();
 const ingredientCells = {};
+let userNames = [];
 
 function createAddButton(name) {
   const btn = document.createElement('button');
@@ -56,7 +58,16 @@ function saveMeals(arr) {
 function createRows(meal, arr) {
   const rows = [];
   const ingredients = meal.ingredients || [];
-  if (meal.people === undefined) meal.people = meal.active === false ? 0 : 1;
+  if (!Array.isArray(meal.users)) {
+    const def = meal.people === undefined ? (meal.active === false ? 0 : 1) : meal.people;
+    meal.users = userNames.map((_, i) => i < def);
+  }
+  if (meal.users.length < userNames.length) {
+    for (let i = meal.users.length; i < userNames.length; i++) {
+      meal.users.push(false);
+    }
+  }
+  meal.people = meal.users.filter(Boolean).length;
 
   ingredients.forEach((ing, idx) => {
     const tr = document.createElement('tr');
@@ -64,19 +75,23 @@ function createRows(meal, arr) {
       const useTd = document.createElement('td');
       useTd.style.whiteSpace = 'nowrap';
       const chks = [];
-      for (let i = 0; i < 5; i++) {
+      userNames.forEach((u, i) => {
+        const lbl = document.createElement('label');
         const chk = document.createElement('input');
         chk.type = 'checkbox';
-        chk.checked = i < (meal.people || meal.multiplier || 1);
+        chk.checked = meal.users[i];
         chk.addEventListener('change', async () => {
-          meal.people = Array.from(chks).filter(c => c.checked).length;
+          meal.users[i] = chk.checked;
+          meal.people = meal.users.filter(Boolean).length;
           meal.active = meal.people > 0;
           await saveMeals(arr);
           await calculateAndSaveMealNeeds();
         });
         chks.push(chk);
-        useTd.appendChild(chk);
-      }
+        lbl.appendChild(chk);
+        lbl.appendChild(document.createTextNode(` ${u} `));
+        useTd.appendChild(lbl);
+      });
       if (ingredients.length > 1) useTd.rowSpan = ingredients.length;
 
       const nameTd = document.createElement('td');
@@ -117,19 +132,23 @@ function createRows(meal, arr) {
     const useTd = document.createElement('td');
     useTd.style.whiteSpace = 'nowrap';
     const chks = [];
-    for (let i = 0; i < 5; i++) {
+    userNames.forEach((u, i) => {
+      const lbl = document.createElement('label');
       const chk = document.createElement('input');
       chk.type = 'checkbox';
-      chk.checked = i < (meal.people || meal.multiplier || 1);
+      chk.checked = meal.users[i];
       chk.addEventListener('change', async () => {
-        meal.people = Array.from(chks).filter(c => c.checked).length;
+        meal.users[i] = chk.checked;
+        meal.people = meal.users.filter(Boolean).length;
         meal.active = meal.people > 0;
         await saveMeals(arr);
         await calculateAndSaveMealNeeds();
       });
       chks.push(chk);
-      useTd.appendChild(chk);
-    }
+      lbl.appendChild(chk);
+      lbl.appendChild(document.createTextNode(` ${u} `));
+      useTd.appendChild(lbl);
+    });
     const nameTd = document.createElement('td');
     nameTd.textContent = meal.name || '';
     const ingTd = document.createElement('td');
@@ -169,7 +188,12 @@ async function init() {
     });
   }
   const tbody = document.getElementById('mealBody');
-  const [meals, stock] = await Promise.all([loadMeals(), loadStock()]);
+  const [meals, stock, users] = await Promise.all([
+    loadMeals(),
+    loadStock(),
+    loadUsers()
+  ]);
+  userNames = users;
   inventorySet = new Set(stock.map(s => s.name));
   meals.forEach(meal => {
     const rows = createRows(meal, meals);
@@ -183,6 +207,9 @@ async function init() {
       const newStock = changes.currentStock.newValue || [];
       inventorySet = new Set(newStock.map(s => s.name));
       updateInventoryDisplay();
+    }
+    if (area === 'local' && changes.users) {
+      location.reload();
     }
   });
 }
