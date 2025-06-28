@@ -69,6 +69,7 @@ async function init() {
   const categorySelect = document.getElementById('categorySelect');
   const mealButtons = document.getElementById('mealButtons');
   const remainingDiv = document.getElementById('remaining');
+  const resetBtn = document.getElementById('resetBtn');
 
   const users = await loadUsers();
   let slots = await loadMealSlots();
@@ -127,6 +128,11 @@ async function init() {
   }
 
   renderUserButtons();
+  resetBtn.addEventListener('click', async () => {
+    slots = { week: getCurrentWeek(), users: {} };
+    await saveMealSlots(slots);
+    renderMeals();
+  });
   categorySelect.addEventListener('change', renderMeals);
   renderMeals();
 }
