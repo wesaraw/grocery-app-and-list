@@ -16,8 +16,9 @@ function loadMeals(type) {
   });
 }
 
-async function init() {
+async function renderButtons() {
   const div = document.getElementById('listButtons');
+  div.innerHTML = '';
   for (const type of Object.keys(MEAL_TYPES)) {
     const meals = await loadMeals(type);
     const active = meals.filter(m => m.active !== false).length;
@@ -28,6 +29,16 @@ async function init() {
     });
     div.appendChild(btn);
   }
+}
+
+async function init() {
+  await renderButtons();
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local') {
+      const changed = Object.values(MEAL_TYPES).some(t => changes[t.key]);
+      if (changed) renderButtons();
+    }
+  });
 }
 
 document.addEventListener('DOMContentLoaded', init);
