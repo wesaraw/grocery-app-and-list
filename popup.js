@@ -503,6 +503,14 @@ document
   .getElementById('uomChange')
   .addEventListener('click', openUomChange);
 
+function openMealChooser() {
+  openOrFocusWindow('mealChooser.html');
+}
+
+document
+  .getElementById('mealChooser')
+  .addEventListener('click', openMealChooser);
+
 function toggleZeroItems() {
   hideZeroItems = !hideZeroItems;
   const btn = document.getElementById('toggleZero');
