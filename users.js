@@ -4,11 +4,15 @@ import { loadJSON } from './utils/dataLoader.js';
 
 const btnContainer = document.getElementById('userButtons');
 const mealList = document.getElementById('mealList');
+const editBtn = document.getElementById('editNamesBtn');
+const saveNamesBtn = document.getElementById('saveNamesBtn');
 
 let users = [];
 let addInput = null;
 let saveBtn = null;
 let addBtn = null;
+let editInputs = [];
+let editing = false;
 
 function renderButtons() {
   btnContainer.innerHTML = '';
@@ -22,6 +26,10 @@ function renderButtons() {
   addBtn.textContent = 'Add User';
   addBtn.addEventListener('click', () => startAddUser());
   btnContainer.appendChild(addBtn);
+
+  if (editing) {
+    startEditInputs();
+  }
 }
 
 function startAddUser() {
@@ -49,6 +57,39 @@ async function saveNewUser() {
   saveBtn.remove();
   addInput = null;
   saveBtn = null;
+  renderButtons();
+}
+
+function startEditInputs() {
+  editInputs = [];
+  const buttons = Array.from(btnContainer.querySelectorAll('button'));
+  buttons.forEach((btn, idx) => {
+    if (btn === addBtn) return;
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.placeholder = 'New name';
+    inp.style.marginBottom = '5px';
+    inp.addEventListener('input', checkEditInputs);
+    btn.after(inp);
+    editInputs[idx] = inp;
+  });
+}
+
+function checkEditInputs() {
+  const hasVal = editInputs.some(inp => inp.value.trim());
+  saveNamesBtn.style.display = hasVal ? 'inline' : 'none';
+}
+
+async function saveNameEdits() {
+  editInputs.forEach((inp, idx) => {
+    const val = inp.value.trim();
+    if (val) users[idx] = val;
+    inp.remove();
+  });
+  editInputs = [];
+  editing = false;
+  saveNamesBtn.style.display = 'none';
+  await saveUsers(users);
   renderButtons();
 }
 
@@ -97,6 +138,12 @@ async function showMeals(userIndex) {
 async function init() {
   users = await loadUsers();
   renderButtons();
+  editBtn.addEventListener('click', () => {
+    if (editing) return;
+    editing = true;
+    startEditInputs();
+  });
+  saveNamesBtn.addEventListener('click', saveNameEdits);
 }
 
 document.addEventListener('DOMContentLoaded', init);
