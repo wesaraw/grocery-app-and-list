@@ -148,6 +148,23 @@ function simulateItem(item, overrides) {
     }
     // sort by soonest expiration for processing
     active.sort((a,b)=>a.exp-b.exp);
+
+    // apply negative purchases immediately
+    for (let i = 0; i < active.length; ) {
+      if (active[i].qty >= 0) { i++; continue; }
+      let neg = -active[i].qty;
+      active.splice(i, 1);
+      while (neg > 0 && active.length) {
+        if (active[0].qty > neg) {
+          active[0].qty -= neg;
+          neg = 0;
+        } else {
+          neg -= active[0].qty;
+          active.shift();
+        }
+      }
+    }
+
     // remove expired batches
     while (active.length && w >= active[0].exp) {
       active.shift();
@@ -165,6 +182,10 @@ function simulateItem(item, overrides) {
       }
     }
     qty = active.reduce((sum,b)=>sum+b.qty,0);
+    if (qty < 0) {
+      qty = 0;
+      active.length = 0;
+    }
     const closestExp = active.length ? Math.min(...active.map(b=>b.exp)) : w;
     const weeksToExpiration = closestExp - w;
     const weeksToRunout = qty > 0 ? qty / item.weekly_consumption : 0;
