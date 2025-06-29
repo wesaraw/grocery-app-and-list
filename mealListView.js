@@ -3,6 +3,7 @@ import { loadJSON } from './utils/dataLoader.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 import { loadUsers } from './utils/userData.js';
+import { canonicalName } from './utils/nameUtils.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 
@@ -120,7 +121,8 @@ function createRows(meal, arr) {
 
     const actionTd = document.createElement('td');
     if (ing.name) actionTd.dataset.name = ing.name;
-    if (ing.name && !inventorySet.has(ing.name)) {
+    const key = ing.name ? canonicalName(ing.name) : '';
+    if (ing.name && !inventorySet.has(key)) {
       ingTd.style.color = 'red';
       actionTd.appendChild(createAddButton(ing.name));
     }
@@ -131,8 +133,8 @@ function createRows(meal, arr) {
     rows.push(tr);
 
     if (ing.name) {
-      if (!ingredientCells[ing.name]) ingredientCells[ing.name] = [];
-      ingredientCells[ing.name].push({ ingTd, actionTd });
+      if (!ingredientCells[key]) ingredientCells[key] = [];
+      ingredientCells[key].push({ ingTd, actionTd });
     }
   });
 
@@ -296,7 +298,7 @@ async function init() {
     loadUsers()
   ]);
   userNames = users;
-  inventorySet = new Set(stock.map(s => s.name));
+  inventorySet = new Set(stock.map(s => canonicalName(s.name)));
   meals.forEach(meal => {
     const rows = createRows(meal, meals);
     rows.forEach(row => tbody.appendChild(row));
@@ -307,7 +309,7 @@ async function init() {
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local' && changes.currentStock) {
       const newStock = changes.currentStock.newValue || [];
-      inventorySet = new Set(newStock.map(s => s.name));
+      inventorySet = new Set(newStock.map(s => canonicalName(s.name)));
       updateInventoryDisplay();
     }
     if (area === 'local' && changes.users) {
