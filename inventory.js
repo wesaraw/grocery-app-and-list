@@ -153,8 +153,16 @@ function renderWeek(week) {
   }, headerState);
 }
 
+function getCurrentWeek() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 1);
+  const dayOfYear = Math.floor((now - start) / 86400000) + 1;
+  return Math.ceil((dayOfYear + start.getDay()) / 7);
+}
+
 async function init() {
   const weekInput = document.getElementById('week-number');
+  weekInput.value = getCurrentWeek();
   [baseStock, purchasesMap, consumptionData, mealMonthData, expirationData, needsData] = await Promise.all([
     loadStock(),
     loadPurchases(),
