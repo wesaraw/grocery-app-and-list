@@ -1,5 +1,5 @@
 import { loadUsers, saveUsers } from './utils/userData.js';
-import { MEAL_TYPES } from './utils/mealData.js';
+import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { loadJSON } from './utils/dataLoader.js';
 
 const btnContainer = document.getElementById('userButtons');
@@ -136,6 +136,7 @@ async function showMeals(userIndex) {
 }
 
 async function init() {
+  await initializeMealCategories();
   users = await loadUsers();
   renderButtons();
   editBtn.addEventListener('click', () => {
