@@ -1,5 +1,6 @@
 import { WEEKS_PER_MONTH } from './utils/constants.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
+import { canonicalName } from './utils/nameUtils.js';
 
 async function loadJSON(path) {
   const url = chrome.runtime.getURL(path);
@@ -97,25 +98,32 @@ async function loadData() {
 
 function buildItemMap(needs, expiration, stock, consumption, mealMonth) {
   const expMap = {};
-  expiration.forEach(e => { expMap[e.name] = e.shelf_life_months * WEEKS_PER_MONTH; });
+  expiration.forEach(e => {
+    expMap[canonicalName(e.name)] = e.shelf_life_months * WEEKS_PER_MONTH;
+  });
   const stockMap = {};
-  stock.forEach(s => { stockMap[s.name] = s.amount; });
+  stock.forEach(s => { stockMap[canonicalName(s.name)] = s.amount; });
   const consMap = {};
-  consumption.forEach(c => { consMap[c.name] = c.monthly_consumption; });
+  consumption.forEach(c => {
+    consMap[canonicalName(c.name)] = c.monthly_consumption;
+  });
   (mealMonth || []).forEach(m => {
-    consMap[m.name] = (consMap[m.name] || 0) + m.monthly_consumption;
+    const key = canonicalName(m.name);
+    consMap[key] = (consMap[key] || 0) + m.monthly_consumption;
   });
 
-  return needs.map(n => ({
-    name: n.name,
-    category: n.category || '',
-    units_per_purchase: 1,
-    weekly_consumption:
-      (consMap[n.name] || 0) / WEEKS_PER_MONTH,
-    expiration_weeks: expMap[n.name] || 52,
-    starting_stock: stockMap[n.name] || 0,
-    purchases: []
-  }));
+  return needs.map(n => {
+    const key = canonicalName(n.name);
+    return {
+      name: n.name,
+      category: n.category || '',
+      units_per_purchase: 1,
+      weekly_consumption: (consMap[key] || 0) / WEEKS_PER_MONTH,
+      expiration_weeks: expMap[key] || 52,
+      starting_stock: stockMap[key] || 0,
+      purchases: []
+    };
+  });
 }
 
 function simulateItem(item, overrides) {
