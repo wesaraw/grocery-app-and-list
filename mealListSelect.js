@@ -50,7 +50,6 @@ function startAddCategory() {
     await addMealCategory(val);
     input.remove();
     saveBtn.remove();
-    renderButtons();
   });
   div.appendChild(input);
   div.appendChild(saveBtn);
