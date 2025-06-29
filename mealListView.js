@@ -58,6 +58,7 @@ function saveMeals(arr) {
 function createRows(meal, arr) {
   const rows = [];
   const ingredients = meal.ingredients || [];
+  const ingRows = [];
   if (!Array.isArray(meal.users)) {
     const def = meal.people === undefined ? (meal.active === false ? 0 : 1) : meal.people;
     meal.users = userNames.map((_, i) => i < def);
@@ -120,6 +121,7 @@ function createRows(meal, arr) {
     tr.appendChild(amtTd);
     tr.appendChild(actionTd);
     rows.push(tr);
+    ingRows.push(tr);
 
     if (ing.name) {
       if (!ingredientCells[ing.name]) ingredientCells[ing.name] = [];
@@ -160,6 +162,119 @@ function createRows(meal, arr) {
     tr.appendChild(amtTd);
     tr.appendChild(actionTd);
     rows.push(tr);
+    ingRows.push(tr);
+  }
+
+  // Row with edit button
+  const editBtnRow = document.createElement('tr');
+  const blankTd = document.createElement('td');
+  const btnTd = document.createElement('td');
+  const editBtn = document.createElement('button');
+  editBtn.textContent = 'Edit';
+  btnTd.appendChild(editBtn);
+  editBtnRow.appendChild(blankTd);
+  editBtnRow.appendChild(btnTd);
+  editBtnRow.appendChild(document.createElement('td'));
+  editBtnRow.appendChild(document.createElement('td'));
+  editBtnRow.appendChild(document.createElement('td'));
+  rows.push(editBtnRow);
+
+  editBtn.addEventListener('click', () => {
+    if (editBtnRow.classList.contains('editing')) {
+      hideEdit();
+    } else {
+      showEdit();
+    }
+  });
+
+  function showEdit() {
+    editBtnRow.classList.add('editing');
+    const editRows = [];
+    const ingredientInputs = [];
+    let mealInput;
+    let saveBtn;
+
+    function checkSave() {
+      const any =
+        (mealInput && mealInput.value.trim()) ||
+        ingredientInputs.some(i => i.value.trim());
+      if (saveBtn) saveBtn.style.display = any ? '' : 'none';
+    }
+
+    ingRows.forEach((row, idx) => {
+      const er = document.createElement('tr');
+      er.className = 'edit-row';
+      er.appendChild(document.createElement('td'));
+      const mealTd = document.createElement('td');
+      const ingTd = document.createElement('td');
+      const amtTd = document.createElement('td');
+      const actTd = document.createElement('td');
+      if (idx === 0) {
+        mealInput = document.createElement('input');
+        saveBtn = document.createElement('button');
+        saveBtn.textContent = 'Save';
+        saveBtn.style.display = 'none';
+        mealTd.appendChild(mealInput);
+        mealTd.appendChild(saveBtn);
+        mealInput.addEventListener('input', checkSave);
+        saveBtn.addEventListener('click', commit);
+        mealInput.addEventListener('keydown', e => {
+          if (e.key === 'Enter') commit();
+        });
+      }
+      const ingInput = document.createElement('input');
+      ingTd.appendChild(ingInput);
+      ingInput.addEventListener('input', checkSave);
+      ingInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') commit();
+      });
+      ingredientInputs.push(ingInput);
+
+      er.appendChild(mealTd);
+      er.appendChild(ingTd);
+      er.appendChild(amtTd);
+      er.appendChild(actTd);
+      row.after(er);
+      editRows.push(er);
+    });
+
+    async function commit() {
+      const nameVal = mealInput ? mealInput.value.trim() : '';
+      const ingVals = ingredientInputs.map(i => i.value.trim());
+      let changed = false;
+      if (nameVal) {
+        meal.name = nameVal;
+        changed = true;
+      }
+      ingVals.forEach((val, idx) => {
+        if (val) {
+          if (meal.ingredients[idx]) meal.ingredients[idx].name = val;
+          changed = true;
+        }
+      });
+      if (changed) {
+        await saveMeals(arr);
+        await calculateAndSaveMealNeeds();
+      }
+      hideEdit();
+      if (changed) location.reload();
+    }
+
+    function hideEdit() {
+      editRows.forEach(r => r.remove());
+      editRows.length = 0;
+      if (mealInput) mealInput.value = '';
+      ingredientInputs.forEach(i => (i.value = ''));
+      if (saveBtn) saveBtn.style.display = 'none';
+      editBtnRow.classList.remove('editing');
+    }
+
+    // Expose hideEdit for toggle
+    showEdit.hideEdit = hideEdit;
+  }
+
+  function hideEdit() {
+    if (typeof showEdit.hideEdit === 'function') showEdit.hideEdit();
   }
 
   return rows;
