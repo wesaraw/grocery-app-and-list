@@ -1,4 +1,4 @@
-import { MEAL_TYPES, DEFAULT_MEALS_PER_DAY, loadMealsPerDay } from './mealData.js';
+import { MEAL_TYPES, DEFAULT_MEALS_PER_DAY, loadMealsPerDay, initializeMealCategories } from './mealData.js';
 import { loadJSON } from './dataLoader.js';
 import { calculateMonthlyMealSpots } from './mealMath.js';
 
@@ -29,6 +29,7 @@ function loadMeals(type) {
 }
 
 export async function calculateAndSaveMealNeeds() {
+  await initializeMealCategories();
   const monthlyMap = {};
   const mealsPerDay = await loadMealsPerDay();
   for (const type of Object.keys(MEAL_TYPES)) {

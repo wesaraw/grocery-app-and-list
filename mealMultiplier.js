@@ -1,4 +1,4 @@
-import { MEAL_TYPES, DEFAULT_MEALS_PER_DAY, loadMealsPerDay, saveMealsPerDay } from './utils/mealData.js';
+import { MEAL_TYPES, DEFAULT_MEALS_PER_DAY, loadMealsPerDay, saveMealsPerDay, initializeMealCategories } from './utils/mealData.js';
 
 let data = {};
 
@@ -44,6 +44,7 @@ function buildRow(key, label, tbody) {
 }
 
 async function init() {
+  await initializeMealCategories();
   data = await loadMealsPerDay();
   const tbody = document.getElementById('multiplierBody');
   Object.keys(MEAL_TYPES).forEach(key => {

@@ -1,4 +1,4 @@
-import { MEAL_TYPES } from './utils/mealData.js';
+import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { loadJSON } from './utils/dataLoader.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
@@ -8,8 +8,8 @@ import { canonicalName } from './utils/nameUtils.js';
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 
 const params = new URLSearchParams(location.search);
-const type = params.get('type') || 'breakfast';
-const { key, path, label } = MEAL_TYPES[type] || MEAL_TYPES.breakfast;
+let type = params.get('type') || 'breakfast';
+let key, path, label;
 
 let inventorySet = new Set();
 const ingredientCells = {};
@@ -284,6 +284,11 @@ function updateInventoryDisplay() {
 }
 
 async function init() {
+  await initializeMealCategories();
+  const info = MEAL_TYPES[type] || MEAL_TYPES.breakfast;
+  key = info.key;
+  path = info.path;
+  label = info.label;
   document.getElementById('title').textContent = `${label} Meals`;
   const addBtn = document.getElementById('addMeal');
   if (addBtn) {

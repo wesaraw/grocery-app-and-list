@@ -1,5 +1,5 @@
 import { loadUsers } from './utils/userData.js';
-import { MEAL_TYPES, DEFAULT_MEALS_PER_DAY, loadMealsPerDay } from './utils/mealData.js';
+import { MEAL_TYPES, DEFAULT_MEALS_PER_DAY, loadMealsPerDay, initializeMealCategories } from './utils/mealData.js';
 import { loadJSON } from './utils/dataLoader.js';
 
 function getCurrentWeek() {
@@ -59,8 +59,16 @@ function usesMeal(meal, idx, userNames) {
 }
 
 async function init() {
+  await initializeMealCategories();
   const userButtons = document.getElementById('userButtons');
   const categorySelect = document.getElementById('categorySelect');
+  categorySelect.innerHTML = '';
+  Object.keys(MEAL_TYPES).forEach(key => {
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = MEAL_TYPES[key].label;
+    categorySelect.appendChild(opt);
+  });
   const mealButtons = document.getElementById('mealButtons');
   const remainingDiv = document.getElementById('remaining');
   const resetBtn = document.getElementById('resetBtn');

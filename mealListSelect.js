@@ -1,4 +1,4 @@
-import { MEAL_TYPES } from './utils/mealData.js';
+import { MEAL_TYPES, initializeMealCategories, addMealCategory } from './utils/mealData.js';
 import { loadJSON } from './utils/dataLoader.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 
@@ -31,8 +31,37 @@ async function renderButtons() {
   }
 }
 
+function startAddCategory() {
+  const div = document.getElementById('listButtons');
+  if (div.querySelector('input.newCat')) return;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'newCat';
+  input.placeholder = 'Category name';
+  const saveBtn = document.createElement('button');
+  saveBtn.textContent = 'Save';
+  saveBtn.style.display = 'none';
+  input.addEventListener('input', () => {
+    saveBtn.style.display = input.value.trim() ? '' : 'none';
+  });
+  saveBtn.addEventListener('click', async () => {
+    const val = input.value.trim();
+    if (!val) return;
+    await addMealCategory(val);
+    input.remove();
+    saveBtn.remove();
+    renderButtons();
+  });
+  div.appendChild(input);
+  div.appendChild(saveBtn);
+  input.focus();
+}
+
 async function init() {
+  await initializeMealCategories();
   await renderButtons();
+  const newBtn = document.getElementById('newCategoryBtn');
+  if (newBtn) newBtn.addEventListener('click', startAddCategory);
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local') {
       const changed = Object.values(MEAL_TYPES).some(t => changes[t.key]);
