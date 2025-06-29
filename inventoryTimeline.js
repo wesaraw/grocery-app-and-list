@@ -77,6 +77,12 @@ function loadStoredArray(key) {
   });
 }
 
+function getCurrentWeek() {
+  const start = new Date(new Date().getFullYear(), 0, 1);
+  const today = new Date();
+  return Math.ceil(((today - start) / 86400000 + start.getDay() + 1) / 7);
+}
+
 async function loadData() {
   const [needs, expiration, stock, consumption, mealYear, mealMonth] = await Promise.all([
     loadArray('yearlyNeeds', 'Required for grocery app/yearly_needs_with_manual_flags.json'),
@@ -166,7 +172,7 @@ function simulateItem(item, overrides) {
   return weeks;
 }
 
-function buildGrid(items, headerState = {}) {
+function buildGrid(items, headerState = {}, startWeek = 1) {
   const grid = document.createElement('table');
   const thead = document.createElement('thead');
   const header = document.createElement('tr');
@@ -174,7 +180,7 @@ function buildGrid(items, headerState = {}) {
   firstTh.textContent = 'Item';
   firstTh.className = 'item-label';
   header.appendChild(firstTh);
-  for (let w = 1; w <= 52; w++) {
+  for (let w = startWeek; w <= 52; w++) {
     const th = document.createElement('th');
     th.textContent = w;
     header.appendChild(th);
@@ -220,7 +226,7 @@ function buildGrid(items, headerState = {}) {
       thCat.textContent = cat;
       headerRow.appendChild(thCat);
       const thFill = document.createElement('th');
-      thFill.colSpan = 52;
+      thFill.colSpan = 52 - startWeek + 1;
       thFill.className = 'category-spacer';
       headerRow.appendChild(thFill);
       tbody.appendChild(headerRow);
@@ -235,7 +241,9 @@ function buildGrid(items, headerState = {}) {
     th.innerHTML = `${item.name}<br/><span class="exp-weeks">${item.expiration_weeks}w</span>` +
       `<br/><span class="weekly-cons">${item.weekly_consumption.toFixed(2)}/wk</span>`;
     row.appendChild(th);
-    weeks.forEach(w => {
+    weeks.forEach((w, idx) => {
+      const weekNum = idx + 1;
+      if (weekNum < startWeek) return;
       const td = document.createElement('td');
       td.className = w.cls;
       td.innerHTML = `${w.qty}<br/>⏰ ${w.weeksToExpiration}`;
@@ -286,6 +294,7 @@ let showingHistory = false;
 let globalItems = [];
 let gridContainer;
 const headerState = {};
+let currentOnly = false;
 
 async function fetchItems() {
   const data = await loadData();
@@ -368,7 +377,8 @@ function showGrid(items = globalItems) {
   showingHistory = false;
   document.getElementById('view-purchases').textContent = 'Purchase History';
   gridContainer.innerHTML = '';
-  gridContainer.appendChild(buildGrid(items, headerState));
+  const startWeek = currentOnly ? getCurrentWeek() : 1;
+  gridContainer.appendChild(buildGrid(items, headerState, startWeek));
   resizeWindowToContent();
 }
 
@@ -399,6 +409,15 @@ async function init() {
       if (filterText.trim()) applyFilter();
     } else {
       showPurchaseHistory();
+    }
+  });
+
+  document.getElementById('current-view').addEventListener('click', () => {
+    currentOnly = !currentOnly;
+    const btn = document.getElementById('current-view');
+    btn.textContent = currentOnly ? 'Full Year' : 'Current View';
+    if (!showingHistory) {
+      applyFilter();
     }
   });
 
