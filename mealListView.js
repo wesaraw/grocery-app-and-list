@@ -14,6 +14,8 @@ let key, path, label;
 let inventorySet = new Set();
 const ingredientCells = {};
 let userNames = [];
+let deleteMode = false;
+const deleteButtons = [];
 
 function createAddButton(name) {
   const btn = document.createElement('button');
@@ -104,8 +106,22 @@ function createRows(meal, arr) {
 
       editBtn = document.createElement('button');
       editBtn.textContent = 'Edit';
+      const delBtn = document.createElement('button');
+      delBtn.textContent = 'Delete';
+      delBtn.style.display = deleteMode ? '' : 'none';
+      deleteButtons.push(delBtn);
+      delBtn.addEventListener('click', async () => {
+        const idx = arr.indexOf(meal);
+        if (idx !== -1) arr.splice(idx, 1);
+        await saveMeals(arr);
+        await calculateAndSaveMealNeeds();
+        location.reload();
+      });
+
       nameTd.appendChild(document.createElement('br'));
       nameTd.appendChild(editBtn);
+      nameTd.appendChild(document.createTextNode(' '));
+      nameTd.appendChild(delBtn);
 
       tr.appendChild(useTd);
       tr.appendChild(nameTd);
@@ -164,8 +180,21 @@ function createRows(meal, arr) {
     nameTd.textContent = meal.name || '';
     editBtn = document.createElement('button');
     editBtn.textContent = 'Edit';
+    const delBtn = document.createElement('button');
+    delBtn.textContent = 'Delete';
+    delBtn.style.display = deleteMode ? '' : 'none';
+    deleteButtons.push(delBtn);
+    delBtn.addEventListener('click', async () => {
+      const idx = arr.indexOf(meal);
+      if (idx !== -1) arr.splice(idx, 1);
+      await saveMeals(arr);
+      await calculateAndSaveMealNeeds();
+      location.reload();
+    });
     nameTd.appendChild(document.createElement('br'));
     nameTd.appendChild(editBtn);
+    nameTd.appendChild(document.createTextNode(' '));
+    nameTd.appendChild(delBtn);
 
     const ingTd = document.createElement('td');
     ingTds.push(ingTd);
@@ -294,6 +323,16 @@ async function init() {
   if (addBtn) {
     addBtn.addEventListener('click', () => {
       openOrFocusWindow(`addMeal.html?type=${type}`);
+    });
+  }
+  const removeBtn = document.getElementById('removeMeal');
+  if (removeBtn) {
+    removeBtn.addEventListener('click', () => {
+      deleteMode = !deleteMode;
+      removeBtn.textContent = deleteMode ? 'Done' : 'Remove Meal';
+      deleteButtons.forEach(btn => {
+        btn.style.display = deleteMode ? '' : 'none';
+      });
     });
   }
   const tbody = document.getElementById('mealBody');
