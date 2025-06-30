@@ -2,6 +2,7 @@ import { loadJSON } from './utils/dataLoader.js';
 import { calculatePurchaseNeeds } from './utils/purchaseCalculator.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
+import { reloadPreservingScroll } from './scrollRestoration.js';
 import {
   sortItemsByCategory,
   renderItemsWithCategoryHeaders
@@ -276,7 +277,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
     area === 'local' &&
     (changes.yearlyNeeds || changes.monthlyConsumption || changes.expirationData)
   ) {
-    location.reload();
+    reloadPreservingScroll();
   }
 });
 

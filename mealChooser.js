@@ -1,6 +1,7 @@
 import { loadUsers } from './utils/userData.js';
 import { MEAL_TYPES, DEFAULT_MEALS_PER_DAY, loadMealsPerDay, initializeMealCategories } from './utils/mealData.js';
 import { loadJSON } from './utils/dataLoader.js';
+import { reloadPreservingScroll } from './scrollRestoration.js';
 
 function getCurrentWeek() {
   const start = new Date(new Date().getFullYear(), 0, 1);
@@ -153,7 +154,7 @@ async function init() {
         renderMeals();
       }
       if (changes.users) {
-        location.reload();
+        reloadPreservingScroll();
       }
     }
   });
