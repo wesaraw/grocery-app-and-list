@@ -4,6 +4,7 @@ import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 import { loadUsers } from './utils/userData.js';
 import { canonicalName } from './utils/nameUtils.js';
+import { reloadPreservingScroll } from './scrollRestoration.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 
@@ -115,7 +116,7 @@ function createRows(meal, arr) {
         if (idx !== -1) arr.splice(idx, 1);
         await saveMeals(arr);
         await calculateAndSaveMealNeeds();
-        location.reload();
+        reloadPreservingScroll();
       });
 
       nameTd.appendChild(document.createElement('br'));
@@ -188,8 +189,8 @@ function createRows(meal, arr) {
       const idx = arr.indexOf(meal);
       if (idx !== -1) arr.splice(idx, 1);
       await saveMeals(arr);
-      await calculateAndSaveMealNeeds();
-      location.reload();
+        await calculateAndSaveMealNeeds();
+        reloadPreservingScroll();
     });
     nameTd.appendChild(document.createElement('br'));
     nameTd.appendChild(editBtn);
@@ -276,8 +277,8 @@ function createRows(meal, arr) {
         await saveMeals(arr);
         await calculateAndSaveMealNeeds();
       }
-      hideEdit();
-      if (changed) location.reload();
+        hideEdit();
+        if (changed) reloadPreservingScroll();
     }
 
     function hideEdit() {
@@ -357,10 +358,10 @@ async function init() {
       updateInventoryDisplay();
     }
     if (area === 'local' && changes.users) {
-      location.reload();
+      reloadPreservingScroll();
     }
     if (area === 'local' && changes[key]) {
-      location.reload();
+      reloadPreservingScroll();
     }
   });
 }

@@ -21,5 +21,16 @@ export function initScrollRestoration() {
   });
 }
 
+export function reloadPreservingScroll() {
+  const key = 'scroll:' + window.location.pathname;
+  const data = { x: window.scrollX, y: window.scrollY };
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (e) {
+    // ignore storage errors
+  }
+  location.reload();
+}
+
 // Auto-initialize when loaded as a module
 initScrollRestoration();
