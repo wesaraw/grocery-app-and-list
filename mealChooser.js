@@ -73,7 +73,7 @@ async function init() {
   const remainingDiv = document.getElementById('remaining');
   const resetBtn = document.getElementById('resetBtn');
 
-  const users = await loadUsers();
+  let users = await loadUsers();
   let slots = await loadMealSlots();
   const mealsPerDay = await loadMealsPerDay();
   let currentUser = 0;
@@ -100,6 +100,7 @@ async function init() {
   }
 
   async function renderMeals() {
+    const scrollTop = window.scrollY;
     const type = categorySelect.value;
     const meals = await loadMeals(type);
     mealButtons.innerHTML = '';
@@ -136,6 +137,7 @@ async function init() {
         mealButtons.appendChild(btn);
       }
     });
+    window.scrollTo(0, scrollTop);
   }
 
   renderUserButtons();
@@ -153,7 +155,13 @@ async function init() {
         renderMeals();
       }
       if (changes.users) {
-        location.reload();
+        Promise.all([loadUsers(), loadMealSlots()]).then(([u, s]) => {
+          users = u;
+          slots = s;
+          currentUser = Math.min(currentUser, users.length - 1);
+          renderUserButtons();
+          renderMeals();
+        });
       }
     }
   });
