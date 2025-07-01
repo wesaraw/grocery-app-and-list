@@ -246,6 +246,78 @@ async function refreshNeeds(stock = stockData, consumed = consumedYearData) {
   });
 }
 
+async function rerenderAll() {
+  const scrollTop = window.scrollY;
+  const {
+    needs,
+    selections,
+    consumption,
+    stock,
+    expiration,
+    consumed,
+    purchases,
+    mealYear
+  } = await getData();
+  needsData = needs;
+  const sortedNeeds = sortItemsByCategory(needs);
+  consumptionData = consumption;
+  consumptionMap = new Map(consumption.map(c => [c.name, c]));
+  expirationData = expiration;
+  stockData = stock;
+  consumedYearData = consumed;
+  mealYearData = mealYear;
+  purchasesData = purchases;
+  const week = getCurrentWeek();
+  const purchaseInfo = calculatePurchaseNeeds(
+    needs,
+    consumption,
+    stock,
+    expiration,
+    consumed,
+    mealYear,
+    purchases,
+    week
+  );
+  const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
+  const stockMap = new Map(stock.map(i => [i.name, i]));
+  const itemsContainer = document.getElementById('items');
+  itemsContainer.innerHTML = '';
+  finalMap.clear();
+  renderItemsWithCategoryHeaders(sortedNeeds, itemsContainer, item => {
+    const li = document.createElement('li');
+    const info = purchaseMap.get(item.name);
+    const needAmt = info ? Math.round(info.toBuy) : null;
+    const amountText =
+      info && !isNaN(needAmt) ? ` (Need: ${needAmt} ${info.home_unit})` : '';
+    const btn = document.createElement('button');
+    btn.textContent = item.name + amountText;
+    btn.addEventListener('click', () => {
+      openOrFocusWindow(`item.html?item=${encodeURIComponent(item.name)}`);
+    });
+    li.appendChild(btn);
+    const finalSpan = document.createElement('span');
+    const finalImg = document.createElement('img');
+    finalImg.className = 'final-product-img';
+    finalImg.width = 50;
+    finalImg.height = 50;
+    finalImg.style.display = 'none';
+    const currentQty = stockMap.get(item.name)?.amount || 0;
+    const weeklyNeed = item.total_needed_year ? item.total_needed_year / 52 : 0;
+    const showByStock = currentQty < weeklyNeed;
+    const showByNeed = !hideZeroItems || (needAmt != null && needAmt > 0);
+    li.style.display = showByStock && showByNeed ? 'list-item' : 'none';
+    getFinal(item.name).then(async store => {
+      const product = await getFinalProduct(item.name);
+      updateFinalInfo(item.name, finalSpan, finalImg, store, product);
+    });
+    li.appendChild(finalSpan);
+    li.appendChild(finalImg);
+    finalMap.set(item.name, { li, btn, span: finalSpan, img: finalImg });
+    return li;
+  }, headerState);
+  window.scrollTo(0, scrollTop);
+}
+
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && changes.currentStock) {
     const newStock = changes.currentStock.newValue || [];
@@ -276,7 +348,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
     area === 'local' &&
     (changes.yearlyNeeds || changes.monthlyConsumption || changes.expirationData)
   ) {
-    location.reload();
+    rerenderAll();
   }
 });
 

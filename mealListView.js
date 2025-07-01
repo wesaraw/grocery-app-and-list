@@ -115,7 +115,7 @@ function createRows(meal, arr) {
         if (idx !== -1) arr.splice(idx, 1);
         await saveMeals(arr);
         await calculateAndSaveMealNeeds();
-        location.reload();
+        loadAndRender();
       });
 
       nameTd.appendChild(document.createElement('br'));
@@ -189,7 +189,7 @@ function createRows(meal, arr) {
       if (idx !== -1) arr.splice(idx, 1);
       await saveMeals(arr);
       await calculateAndSaveMealNeeds();
-      location.reload();
+      loadAndRender();
     });
     nameTd.appendChild(document.createElement('br'));
     nameTd.appendChild(editBtn);
@@ -277,7 +277,7 @@ function createRows(meal, arr) {
         await calculateAndSaveMealNeeds();
       }
       hideEdit();
-      if (changed) location.reload();
+      if (changed) loadAndRender();
     }
 
     function hideEdit() {
@@ -312,6 +312,28 @@ function updateInventoryDisplay() {
   });
 }
 
+async function loadAndRender() {
+  const scrollTop = window.scrollY;
+  const tbody = document.getElementById('mealBody');
+  tbody.innerHTML = '';
+  deleteButtons.length = 0;
+  Object.keys(ingredientCells).forEach(k => delete ingredientCells[k]);
+  const [meals, stock, users] = await Promise.all([
+    loadMeals(),
+    loadStock(),
+    loadUsers()
+  ]);
+  userNames = users;
+  inventorySet = new Set(stock.map(s => canonicalName(s.name)));
+  meals.forEach(meal => {
+    const rows = createRows(meal, meals);
+    rows.forEach(row => tbody.appendChild(row));
+  });
+  updateInventoryDisplay();
+  await calculateAndSaveMealNeeds();
+  window.scrollTo(0, scrollTop);
+}
+
 async function init() {
   await initializeMealCategories();
   const info = MEAL_TYPES[type] || MEAL_TYPES.breakfast;
@@ -335,20 +357,7 @@ async function init() {
       });
     });
   }
-  const tbody = document.getElementById('mealBody');
-  const [meals, stock, users] = await Promise.all([
-    loadMeals(),
-    loadStock(),
-    loadUsers()
-  ]);
-  userNames = users;
-  inventorySet = new Set(stock.map(s => canonicalName(s.name)));
-  meals.forEach(meal => {
-    const rows = createRows(meal, meals);
-    rows.forEach(row => tbody.appendChild(row));
-  });
-  updateInventoryDisplay();
-  await calculateAndSaveMealNeeds();
+  await loadAndRender();
 
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local' && changes.currentStock) {
@@ -357,10 +366,10 @@ async function init() {
       updateInventoryDisplay();
     }
     if (area === 'local' && changes.users) {
-      location.reload();
+      loadAndRender();
     }
     if (area === 'local' && changes[key]) {
-      location.reload();
+      loadAndRender();
     }
   });
 }
