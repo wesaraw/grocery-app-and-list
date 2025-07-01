@@ -1,6 +1,6 @@
 export function initScrollRestoration() {
-  const key = 'scroll:' + window.location.pathname + window.location.search;
-  const saved = sessionStorage.getItem(key);
+  const key = 'scroll:' + window.location.pathname;
+  const saved = localStorage.getItem(key);
   if (saved) {
     try {
       const pos = JSON.parse(saved);
@@ -14,7 +14,7 @@ export function initScrollRestoration() {
   window.addEventListener('beforeunload', () => {
     const data = { x: window.scrollX, y: window.scrollY };
     try {
-      sessionStorage.setItem(key, JSON.stringify(data));
+      localStorage.setItem(key, JSON.stringify(data));
     } catch (e) {
       // ignore storage errors
     }
@@ -22,10 +22,10 @@ export function initScrollRestoration() {
 }
 
 export function reloadPreservingScroll() {
-  const key = 'scroll:' + window.location.pathname + window.location.search;
+  const key = 'scroll:' + window.location.pathname;
   const data = { x: window.scrollX, y: window.scrollY };
   try {
-    sessionStorage.setItem(key, JSON.stringify(data));
+    localStorage.setItem(key, JSON.stringify(data));
   } catch (e) {
     // ignore storage errors
   }
