@@ -59,13 +59,17 @@ export async function calculateAndSaveMealNeeds() {
 
     active.forEach(meal => {
       if (Array.isArray(meal.users)) {
+        const usersForMeal = meal.users
+          .map((use, idx) => (use ? idx : -1))
+          .filter(idx => idx >= 0);
         let personDays = 0;
-        meal.users.forEach((use, idx) => {
-          if (!use) return;
+        usersForMeal.forEach(idx => {
           const val = parseFloat(userDays[idx]?.[type]);
           personDays += isNaN(val) ? 1 : val;
         });
         if (personDays <= 0) return;
+        const people = usersForMeal.length;
+        const daysPerWeek = people > 0 ? personDays / people : 0;
         const monthlySpots = (perDay * personDays * 52) / active.length / 12;
         (meal.ingredients || []).forEach(ing => {
           const serving = parseAmount(ing.serving_size || ing.amount);
@@ -73,8 +77,14 @@ export async function calculateAndSaveMealNeeds() {
           const need = serving * monthlySpots;
           monthlyMap[ing.name] = (monthlyMap[ing.name] || 0) + need;
           if (!monthlyBreakdown[ing.name]) monthlyBreakdown[ing.name] = {};
-          monthlyBreakdown[ing.name][meal.name] =
-            (monthlyBreakdown[ing.name][meal.name] || 0) + need;
+          monthlyBreakdown[ing.name][meal.name] = {
+            monthlyNeed: need,
+            A: perDay,
+            B: people,
+            C: daysPerWeek,
+            D: active.length,
+            servingSize: serving
+          };
         });
       } else {
         const people = meal.people ?? meal.multiplier ?? 1;
@@ -97,8 +107,14 @@ export async function calculateAndSaveMealNeeds() {
           const need = serving * monthlySpots;
           monthlyMap[ing.name] = (monthlyMap[ing.name] || 0) + need;
           if (!monthlyBreakdown[ing.name]) monthlyBreakdown[ing.name] = {};
-          monthlyBreakdown[ing.name][meal.name] =
-            (monthlyBreakdown[ing.name][meal.name] || 0) + need;
+          monthlyBreakdown[ing.name][meal.name] = {
+            monthlyNeed: need,
+            A: perDay,
+            B: people,
+            C: avgDays,
+            D: active.length,
+            servingSize: serving
+          };
         });
       }
     });
