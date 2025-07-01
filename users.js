@@ -1,10 +1,12 @@
-import { loadUsers, saveUsers } from './utils/userData.js';
+import {
+  loadUsers,
+  saveUsers,
+  loadUserCategoryDays,
+  saveUserCategoryDays
+} from './utils/userData.js';
 import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { loadJSON } from './utils/dataLoader.js';
-import {
-  sortItemsByCategory,
-  renderItemsWithCategoryHeaders
-} from './utils/sortByCategory.js';
+import { sortItemsByCategory } from './utils/sortByCategory.js';
 
 const btnContainer = document.getElementById('userButtons');
 const mealList = document.getElementById('mealList');
@@ -12,6 +14,7 @@ const editBtn = document.getElementById('editNamesBtn');
 const saveNamesBtn = document.getElementById('saveNamesBtn');
 
 let users = [];
+let userDays = [];
 let addInput = null;
 let saveBtn = null;
 let addBtn = null;
@@ -57,7 +60,8 @@ async function saveNewUser() {
   const val = addInput.value.trim();
   if (!val) return;
   users.push(val);
-  await saveUsers(users);
+  userDays.push({});
+  await Promise.all([saveUsers(users), saveUserCategoryDays(userDays)]);
   addInput.remove();
   saveBtn.remove();
   addInput = null;
@@ -136,21 +140,90 @@ async function showMeals(userIndex) {
   });
   const sorted = sortItemsByCategory(usedMeals);
   mealList.innerHTML = '';
-  renderItemsWithCategoryHeaders(
-    sorted,
-    mealList,
-    m => {
-      const li = document.createElement('li');
-      li.textContent = m.name || '';
-      return li;
-    },
-    headerState
-  );
+
+  let lastCat = null;
+  let header = null;
+  let nodes = [];
+
+  function finalizeHeader(cat, hdr, ns) {
+    if (!hdr) return;
+    const hidden = headerState[cat] !== undefined ? headerState[cat] : true;
+    hdr.dataset.hidden = hidden ? 'true' : 'false';
+    ns.forEach(n => {
+      n.style.display = hidden ? 'none' : '';
+    });
+    hdr.style.cursor = 'pointer';
+    hdr.addEventListener('click', () => {
+      const isHidden = hdr.dataset.hidden === 'true';
+      hdr.dataset.hidden = isHidden ? 'false' : 'true';
+      ns.forEach(n => {
+        n.style.display = isHidden ? '' : 'none';
+      });
+      headerState[cat] = !isHidden;
+    });
+  }
+
+  const daysRec = userDays[userIndex] || {};
+
+  sorted.forEach(m => {
+    const cat = m.category || 'Other';
+    if (cat !== lastCat) {
+      finalizeHeader(lastCat, header, nodes);
+      lastCat = cat;
+      header = document.createElement('h3');
+      header.className = 'category-header';
+      header.textContent = cat;
+      mealList.appendChild(header);
+
+      const div = document.createElement('div');
+      const label = document.createElement('span');
+      label.textContent = 'Days per week: ';
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.min = '0';
+      input.max = '7';
+      input.step = 'any';
+      input.value = daysRec[cat] ?? 1;
+      const save = document.createElement('button');
+      save.textContent = 'Save';
+      save.className = 'hidden';
+      function update() {
+        const cur = daysRec[cat] ?? 1;
+        if (input.value.trim() && parseFloat(input.value) !== parseFloat(cur)) {
+          save.classList.remove('hidden');
+        } else {
+          save.classList.add('hidden');
+        }
+      }
+      input.addEventListener('input', update);
+      save.addEventListener('click', async () => {
+        const val = parseFloat(input.value);
+        if (isNaN(val)) return;
+        if (!userDays[userIndex]) userDays[userIndex] = {};
+        userDays[userIndex][cat] = val;
+        await saveUserCategoryDays(userDays);
+        save.classList.add('hidden');
+        try { chrome.runtime.sendMessage({ type: 'inventory-updated' }); } catch (_) {}
+      });
+      div.appendChild(label);
+      div.appendChild(input);
+      div.appendChild(save);
+      mealList.appendChild(div);
+      nodes = [div];
+    }
+    const li = document.createElement('li');
+    li.textContent = m.name || '';
+    mealList.appendChild(li);
+    nodes.push(li);
+  });
+  finalizeHeader(lastCat, header, nodes);
 }
 
 async function init() {
   await initializeMealCategories();
   users = await loadUsers();
+  userDays = await loadUserCategoryDays();
+  while (userDays.length < users.length) userDays.push({});
   renderButtons();
   editBtn.addEventListener('click', () => {
     if (editing) return;

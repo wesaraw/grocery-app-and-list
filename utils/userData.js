@@ -16,3 +16,21 @@ export function saveUsers(arr) {
     chrome.storage.local.set({ users: arr }, () => resolve());
   });
 }
+
+export function loadUserCategoryDays() {
+  return new Promise(resolve => {
+    chrome.storage.local.get('userCategoryDays', data => {
+      if (Array.isArray(data.userCategoryDays)) {
+        resolve(data.userCategoryDays);
+      } else {
+        resolve([]);
+      }
+    });
+  });
+}
+
+export function saveUserCategoryDays(arr) {
+  return new Promise(resolve => {
+    chrome.storage.local.set({ userCategoryDays: arr }, () => resolve());
+  });
+}
