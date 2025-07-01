@@ -78,6 +78,12 @@ function loadStoredArray(key) {
   });
 }
 
+function loadStoredObj(key) {
+  return new Promise(resolve => {
+    chrome.storage.local.get(key, data => resolve(data[key] || {}));
+  });
+}
+
 function getCurrentWeek() {
   const start = new Date(new Date().getFullYear(), 0, 1);
   const today = new Date();
@@ -85,18 +91,19 @@ function getCurrentWeek() {
 }
 
 async function loadData() {
-  const [needs, expiration, stock, consumption, mealYear, mealMonth] = await Promise.all([
+  const [needs, expiration, stock, consumption, mealYear, mealMonth, mealBreakdown] = await Promise.all([
     loadArray('yearlyNeeds', 'Required for grocery app/yearly_needs_with_manual_flags.json'),
     loadArray('expirationData', 'Required for grocery app/expiration_times_full.json'),
     loadArray('currentStock', 'Required for grocery app/current_stock_table.json'),
     loadArray('monthlyConsumption', 'Required for grocery app/monthly_consumption_table.json'),
     loadStoredArray('mealPlanYearly'),
-    loadStoredArray('mealPlanMonthly')
+    loadStoredArray('mealPlanMonthly'),
+    loadStoredObj('mealPlanMonthlyBreakdown')
   ]);
-  return { needs, expiration, stock, consumption, mealYear, mealMonth };
+  return { needs, expiration, stock, consumption, mealYear, mealMonth, mealBreakdown };
 }
 
-function buildItemMap(needs, expiration, stock, consumption, mealMonth) {
+function buildItemMap(needs, expiration, stock, consumption, mealMonth, mealBreakdown = {}) {
   const expMap = {};
   expiration.forEach(e => {
     expMap[canonicalName(e.name)] = e.shelf_life_months * WEEKS_PER_MONTH;
@@ -128,12 +135,14 @@ function buildItemMap(needs, expiration, stock, consumption, mealMonth) {
     const base = baseMap[key] || 0;
     const meal = mealMap[key] || 0;
     const total = consMap[key] || 0;
+    const breakdown = mealBreakdown[key] || {};
     return {
       name: n.name,
       category: n.category || '',
       units_per_purchase: 1,
       base_monthly_consumption: base,
       meal_monthly_consumption: meal,
+      meal_breakdown: breakdown,
       weekly_consumption: total / WEEKS_PER_MONTH,
       expiration_weeks: expMap[key] || 52,
       starting_stock: stockMap[key] || 0,
@@ -363,7 +372,8 @@ async function fetchItems() {
     data.expiration,
     data.stock,
     data.consumption,
-    data.mealMonth
+    data.mealMonth,
+    data.mealBreakdown
   );
   const [savedMap, overridesMap] = await Promise.all([
     loadPurchases(),
