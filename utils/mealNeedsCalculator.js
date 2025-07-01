@@ -36,6 +36,7 @@ function loadMeals(type) {
 export async function calculateAndSaveMealNeeds() {
   await initializeMealCategories();
   const monthlyMap = {};
+  const monthlyBreakdown = {};
   const mealsPerDay = await loadMealsPerDay();
   const users = await loadUsers();
   const userDays = await loadUserCategoryDays();
@@ -71,6 +72,9 @@ export async function calculateAndSaveMealNeeds() {
           if (!serving) return;
           const need = serving * monthlySpots;
           monthlyMap[ing.name] = (monthlyMap[ing.name] || 0) + need;
+          if (!monthlyBreakdown[ing.name]) monthlyBreakdown[ing.name] = {};
+          monthlyBreakdown[ing.name][meal.name] =
+            (monthlyBreakdown[ing.name][meal.name] || 0) + need;
         });
       } else {
         const people = meal.people ?? meal.multiplier ?? 1;
@@ -92,6 +96,9 @@ export async function calculateAndSaveMealNeeds() {
           if (!serving) return;
           const need = serving * monthlySpots;
           monthlyMap[ing.name] = (monthlyMap[ing.name] || 0) + need;
+          if (!monthlyBreakdown[ing.name]) monthlyBreakdown[ing.name] = {};
+          monthlyBreakdown[ing.name][meal.name] =
+            (monthlyBreakdown[ing.name][meal.name] || 0) + need;
         });
       }
     });
@@ -110,20 +117,28 @@ export async function calculateAndSaveMealNeeds() {
   }));
   await new Promise(resolve => {
     chrome.storage.local.set(
-      { mealPlanMonthly: monthlyArr, mealPlanYearly: yearlyArr },
+      {
+        mealPlanMonthly: monthlyArr,
+        mealPlanYearly: yearlyArr,
+        mealPlanMonthlyBreakdown: monthlyBreakdown
+      },
       () => resolve()
     );
   });
-  return { monthlyArr, yearlyArr };
+  return { monthlyArr, yearlyArr, monthlyBreakdown };
 }
 
 export function loadMealPlanData() {
   return new Promise(resolve => {
-    chrome.storage.local.get(['mealPlanMonthly', 'mealPlanYearly'], data => {
-      resolve({
-        monthly: data.mealPlanMonthly || [],
-        yearly: data.mealPlanYearly || []
-      });
-    });
+    chrome.storage.local.get(
+      ['mealPlanMonthly', 'mealPlanYearly', 'mealPlanMonthlyBreakdown'],
+      data => {
+        resolve({
+          monthly: data.mealPlanMonthly || [],
+          yearly: data.mealPlanYearly || [],
+          breakdown: data.mealPlanMonthlyBreakdown || {}
+        });
+      }
+    );
   });
 }
