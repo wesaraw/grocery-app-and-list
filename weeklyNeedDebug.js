@@ -28,7 +28,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     `${meal.toFixed(2)} (meal plan monthly consumption)`
   ];
   Object.keys(breakdown).forEach(m => {
-    lines.push(`  - ${m}: ${breakdown[m].toFixed(2)}`);
+    const info = breakdown[m];
+    if (info && typeof info === 'object') {
+      const a = info.A ?? 0;
+      const b = info.B ?? 0;
+      const c = info.C ?? 0;
+      const d = info.D ?? 1;
+      const need = info.monthlyNeed ?? (parseFloat(info) || 0);
+      lines.push(
+        `  - ${m}: ${need.toFixed(2)} (A=${a}, B=${b}, C=${c}, D=${d})`
+      );
+    } else {
+      const val = parseFloat(info) || 0;
+      lines.push(`  - ${m}: ${val.toFixed(2)}`);
+    }
   });
   lines.push(
     `${(base + meal).toFixed(2)} (combined monthly consumption)`,
