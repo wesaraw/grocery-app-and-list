@@ -58,24 +58,34 @@ export async function calculateAndSaveMealNeeds() {
 
     active.forEach(meal => {
       if (Array.isArray(meal.users)) {
+        let personDays = 0;
         meal.users.forEach((use, idx) => {
           if (!use) return;
-          const days = userDays[idx]?.[type];
-          const personDays = days === undefined ? 1 : parseFloat(days);
-          if (personDays <= 0) return;
-          const totalCount = userCounts[idx] || 1;
-          const monthlySpots = (perDay * personDays * 52) / totalCount / 12;
-          (meal.ingredients || []).forEach(ing => {
-            const serving = parseAmount(ing.serving_size || ing.amount);
-            if (!serving) return;
-            const need = serving * monthlySpots;
-            monthlyMap[ing.name] = (monthlyMap[ing.name] || 0) + need;
-          });
+          const val = parseFloat(userDays[idx]?.[type]);
+          personDays += isNaN(val) ? 1 : val;
+        });
+        if (personDays <= 0) return;
+        const monthlySpots = (perDay * personDays * 52) / active.length / 12;
+        (meal.ingredients || []).forEach(ing => {
+          const serving = parseAmount(ing.serving_size || ing.amount);
+          if (!serving) return;
+          const need = serving * monthlySpots;
+          monthlyMap[ing.name] = (monthlyMap[ing.name] || 0) + need;
         });
       } else {
         const people = meal.people ?? meal.multiplier ?? 1;
         if (people <= 0) return;
-        const personDays = people * 7;
+
+        const avgDays =
+          users.length > 0
+            ?
+                users.reduce((sum, _u, idx) => {
+                  const d = parseFloat(userDays[idx]?.[type]);
+                  return sum + (isNaN(d) ? 1 : d);
+                }, 0) / users.length
+            : 1;
+
+        const personDays = people * avgDays;
         const monthlySpots = (perDay * personDays * 52) / active.length / 12;
         (meal.ingredients || []).forEach(ing => {
           const serving = parseAmount(ing.serving_size || ing.amount);
