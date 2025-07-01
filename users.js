@@ -1,6 +1,10 @@
 import { loadUsers, saveUsers } from './utils/userData.js';
 import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { loadJSON } from './utils/dataLoader.js';
+import {
+  sortItemsByCategory,
+  renderItemsWithCategoryHeaders
+} from './utils/sortByCategory.js';
 
 const btnContainer = document.getElementById('userButtons');
 const mealList = document.getElementById('mealList');
@@ -13,6 +17,7 @@ let saveBtn = null;
 let addBtn = null;
 let editInputs = [];
 let editing = false;
+const headerState = {};
 
 function renderButtons() {
   btnContainer.innerHTML = '';
@@ -94,15 +99,15 @@ async function saveNameEdits() {
 }
 
 function loadMeals(type) {
-  const { key, path } = MEAL_TYPES[type];
+  const info = MEAL_TYPES[type];
+  const { key, path } = info;
   return new Promise(async resolve => {
     chrome.storage.local.get(key, async data => {
-      if (data[key]) {
-        resolve(data[key]);
-      } else {
-        const arr = await loadJSON(path);
-        resolve(arr);
-      }
+      const arr = data[key] ? data[key] : await loadJSON(path);
+      arr.forEach(m => {
+        if (!m.category) m.category = info.label;
+      });
+      resolve(arr);
     });
   });
 }
@@ -118,7 +123,7 @@ async function loadAllMeals() {
 
 async function showMeals(userIndex) {
   const meals = await loadAllMeals();
-  mealList.innerHTML = '';
+  const usedMeals = [];
   meals.forEach(m => {
     let used = false;
     if (Array.isArray(m.users)) {
@@ -127,12 +132,20 @@ async function showMeals(userIndex) {
       const people = m.people ?? m.multiplier ?? (m.active === false ? 0 : 1);
       used = people > 0;
     }
-    if (used) {
+    if (used) usedMeals.push(m);
+  });
+  const sorted = sortItemsByCategory(usedMeals);
+  mealList.innerHTML = '';
+  renderItemsWithCategoryHeaders(
+    sorted,
+    mealList,
+    m => {
       const li = document.createElement('li');
       li.textContent = m.name || '';
-      mealList.appendChild(li);
-    }
-  });
+      return li;
+    },
+    headerState
+  );
 }
 
 async function init() {
