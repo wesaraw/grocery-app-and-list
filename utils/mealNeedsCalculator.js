@@ -44,6 +44,7 @@ export async function calculateAndSaveMealNeeds() {
   while (userDays.length < users.length) userDays.push({});
 
   for (const type of Object.keys(MEAL_TYPES)) {
+    const label = MEAL_TYPES[type].label;
     const meals = await loadMeals(type);
     const active = meals.filter(m => {
       if (Array.isArray(m.users)) return m.users.some(Boolean);
@@ -63,7 +64,7 @@ export async function calculateAndSaveMealNeeds() {
       if (Array.isArray(meal.users)) {
         meal.users.forEach((use, idx) => {
           if (!use) return;
-          const val = parseFloat(userDays[idx]?.[type]);
+          const val = parseFloat(userDays[idx]?.[label]);
           const days = isNaN(val) ? 1 : val;
           details.factors.push({ people: 1, days });
           personDays += days;
@@ -74,7 +75,7 @@ export async function calculateAndSaveMealNeeds() {
         const avgDays =
           users.length > 0
             ? users.reduce((sum, _u, idx) => {
-                const d = parseFloat(userDays[idx]?.[type]);
+                const d = parseFloat(userDays[idx]?.[label]);
                 return sum + (isNaN(d) ? 1 : d);
               }, 0) / users.length
             : 1;
