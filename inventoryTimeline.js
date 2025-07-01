@@ -102,23 +102,39 @@ function buildItemMap(needs, expiration, stock, consumption, mealMonth) {
     expMap[canonicalName(e.name)] = e.shelf_life_months * WEEKS_PER_MONTH;
   });
   const stockMap = {};
-  stock.forEach(s => { stockMap[canonicalName(s.name)] = s.amount; });
-  const consMap = {};
-  consumption.forEach(c => {
-    consMap[canonicalName(c.name)] = c.monthly_consumption;
+  stock.forEach(s => {
+    stockMap[canonicalName(s.name)] = s.amount;
   });
+
+  const baseMap = {};
+  consumption.forEach(c => {
+    baseMap[canonicalName(c.name)] = c.monthly_consumption;
+  });
+  const mealMap = {};
   (mealMonth || []).forEach(m => {
     const key = canonicalName(m.name);
-    consMap[key] = (consMap[key] || 0) + m.monthly_consumption;
+    mealMap[key] = (mealMap[key] || 0) + m.monthly_consumption;
+  });
+  const consMap = {};
+  Object.keys(baseMap).forEach(k => {
+    consMap[k] = (consMap[k] || 0) + baseMap[k];
+  });
+  Object.keys(mealMap).forEach(k => {
+    consMap[k] = (consMap[k] || 0) + mealMap[k];
   });
 
   return needs.map(n => {
     const key = canonicalName(n.name);
+    const base = baseMap[key] || 0;
+    const meal = mealMap[key] || 0;
+    const total = consMap[key] || 0;
     return {
       name: n.name,
       category: n.category || '',
       units_per_purchase: 1,
-      weekly_consumption: (consMap[key] || 0) / WEEKS_PER_MONTH,
+      base_monthly_consumption: base,
+      meal_monthly_consumption: meal,
+      weekly_consumption: total / WEEKS_PER_MONTH,
       expiration_weeks: expMap[key] || 52,
       starting_stock: stockMap[key] || 0,
       purchases: []
@@ -269,6 +285,20 @@ function buildGrid(items, headerState = {}, startWeek = 1) {
     th.className = 'item-label';
     th.innerHTML = `${item.name}<br/><span class="exp-weeks">${item.expiration_weeks}w</span>` +
       `<br/><span class="weekly-cons">${item.weekly_consumption.toFixed(2)}/wk</span>`;
+    const span = th.querySelector('.weekly-cons');
+    if (span) {
+      span.style.cursor = 'pointer';
+      span.addEventListener('click', () => {
+        const params = new URLSearchParams({
+          item: item.name,
+          base: item.base_monthly_consumption ?? 0,
+          meal: item.meal_monthly_consumption ?? 0,
+          weekly: item.weekly_consumption,
+          wpm: WEEKS_PER_MONTH
+        });
+        openOrFocusWindow(`weeklyNeedDebug.html?${params.toString()}`, 320, 240);
+      });
+    }
     row.appendChild(th);
     weeks.forEach((w, idx) => {
       const weekNum = idx + 1;
