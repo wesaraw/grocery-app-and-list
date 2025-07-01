@@ -5,6 +5,7 @@ import {
   saveUserCategoryDays
 } from './utils/userData.js';
 import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
+import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 import { loadJSON } from './utils/dataLoader.js';
 import { sortItemsByCategory } from './utils/sortByCategory.js';
 
@@ -202,8 +203,11 @@ async function showMeals(userIndex) {
         if (!userDays[userIndex]) userDays[userIndex] = {};
         userDays[userIndex][cat] = val;
         await saveUserCategoryDays(userDays);
+        await calculateAndSaveMealNeeds();
         save.classList.add('hidden');
-        try { chrome.runtime.sendMessage({ type: 'inventory-updated' }); } catch (_) {}
+        try {
+          chrome.runtime.sendMessage({ type: 'inventory-updated' });
+        } catch (_) {}
       });
       div.appendChild(label);
       div.appendChild(input);

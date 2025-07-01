@@ -1,4 +1,11 @@
-import { MEAL_TYPES, DEFAULT_MEALS_PER_DAY, loadMealsPerDay, saveMealsPerDay, initializeMealCategories } from './utils/mealData.js';
+import {
+  MEAL_TYPES,
+  DEFAULT_MEALS_PER_DAY,
+  loadMealsPerDay,
+  saveMealsPerDay,
+  initializeMealCategories
+} from './utils/mealData.js';
+import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 
 let data = {};
 
@@ -30,10 +37,13 @@ function buildRow(key, label, tbody) {
     if (isNaN(val)) return;
     data[key] = val;
     await saveMealsPerDay(data);
+    await calculateAndSaveMealNeeds();
     curTd.textContent = val;
     input.value = '';
     saveBtn.classList.add('hidden');
-    try { chrome.runtime.sendMessage({ type: 'inventory-updated' }); } catch (_) {}
+    try {
+      chrome.runtime.sendMessage({ type: 'inventory-updated' });
+    } catch (_) {}
   });
 
   tr.appendChild(catTd);
