@@ -52,55 +52,49 @@ export async function calculateAndSaveMealNeeds() {
     if (!active.length) continue;
     const perDay = mealsPerDay[type] ?? DEFAULT_MEALS_PER_DAY[type];
 
-    // Precompute how many meals each user is subscribed to for this category
-    const userCounts = users.map((_, idx) =>
-      active.filter(m => Array.isArray(m.users) && m.users[idx]).length
-    );
-
     active.forEach(meal => {
+      const details = {
+        perDay,
+        activeMeals: active.length,
+        factors: []
+      };
+      let personDays = 0;
+
       if (Array.isArray(meal.users)) {
-        let personDays = 0;
         meal.users.forEach((use, idx) => {
           if (!use) return;
           const val = parseFloat(userDays[idx]?.[type]);
-          personDays += isNaN(val) ? 1 : val;
-        });
-        if (personDays <= 0) return;
-        const monthlySpots = (perDay * personDays * 52) / active.length / 12;
-        (meal.ingredients || []).forEach(ing => {
-          const serving = parseAmount(ing.serving_size || ing.amount);
-          if (!serving) return;
-          const need = serving * monthlySpots;
-          monthlyMap[ing.name] = (monthlyMap[ing.name] || 0) + need;
-          if (!monthlyBreakdown[ing.name]) monthlyBreakdown[ing.name] = {};
-          monthlyBreakdown[ing.name][meal.name] =
-            (monthlyBreakdown[ing.name][meal.name] || 0) + need;
+          const days = isNaN(val) ? 1 : val;
+          details.factors.push({ people: 1, days });
+          personDays += days;
         });
       } else {
         const people = meal.people ?? meal.multiplier ?? 1;
         if (people <= 0) return;
-
         const avgDays =
           users.length > 0
-            ?
-                users.reduce((sum, _u, idx) => {
-                  const d = parseFloat(userDays[idx]?.[type]);
-                  return sum + (isNaN(d) ? 1 : d);
-                }, 0) / users.length
+            ? users.reduce((sum, _u, idx) => {
+                const d = parseFloat(userDays[idx]?.[type]);
+                return sum + (isNaN(d) ? 1 : d);
+              }, 0) / users.length
             : 1;
-
-        const personDays = people * avgDays;
-        const monthlySpots = (perDay * personDays * 52) / active.length / 12;
-        (meal.ingredients || []).forEach(ing => {
-          const serving = parseAmount(ing.serving_size || ing.amount);
-          if (!serving) return;
-          const need = serving * monthlySpots;
-          monthlyMap[ing.name] = (monthlyMap[ing.name] || 0) + need;
-          if (!monthlyBreakdown[ing.name]) monthlyBreakdown[ing.name] = {};
-          monthlyBreakdown[ing.name][meal.name] =
-            (monthlyBreakdown[ing.name][meal.name] || 0) + need;
-        });
+        details.factors.push({ people, days: avgDays });
+        personDays = people * avgDays;
       }
+
+      if (personDays <= 0) return;
+      const monthlySpots = (perDay * personDays * 52) / active.length / 12;
+      (meal.ingredients || []).forEach(ing => {
+        const serving = parseAmount(ing.serving_size || ing.amount);
+        if (!serving) return;
+        const need = serving * monthlySpots;
+        monthlyMap[ing.name] = (monthlyMap[ing.name] || 0) + need;
+        if (!monthlyBreakdown[ing.name]) monthlyBreakdown[ing.name] = {};
+        if (!monthlyBreakdown[ing.name][meal.name]) {
+          monthlyBreakdown[ing.name][meal.name] = { amount: 0, details };
+        }
+        monthlyBreakdown[ing.name][meal.name].amount += need;
+      });
     });
   }
   const yearlyMap = {};

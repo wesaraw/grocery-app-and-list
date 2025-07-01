@@ -28,7 +28,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     `${meal.toFixed(2)} (meal plan monthly consumption)`
   ];
   Object.keys(breakdown).forEach(m => {
-    lines.push(`  - ${m}: ${breakdown[m].toFixed(2)}`);
+    const entry = breakdown[m];
+    const amount = typeof entry === 'number' ? entry : entry.amount;
+    lines.push(`  - ${m}: ${amount.toFixed(2)}`);
+    if (entry && entry.details) {
+      const A = entry.details.perDay;
+      const factors = (entry.details.factors || [])
+        .map(f => `(${f.people} * ${f.days})`)
+        .join(' + ');
+      lines.push(`    ${A} * (${factors}) * 52 / 12`);
+    }
   });
   lines.push(
     `${(base + meal).toFixed(2)} (combined monthly consumption)`,
