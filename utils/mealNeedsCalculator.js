@@ -49,30 +49,41 @@ export async function calculateAndSaveMealNeeds() {
       return (m.people ?? m.multiplier ?? 1) > 0;
     });
     if (!active.length) continue;
-    const totalCount = active.length;
     const perDay = mealsPerDay[type] ?? DEFAULT_MEALS_PER_DAY[type];
 
+    // Precompute how many meals each user is subscribed to for this category
+    const userCounts = users.map((_, idx) =>
+      active.filter(m => Array.isArray(m.users) && m.users[idx]).length
+    );
+
     active.forEach(meal => {
-      let personDays = 0;
       if (Array.isArray(meal.users)) {
         meal.users.forEach((use, idx) => {
-          if (use) {
-            const days = userDays[idx]?.[type];
-            personDays += days === undefined ? 1 : parseFloat(days);
-          }
+          if (!use) return;
+          const days = userDays[idx]?.[type];
+          const personDays = days === undefined ? 1 : parseFloat(days);
+          if (personDays <= 0) return;
+          const totalCount = userCounts[idx] || 1;
+          const monthlySpots = (perDay * personDays * 52) / totalCount / 12;
+          (meal.ingredients || []).forEach(ing => {
+            const serving = parseAmount(ing.serving_size || ing.amount);
+            if (!serving) return;
+            const need = serving * monthlySpots;
+            monthlyMap[ing.name] = (monthlyMap[ing.name] || 0) + need;
+          });
         });
       } else {
         const people = meal.people ?? meal.multiplier ?? 1;
-        personDays = people * 1;
+        if (people <= 0) return;
+        const personDays = people * 7;
+        const monthlySpots = (perDay * personDays * 52) / active.length / 12;
+        (meal.ingredients || []).forEach(ing => {
+          const serving = parseAmount(ing.serving_size || ing.amount);
+          if (!serving) return;
+          const need = serving * monthlySpots;
+          monthlyMap[ing.name] = (monthlyMap[ing.name] || 0) + need;
+        });
       }
-      if (personDays <= 0) return;
-      const monthlySpots = (perDay * personDays * 52) / totalCount / 12;
-      (meal.ingredients || []).forEach(ing => {
-        const serving = parseAmount(ing.serving_size || ing.amount);
-        if (!serving) return;
-        const need = serving * monthlySpots;
-        monthlyMap[ing.name] = (monthlyMap[ing.name] || 0) + need;
-      });
     });
   }
   const yearlyMap = {};
