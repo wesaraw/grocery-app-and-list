@@ -224,7 +224,7 @@ function simulateItem(item, overrides) {
     weeks.push({ qty: qty.toFixed(1), weeksToExpiration: Math.floor(weeksToExpiration), cls });
   }
   return weeks;
-}
+main
 
 function buildGrid(items, headerState = {}, startWeek = 1) {
   const grid = document.createElement('table');
