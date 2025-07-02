@@ -32,30 +32,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     const amount = typeof entry === 'number' ? entry : entry.amount;
     lines.push(`  - ${m}: ${amount.toFixed(2)}`);
     if (entry && entry.details) {
-      const perDay = entry.details.perDay;
-      const active = entry.details.activeMeals || 1;
-      const factors = entry.details.factors || [];
-      const factorExpr = factors
+      const A = entry.details.perDay;
+      const factors = (entry.details.factors || [])
         .map(f => `(${f.people} * ${f.days})`)
         .join(' + ');
-      const factorVal = factors.reduce((sum, f) => sum + f.people * f.days, 0);
-      const spots = (perDay * factorVal * 52) / active / 12;
-      const serving = spots ? amount / spots : 0;
-      lines.push(
-        `    spots: ${perDay} * (${factorExpr}) * 52 / ${active} / 12 = ${spots.toFixed(
-          2
-        )}`
-      );
-      lines.push(
-        `    need: ${spots.toFixed(2)} * ${serving.toFixed(2)} = ${amount.toFixed(2)}`
-      );
+      lines.push(`    ${A} * (${factors}) * 52 / 12`);
     }
   });
   lines.push(
     `${(base + meal).toFixed(2)} (combined monthly consumption)`,
-    `${(base + meal).toFixed(2)} / ${wpm.toFixed(2)} = ${weekly.toFixed(
-      2
-    )} per week`
+    `${wpm.toFixed(2)} (weeks per month)`,
+    `${weekly.toFixed(2)} (weekly need)`
   );
   document.getElementById('item').textContent = item;
   document.getElementById('info').textContent = lines.join('\n');
