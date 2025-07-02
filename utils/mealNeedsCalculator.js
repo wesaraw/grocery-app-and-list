@@ -53,21 +53,31 @@ export async function calculateAndSaveMealNeeds() {
     if (!active.length) continue;
     const perDay = mealsPerDay[type] ?? DEFAULT_MEALS_PER_DAY[type];
 
+    // Count how many meals each user has in this category
+    const userMealCounts = users.map(() => 0);
+    active.forEach(m => {
+      if (!Array.isArray(m.users)) return;
+      m.users.forEach((use, idx) => {
+        if (use) userMealCounts[idx]++;
+      });
+    });
+
     active.forEach(meal => {
       const details = {
         perDay,
         activeMeals: active.length,
         factors: []
       };
-      let personDays = 0;
+      let monthlySpots = 0;
 
       if (Array.isArray(meal.users)) {
         meal.users.forEach((use, idx) => {
           if (!use) return;
           const val = parseFloat(userDays[idx]?.[label]);
           const days = isNaN(val) ? 1 : val;
+          const count = userMealCounts[idx] || 1;
           details.factors.push({ people: 1, days });
-          personDays += days;
+          monthlySpots += (perDay * days * 52) / count / 12;
         });
       } else {
         const people = meal.people ?? meal.multiplier ?? 1;
@@ -80,11 +90,10 @@ export async function calculateAndSaveMealNeeds() {
               }, 0) / users.length
             : 1;
         details.factors.push({ people, days: avgDays });
-        personDays = people * avgDays;
+        monthlySpots = (perDay * people * avgDays * 52) / active.length / 12;
       }
 
-      if (personDays <= 0) return;
-      const monthlySpots = (perDay * personDays * 52) / active.length / 12;
+      if (monthlySpots <= 0) return;
       (meal.ingredients || []).forEach(ing => {
         const serving = parseAmount(ing.serving_size || ing.amount);
         if (!serving) return;
