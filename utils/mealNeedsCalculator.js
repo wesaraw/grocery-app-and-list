@@ -6,7 +6,6 @@ import {
 } from './mealData.js';
 import { loadJSON } from './dataLoader.js';
 import { loadUsers, loadUserCategoryDays } from './userData.js';
-import { canonicalName } from './nameUtils.js';
 
 function parseAmount(str) {
   if (!str) return 0;
@@ -90,13 +89,12 @@ export async function calculateAndSaveMealNeeds() {
         const serving = parseAmount(ing.serving_size || ing.amount);
         if (!serving) return;
         const need = serving * monthlySpots;
-        const key = canonicalName(ing.name);
-        monthlyMap[key] = (monthlyMap[key] || 0) + need;
-        if (!monthlyBreakdown[key]) monthlyBreakdown[key] = {};
-        if (!monthlyBreakdown[key][meal.name]) {
-          monthlyBreakdown[key][meal.name] = { amount: 0, details };
+        monthlyMap[ing.name] = (monthlyMap[ing.name] || 0) + need;
+        if (!monthlyBreakdown[ing.name]) monthlyBreakdown[ing.name] = {};
+        if (!monthlyBreakdown[ing.name][meal.name]) {
+          monthlyBreakdown[ing.name][meal.name] = { amount: 0, details };
         }
-        monthlyBreakdown[key][meal.name].amount += need;
+        monthlyBreakdown[ing.name][meal.name].amount += need;
       });
     });
   }
