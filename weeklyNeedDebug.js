@@ -35,11 +35,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       const perDay = entry.details.perDay;
       const active = entry.details.activeMeals || 1;
       const factors = entry.details.factors || [];
-      lines.push(`    per day: ${perDay}`);
-      lines.push(`    active meals: ${active}`);
-      factors.forEach(f =>
-        lines.push(`    factor: ${f.people} people * ${f.days} days`)
-      );
       const factorExpr = factors
         .map(f => `(${f.people} * ${f.days})`)
         .join(' + ');
