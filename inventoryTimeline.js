@@ -226,38 +226,6 @@ function simulateItem(item, overrides) {
   return weeks;
 }
 
-function showWeeklyNeedBreakdown(item) {
-  const base = item.base_monthly_consumption ?? 0;
-  const meal = item.meal_monthly_consumption ?? 0;
-  const breakdown = item.meal_breakdown || {};
-  const lines = [
-    `${base.toFixed(2)} (base monthly consumption)`,
-    `${meal.toFixed(2)} (meal plan monthly consumption)`
-  ];
-  Object.keys(breakdown).forEach(m => {
-    const entry = breakdown[m];
-    const amount = typeof entry === 'number' ? entry : entry.amount;
-    lines.push(`  - ${m}: ${amount.toFixed(2)}`);
-    if (entry && entry.details) {
-      const perDay = entry.details.perDay;
-      const active = entry.details.activeMeals || 1;
-      const factors = entry.details.factors || [];
-      const factorExpr = factors.map(f => `(${f.people} * ${f.days})`).join(' + ');
-      const factorVal = factors.reduce((sum, f) => sum + f.people * f.days, 0);
-      const spots = (perDay * factorVal * 52) / active / 12;
-      const serving = spots ? amount / spots : 0;
-      lines.push(`    spots: ${perDay} * (${factorExpr}) * 52 / ${active} / 12 = ${spots.toFixed(2)}`);
-      lines.push(`    need: ${spots.toFixed(2)} * ${serving.toFixed(2)} = ${amount.toFixed(2)}`);
-    }
-  });
-  const combined = base + meal;
-  lines.push(
-    `${combined.toFixed(2)} (combined monthly consumption)`,
-    `${combined.toFixed(2)} / ${WEEKS_PER_MONTH.toFixed(2)} = ${(combined / WEEKS_PER_MONTH).toFixed(2)} per week`
-  );
-  alert(lines.join('\n'));
-}
-
 function buildGrid(items, headerState = {}, startWeek = 1) {
   const grid = document.createElement('table');
   const thead = document.createElement('thead');
@@ -329,7 +297,16 @@ function buildGrid(items, headerState = {}, startWeek = 1) {
     const span = th.querySelector('.weekly-cons');
     if (span) {
       span.style.cursor = 'pointer';
-        span.addEventListener('click', () => showWeeklyNeedBreakdown(item));
+      span.addEventListener('click', () => {
+        const params = new URLSearchParams({
+          item: item.name,
+          base: item.base_monthly_consumption ?? 0,
+          meal: item.meal_monthly_consumption ?? 0,
+          weekly: item.weekly_consumption,
+          wpm: WEEKS_PER_MONTH
+        });
+        openOrFocusWindow(`weeklyNeedDebug.html?${params.toString()}`, 320, 240);
+      });
     }
     row.appendChild(th);
     weeks.forEach((w, idx) => {
