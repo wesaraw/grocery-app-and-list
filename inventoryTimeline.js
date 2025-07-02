@@ -296,22 +296,17 @@ function buildGrid(items, headerState = {}, startWeek = 1) {
       `<br/><span class="weekly-cons">${item.weekly_consumption.toFixed(2)}/wk</span>`;
     const span = th.querySelector('.weekly-cons');
     if (span) {
-      const hasDetails = Object.values(item.meal_breakdown || {}).some(
-        e => e && e.details
-      );
-      if (hasDetails) {
-        span.style.cursor = 'pointer';
-        span.addEventListener('click', () => {
-          const params = new URLSearchParams({
-            item: item.name,
-            base: item.base_monthly_consumption ?? 0,
-            meal: item.meal_monthly_consumption ?? 0,
-            weekly: item.weekly_consumption,
-            wpm: WEEKS_PER_MONTH
-          });
-          openOrFocusWindow(`weeklyNeedDebug.html?${params.toString()}`, 320, 240);
+      span.style.cursor = 'pointer';
+      span.addEventListener('click', () => {
+        const params = new URLSearchParams({
+          item: item.name,
+          base: item.base_monthly_consumption ?? 0,
+          meal: item.meal_monthly_consumption ?? 0,
+          weekly: item.weekly_consumption,
+          wpm: WEEKS_PER_MONTH
         });
-      }
+        openOrFocusWindow(`weeklyNeedDebug.html?${params.toString()}`, 320, 240);
+      });
     }
     row.appendChild(th);
     weeks.forEach((w, idx) => {
