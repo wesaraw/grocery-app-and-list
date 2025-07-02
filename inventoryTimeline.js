@@ -224,54 +224,7 @@ function simulateItem(item, overrides) {
     weeks.push({ qty: qty.toFixed(1), weeksToExpiration: Math.floor(weeksToExpiration), cls });
   }
   return weeks;
-}
-
-function showWeeklyNeedBreakdown(item) {
-  const base = item.base_monthly_consumption ?? 0;
-  const meal = item.meal_monthly_consumption ?? 0;
-  const breakdown = item.meal_breakdown || {};
-
-  const hasDetails = Object.values(breakdown).some(
-    b => b && b.details && (b.details.factors || []).length
-  );
-  if (!hasDetails) {
-    alert('No detailed meal breakdown available.');
-    return;
-  }
-
-  const lines = [
-    `${base.toFixed(2)} (base monthly consumption)`,
-    `${meal.toFixed(2)} (meal plan monthly consumption)`
-  ];
-
-  Object.keys(breakdown).forEach(m => {
-    const entry = breakdown[m];
-    const amount = typeof entry === 'number' ? entry : entry.amount;
-    lines.push(`  - ${m}: ${amount.toFixed(2)}`);
-
-    if (entry && entry.details) {
-      const { perDay, activeMeals = 1, factors = [] } = entry.details;
-      const parts = factors.map(f => `(${f.people} * ${f.days})`);
-      const factorVal = factors.reduce((sum, f) => sum + f.people * f.days, 0);
-      const spots = (perDay * factorVal * 52) / activeMeals / 12;
-      const serving = spots ? amount / spots : 0;
-
-      lines.push(`    perDay: ${perDay}`);
-      lines.push(`    factors: ${parts.join(' + ')} = ${factorVal}`);
-      lines.push(`    active meals: ${activeMeals}`);
-      lines.push(`    spots: ${perDay} * (${parts.join(' + ')}) * 52 / ${activeMeals} / 12 = ${spots.toFixed(2)}`);
-      lines.push(`    need: ${spots.toFixed(2)} * ${serving.toFixed(2)} = ${amount.toFixed(2)}`);
-    }
-  });
-
-  const combined = base + meal;
-  lines.push(
-    `${combined.toFixed(2)} (combined monthly consumption)`,
-    `${combined.toFixed(2)} / ${WEEKS_PER_MONTH.toFixed(2)} = ${(combined / WEEKS_PER_MONTH).toFixed(2)} per week`
-  );
-
-  alert(lines.join('\n'));
-}
+main
 
 function buildGrid(items, headerState = {}, startWeek = 1) {
   const grid = document.createElement('table');
@@ -344,7 +297,16 @@ function buildGrid(items, headerState = {}, startWeek = 1) {
     const span = th.querySelector('.weekly-cons');
     if (span) {
       span.style.cursor = 'pointer';
-        span.addEventListener('click', () => showWeeklyNeedBreakdown(item));
+      span.addEventListener('click', () => {
+        const params = new URLSearchParams({
+          item: item.name,
+          base: item.base_monthly_consumption ?? 0,
+          meal: item.meal_monthly_consumption ?? 0,
+          weekly: item.weekly_consumption,
+          wpm: WEEKS_PER_MONTH
+        });
+        openOrFocusWindow(`weeklyNeedDebug.html?${params.toString()}`, 320, 240);
+      });
     }
     row.appendChild(th);
     weeks.forEach((w, idx) => {
