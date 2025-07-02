@@ -230,31 +230,46 @@ function showWeeklyNeedBreakdown(item) {
   const base = item.base_monthly_consumption ?? 0;
   const meal = item.meal_monthly_consumption ?? 0;
   const breakdown = item.meal_breakdown || {};
+
+  const hasDetails = Object.values(breakdown).some(
+    b => b && b.details && (b.details.factors || []).length
+  );
+  if (!hasDetails) {
+    alert('No detailed meal breakdown available.');
+    return;
+  }
+
   const lines = [
     `${base.toFixed(2)} (base monthly consumption)`,
     `${meal.toFixed(2)} (meal plan monthly consumption)`
   ];
+
   Object.keys(breakdown).forEach(m => {
     const entry = breakdown[m];
     const amount = typeof entry === 'number' ? entry : entry.amount;
     lines.push(`  - ${m}: ${amount.toFixed(2)}`);
+
     if (entry && entry.details) {
-      const perDay = entry.details.perDay;
-      const active = entry.details.activeMeals || 1;
-      const factors = entry.details.factors || [];
-      const factorExpr = factors.map(f => `(${f.people} * ${f.days})`).join(' + ');
+      const { perDay, activeMeals = 1, factors = [] } = entry.details;
+      const parts = factors.map(f => `(${f.people} * ${f.days})`);
       const factorVal = factors.reduce((sum, f) => sum + f.people * f.days, 0);
-      const spots = (perDay * factorVal * 52) / active / 12;
+      const spots = (perDay * factorVal * 52) / activeMeals / 12;
       const serving = spots ? amount / spots : 0;
-      lines.push(`    spots: ${perDay} * (${factorExpr}) * 52 / ${active} / 12 = ${spots.toFixed(2)}`);
+
+      lines.push(`    perDay: ${perDay}`);
+      lines.push(`    factors: ${parts.join(' + ')} = ${factorVal}`);
+      lines.push(`    active meals: ${activeMeals}`);
+      lines.push(`    spots: ${perDay} * (${parts.join(' + ')}) * 52 / ${activeMeals} / 12 = ${spots.toFixed(2)}`);
       lines.push(`    need: ${spots.toFixed(2)} * ${serving.toFixed(2)} = ${amount.toFixed(2)}`);
     }
   });
+
   const combined = base + meal;
   lines.push(
     `${combined.toFixed(2)} (combined monthly consumption)`,
     `${combined.toFixed(2)} / ${WEEKS_PER_MONTH.toFixed(2)} = ${(combined / WEEKS_PER_MONTH).toFixed(2)} per week`
   );
+
   alert(lines.join('\n'));
 }
 
