@@ -139,3 +139,9 @@ needs reflect the actual days users plan to eat.
 You can view this schedule by opening the **Meal Planner** (from the popup or
 the inventory timeline) and clicking **Calendar**. A new window lets you pick a
 user and date range to see what meals they will eat each day.
+
+### Purchase Recommendations
+
+The purchase calculator now also looks at this calendar. Ingredient amounts are
+summed by week based on the `WhatToEatCalendar`, so the suggested shopping list
+matches the upcoming meal plan.

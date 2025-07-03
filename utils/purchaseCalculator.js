@@ -1,5 +1,115 @@
-import { getStockBeforeWeek } from './timeline.js';
 import { WEEKS_PER_MONTH } from './constants.js';
+
+function parseAmount(str) {
+  if (!str) return 0;
+  const frac = str.match(/^(\d+)\/(\d+)/);
+  if (frac) {
+    const num = parseFloat(frac[1]);
+    const den = parseFloat(frac[2]);
+    if (!isNaN(num) && !isNaN(den) && den !== 0) return num / den;
+  }
+  const val = parseFloat(str);
+  return isNaN(val) ? 0 : val;
+}
+
+function weekNumber(dateStr) {
+  const date = new Date(dateStr);
+  const start = new Date(date.getFullYear(), 0, 1);
+  return Math.ceil(((date - start) / 86400000 + start.getDay() + 1) / 7);
+}
+
+function buildMealMap(mealsByCategory) {
+  const map = new Map();
+  Object.values(mealsByCategory || {}).forEach(list => {
+    if (!Array.isArray(list)) return;
+    list.forEach(m => {
+      if (!m) return;
+      map.set(m.id || m.name, m);
+    });
+  });
+  return map;
+}
+
+function aggregateCalendar(calendar = {}, mealsByCategory = {}) {
+  const mealMap = buildMealMap(mealsByCategory);
+  const result = new Map();
+  Object.values(calendar).forEach(days => {
+    Object.entries(days || {}).forEach(([dateStr, rec]) => {
+      const week = weekNumber(dateStr);
+      Object.values(rec || {}).forEach(val => {
+        const meals = Array.isArray(val) ? val : [val];
+        meals.forEach(id => {
+          const meal = mealMap.get(id);
+          if (!meal) return;
+          const mult = meal.people ?? meal.multiplier ?? 1;
+          (meal.ingredients || []).forEach(ing => {
+            const qty = parseAmount(ing.serving_size || ing.amount);
+            if (!qty) return;
+            let arr = result.get(ing.name);
+            if (!arr) {
+              arr = Array(53).fill(0);
+              result.set(ing.name, arr);
+            }
+            arr[week] += qty * mult;
+          });
+        });
+      });
+    });
+  });
+  return result; // Map of ingredient -> weekly qty array
+}
+
+function sumRange(arr, start, end) {
+  let total = 0;
+  for (let i = start; i < end && i < arr.length; i++) {
+    total += arr[i] || 0;
+  }
+  return total;
+}
+
+function simulateBeforeWeekVar(item, weeklyArr, week) {
+  const incoming = [];
+  const active = [];
+  if (item.starting_stock > 0) {
+    incoming.push({ start: 1, qty: item.starting_stock, exp: 1 + item.expiration_weeks });
+  }
+  (item.purchases || []).forEach(p => {
+    const exp = p.manual_expiration_override || item.expiration_weeks;
+    incoming.push({ start: p.purchase_week, qty: p.quantity_purchased, exp: p.purchase_week + exp });
+  });
+  incoming.sort((a, b) => a.start - b.start);
+
+  for (let w = 1; w < week; w++) {
+    while (incoming.length && incoming[0].start <= w) {
+      active.push(incoming.shift());
+    }
+    active.sort((a, b) => a.exp - b.exp);
+    while (active.length && w >= active[0].exp) {
+      active.shift();
+    }
+    let remaining = weeklyArr[w] || 0;
+    while (active.length && remaining > 0) {
+      if (active[0].qty > remaining) {
+        active[0].qty -= remaining;
+        remaining = 0;
+      } else {
+        remaining -= active[0].qty;
+        active.shift();
+      }
+    }
+  }
+
+  const w = week;
+  while (incoming.length && incoming[0].start <= w) {
+    active.push(incoming.shift());
+  }
+  active.sort((a, b) => a.exp - b.exp);
+  while (active.length && w >= active[0].exp) {
+    active.shift();
+  }
+
+  return active.reduce((sum, b) => sum + b.qty, 0);
+}
 
 export function calculatePurchaseNeeds(
   needs,
@@ -9,7 +119,9 @@ export function calculatePurchaseNeeds(
   consumedYear = [],
   mealYear = [],
   purchases = {},
-  week = 1
+  week = 1,
+  calendar = {},
+  mealsByCategory = {}
 ) {
   const consMap = new Map(consumption.map(i => [i.name, i]));
   const expMap = new Map(expiration.map(i => [i.name, i]));
@@ -20,17 +132,36 @@ export function calculatePurchaseNeeds(
     total_needed_year: (n.total_needed_year || 0) + (mealMap.get(n.name) || 0)
   }));
 
+  const calendarNeeds = aggregateCalendar(calendar, mealsByCategory);
+
+  const weeklyNeedMap = new Map();
+  mergedNeeds.forEach(item => {
+    const baseWeekly =
+      (consMap.get(item.name)?.monthly_consumption ?? 0) / WEEKS_PER_MONTH;
+    const arr = Array(53).fill(baseWeekly);
+    const mealArr = calendarNeeds.get(item.name);
+    if (mealArr) {
+      mealArr.forEach((v, idx) => {
+        arr[idx] = (arr[idx] || 0) + v;
+      });
+    }
+    weeklyNeedMap.set(item.name, arr);
+  });
+
   const timelineItems = mergedNeeds.map(item => ({
     name: item.name,
-    weekly_consumption:
-      (consMap.get(item.name)?.monthly_consumption ?? 0) / WEEKS_PER_MONTH,
+    weekly_consumption: weeklyNeedMap.get(item.name)[1] || 0,
     expiration_weeks:
       (expMap.get(item.name)?.shelf_life_months ?? 12) * WEEKS_PER_MONTH,
-    starting_stock: stock.find(s => s.name === item.name)?.amount ?? 0
+    starting_stock: stock.find(s => s.name === item.name)?.amount ?? 0,
+    purchases: purchases[item.name] || []
   }));
 
-  const stockBefore = getStockBeforeWeek(timelineItems, purchases, week);
-  const stockMap = new Map(stockBefore.map(i => [i.name, i.amount]));
+  const stockMap = new Map();
+  timelineItems.forEach(t => {
+    const qty = simulateBeforeWeekVar(t, weeklyNeedMap.get(t.name), week);
+    stockMap.set(t.name, qty);
+  });
 
   const weeksRemaining = 52 - week + 1;
 
@@ -55,32 +186,28 @@ export function calculatePurchaseNeeds(
   });
 
   return mergedNeeds.map(item => {
-    const yearlyAmount =
-      item.total_needed_year ??
-      (consMap.get(item.name)?.monthly_consumption ?? 0) * 12;
-
-    const required = (yearlyAmount / 52) * weeksRemaining;
+    const weeklyArr = weeklyNeedMap.get(item.name);
+    const required = sumRange(weeklyArr, week, 53);
 
     const onHand =
       (stockMap.get(item.name) || 0) + (futurePurchasesMap.get(item.name) || 0);
 
     // calculate gating amount based on expiration
-    const weeklyCons =
-      (consMap.get(item.name)?.monthly_consumption ?? 0) / WEEKS_PER_MONTH;
+
     const expWeeks =
       (expMap.get(item.name)?.shelf_life_months ?? 12) * WEEKS_PER_MONTH;
     const horizon = week + Math.ceil(expWeeks);
 
-    const horizonStock = getStockBeforeWeek(
-      [timelineItems.find(t => t.name === item.name)],
-      { [item.name]: purchases[item.name] || [] },
+    const horizonStock = simulateBeforeWeekVar(
+      timelineItems.find(t => t.name === item.name),
+      weeklyArr,
       horizon
-    )[0]?.amount ?? 0;
+    );
 
     const purchasesWithin = purchasesWithinMap.get(item.name) || 0;
     const currentQty = stockMap.get(item.name) || 0;
     const consumedExisting = currentQty + purchasesWithin - horizonStock;
-    const capacity = weeklyCons * (horizon - week);
+    const capacity = sumRange(weeklyArr, week, horizon);
     let toBuyExpiration = capacity - consumedExisting;
     if (toBuyExpiration < 0) toBuyExpiration = 0;
 
