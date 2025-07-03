@@ -3,6 +3,7 @@ export function generateWhatToEatCalendar(
   preparedCal,
   subscriptions,
   eatingDays,
+  mealsPerDay,
   startDate,
   weeks = 4
 ) {
@@ -23,18 +24,29 @@ export function generateWhatToEatCalendar(
         if (!validDays.includes(dayName)) return;
         const meals = prefs[cat] || [];
         if (!meals.length) return;
+        const numSlots = mealsPerDay[cat] || 1;
         const prepMealId = preparedCal[dateStr]?.[cat];
-        let chosen;
-        if (prepMealId && meals.find(m => (m.id || m.name) === prepMealId)) {
-          chosen = prepMealId;
-        } else {
-          const idxRec = nonPrepIndex[user] || (nonPrepIndex[user] = {});
-          const idx = idxRec[cat] || 0;
-          const meal = meals[idx % meals.length];
-          chosen = meal.id || meal.name || String(idx);
-          idxRec[cat] = idx + 1;
+        const idxRec = nonPrepIndex[user] || (nonPrepIndex[user] = {});
+        const nonPrepMeals = meals.filter(m => !m.prepared);
+        const choices = [];
+        for (let s = 0; s < numSlots; s++) {
+          let chosen;
+          if (s === 0 && prepMealId && meals.find(m => (m.id || m.name) === prepMealId)) {
+            chosen = prepMealId;
+          } else {
+            const list = nonPrepMeals.length ? nonPrepMeals : meals;
+            const idx = idxRec[cat] || 0;
+            const meal = list[idx % list.length];
+            chosen = meal.id || meal.name || String(idx);
+            idxRec[cat] = idx + 1;
+          }
+          // advance index even for prepared meals to keep rotation
+          if (s === 0 && prepMealId && meals.find(m => (m.id || m.name) === prepMealId)) {
+            idxRec[cat] = (idxRec[cat] || 0) + 1;
+          }
+          choices.push(chosen);
         }
-        calendar[user][dateStr][cat] = chosen;
+        calendar[user][dateStr][cat] = numSlots === 1 ? choices[0] : choices;
       });
     });
     date.setDate(date.getDate() + 1);
