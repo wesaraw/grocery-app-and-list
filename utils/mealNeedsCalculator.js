@@ -184,6 +184,7 @@ export async function calculateAndSaveMealNeeds() {
     preparedCal,
     subscriptions,
     eatingDays,
+    mealsPerDay,
     startDate
   );
 
