@@ -135,3 +135,7 @@ first. If the user is subscribed to that meal it is assigned; otherwise a
 non‑prepped meal from their subscriptions is rotated in. On non‑cooking days a
 non‑prepared meal is chosen. These calendars drive the meal math so ingredient
 needs reflect the actual days users plan to eat.
+
+You can view this schedule by opening the **Meal Planner** (from the popup or
+the inventory timeline) and clicking **Calendar**. A new window lets you pick a
+user and date range to see what meals they will eat each day.
