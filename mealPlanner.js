@@ -8,3 +8,7 @@ document.getElementById('openUsers').addEventListener('click', () => {
   openOrFocusWindow('users.html');
 });
 
+document.getElementById('openCooking').addEventListener('click', () => {
+  openOrFocusWindow('cookingDays.html');
+});
+

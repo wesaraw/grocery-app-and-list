@@ -2,8 +2,13 @@ import {
   MEAL_TYPES,
   DEFAULT_MEALS_PER_DAY,
   loadMealsPerDay,
-  initializeMealCategories
+  initializeMealCategories,
+  loadCookingDays
 } from './mealData.js';
+import {
+  generatePreparedMealsCalendar
+} from './preparedMealsCalendar.js';
+import { generateWhatToEatCalendar } from './whatToEatCalendar.js';
 import { loadJSON } from './dataLoader.js';
 import { loadUsers, loadUserCategoryDays } from './userData.js';
 
@@ -23,12 +28,16 @@ function loadMeals(type) {
   const { key, path } = MEAL_TYPES[type];
   return new Promise(async resolve => {
     chrome.storage.local.get(key, async data => {
-      if (data[key]) {
-        resolve(data[key]);
-      } else {
-        const arr = await loadJSON(path);
-        resolve(arr);
+      let arr = data[key];
+      if (!arr) {
+        arr = await loadJSON(path);
       }
+      if (Array.isArray(arr)) {
+        arr.forEach(m => {
+          if (m.prepared === undefined) m.prepared = false;
+        });
+      }
+      resolve(arr || []);
     });
   });
 }
@@ -53,14 +62,6 @@ export async function calculateAndSaveMealNeeds() {
     if (!active.length) continue;
     const perDay = mealsPerDay[type] ?? DEFAULT_MEALS_PER_DAY[type];
 
-    // Count how many meals each user has in this category
-    const userMealCounts = users.map(() => 0);
-    active.forEach(m => {
-      if (!Array.isArray(m.users)) return;
-      m.users.forEach((use, idx) => {
-        if (use) userMealCounts[idx]++;
-      });
-    });
 
     active.forEach(meal => {
       const details = {
@@ -71,24 +72,33 @@ export async function calculateAndSaveMealNeeds() {
       let monthlySpots = 0;
 
       if (Array.isArray(meal.users)) {
+        let totalDays = 0;
         meal.users.forEach((use, idx) => {
           if (!use) return;
-          const val = parseFloat(userDays[idx]?.[label]);
-          const days = isNaN(val) ? 1 : val;
-          const count = userMealCounts[idx] || 1;
+          let val = userDays[idx]?.[label];
+          let days = 0;
+          if (Array.isArray(val)) days = val.length;
+          else {
+            const num = parseFloat(val);
+            days = isNaN(num) ? 0 : num;
+          }
+          totalDays += days;
           details.factors.push({ people: 1, days });
-          monthlySpots += (perDay * days * 52) / count / 12;
         });
+        monthlySpots = (perDay * totalDays * 52) / active.length / 12;
       } else {
         const people = meal.people ?? meal.multiplier ?? 1;
         if (people <= 0) return;
         const avgDays =
           users.length > 0
-            ? users.reduce((sum, _u, idx) => {
-                const d = parseFloat(userDays[idx]?.[label]);
-                return sum + (isNaN(d) ? 1 : d);
-              }, 0) / users.length
-            : 1;
+            ?
+                users.reduce((sum, _u, idx) => {
+                  const val = userDays[idx]?.[label];
+                  if (Array.isArray(val)) return sum + val.length;
+                  const num = parseFloat(val);
+                  return sum + (isNaN(num) ? 0 : num);
+                }, 0) / users.length
+            : 0;
         details.factors.push({ people, days: avgDays });
         monthlySpots = (perDay * people * avgDays * 52) / active.length / 12;
       }
@@ -125,6 +135,63 @@ export async function calculateAndSaveMealNeeds() {
         mealPlanMonthly: monthlyArr,
         mealPlanYearly: yearlyArr,
         mealPlanMonthlyBreakdown: monthlyBreakdown
+      },
+      () => resolve()
+    );
+  });
+
+  // build prepared and What To Eat calendars
+  const cookingDays = await loadCookingDays();
+  const mealsByCategory = {};
+  for (const type of Object.keys(MEAL_TYPES)) {
+    mealsByCategory[type] = await loadMeals(type);
+  }
+  const startDate = new Date();
+  const preparedCal = generatePreparedMealsCalendar(
+    cookingDays,
+    mealsByCategory,
+    startDate
+  );
+
+  const subscriptions = {};
+  users.forEach(u => (subscriptions[u] = {}));
+  Object.entries(mealsByCategory).forEach(([cat, meals]) => {
+    meals.forEach(meal => {
+      if (!Array.isArray(meal.users)) return;
+      meal.users.forEach((use, idx) => {
+        if (!use) return;
+        const user = users[idx];
+        if (!subscriptions[user][cat]) subscriptions[user][cat] = [];
+        subscriptions[user][cat].push(meal);
+      });
+    });
+  });
+
+  const eatingDays = {};
+  users.forEach((u, idx) => {
+    const rec = userDays[idx] || {};
+    eatingDays[u] = {};
+    Object.entries(rec).forEach(([label, days]) => {
+      const cat = Object.keys(MEAL_TYPES).find(
+        k => MEAL_TYPES[k].label === label
+      );
+      if (cat) eatingDays[u][cat] = Array.isArray(days) ? days : [];
+    });
+  });
+
+  const whatCal = generateWhatToEatCalendar(
+    users,
+    preparedCal,
+    subscriptions,
+    eatingDays,
+    startDate
+  );
+
+  await new Promise(resolve => {
+    chrome.storage.local.set(
+      {
+        preparedMealsCalendar: preparedCal,
+        whatToEatCalendar: whatCal
       },
       () => resolve()
     );

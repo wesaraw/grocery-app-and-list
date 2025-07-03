@@ -601,6 +601,9 @@ async function init() {
   document.getElementById('mealMultiplier').addEventListener('click', () => {
     openOrFocusWindow('mealMultiplier.html');
   });
+  document.getElementById('cookingDays').addEventListener('click', () => {
+    openOrFocusWindow('cookingDays.html');
+  });
   document.getElementById('mealPlanner').addEventListener('click', () => {
     openOrFocusWindow('mealPlanner.html');
   });

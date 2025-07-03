@@ -80,3 +80,21 @@ export function saveMealsPerDay(obj) {
     chrome.storage.local.set({ mealsPerDay: obj }, () => resolve());
   });
 }
+
+export function loadCookingDays() {
+  return new Promise(resolve => {
+    chrome.storage.local.get('cookingDays', data => {
+      const obj = data.cookingDays || {};
+      Object.keys(obj).forEach(k => {
+        if (!Array.isArray(obj[k])) obj[k] = [];
+      });
+      resolve(obj);
+    });
+  });
+}
+
+export function saveCookingDays(obj) {
+  return new Promise(resolve => {
+    chrome.storage.local.set({ cookingDays: obj }, () => resolve());
+  });
+}

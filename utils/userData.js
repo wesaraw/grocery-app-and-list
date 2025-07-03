@@ -20,11 +20,17 @@ export function saveUsers(arr) {
 export function loadUserCategoryDays() {
   return new Promise(resolve => {
     chrome.storage.local.get('userCategoryDays', data => {
-      if (Array.isArray(data.userCategoryDays)) {
-        resolve(data.userCategoryDays);
-      } else {
-        resolve([]);
-      }
+      const arr = Array.isArray(data.userCategoryDays) ? data.userCategoryDays : [];
+      const weekdays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+      arr.forEach(rec => {
+        Object.keys(rec).forEach(cat => {
+          const val = rec[cat];
+          if (typeof val === 'number') {
+            rec[cat] = weekdays.slice(0, Math.min(7, Math.round(val)));
+          }
+        });
+      });
+      resolve(arr);
     });
   });
 }

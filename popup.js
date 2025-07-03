@@ -583,6 +583,14 @@ document
   .getElementById('mealMultiplier')
   .addEventListener('click', openMealMultiplier);
 
+function openCookingDays() {
+  openOrFocusWindow('cookingDays.html');
+}
+
+document
+  .getElementById('cookingDays')
+  .addEventListener('click', openCookingDays);
+
 function openMealChooser() {
   openOrFocusWindow('mealChooser.html');
 }

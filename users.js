@@ -108,9 +108,11 @@ function loadMeals(type) {
   const { key, path } = info;
   return new Promise(async resolve => {
     chrome.storage.local.get(key, async data => {
-      const arr = data[key] ? data[key] : await loadJSON(path);
+      let arr = data[key];
+      if (!arr) arr = await loadJSON(path);
       arr.forEach(m => {
         if (!m.category) m.category = info.label;
+        if (m.prepared === undefined) m.prepared = false;
       });
       resolve(arr);
     });
@@ -178,30 +180,38 @@ async function showMeals(userIndex) {
 
       const div = document.createElement('div');
       const label = document.createElement('span');
-      label.textContent = 'Days per week: ';
-      const input = document.createElement('input');
-      input.type = 'number';
-      input.min = '0';
-      input.max = '7';
-      input.step = 'any';
-      input.value = daysRec[cat] ?? 1;
+      label.textContent = 'Days: ';
       const save = document.createElement('button');
       save.textContent = 'Save';
       save.className = 'hidden';
+      const checkboxes = [];
+      const weekdays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+      const selected = Array.isArray(daysRec[cat]) ? daysRec[cat] : [];
       function update() {
-        const cur = daysRec[cat] ?? 1;
-        if (input.value.trim() && parseFloat(input.value) !== parseFloat(cur)) {
+        const vals = checkboxes.filter(c => c.chk.checked).map(c => c.day);
+        const cur = Array.isArray(daysRec[cat]) ? daysRec[cat] : [];
+        if (vals.join(',') !== cur.join(',')) {
           save.classList.remove('hidden');
         } else {
           save.classList.add('hidden');
         }
       }
-      input.addEventListener('input', update);
+      weekdays.forEach(day => {
+        const lbl = document.createElement('label');
+        lbl.style.marginRight = '4px';
+        const chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.checked = selected.includes(day);
+        chk.addEventListener('change', update);
+        lbl.appendChild(chk);
+        lbl.appendChild(document.createTextNode(day.slice(0,3)));
+        div.appendChild(lbl);
+        checkboxes.push({ chk, day });
+      });
       save.addEventListener('click', async () => {
-        const val = parseFloat(input.value);
-        if (isNaN(val)) return;
+        const vals = checkboxes.filter(c => c.chk.checked).map(c => c.day);
         if (!userDays[userIndex]) userDays[userIndex] = {};
-        userDays[userIndex][cat] = val;
+        userDays[userIndex][cat] = vals;
         await saveUserCategoryDays(userDays);
         await calculateAndSaveMealNeeds();
         save.classList.add('hidden');
@@ -209,8 +219,7 @@ async function showMeals(userIndex) {
           chrome.runtime.sendMessage({ type: 'inventory-updated' });
         } catch (_) {}
       });
-      div.appendChild(label);
-      div.appendChild(input);
+      div.insertBefore(label, div.firstChild);
       div.appendChild(save);
       mealList.appendChild(div);
       nodes = [div];
