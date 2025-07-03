@@ -106,3 +106,32 @@ Use the **Meal Multiplier** button in the inventory tracker to change how many
 times each meal category is eaten per day. The popup shows the current numbers
 for Breakfast, Lunch/Dinner, Snacks, and Desserts. Enter a new value and click
 **Save** to update the multiplier used by the meal math calculations.
+
+### Cooking Days
+
+The **Cooking Days** page lets you pick which weekdays are prep days for each
+meal category. Prepared meals rotate through these days when building the
+Prepared Meal Calendar. You can open this page from the Meal Planner or the
+inventory tracker.
+
+Any changes to cooking days, user schedules, or meal lists automatically
+regenerate the prepared and personal calendars so the inventory math always
+reflects the latest plan.
+
+### Prepared Meal Calendar
+
+Meals can now be tagged as **prepared**. Admins define cooking days for each
+category (for example, lunches on Monday, Wednesday, and Friday). The app
+rotates prepared meals across those days using a round‑robin assignment and
+saves the results in a `PreparedMealsCalendar` map. User calendars pull from
+this schedule to decide what meal to eat on a given day.
+
+### What to Eat When Calendar
+
+Each user picks the exact weekdays they eat each meal category. The app uses
+those selections together with the prepared meal schedule to build a personal
+`WhatToEatCalendar`. For cooking days, the calendar checks the prepared schedule
+first. If the user is subscribed to that meal it is assigned; otherwise a
+non‑prepped meal from their subscriptions is rotated in. On non‑cooking days a
+non‑prepared meal is chosen. These calendars drive the meal math so ingredient
+needs reflect the actual days users plan to eat.

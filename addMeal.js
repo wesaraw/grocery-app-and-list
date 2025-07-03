@@ -10,12 +10,14 @@ const UOM_PATH = 'Required for grocery app/uom_conversion_table.json';
 function loadMeals() {
   return new Promise(async resolve => {
     chrome.storage.local.get(MEAL_KEY, async data => {
-      if (data[MEAL_KEY]) {
-        resolve(data[MEAL_KEY]);
-      } else {
-        const arr = await loadJSON(MEAL_PATH);
-        resolve(arr);
+      let arr = data[MEAL_KEY];
+      if (!arr) arr = await loadJSON(MEAL_PATH);
+      if (Array.isArray(arr)) {
+        arr.forEach(m => {
+          if (m.prepared === undefined) m.prepared = false;
+        });
       }
+      resolve(arr || []);
     });
   });
 }
@@ -90,6 +92,7 @@ async function init() {
   const units = await loadUnits();
   const tbody = document.getElementById('mealBody');
   const rows = [];
+  const preparedBox = document.getElementById('preparedChk');
 
   function addRow() {
     const row = createRow(units);
@@ -160,7 +163,12 @@ async function init() {
     }));
 
     const meals = await loadMeals();
-    meals.push({ name: mealName, ingredients, people: 1 });
+    meals.push({
+      name: mealName,
+      ingredients,
+      people: 1,
+      prepared: preparedBox.checked
+    });
     await saveMeals(meals);
     await calculateAndSaveMealNeeds();
     window.close();

@@ -6,12 +6,14 @@ function loadMeals(type) {
   const { key, path } = MEAL_TYPES[type];
   return new Promise(async resolve => {
     chrome.storage.local.get(key, async data => {
-      if (data[key]) {
-        resolve(data[key]);
-      } else {
-        const arr = await loadJSON(path);
-        resolve(arr);
+      let arr = data[key];
+      if (!arr) arr = await loadJSON(path);
+      if (Array.isArray(arr)) {
+        arr.forEach(m => {
+          if (m.prepared === undefined) m.prepared = false;
+        });
       }
+      resolve(arr || []);
     });
   });
 }

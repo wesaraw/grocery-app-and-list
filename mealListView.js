@@ -29,12 +29,14 @@ function createAddButton(name) {
 function loadMeals() {
   return new Promise(async resolve => {
     chrome.storage.local.get(key, async data => {
-      if (data[key]) {
-        resolve(data[key]);
-      } else {
-        const arr = await loadJSON(path);
-        resolve(arr);
+      let arr = data[key];
+      if (!arr) arr = await loadJSON(path);
+      if (Array.isArray(arr)) {
+        arr.forEach(m => {
+          if (m.prepared === undefined) m.prepared = false;
+        });
       }
+      resolve(arr || []);
     });
   });
 }
@@ -100,6 +102,17 @@ function createRows(meal, arr) {
       });
       if (ingredients.length > 1) useTd.rowSpan = ingredients.length;
 
+      const prepTd = document.createElement('td');
+      const prepChk = document.createElement('input');
+      prepChk.type = 'checkbox';
+      prepChk.checked = meal.prepared || false;
+      prepChk.addEventListener('change', async () => {
+        meal.prepared = prepChk.checked;
+        await saveMeals(arr);
+      });
+      prepTd.appendChild(prepChk);
+      if (ingredients.length > 1) prepTd.rowSpan = ingredients.length;
+
       nameTd = document.createElement('td');
       nameTd.textContent = meal.name || '';
       if (ingredients.length > 1) nameTd.rowSpan = ingredients.length;
@@ -125,6 +138,7 @@ function createRows(meal, arr) {
 
       tr.appendChild(useTd);
       tr.appendChild(nameTd);
+      tr.appendChild(prepTd);
     }
 
     const ingTd = document.createElement('td');
@@ -196,12 +210,23 @@ function createRows(meal, arr) {
     nameTd.appendChild(document.createTextNode(' '));
     nameTd.appendChild(delBtn);
 
+    const prepTd = document.createElement('td');
+    const prepChk = document.createElement('input');
+    prepChk.type = 'checkbox';
+    prepChk.checked = meal.prepared || false;
+    prepChk.addEventListener('change', async () => {
+      meal.prepared = prepChk.checked;
+      await saveMeals(arr);
+    });
+    prepTd.appendChild(prepChk);
+
     const ingTd = document.createElement('td');
     ingTds.push(ingTd);
     const amtTd = document.createElement('td');
     const actionTd = document.createElement('td');
     tr.appendChild(useTd);
     tr.appendChild(nameTd);
+    tr.appendChild(prepTd);
     tr.appendChild(ingTd);
     tr.appendChild(amtTd);
     tr.appendChild(actionTd);
