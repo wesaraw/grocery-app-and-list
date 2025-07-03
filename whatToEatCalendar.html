@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>What To Eat Calendar</title>
+  <style>
+    body { font-family: Arial, sans-serif; width: 350px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 4px; border-bottom: 1px solid #ccc; }
+  </style>
+</head>
+<body>
+  <h1>What To Eat</h1>
+  <div>
+    <label>User:
+      <select id="userSelect"></select>
+    </label>
+    <label>Start:
+      <input type="date" id="startDate">
+    </label>
+    <label>Days:
+      <input type="number" id="numDays" value="7" min="1" max="365">
+    </label>
+    <button id="showBtn">Show</button>
+  </div>
+  <table>
+    <thead id="tableHead"></thead>
+    <tbody id="calendarBody"></tbody>
+  </table>
+  <script type="module" src="whatToEatCalendar.js"></script>
+</body>
+</html>

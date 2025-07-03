@@ -12,3 +12,7 @@ document.getElementById('openCooking').addEventListener('click', () => {
   openOrFocusWindow('cookingDays.html');
 });
 
+document.getElementById('openCalendar').addEventListener('click', () => {
+  openOrFocusWindow('whatToEatCalendar.html');
+});
+

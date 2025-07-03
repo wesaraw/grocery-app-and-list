@@ -599,6 +599,14 @@ document
   .getElementById('mealChooser')
   .addEventListener('click', openMealChooser);
 
+function openEatCalendar() {
+  openOrFocusWindow('whatToEatCalendar.html');
+}
+
+document
+  .getElementById('viewCalendar')
+  .addEventListener('click', openEatCalendar);
+
 function toggleZeroItems() {
   hideZeroItems = !hideZeroItems;
   const btn = document.getElementById('toggleZero');
