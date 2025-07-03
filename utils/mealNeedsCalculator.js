@@ -62,6 +62,14 @@ export async function calculateAndSaveMealNeeds() {
     if (!active.length) continue;
     const perDay = mealsPerDay[type] ?? DEFAULT_MEALS_PER_DAY[type];
 
+    // Count how many meals each user has in this category
+    const userMealCounts = users.map(() => 0);
+    active.forEach(m => {
+      if (!Array.isArray(m.users)) return;
+      m.users.forEach((use, idx) => {
+        if (use) userMealCounts[idx]++;
+      });
+    });
 
     active.forEach(meal => {
       const details = {
@@ -72,7 +80,6 @@ export async function calculateAndSaveMealNeeds() {
       let monthlySpots = 0;
 
       if (Array.isArray(meal.users)) {
-        let totalDays = 0;
         meal.users.forEach((use, idx) => {
           if (!use) return;
           let val = userDays[idx]?.[label];
@@ -82,10 +89,10 @@ export async function calculateAndSaveMealNeeds() {
             const num = parseFloat(val);
             days = isNaN(num) ? 0 : num;
           }
-          totalDays += days;
+          const count = userMealCounts[idx] || 1;
           details.factors.push({ people: 1, days });
+          monthlySpots += (perDay * days * 52) / count / 12;
         });
-        monthlySpots = (perDay * totalDays * 52) / active.length / 12;
       } else {
         const people = meal.people ?? meal.multiplier ?? 1;
         if (people <= 0) return;
