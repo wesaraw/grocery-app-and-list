@@ -121,12 +121,15 @@ export function calculatePurchaseNeeds(
   purchases = {},
   week = 1,
   calendar = {},
-  mealsByCategory = {}
+  mealsByCategory = {},
+  useMealPlanTotals = true
 ) {
   const consMap = new Map(consumption.map(i => [i.name, i]));
   const expMap = new Map(expiration.map(i => [i.name, i]));
 
-  const mealMap = new Map(mealYear.map(m => [m.name, m.total_needed_year]));
+  const mealMap = useMealPlanTotals
+    ? new Map(mealYear.map(m => [m.name, m.total_needed_year]))
+    : new Map();
   const mergedNeeds = needs.map(n => ({
     ...n,
     total_needed_year: (n.total_needed_year || 0) + (mealMap.get(n.name) || 0)
