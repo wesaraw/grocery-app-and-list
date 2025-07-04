@@ -427,7 +427,16 @@ chrome.storage.onChanged.addListener((changes, area) => {
   });
   if (
     area === 'local' &&
-    (changes.yearlyNeeds || changes.monthlyConsumption || changes.expirationData)
+    (changes.yearlyNeeds ||
+      changes.monthlyConsumption ||
+      changes.expirationData ||
+      changes.mealPlanMonthly ||
+      changes.mealPlanYearly ||
+      changes.mealPlanMonthlyBreakdown ||
+      changes.preparedMealsCalendar ||
+      changes.whatToEatCalendar ||
+      changes.mealCategories ||
+      Object.keys(changes).some(k => k.endsWith('Meals')))
   ) {
     rerenderAll();
   }
