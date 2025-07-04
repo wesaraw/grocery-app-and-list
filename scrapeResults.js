@@ -17,6 +17,14 @@ function loadArray(key, path) {
   });
 }
 
+function loadStoredArray(key) {
+  return new Promise(resolve => {
+    chrome.storage.local.get(key, data => resolve(data[key] || []));
+  });
+}
+
+const loadMealPlanMonth = () => loadStoredArray('mealPlanMonthly');
+
 const loadNeeds = () => loadArray('yearlyNeeds', YEARLY_NEEDS_PATH);
 const loadMonthlyConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
 
@@ -187,15 +195,22 @@ title.textContent = `${item} - ${store}`;
 
 async function init() {
   await initUomTable();
-  const [products, coupons, needs, consumption] = await Promise.all([
+  const [products, coupons, needs, consumption, mealMonth] = await Promise.all([
     loadProducts(item, store),
     loadCoupons(),
     loadNeeds(),
-    loadMonthlyConsumption()
+    loadMonthlyConsumption(),
+    loadMealPlanMonth()
   ]);
 
   needsData = needs;
-  consumptionMap = new Map(consumption.map(c => [c.name, c]));
+  const consMap = new Map(consumption.map(c => [c.name, c]));
+  (mealMonth || []).forEach(m => {
+    const rec = consMap.get(m.name);
+    if (rec) rec.monthly_consumption += m.monthly_consumption;
+    else consMap.set(m.name, { name: m.name, monthly_consumption: m.monthly_consumption });
+  });
+  consumptionMap = consMap;
 
   const week = getCurrentWeek();
   const adjusted = products.map(p => applyCoupon(p, coupons[item], week, store));
