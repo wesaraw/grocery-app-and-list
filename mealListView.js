@@ -17,6 +17,33 @@ let userNames = [];
 let deleteMode = false;
 const deleteButtons = [];
 
+function loadFinalProduct(item) {
+  return new Promise(resolve => {
+    const key = `final_product_${encodeURIComponent(item)}`;
+    chrome.storage.local.get([key], data => resolve(data[key] || null));
+  });
+}
+
+async function getMealImage(meal) {
+  if (meal.image) return meal.image;
+  const first = meal.ingredients?.[0]?.name;
+  if (!first) return null;
+  const prod = await loadFinalProduct(first);
+  return prod && prod.image ? prod.image : null;
+}
+
+function setMealImage(imgEl, meal) {
+  getMealImage(meal).then(src => {
+    if (src) {
+      imgEl.src = src;
+      imgEl.style.display = 'inline';
+    } else {
+      imgEl.style.display = 'none';
+      imgEl.src = '';
+    }
+  });
+}
+
 function createAddButton(name) {
   const btn = document.createElement('button');
   btn.textContent = 'add';
@@ -114,8 +141,16 @@ function createRows(meal, arr) {
       if (ingredients.length > 1) prepTd.rowSpan = ingredients.length;
 
       nameTd = document.createElement('td');
-      nameTd.textContent = meal.name || '';
+      const img = document.createElement('img');
+      img.className = 'meal-img';
+      img.style.display = 'none';
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = meal.name || '';
+      nameTd.appendChild(img);
+      nameTd.appendChild(nameSpan);
       if (ingredients.length > 1) nameTd.rowSpan = ingredients.length;
+
+      setMealImage(img, meal);
 
       editBtn = document.createElement('button');
       editBtn.textContent = 'Edit';
@@ -191,7 +226,14 @@ function createRows(meal, arr) {
       useTd.appendChild(lbl);
     });
     nameTd = document.createElement('td');
-    nameTd.textContent = meal.name || '';
+    const img = document.createElement('img');
+    img.className = 'meal-img';
+    img.style.display = 'none';
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = meal.name || '';
+    nameTd.appendChild(img);
+    nameTd.appendChild(nameSpan);
+    setMealImage(img, meal);
     editBtn = document.createElement('button');
     editBtn.textContent = 'Edit';
     const delBtn = document.createElement('button');
@@ -246,11 +288,15 @@ function createRows(meal, arr) {
     const ingredientInputs = [];
     let mealInput;
     let saveBtn;
+    let changeBtn;
+    let fileInput;
+    let newImage = null;
 
     function checkSave() {
       const any =
         (mealInput && mealInput.value.trim()) ||
-        ingredientInputs.some(i => i.value.trim());
+        ingredientInputs.some(i => i.value.trim()) ||
+        newImage;
       if (saveBtn) saveBtn.style.display = any ? '' : 'none';
     }
 
@@ -262,6 +308,28 @@ function createRows(meal, arr) {
     saveBtn.textContent = 'Save';
     saveBtn.style.display = 'none';
     saveBtn.style.marginTop = '2px';
+    changeBtn = document.createElement('button');
+    changeBtn.textContent = 'Change';
+    changeBtn.style.display = 'block';
+    fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.style.display = 'none';
+    changeBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        newImage = reader.result;
+        setMealImage(nameTd.querySelector('img.meal-img'), { ...meal, image: newImage });
+        checkSave();
+      };
+      reader.readAsDataURL(file);
+    });
+
+    nameTd.appendChild(changeBtn);
+    nameTd.appendChild(fileInput);
     nameTd.appendChild(mealInput);
     nameTd.appendChild(saveBtn);
     mealInput.addEventListener('input', checkSave);
@@ -297,6 +365,10 @@ function createRows(meal, arr) {
           changed = true;
         }
       });
+      if (newImage) {
+        meal.image = newImage;
+        changed = true;
+      }
       if (changed) {
         await saveMeals(arr);
         await calculateAndSaveMealNeeds();
@@ -310,6 +382,10 @@ function createRows(meal, arr) {
       ingredientInputs.length = 0;
       if (mealInput) mealInput.remove();
       if (saveBtn) saveBtn.remove();
+      if (changeBtn) changeBtn.remove();
+      if (fileInput) fileInput.remove();
+      newImage = null;
+      setMealImage(nameTd.querySelector('img.meal-img'), meal);
       editBtn.classList.remove('editing');
     }
 
