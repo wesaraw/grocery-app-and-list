@@ -81,6 +81,10 @@ function createRow(
   async function commit() {
     const mVal = parseFloat(mInput.value);
     const yVal = parseFloat(yInput.value);
+    function normalize(name) {
+      return name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+    const norm = normalize(item.name);
     if (!isNaN(mVal)) {
       let rec = consMap.get(item.name);
       if (!rec) {
@@ -90,12 +94,24 @@ function createRow(
       } else {
         rec.monthly_consumption = mVal;
       }
+      consArr.forEach(other => {
+        if (other !== rec && normalize(other.name).includes(norm)) {
+          other.monthly_consumption = mVal;
+          consMap.set(other.name, other);
+        }
+      });
     }
     if (!isNaN(yVal)) {
       let rec = needsMap.get(item.name);
       if (rec) {
         rec.total_needed_year = yVal;
       }
+      needsArr.forEach(other => {
+        if (other !== rec && normalize(other.name).includes(norm)) {
+          other.total_needed_year = yVal;
+          needsMap.set(other.name, other);
+        }
+      });
     }
     const newMonthly = consMap.get(item.name)?.monthly_consumption || 0;
     const newYearly = needsMap.get(item.name)?.total_needed_year || 0;
