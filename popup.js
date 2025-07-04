@@ -84,6 +84,8 @@ function loadStoredArray(key) {
   });
 }
 
+const loadMealPlanMonth = () => loadStoredArray('mealPlanMonthly');
+
 function loadCalendar() {
   return new Promise(resolve => {
     chrome.storage.local.get('whatToEatCalendar', data => {
@@ -118,7 +120,7 @@ async function loadMealsByCategory() {
 }
 
 async function getData() {
-  const [needs, selections, consumption, stock, expiration, consumed, purchases, mealYear, calendar, meals] =
+  const [needs, selections, consumption, stock, expiration, consumed, purchases, mealYear, mealMonth, calendar, meals] =
     await Promise.all([
       loadNeeds(),
       loadJSON(STORE_SELECTION_PATH),
@@ -128,6 +130,7 @@ async function getData() {
       loadConsumed(),
       loadPurchases(),
       loadStoredArray('mealPlanYearly'),
+      loadMealPlanMonth(),
       loadCalendar(),
       loadMealsByCategory()
     ]);
@@ -140,6 +143,7 @@ async function getData() {
     consumed,
     purchases,
     mealYear,
+    mealMonth,
     calendar,
     mealsByCategory: meals
   };
@@ -185,13 +189,20 @@ async function init() {
     consumed,
     purchases,
     mealYear,
+    mealMonth,
     calendar,
     mealsByCategory
   } = await getData();
   needsData = needs;
   const sortedNeeds = sortItemsByCategory(needs);
-  consumptionData = consumption;
-  consumptionMap = new Map(consumption.map(c => [c.name, c]));
+  const consMap = new Map(consumption.map(c => [c.name, c]));
+  (mealMonth || []).forEach(m => {
+    const rec = consMap.get(m.name);
+    if (rec) rec.monthly_consumption += m.monthly_consumption;
+    else consMap.set(m.name, { name: m.name, monthly_consumption: m.monthly_consumption });
+  });
+  consumptionData = Array.from(consMap.values());
+  consumptionMap = consMap;
   expirationData = expiration;
   stockData = stock;
   consumedYearData = consumed;
@@ -314,13 +325,20 @@ async function rerenderAll() {
     consumed,
     purchases,
     mealYear,
+    mealMonth,
     calendar,
     mealsByCategory
   } = await getData();
   needsData = needs;
   const sortedNeeds = sortItemsByCategory(needs);
-  consumptionData = consumption;
-  consumptionMap = new Map(consumption.map(c => [c.name, c]));
+  const consMap = new Map(consumption.map(c => [c.name, c]));
+  (mealMonth || []).forEach(m => {
+    const rec = consMap.get(m.name);
+    if (rec) rec.monthly_consumption += m.monthly_consumption;
+    else consMap.set(m.name, { name: m.name, monthly_consumption: m.monthly_consumption });
+  });
+  consumptionData = Array.from(consMap.values());
+  consumptionMap = consMap;
   expirationData = expiration;
   stockData = stock;
   consumedYearData = consumed;
