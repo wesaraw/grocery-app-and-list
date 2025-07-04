@@ -15,3 +15,7 @@ document.getElementById('open-inventory-timeline').addEventListener('click', () 
 document.getElementById('open-meal-planner').addEventListener('click', () => {
   openWindow('mealPlanner.html');
 });
+
+document.getElementById('open-calendar').addEventListener('click', () => {
+  openWindow('whatToEatCalendar.html');
+});
