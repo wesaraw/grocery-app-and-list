@@ -91,6 +91,7 @@ function createRows(meal, arr) {
   const rows = [];
   const ingredients = meal.ingredients || [];
   const ingTds = [];
+  let imageTd;
   let nameTd;
   let editBtn;
   if (!Array.isArray(meal.users)) {
@@ -140,13 +141,16 @@ function createRows(meal, arr) {
       prepTd.appendChild(prepChk);
       if (ingredients.length > 1) prepTd.rowSpan = ingredients.length;
 
-      nameTd = document.createElement('td');
+      imageTd = document.createElement('td');
       const img = document.createElement('img');
       img.className = 'meal-img';
       img.style.display = 'none';
+      imageTd.appendChild(img);
+      if (ingredients.length > 1) imageTd.rowSpan = ingredients.length;
+
+      nameTd = document.createElement('td');
       const nameSpan = document.createElement('span');
       nameSpan.textContent = meal.name || '';
-      nameTd.appendChild(img);
       nameTd.appendChild(nameSpan);
       if (ingredients.length > 1) nameTd.rowSpan = ingredients.length;
 
@@ -172,6 +176,7 @@ function createRows(meal, arr) {
       nameTd.appendChild(delBtn);
 
       tr.appendChild(useTd);
+      tr.appendChild(imageTd);
       tr.appendChild(nameTd);
       tr.appendChild(prepTd);
     }
@@ -225,13 +230,15 @@ function createRows(meal, arr) {
       lbl.appendChild(document.createTextNode(` ${u} `));
       useTd.appendChild(lbl);
     });
-    nameTd = document.createElement('td');
+    imageTd = document.createElement('td');
     const img = document.createElement('img');
     img.className = 'meal-img';
     img.style.display = 'none';
+    imageTd.appendChild(img);
+
+    nameTd = document.createElement('td');
     const nameSpan = document.createElement('span');
     nameSpan.textContent = meal.name || '';
-    nameTd.appendChild(img);
     nameTd.appendChild(nameSpan);
     setMealImage(img, meal);
     editBtn = document.createElement('button');
@@ -267,6 +274,7 @@ function createRows(meal, arr) {
     const amtTd = document.createElement('td');
     const actionTd = document.createElement('td');
     tr.appendChild(useTd);
+    tr.appendChild(imageTd);
     tr.appendChild(nameTd);
     tr.appendChild(prepTd);
     tr.appendChild(ingTd);
@@ -322,14 +330,14 @@ function createRows(meal, arr) {
       const reader = new FileReader();
       reader.onload = () => {
         newImage = reader.result;
-        setMealImage(nameTd.querySelector('img.meal-img'), { ...meal, image: newImage });
+        setMealImage(imageTd.querySelector('img.meal-img'), { ...meal, image: newImage });
         checkSave();
       };
       reader.readAsDataURL(file);
     });
 
-    nameTd.appendChild(changeBtn);
-    nameTd.appendChild(fileInput);
+    imageTd.appendChild(changeBtn);
+    imageTd.appendChild(fileInput);
     nameTd.appendChild(mealInput);
     nameTd.appendChild(saveBtn);
     mealInput.addEventListener('input', checkSave);
@@ -385,7 +393,7 @@ function createRows(meal, arr) {
       if (changeBtn) changeBtn.remove();
       if (fileInput) fileInput.remove();
       newImage = null;
-      setMealImage(nameTd.querySelector('img.meal-img'), meal);
+      setMealImage(imageTd.querySelector('img.meal-img'), meal);
       editBtn.classList.remove('editing');
     }
 
