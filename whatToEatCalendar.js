@@ -4,6 +4,7 @@ import {
   loadMealsPerDay
 } from './utils/mealData.js';
 import { loadUsers } from './utils/userData.js';
+import { loadJSON } from './utils/dataLoader.js';
 
 function loadCalendar() {
   return new Promise(resolve => {
@@ -20,6 +21,61 @@ function loadCalendar() {
 let calendar = {};
 let users = [];
 let slotOrder = [];
+const mealMap = {};
+
+function loadFinalProduct(item) {
+  return new Promise(resolve => {
+    const key = `final_product_${encodeURIComponent(item)}`;
+    chrome.storage.local.get([key], data => resolve(data[key] || null));
+  });
+}
+
+async function getMealImage(meal) {
+  if (meal.image) return meal.image;
+  const first = meal.ingredients?.[0]?.name;
+  if (!first) return null;
+  const prod = await loadFinalProduct(first);
+  return prod && prod.image ? prod.image : null;
+}
+
+function setMealImage(imgEl, meal) {
+  getMealImage(meal).then(src => {
+    if (src) {
+      imgEl.src = src;
+      imgEl.style.display = 'block';
+    } else {
+      imgEl.style.display = 'none';
+      imgEl.src = '';
+    }
+  });
+}
+
+function loadMeals(type) {
+  const { key, path } = MEAL_TYPES[type];
+  return new Promise(async resolve => {
+    chrome.storage.local.get(key, async data => {
+      let arr = data[key];
+      if (!arr) arr = await loadJSON(path);
+      if (Array.isArray(arr)) {
+        arr.forEach(m => {
+          if (m.prepared === undefined) m.prepared = false;
+        });
+      }
+      resolve(arr || []);
+    });
+  });
+}
+
+async function loadAllMeals() {
+  const types = Object.keys(MEAL_TYPES);
+  for (const type of types) {
+    const meals = await loadMeals(type);
+    meals.forEach(m => {
+      const id = m.id || m.name;
+      mealMap[id] = m;
+    });
+  }
+}
 
 function buildSlotOrder(mealsPerDay) {
   const base = [
@@ -126,7 +182,19 @@ function render() {
       if (Array.isArray(val)) val = val[idx];
       else if (idx > 0) val = '';
       used[cat] = idx + 1;
-      td.textContent = val || '';
+      if (val) {
+        const meal = mealMap[val];
+        const name = meal ? meal.name || val : val;
+        const nameDiv = document.createElement('div');
+        nameDiv.textContent = name;
+        td.appendChild(nameDiv);
+        if (meal) {
+          const img = document.createElement('img');
+          img.className = 'meal-img';
+          setMealImage(img, meal);
+          td.appendChild(img);
+        }
+      }
       row.appendChild(td);
     });
     body.appendChild(row);
@@ -139,6 +207,7 @@ async function init() {
   const mealsPerDay = await loadMealsPerDay();
   users = await loadUsers();
   calendar = await loadCalendar();
+  await loadAllMeals();
 
   slotOrder = buildSlotOrder(mealsPerDay);
 
