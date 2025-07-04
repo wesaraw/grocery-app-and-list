@@ -2,6 +2,7 @@ import { loadJSON } from './utils/dataLoader.js';
 import { calculatePurchaseNeeds } from './utils/purchaseCalculator.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
+import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import {
   sortItemsByCategory,
   renderItemsWithCategoryHeaders
@@ -83,8 +84,41 @@ function loadStoredArray(key) {
   });
 }
 
+function loadCalendar() {
+  return new Promise(resolve => {
+    chrome.storage.local.get('whatToEatCalendar', data => {
+      resolve(data.whatToEatCalendar || {});
+    });
+  });
+}
+
+function loadMeals(type) {
+  const { key, path } = MEAL_TYPES[type];
+  return new Promise(async resolve => {
+    chrome.storage.local.get(key, async data => {
+      let arr = data[key];
+      if (!arr) arr = await loadJSON(path);
+      if (Array.isArray(arr)) {
+        arr.forEach(m => {
+          if (m.prepared === undefined) m.prepared = false;
+        });
+      }
+      resolve(arr || []);
+    });
+  });
+}
+
+async function loadMealsByCategory() {
+  await initializeMealCategories();
+  const result = {};
+  for (const type of Object.keys(MEAL_TYPES)) {
+    result[type] = await loadMeals(type);
+  }
+  return result;
+}
+
 async function getData() {
-  const [needs, selections, consumption, stock, expiration, consumed, purchases, mealYear] =
+  const [needs, selections, consumption, stock, expiration, consumed, purchases, mealYear, calendar, meals] =
     await Promise.all([
       loadNeeds(),
       loadJSON(STORE_SELECTION_PATH),
@@ -93,9 +127,22 @@ async function getData() {
       loadExpiration(),
       loadConsumed(),
       loadPurchases(),
-      loadStoredArray('mealPlanYearly')
+      loadStoredArray('mealPlanYearly'),
+      loadCalendar(),
+      loadMealsByCategory()
     ]);
-  return { needs, selections, consumption, stock, expiration, consumed, purchases, mealYear };
+  return {
+    needs,
+    selections,
+    consumption,
+    stock,
+    expiration,
+    consumed,
+    purchases,
+    mealYear,
+    calendar,
+    mealsByCategory: meals
+  };
 }
 
 const finalMap = new Map();
@@ -107,6 +154,8 @@ let stockData = [];
 let consumedYearData = [];
 let mealYearData = [];
 let purchasesData = {};
+let calendarData = {};
+let mealsByCategoryData = {};
 let hideZeroItems = false;
 let filterText = '';
 const headerState = {};
@@ -135,7 +184,9 @@ async function init() {
     expiration,
     consumed,
     purchases,
-    mealYear
+    mealYear,
+    calendar,
+    mealsByCategory
   } = await getData();
   needsData = needs;
   const sortedNeeds = sortItemsByCategory(needs);
@@ -146,6 +197,8 @@ async function init() {
   consumedYearData = consumed;
   mealYearData = mealYear;
   purchasesData = purchases;
+  calendarData = calendar;
+  mealsByCategoryData = mealsByCategory;
   const week = getCurrentWeek();
   const purchaseInfo = calculatePurchaseNeeds(
     needs,
@@ -155,7 +208,9 @@ async function init() {
     consumed,
     mealYear,
     purchases,
-    week
+    week,
+    calendar,
+    mealsByCategory
   );
   const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
   const stockMap = new Map(stock.map(i => [i.name, i]));
@@ -222,7 +277,9 @@ async function refreshNeeds(stock = stockData, consumed = consumedYearData) {
     consumed,
     mealYearData,
     purchasesData,
-    getCurrentWeek()
+    getCurrentWeek(),
+    calendarData,
+    mealsByCategoryData
   );
   const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
   const stockMap = new Map(stock.map(i => [i.name, i]));
@@ -256,7 +313,9 @@ async function rerenderAll() {
     expiration,
     consumed,
     purchases,
-    mealYear
+    mealYear,
+    calendar,
+    mealsByCategory
   } = await getData();
   needsData = needs;
   const sortedNeeds = sortItemsByCategory(needs);
@@ -267,6 +326,8 @@ async function rerenderAll() {
   consumedYearData = consumed;
   mealYearData = mealYear;
   purchasesData = purchases;
+  calendarData = calendar;
+  mealsByCategoryData = mealsByCategory;
   const week = getCurrentWeek();
   const purchaseInfo = calculatePurchaseNeeds(
     needs,
@@ -276,7 +337,9 @@ async function rerenderAll() {
     consumed,
     mealYear,
     purchases,
-    week
+    week,
+    calendar,
+    mealsByCategory
   );
   const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
   const stockMap = new Map(stock.map(i => [i.name, i]));
