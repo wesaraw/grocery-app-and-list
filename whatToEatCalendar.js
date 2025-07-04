@@ -18,9 +18,34 @@ function loadCalendar() {
   });
 }
 
+function loadColumnOrder() {
+  return new Promise(resolve => {
+    try {
+      chrome.storage.local.get('calendarColumnOrder', data => {
+        resolve(data.calendarColumnOrder || {});
+      });
+    } catch (e) {
+      resolve({});
+    }
+  });
+}
+
+function saveColumnOrder(order) {
+  return new Promise(resolve => {
+    try {
+      chrome.storage.local.set({ calendarColumnOrder: order }, () => resolve());
+    } catch (e) {
+      resolve();
+    }
+  });
+}
+
 let calendar = {};
 let users = [];
 let slotOrder = [];
+let slotOrderIds = [];
+let columnOrder = {};
+let editMode = false;
 const mealMap = {};
 
 function loadFinalProduct(item) {
@@ -142,9 +167,60 @@ function buildSlotOrder(mealsPerDay) {
   return pattern.map(p => p.cat);
 }
 
-function buildHeader() {
+function buildSlotIds(order) {
+  const counts = {};
+  return order.map(cat => {
+    counts[cat] = (counts[cat] || 0) + 1;
+    return `${cat}#${counts[cat]}`;
+  });
+}
+
+function applySavedOrder(ids, saved) {
+  if (!Array.isArray(saved)) return ids.slice();
+  const remaining = ids.slice();
+  const result = [];
+  saved.forEach(id => {
+    const idx = remaining.indexOf(id);
+    if (idx !== -1) {
+      result.push(remaining.splice(idx, 1)[0]);
+    }
+  });
+  result.push(...remaining);
+  return result;
+}
+
+function moveColumn(idx, dir) {
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= slotOrderIds.length) return;
+  const [item] = slotOrderIds.splice(idx, 1);
+  slotOrderIds.splice(newIdx, 0, item);
+  slotOrder = slotOrderIds.map(id => id.split('#')[0]);
+  buildHeader(true);
+  render();
+}
+
+function buildHeader(editing = false) {
   const head = document.getElementById('tableHead');
   head.innerHTML = '';
+  if (editing) {
+    const arrowRow = document.createElement('tr');
+    const blank = document.createElement('th');
+    arrowRow.appendChild(blank);
+    slotOrder.forEach((_, idx) => {
+      const th = document.createElement('th');
+      const left = document.createElement('button');
+      left.textContent = '\u2190';
+      left.addEventListener('click', () => moveColumn(idx, -1));
+      const right = document.createElement('button');
+      right.textContent = '\u2192';
+      right.addEventListener('click', () => moveColumn(idx, 1));
+      th.appendChild(left);
+      th.appendChild(document.createTextNode(' '));
+      th.appendChild(right);
+      arrowRow.appendChild(th);
+    });
+    head.appendChild(arrowRow);
+  }
   const tr = document.createElement('tr');
   const dateTh = document.createElement('th');
   dateTh.textContent = 'Date';
@@ -202,11 +278,34 @@ function render() {
   }
 }
 
+function applySavedOrderForUser(user) {
+  slotOrderIds = buildSlotIds(slotOrder);
+  slotOrderIds = applySavedOrder(slotOrderIds, columnOrder[user]);
+  slotOrder = slotOrderIds.map(id => id.split('#')[0]);
+}
+
+function startReorder() {
+  if (editMode) return;
+  editMode = true;
+  document.getElementById('saveOrderBtn').classList.remove('hidden');
+  buildHeader(true);
+}
+
+async function saveOrder() {
+  const user = document.getElementById('userSelect').value;
+  columnOrder[user] = slotOrderIds.slice();
+  await saveColumnOrder(columnOrder);
+  editMode = false;
+  document.getElementById('saveOrderBtn').classList.add('hidden');
+  buildHeader(false);
+}
+
 async function init() {
   await initializeMealCategories();
   const mealsPerDay = await loadMealsPerDay();
   users = await loadUsers();
   calendar = await loadCalendar();
+  columnOrder = await loadColumnOrder();
   await loadAllMeals();
 
   slotOrder = buildSlotOrder(mealsPerDay);
@@ -220,8 +319,16 @@ async function init() {
   });
   if (users.length) userSelect.value = users[0];
   document.getElementById('startDate').value = new Date().toISOString().split('T')[0];
+  applySavedOrderForUser(userSelect.value);
   buildHeader();
   document.getElementById('showBtn').addEventListener('click', render);
+  document.getElementById('reorderBtn').addEventListener('click', startReorder);
+  document.getElementById('saveOrderBtn').addEventListener('click', saveOrder);
+  userSelect.addEventListener('change', () => {
+    applySavedOrderForUser(userSelect.value);
+    buildHeader(editMode);
+    render();
+  });
   render();
 }
 
