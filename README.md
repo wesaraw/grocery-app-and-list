@@ -140,6 +140,11 @@ You can view this schedule by opening the **Meal Planner** (from the popup or
 the inventory timeline) and clicking **Calendar**. A new window lets you pick a
 user and date range to see what meals they will eat each day.
 
+The calendar shows a column for each individual meal spot. Column headers
+reflect the current meal multipliers (for example "Drink 1", "Snack 2", etc.).
+When multipliers are changed, the layout expands or contracts from the ends of
+the day toward the center so meals stay evenly distributed.
+
 ### Purchase Recommendations
 
 The purchase calculator now also looks at this calendar. Ingredient amounts are
