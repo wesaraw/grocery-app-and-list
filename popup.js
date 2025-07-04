@@ -196,11 +196,14 @@ async function init() {
   needsData = needs;
   const sortedNeeds = sortItemsByCategory(needs);
   const consMap = new Map(consumption.map(c => [c.name, c]));
-  (mealMonth || []).forEach(m => {
-    const rec = consMap.get(m.name);
-    if (rec) rec.monthly_consumption += m.monthly_consumption;
-    else consMap.set(m.name, { name: m.name, monthly_consumption: m.monthly_consumption });
-  });
+  const hasCalendar = calendar && Object.keys(calendar).length > 0;
+  if (!hasCalendar) {
+    (mealMonth || []).forEach(m => {
+      const rec = consMap.get(m.name);
+      if (rec) rec.monthly_consumption += m.monthly_consumption;
+      else consMap.set(m.name, { name: m.name, monthly_consumption: m.monthly_consumption });
+    });
+  }
   consumptionData = Array.from(consMap.values());
   consumptionMap = consMap;
   expirationData = expiration;
@@ -221,7 +224,8 @@ async function init() {
     purchases,
     week,
     calendar,
-    mealsByCategory
+    mealsByCategory,
+    !hasCalendar
   );
   const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
   const stockMap = new Map(stock.map(i => [i.name, i]));
@@ -280,6 +284,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 async function refreshNeeds(stock = stockData, consumed = consumedYearData) {
   stockData = stock;
+  const hasCalendar = calendarData && Object.keys(calendarData).length > 0;
   const purchaseInfo = calculatePurchaseNeeds(
     needsData,
     consumptionData,
@@ -290,7 +295,8 @@ async function refreshNeeds(stock = stockData, consumed = consumedYearData) {
     purchasesData,
     getCurrentWeek(),
     calendarData,
-    mealsByCategoryData
+    mealsByCategoryData,
+    !hasCalendar
   );
   const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
   const stockMap = new Map(stock.map(i => [i.name, i]));
@@ -332,11 +338,14 @@ async function rerenderAll() {
   needsData = needs;
   const sortedNeeds = sortItemsByCategory(needs);
   const consMap = new Map(consumption.map(c => [c.name, c]));
-  (mealMonth || []).forEach(m => {
-    const rec = consMap.get(m.name);
-    if (rec) rec.monthly_consumption += m.monthly_consumption;
-    else consMap.set(m.name, { name: m.name, monthly_consumption: m.monthly_consumption });
-  });
+  const hasCalendar = calendar && Object.keys(calendar).length > 0;
+  if (!hasCalendar) {
+    (mealMonth || []).forEach(m => {
+      const rec = consMap.get(m.name);
+      if (rec) rec.monthly_consumption += m.monthly_consumption;
+      else consMap.set(m.name, { name: m.name, monthly_consumption: m.monthly_consumption });
+    });
+  }
   consumptionData = Array.from(consMap.values());
   consumptionMap = consMap;
   expirationData = expiration;
@@ -357,7 +366,8 @@ async function rerenderAll() {
     purchases,
     week,
     calendar,
-    mealsByCategory
+    mealsByCategory,
+    !hasCalendar
   );
   const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
   const stockMap = new Map(stock.map(i => [i.name, i]));

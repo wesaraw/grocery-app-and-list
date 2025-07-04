@@ -150,3 +150,8 @@ the day toward the center so meals stay evenly distributed.
 The purchase calculator now also looks at this calendar. Ingredient amounts are
 summed by week based on the `WhatToEatCalendar`, so the suggested shopping list
 matches the upcoming meal plan.
+
+If you already rely on this calendar you can ignore the yearly meal-plan totals
+by passing `false` for the `useMealPlanTotals` option when calling the purchase
+calculator. This avoids double-counting meals and lets the calendar drive the
+entire recommendation.
