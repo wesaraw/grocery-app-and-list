@@ -150,7 +150,7 @@ export function calculatePurchaseNeeds(
 
   const timelineItems = mergedNeeds.map(item => ({
     name: item.name,
-    weekly_consumption: weeklyNeedMap.get(item.name)[1] || 0,
+    weekly_consumption: weeklyNeedMap.get(item.name)[week] || 0,
     expiration_weeks:
       (expMap.get(item.name)?.shelf_life_months ?? 12) * WEEKS_PER_MONTH,
     starting_stock: stock.find(s => s.name === item.name)?.amount ?? 0,
