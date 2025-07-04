@@ -118,12 +118,23 @@ async function renameItem(oldName, newName) {
     loadHistory()
   ]);
 
+  function normalize(name) {
+    return name.toLowerCase().replace(/[^a-z0-9]/g, '');
+  }
+  const normOld = normalize(oldName);
+
   const renameInArray = arr => {
-    const rec = arr.find(i => i.name === oldName);
-    if (rec) rec.name = newName;
+    arr.forEach(it => {
+      if (normalize(it.name).includes(normOld)) {
+        it.name = newName;
+      }
+    });
   };
+
   [needs, consumption, stock, expiration, consumed].forEach(renameInArray);
-  selections.forEach(s => { if (s.name === oldName) s.name = newName; });
+  selections.forEach(s => {
+    if (normalize(s.name).includes(normOld)) s.name = newName;
+  });
 
   if (purchases[oldName]) {
     purchases[newName] = purchases[oldName];
