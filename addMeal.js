@@ -167,7 +167,8 @@ async function init() {
       name: mealName,
       ingredients,
       people: 1,
-      prepared: preparedBox.checked
+      prepared: preparedBox.checked,
+      image: null
     });
     await saveMeals(meals);
     await calculateAndSaveMealNeeds();
