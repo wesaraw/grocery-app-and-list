@@ -8,9 +8,22 @@ body { font-family: Arial, sans-serif; overflow: auto; }
 #grid-container { overflow: auto; max-height: 80vh; position: relative; }
 table { border-collapse: collapse; }
 th, td { border: 1px solid #ccc; padding: 2px 4px; text-align: center; }
-.item-label {
+.item-image {
   position: sticky;
   left: 0;
+  background: #fff;
+  z-index: 1;
+  width: 60px;
+  min-width: 60px;
+}
+.item-image img {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+}
+.item-label {
+  position: sticky;
+  left: 60px;
   background: #fff;
   z-index: 1;
 }
@@ -23,6 +36,9 @@ thead th {
 thead th.item-label {
   z-index: 3;
 }
+thead th.item-image {
+  z-index: 3;
+}
 .green { background-color: #c8e6c9; }
 .yellow { background-color: #fff9c4; }
 .red { background-color: #ffcdd2; }
@@ -32,9 +48,14 @@ thead th.item-label {
   border-top: 1px solid #ccc;
   text-align: left;
   position: sticky;
-  left: 0;
   background: #fff;
   z-index: 1;
+}
+.category-header.item-image {
+  left: 0;
+}
+.category-header.item-label {
+  left: 60px;
 }
 
 .category-spacer {

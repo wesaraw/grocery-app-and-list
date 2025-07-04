@@ -33,6 +33,23 @@ async function loadOverrides() {
   });
 }
 
+async function loadFinalProducts(names) {
+  return new Promise(resolve => {
+    try {
+      const keys = names.map(n => `final_product_${encodeURIComponent(n)}`);
+      chrome.storage.local.get(keys, data => {
+        const map = {};
+        names.forEach((n, idx) => {
+          map[n] = data[keys[idx]] || null;
+        });
+        resolve(map);
+      });
+    } catch (e) {
+      resolve({});
+    }
+  });
+}
+
 async function savePurchases(map) {
   return new Promise(resolve => {
     try {
@@ -230,6 +247,9 @@ function buildGrid(items, headerState = {}, startWeek = 1) {
   const grid = document.createElement('table');
   const thead = document.createElement('thead');
   const header = document.createElement('tr');
+  const imgHead = document.createElement('th');
+  imgHead.className = 'item-image image-header';
+  header.appendChild(imgHead);
   const firstTh = document.createElement('th');
   firstTh.textContent = 'Item';
   firstTh.className = 'item-label';
@@ -275,6 +295,9 @@ function buildGrid(items, headerState = {}, startWeek = 1) {
       finalizeHeader(lastCat, headerRow, itemRows);
       lastCat = cat;
       headerRow = document.createElement('tr');
+      const thImg = document.createElement('th');
+      thImg.className = 'category-header item-image';
+      headerRow.appendChild(thImg);
       const thCat = document.createElement('th');
       thCat.className = 'category-header item-label';
       thCat.textContent = cat;
@@ -290,6 +313,15 @@ function buildGrid(items, headerState = {}, startWeek = 1) {
     if (item.overrideWeeks) Object.assign(overrides, item.overrideWeeks);
     const weeks = simulateItem(item, overrides);
     const row = document.createElement('tr');
+    const imgTd = document.createElement('td');
+    imgTd.className = 'item-image';
+    if (item.finalProduct && item.finalProduct.image) {
+      const img = document.createElement('img');
+      img.src = item.finalProduct.image;
+      img.alt = item.finalProduct.name || item.name;
+      imgTd.appendChild(img);
+    }
+    row.appendChild(imgTd);
     const th = document.createElement('th');
     th.className = 'item-label';
     th.innerHTML = `${item.name}<br/><span class="exp-weeks">${item.expiration_weeks}w</span>` +
@@ -375,9 +407,10 @@ async function fetchItems() {
     data.mealMonth,
     data.mealBreakdown
   );
-  const [savedMap, overridesMap] = await Promise.all([
+  const [savedMap, overridesMap, finalMap] = await Promise.all([
     loadPurchases(),
-    loadOverrides()
+    loadOverrides(),
+    loadFinalProducts(sortedNeeds.map(n => n.name))
   ]);
   items.forEach(it => {
     if (savedMap[it.name]) {
@@ -392,6 +425,7 @@ async function fetchItems() {
         : 1;
     });
     it.overrideWeeks = weekMap;
+    it.finalProduct = finalMap[it.name] || null;
   });
   return items;
 }
@@ -528,6 +562,16 @@ async function init() {
       });
       updated = true;
     }
+    Object.keys(changes).forEach(k => {
+      if (k.startsWith('final_product_')) {
+        const name = decodeURIComponent(k.slice('final_product_'.length));
+        const item = globalItems.find(i => i.name === name);
+        if (item) {
+          item.finalProduct = changes[k].newValue || null;
+          updated = true;
+        }
+      }
+    });
     if (updated) {
       if (showingHistory) {
         showPurchaseHistory();
@@ -539,8 +583,15 @@ async function init() {
 
   try {
     chrome.runtime.onMessage.addListener(async msg => {
-      if (msg && msg.type === 'inventory-updated') {
+      if (!msg) return;
+      if (msg.type === 'inventory-updated') {
         await refreshItems();
+      } else if (msg.type === 'finalSelection') {
+        const item = globalItems.find(i => i.name === msg.item);
+        if (item) {
+          item.finalProduct = msg.product || null;
+          applyFilter();
+        }
       }
     });
   } catch (_) {}
