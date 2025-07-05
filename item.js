@@ -350,13 +350,17 @@ async function init() {
       const rec = storeMap.get(entry.store);
       const product = rec ? rec.selectedProduct : null;
       await saveFinal(itemName, entry.store, product);
-      chrome.runtime.sendMessage({
-        type: 'finalSelection',
-        item: itemName,
-        store: entry.store,
-        product
-      });
-      window.close();
+      chrome.runtime.sendMessage(
+        {
+          type: 'finalSelection',
+          item: itemName,
+          store: entry.store,
+          product
+        },
+        () => {
+          window.close();
+        }
+      );
     });
     header.appendChild(finalBtn);
     div.appendChild(header);
@@ -412,48 +416,50 @@ async function init() {
 
 
 
-  chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'selectedItem' && message.item === itemName) {
-      const rec = storeMap.get(message.store);
-      if (rec) {
-        const selected = message.product;
+      (async () => {
+        const rec = storeMap.get(message.store);
+        if (rec) {
+          const selected = message.product;
 
-        // Rebuild the weight pack map to include newly scraped products
-        await buildWeightPackMap(itemName, storeOrder);
+          // Rebuild the weight pack map to include newly scraped products
+          await buildWeightPackMap(itemName, storeOrder);
 
-        const info = baseGetPackInfo(selected);
-        if (info.count > 1) {
-          const wKey = weightKey(selected);
-          if (wKey && (!weightPackMap.has(wKey) || weightPackMap.get(wKey).count < info.count)) {
-            weightPackMap.set(wKey, info);
+          const info = baseGetPackInfo(selected);
+          if (info.count > 1) {
+            const wKey = weightKey(selected);
+            if (wKey && (!weightPackMap.has(wKey) || weightPackMap.get(wKey).count < info.count)) {
+              weightPackMap.set(wKey, info);
+            }
           }
+          let pStr =
+            selected.priceNumber != null
+              ? `$${selected.priceNumber.toFixed(2)}`
+              : selected.price;
+          let qStr =
+            selected.convertedQty != null
+              ? `${selected.convertedQty.toFixed(2)} ${selected.unitType || 'oz'}`
+              : selected.size;
+          const unitPrice = pricePerHomeUnit(itemName, selected);
+          const label = homeUnitLabel(itemName) || selected.unitType || 'oz';
+          let uStr =
+            unitPrice != null
+              ? `$${unitPrice.toFixed(2)}/${label}`
+              : selected.unit;
+          const cost = monthlyCost(itemName, selected);
+          const costStr = cost != null ? ` - $${cost.toFixed(2)}/mo` : '';
+          rec.info.textContent = `${selected.name} - ${pStr} - ${qStr} - ${uStr}${costStr}`;
+          rec.img.src = selected.image || PLACEHOLDER_IMG;
+          rec.img.alt = selected.name;
+          rec.img.style.display = 'block';
+          rec.finalBtn.style.display = 'inline';
+          rec.selectedProduct = selected;
+          sendResponse({ success: true });
         }
-        let pStr =
-          selected.priceNumber != null
-            ? `$${selected.priceNumber.toFixed(2)}`
-            : selected.price;
-        let qStr =
-          selected.convertedQty != null
-            ? `${selected.convertedQty.toFixed(2)} ${selected.unitType || 'oz'}`
-            : selected.size;
-        const unitPrice = pricePerHomeUnit(itemName, selected);
-        const label = homeUnitLabel(itemName) || selected.unitType || 'oz';
-        let uStr =
-          unitPrice != null
-            ? `$${unitPrice.toFixed(2)}/${label}`
-            : selected.unit;
-        const cost = monthlyCost(itemName, selected);
-        const costStr = cost != null ? ` - $${cost.toFixed(2)}/mo` : '';
-        rec.info.textContent = `${selected.name} - ${pStr} - ${qStr} - ${uStr}${costStr}`;
-        rec.img.src = selected.image || PLACEHOLDER_IMG;
-        rec.img.alt = selected.name;
-        rec.img.style.display = 'block';
-        rec.finalBtn.style.display = 'inline';
-        rec.selectedProduct = selected;
-        sendResponse({ success: true });
-      }
+      })();
+      return true;
     }
-    return true;
   });
 
   // Listener updates store info when a product is chosen in the results window
