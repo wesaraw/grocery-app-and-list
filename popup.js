@@ -447,7 +447,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const rec = finalMap.get(message.item);
     if (rec) {
       const { span, img } = rec;
-      updateFinalInfo(message.item, span, img, message.store, message.product);
+      const prod = message.product;
+      if (prod) {
+        const info = baseGetPackInfo(prod);
+        if (info.count > 1) {
+          const wKey = weightKey(prod);
+          if (wKey && (!weightPackMap.has(wKey) || weightPackMap.get(wKey).count < info.count)) {
+            weightPackMap.set(wKey, info);
+          }
+        }
+      }
+      updateFinalInfo(message.item, span, img, message.store, prod);
     }
   }
 });
