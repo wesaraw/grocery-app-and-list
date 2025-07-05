@@ -80,6 +80,8 @@ function scrapeStopAndShop() {
   tiles.forEach((tile, index) => {
     console.log(`🔍 Tile ${index + 1} innerHTML:`, tile.innerHTML);
     const name = tile.querySelector('.product-grid-cell_price-container > .sr-only')?.innerText?.trim();
+    const packMatch = name?.match(/(\d+)\s*(?:pack|pk|ct|count)/i);
+    const packCount = packMatch ? parseInt(packMatch[1], 10) : 1;
 
     const priceText = tile.querySelector('.product-grid-cell_main-price')?.innerText?.trim();
 
@@ -149,6 +151,7 @@ function scrapeStopAndShop() {
         unitType,
         convertedQty,
         pricePerUnit,
+        packCount,
         image,
         link
       });
@@ -265,6 +268,7 @@ function scrapeWalmart() {
         unitType,
         convertedQty,
         pricePerUnit,
+        packCount,
         image,
         link
       });
@@ -423,6 +427,7 @@ function scrapeAmazon() {
         unitType,
         convertedQty,
         pricePerUnit,
+        packCount,
         image,
         link
       });
@@ -532,6 +537,8 @@ function scrapeShaws() {
   tiles.forEach(tile => {
     const titleEl = tile.querySelector('[data-qa="prd-itm-pttl"]');
     const name = titleEl?.innerText?.trim();
+    const packMatch = name?.match(/(\d+)\s*(?:pk|pack|ct|count)/i);
+    const packCount = packMatch ? parseInt(packMatch[1], 10) : 1;
     const linkRel = titleEl?.getAttribute('href');
     const link = linkRel ? new URL(linkRel, 'https://www.shaws.com').href : '';
     const priceText = tile.querySelector('[data-qa="prd-itm-prc"]')?.innerText?.trim();
@@ -606,6 +613,7 @@ function scrapeShaws() {
         unitType: null,
         convertedQty,
         pricePerUnit,
+        packCount,
         image,
         link
       });
@@ -654,6 +662,8 @@ function scrapeRocheBros() {
   const tiles = document.querySelectorAll('li.product-wrapper.cell-wrapper');
   tiles.forEach(tile => {
     const name = tile.querySelector('.cell-title-text')?.innerText?.trim();
+    const packMatch = name?.match(/(\d+)\s*(?:pk|pack|ct|count)/i);
+    const packCount = packMatch ? parseInt(packMatch[1], 10) : 1;
       const image = getImageSrc(tile.querySelector(".cell-image"));
     const link = tile.querySelector('a[href]')?.href || '';
     const addBtn = tile.querySelector('button[data-test="add-to-cart-button"]') ||
@@ -715,6 +725,7 @@ function scrapeRocheBros() {
         unitType,
         convertedQty,
         pricePerUnit,
+        packCount,
         image,
         link,
         addToCartId
@@ -768,6 +779,8 @@ function scrapeHannaford() {
       ? new URL(linkRel, 'https://www.hannaford.com').href
       : '';
     const name = tile.querySelector('.productName .real-product-name')?.innerText?.trim();
+    const packMatch = name?.match(/(\d+)\s*(?:pk|pack|ct|count)/i);
+    const packCount = packMatch ? parseInt(packMatch[1], 10) : 1;
     const priceText = tile.querySelector('.priceCell .item-unit-price')?.innerText?.trim();
     const priceHidden = tile.querySelector('.priceCell .item-price')?.value;
     const sizeText = tile.querySelector('.overline.text-truncate')?.innerText?.trim();
@@ -829,6 +842,7 @@ function scrapeHannaford() {
         unitType,
         convertedQty,
         pricePerUnit,
+        packCount,
         image,
         link
       });

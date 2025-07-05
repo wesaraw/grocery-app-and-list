@@ -232,6 +232,9 @@ function weightKey(product) {
 }
 
 function getPackInfo(product) {
+  if (product && product.packCount && product.packCount > 1) {
+    return { count: product.packCount, weightPerPack: false };
+  }
   const base = baseGetPackInfo(product);
   if (base.count > 1) return base;
   const key = weightKey(product);
@@ -250,7 +253,12 @@ async function buildWeightPackMap(item, stores) {
   for (const s of stores) {
     const arr = await loadScraped(item, s);
     for (const p of arr) {
-      const info = baseGetPackInfo(p);
+      let info;
+      if (p && p.packCount && p.packCount > 1) {
+        info = { count: p.packCount, weightPerPack: false };
+      } else {
+        info = baseGetPackInfo(p);
+      }
       if (info.count > 1) {
         const key = weightKey(p);
         if (key && (!map.has(key) || map.get(key).count < info.count)) {
