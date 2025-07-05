@@ -427,6 +427,18 @@ async function init() {
         .filter(s => s.name === item.name)
         .map(s => s.store);
       await buildWeightPackMap(item.name, stores);
+      if (product) {
+        const info = baseGetPackInfo(product);
+        if (info.count > 1) {
+          const wKey = weightKey(product);
+          if (
+            wKey &&
+            (!weightPackMap.has(wKey) || weightPackMap.get(wKey).count < info.count)
+          ) {
+            weightPackMap.set(wKey, info);
+          }
+        }
+      }
       updateFinalInfo(item.name, finalSpan, finalImg, store, product);
     });
     li.appendChild(finalSpan);
@@ -579,6 +591,18 @@ async function rerenderAll() {
     li.style.display = showByStock && showByNeed ? 'list-item' : 'none';
     getFinal(item.name).then(async store => {
       const product = await getFinalProduct(item.name);
+      if (product) {
+        const info = baseGetPackInfo(product);
+        if (info.count > 1) {
+          const wKey = weightKey(product);
+          if (
+            wKey &&
+            (!weightPackMap.has(wKey) || weightPackMap.get(wKey).count < info.count)
+          ) {
+            weightPackMap.set(wKey, info);
+          }
+        }
+      }
       updateFinalInfo(item.name, finalSpan, finalImg, store, product);
     });
     li.appendChild(finalSpan);
