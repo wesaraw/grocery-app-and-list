@@ -115,10 +115,38 @@ export function scrapeShaws() {
     let sizeQty = null;
     let sizeUnit = null;
 
-    [sizeQty, sizeUnit] = extractSize(sizeText);
+    const [qtyFromText, unitFromText] = extractSize(sizeText);
+    const [qtyFromName, unitFromName] = extractSize(name);
 
-    if (sizeQty == null && name) {
-      [sizeQty, sizeUnit] = extractSize(name);
+    const isWeightText = unitFromText && WEIGHT_UNITS.has(unitFromText.toLowerCase());
+    const isWeightName = unitFromName && WEIGHT_UNITS.has(unitFromName.toLowerCase());
+
+    if (isWeightText && isWeightName) {
+      const ozText = qtyFromText * (UNIT_FACTORS[unitFromText.toLowerCase()] || 1);
+      const ozName = qtyFromName * (UNIT_FACTORS[unitFromName.toLowerCase()] || 1);
+      if (ozName > ozText) {
+        sizeQty = qtyFromName;
+        sizeUnit = unitFromName;
+      } else {
+        sizeQty = qtyFromText;
+        sizeUnit = unitFromText;
+      }
+    } else if (isWeightText || isWeightName) {
+      if (isWeightText) {
+        sizeQty = qtyFromText;
+        sizeUnit = unitFromText;
+      } else {
+        sizeQty = qtyFromName;
+        sizeUnit = unitFromName;
+      }
+    } else {
+      if (qtyFromText != null) {
+        sizeQty = qtyFromText;
+        sizeUnit = unitFromText;
+      } else {
+        sizeQty = qtyFromName;
+        sizeUnit = unitFromName;
+      }
     }
 
     let convertedQty = null;
