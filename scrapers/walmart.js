@@ -1,3 +1,4 @@
+import { getImageSrc } from "../utils/imageUtils.js";
 export function scrapeWalmart() {
   const UNIT_FACTORS = {
     oz: 1,
@@ -115,7 +116,7 @@ export function scrapeWalmart() {
         }
       }
     }
-    const image = tile.querySelector('img[data-testid="productTileImage"]')?.src || '';
+    const image = getImageSrc(tile.querySelector('img[data-testid="productTileImage"]'));
     const link = tile.querySelector('a[href*="/ip/"]')?.href || '';
     let priceNumber = null;
     if (price) {

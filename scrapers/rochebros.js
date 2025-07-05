@@ -1,3 +1,4 @@
+import { getImageSrc } from "../utils/imageUtils.js";
 export function scrapeRocheBros() {
   const UNIT_FACTORS = {
     oz: 1,
@@ -47,11 +48,7 @@ export function scrapeRocheBros() {
     const sizeText = tile.querySelector('.cell-product-size')?.innerText?.trim();
     let unitText = tile.querySelector('[data-test="per-unit-price"]')?.innerText?.trim();
     const imageEl = tile.querySelector('.cell-image');
-    const image =
-      imageEl?.getAttribute('data-src') ||
-      imageEl?.src ||
-      imageEl?.style.backgroundImage?.match(/url\("?(.*?)"?\)/)?.[1] ||
-      '';
+    const image = getImageSrc(imageEl);
 
     let priceNumber = null;
     if (priceText) {
