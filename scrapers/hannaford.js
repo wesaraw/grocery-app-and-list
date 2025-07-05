@@ -1,3 +1,4 @@
+import { getImageSrc } from "../utils/imageUtils.js";
 export function scrapeHannaford() {
   const UNIT_FACTORS = {
     oz: 1,
@@ -62,7 +63,7 @@ export function scrapeHannaford() {
     const priceHidden = tile.querySelector('.priceCell .item-price')?.value;
     const sizeText = tile.querySelector('.overline.text-truncate')?.innerText?.trim();
     const unitText = tile.querySelector('.unitPriceDisplay')?.innerText?.trim();
-    const image = tile.querySelector('img')?.src || '';
+    const image = getImageSrc(tile.querySelector('img'));
 
     let priceNumber = null;
     if (priceHidden) {

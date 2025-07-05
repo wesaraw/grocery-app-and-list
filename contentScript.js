@@ -1,4 +1,42 @@
 console.log("✅ contentScript.js loaded on page:", window.location.href);
+function getImageSrc(el) {
+  if (!el) return "";
+  const attrs = ["src", "data-src", "data-original", "data-image-src", "data-lazy", "data-lazy-src"];
+  for (const attr of attrs) {
+    const val = el.getAttribute && el.getAttribute(attr);
+    if (val) {
+      try {
+        return new URL(val, location.href).href;
+      } catch (_) {
+        return val;
+      }
+    }
+  }
+  const srcset = (el.getAttribute && el.getAttribute("data-srcset")) || (el.getAttribute && el.getAttribute("srcset"));
+  if (srcset) {
+    const first = srcset.split(",")[0].trim().split(" ")[0];
+    try {
+      return new URL(first, location.href).href;
+    } catch (_) {
+      return first;
+    }
+  }
+  const style = el.style && el.style.backgroundImage;
+  if (style) {
+    const m = style.match(/url\("?(.*?)"?\)/);
+    if (m && m[1]) {
+      try {
+        return new URL(m[1], location.href).href;
+      } catch (_) {
+        return m[1];
+      }
+    }
+  }
+  if (el.currentSrc) return el.currentSrc;
+  if (el.src) return el.src;
+  return "";
+}
+
 
 function scrapeStopAndShop() {
   const UNIT_FACTORS = {
@@ -48,7 +86,7 @@ function scrapeStopAndShop() {
     const unitSize = tile.querySelector('.product-grid-cell_size')?.innerText?.trim();
 
     const perUnitText = tile.querySelector('.product-grid-cell_unit')?.innerText?.trim();
-    const image = tile.querySelector('img')?.src || '';
+    const image = getImageSrc(tile.querySelector('img'));
     const link = tile.querySelector('a[href*="/product/"]')?.href || '';
 
     let unitQty = null;
@@ -212,7 +250,7 @@ function scrapeWalmart() {
         }
       }
     }
-    const image = tile.querySelector('img[data-testid="productTileImage"]')?.src || '';
+      const image = getImageSrc(tile.querySelector('img[data-testid="productTileImage"]'));
     const link = tile.querySelector('a[href*="/ip/"]')?.href || '';
     if (name && price) {
       products.push({
@@ -314,7 +352,7 @@ function scrapeAmazon() {
   tiles.forEach(tile => {
     const link = tile.querySelector('a.a-link-normal.s-no-outline')?.href || '';
     const name = tile.querySelector('h2.a-size-base-plus span')?.innerText?.trim();
-    const image = tile.querySelector('img.s-image')?.src || '';
+      const image = getImageSrc(tile.querySelector('img.s-image'));
     const priceText = tile
       .querySelector('span.a-price span.a-offscreen')?.innerText?.trim();
     const unitText = tile
@@ -438,7 +476,7 @@ function scrapeShaws() {
     const name = titleEl?.innerText?.trim();
     const priceText = tile.querySelector('[data-qa="prd-itm-prc"]')?.innerText?.trim();
     const sizeText = tile.querySelector('[data-qa="prd-itm-sqty"]')?.innerText?.trim();
-    const image = tile.querySelector('img[data-qa="prd-itm-img"]')?.src || '';
+      const image = getImageSrc(tile.querySelector('img[data-qa="prd-itm-img"]'));
 
     let priceNumber = null;
     if (priceText) {
@@ -539,7 +577,7 @@ function scrapeRocheBros() {
   const tiles = document.querySelectorAll('li.product-wrapper.cell-wrapper');
   tiles.forEach(tile => {
     const name = tile.querySelector('.cell-title-text')?.innerText?.trim();
-    const image = tile.querySelector('.cell-image')?.getAttribute('data-src') || '';
+      const image = getImageSrc(tile.querySelector(".cell-image"));
     const link = tile.querySelector('a[href]')?.href || '';
     const addBtn = tile.querySelector('button[data-test="add-to-cart-button"]') ||
       tile.querySelector('button[data-test-id^="add-to-cart-button"]');
@@ -657,7 +695,7 @@ function scrapeHannaford() {
     const priceHidden = tile.querySelector('.priceCell .item-price')?.value;
     const sizeText = tile.querySelector('.overline.text-truncate')?.innerText?.trim();
     const unitText = tile.querySelector('.unitPriceDisplay')?.innerText?.trim();
-    const image = tile.querySelector('img')?.src || '';
+      const image = getImageSrc(tile.querySelector('img'));
 
     let priceNumber = null;
     if (priceHidden) {

@@ -1,3 +1,4 @@
+import { getImageSrc } from "../utils/imageUtils.js";
 export function scrapeAmazon() {
   const UNIT_FACTORS = {
     oz: 1,
@@ -77,8 +78,7 @@ export function scrapeAmazon() {
   tiles.forEach(tile => {
     const link = tile.querySelector('a.a-link-normal.s-no-outline')?.href || '';
     const name = tile.querySelector('h2.a-size-base-plus span')?.innerText?.trim();
-    const image = tile.querySelector('img.s-image')?.src || '';
-    const priceText = tile.querySelector('span.a-price span.a-offscreen')?.innerText?.trim();
+    const image = getImageSrc(tile.querySelector('img.s-image'));
     const unitText = tile
       .querySelector('span.a-size-base.a-color-secondary')
       ?.innerText?.trim();

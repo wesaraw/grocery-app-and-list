@@ -1,3 +1,4 @@
+import { getImageSrc } from "../utils/imageUtils.js";
 export function scrapeShaws() {
   const UNIT_FACTORS = {
     oz: 1,
@@ -45,7 +46,7 @@ export function scrapeShaws() {
     const link = linkRel ? new URL(linkRel, 'https://www.shaws.com').href : '';
     const priceText = tile.querySelector('[data-qa="prd-itm-prc"]')?.innerText?.trim();
     const sizeText = tile.querySelector('[data-qa="prd-itm-sqty"]')?.innerText?.trim();
-    const image = tile.querySelector('img[data-qa="prd-itm-img"]')?.src || '';
+    const image = getImageSrc(tile.querySelector('img[data-qa="prd-itm-img"]'));
 
     let priceNumber = null;
     if (priceText) {

@@ -1,3 +1,4 @@
+import { getImageSrc } from "../utils/imageUtils.js";
 export function scrapeStopAndShop() {
   const UNIT_FACTORS = {
     oz: 1,
@@ -69,7 +70,7 @@ export function scrapeStopAndShop() {
     const perUnitText = tile.querySelector('.product-grid-cell_unit')?.innerText?.trim();
 
     const image = tile.querySelector('img')?.src || '';
-    const link = tile.querySelector('a[href*="/product/"]')?.href || '';
+    const image = getImageSrc(tile.querySelector('img'));
 
     const packMatch = name?.match(/(?:pack\s*of\s*)?(\d+)\s*(?:pk|pack|ct|count)/i) || name?.match(/(\d+)\s*[xX]/);
     const packCount = packMatch ? parseInt(packMatch[1], 10) : 1;
