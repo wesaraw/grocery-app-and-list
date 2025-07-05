@@ -40,8 +40,6 @@ export function scrapeRocheBros() {
   const tiles = document.querySelectorAll('[data-test="product-cell"]');
   tiles.forEach(tile => {
     const name = tile.querySelector('.cell-title-text')?.innerText?.trim();
-    const packMatch = name?.match(/(\d+)\s*(?:pk|pack|ct|count)/i);
-    const packCount = packMatch ? parseInt(packMatch[1], 10) : 1;
     const link = tile.querySelector('a[href]')?.href || '';
     const addBtn = tile.querySelector('button[data-test="add-to-cart-button"]') ||
       tile.querySelector('button[data-test-id^="add-to-cart-button"]');
@@ -113,7 +111,6 @@ export function scrapeRocheBros() {
         unitType,
         convertedQty,
         pricePerUnit,
-        packCount,
         image,
         link,
         addToCartId

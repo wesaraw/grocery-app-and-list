@@ -157,7 +157,6 @@ export function scrapeStopAndShop() {
         unitType,
         convertedQty,
         pricePerUnit,
-        packCount,
         image,
         link
       });
