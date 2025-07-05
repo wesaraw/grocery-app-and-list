@@ -103,7 +103,17 @@ function getPackCount(product) {
   let m = matchPack(product?.name);
   if (!m) m = matchPack(product?.size);
   if (!m) m = matchPack(product?.unit);
-  return m ? parseInt(m[1], 10) : 1;
+  if (m) {
+    const count = parseInt(m[1], 10);
+    const source = `${product?.name || ''} ${product?.size || ''} ${product?.unit || ''}`;
+    const hasWeight = /(\d+(?:\.\d+)?)\s*(?:fl\s*oz|oz|lb|kg|g|ml|l|qt|pt|cup|tbsp|tsp|gal)/i.test(source);
+    const isRange = /[-x\u00d7]/.test(m[0]);
+    if (hasWeight && !isRange) {
+      return 1;
+    }
+    return count;
+  }
+  return 1;
 }
 
 function pricePerHomeUnit(itemName, product) {

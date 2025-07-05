@@ -54,7 +54,19 @@ function getPackCount(product) {
       }
     }
   }
-  return m ? parseInt(m[1], 10) : 1;
+
+  if (m) {
+    const count = parseInt(m[1], 10);
+    const source = product.name + ' ' + (product.size || '') + ' ' + (product.unit || '');
+    const hasWeight = /(\d+(?:\.\d+)?)\s*(?:fl\s*oz|oz|lb|kg|g|ml|l|qt|pt|cup|tbsp|tsp|gal)/i.test(source);
+    const isRange = /[-x\u00d7]/.test(m[0]);
+    if (hasWeight && !isRange) {
+      // Likely weight for entire package (e.g., "5 Count - 10 Oz")
+      return 1;
+    }
+    return count;
+  }
+  return 1;
 }
 
 function pricePerHomeUnit(itemName, product) {
