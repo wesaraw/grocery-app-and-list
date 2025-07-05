@@ -163,6 +163,7 @@ let mealsByCategoryData = {};
 let hideZeroItems = false;
 let filterText = '';
 const headerState = {};
+let weightPackMap = new Map();
 
 function getFinal(itemName) {
   const key = `final_${encodeURIComponent(itemName)}`;
@@ -176,6 +177,171 @@ function getFinalProduct(itemName) {
   return new Promise(resolve => {
     chrome.storage.local.get([key], data => resolve(data[key]));
   });
+}
+
+function storageKey(type, item, store) {
+  return `${type}_${encodeURIComponent(item)}_${encodeURIComponent(store)}`;
+}
+
+function loadScraped(item, store) {
+  return new Promise(resolve => {
+    const key = storageKey('scraped', item, store);
+    chrome.storage.local.get([key], data => resolve(data[key] || []));
+  });
+}
+
+function baseGetPackInfo(product) {
+  const sanitize = str =>
+    str
+      ?.replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;|&#160;/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  const matchPack = str => {
+    if (!str) return null;
+    const s = sanitize(str);
+    return (
+      s.match(/(\d+)\s*[-\u2011\u2012\u2013\u2014]?\s*(?:pack|pk|ct|count)/i) ||
+      s.match(/pack\s*of\s*(\d+)/i) ||
+      s.match(/(\d+)\s*[-x\u00d7]\s*\d+/i)
+    );
+  };
+
+  let m = matchPack(product?.name);
+  if (!m) m = matchPack(product?.size);
+  if (!m) m = matchPack(product?.unit);
+  if (m) {
+    const count = parseInt(m[1], 10);
+    const source = `${product?.name || ''} ${product?.size || ''} ${product?.unit || ''}`;
+    const hasWeight = /(\d+(?:\.\d+)?)\s*(?:fl\s*oz|oz|lb|kg|g|ml|l|qt|pt|cup|tbsp|tsp|gal)/i.test(source);
+    const isRange = /[-x\u00d7]/.test(m[0]);
+    const weightPerPack = hasWeight && !isRange;
+    return { count, weightPerPack };
+  }
+  return { count: 1, weightPerPack: false };
+}
+
+function weightKey(product) {
+  if (product.convertedQty != null) return product.convertedQty.toFixed(2);
+  if (product.sizeQty != null && product.sizeUnit) {
+    const oz = convert(product.sizeQty, product.sizeUnit, 'oz');
+    if (!isNaN(oz)) return oz.toFixed(2);
+  }
+  return null;
+}
+
+function getPackInfo(product) {
+  const base = baseGetPackInfo(product);
+  if (base.count > 1) return base;
+  const key = weightKey(product);
+  if (key && weightPackMap.has(key)) {
+    return weightPackMap.get(key);
+  }
+  return base;
+}
+
+function getPackCount(product) {
+  return getPackInfo(product).count;
+}
+
+async function buildWeightPackMap(item, stores) {
+  const map = new Map();
+  for (const s of stores) {
+    const arr = await loadScraped(item, s);
+    for (const p of arr) {
+      const info = baseGetPackInfo(p);
+      if (info.count > 1) {
+        const key = weightKey(p);
+        if (key && (!map.has(key) || map.get(key).count < info.count)) {
+          map.set(key, info);
+        }
+      }
+    }
+  }
+  weightPackMap = map;
+}
+
+function pricePerHomeUnit(itemName, product) {
+  const item = needsData.find(n => n.name === itemName);
+  if (!item || !product) return null;
+  const { count: pack, weightPerPack } = getPackInfo(product);
+  const mult = weightPerPack ? 1 : pack;
+  const unit = item.home_unit ? item.home_unit.toLowerCase() : 'each';
+  if (unit === 'each') {
+    return product.priceNumber != null ? product.priceNumber / pack : null;
+  }
+  let pricePerOz = product.pricePerUnit;
+  if (pricePerOz == null && product.priceNumber != null) {
+    let ozQty = null;
+    if (product.convertedQty != null) {
+      ozQty = product.convertedQty * mult;
+    } else if (product.sizeQty != null && product.sizeUnit) {
+      ozQty = convert(product.sizeQty * mult, product.sizeUnit, 'oz');
+    }
+    if (ozQty != null) {
+      pricePerOz = product.priceNumber / ozQty;
+    }
+  }
+  if (pricePerOz != null) {
+    const ozPerUnit = convert(1, item.home_unit, 'oz');
+    if (!isNaN(ozPerUnit) && ozPerUnit > 0) {
+      return pricePerOz * ozPerUnit;
+    }
+  }
+  return null;
+}
+
+function monthlyCost(itemName, product) {
+  const cons = consumptionMap.get(itemName);
+  if (!cons) return null;
+  const unitPrice = pricePerHomeUnit(itemName, product);
+  if (unitPrice == null) return null;
+  return unitPrice * (cons.monthly_consumption || 0);
+}
+
+function homeUnitLabel(itemName) {
+  const item = needsData.find(n => n.name === itemName);
+  if (!item || !item.home_unit) return null;
+  const u = item.home_unit.toLowerCase();
+  return u === 'each' ? 'ea' : u;
+}
+
+function formatFinalText(itemName, store, product) {
+  let text = store ? ` - ${store}` : '';
+  if (product) {
+    let pStr =
+      product.priceNumber != null
+        ? `$${product.priceNumber.toFixed(2)}`
+        : product.price;
+    let qStr =
+      product.convertedQty != null
+        ? `${product.convertedQty.toFixed(2)} ${product.unitType || 'oz'}`
+        : product.size;
+    const unitPrice = pricePerHomeUnit(itemName, product);
+    const label = homeUnitLabel(itemName) || product.unitType || 'oz';
+    let uStr =
+      unitPrice != null
+        ? `$${unitPrice.toFixed(2)}/${label}`
+        : product.unit;
+    const cost = monthlyCost(itemName, product);
+    const costStr = cost != null ? ` - $${cost.toFixed(2)}/mo` : '';
+    text += ` - ${product.name} - ${pStr} - ${qStr} - ${uStr}${costStr}`;
+  }
+  return text;
+}
+
+function updateFinalInfo(itemName, span, img, store, product) {
+  span.textContent = formatFinalText(itemName, store, product);
+  if (product) {
+    img.src = product.image || '';
+    img.alt = product.name || '';
+    img.style.display = 'inline';
+  } else {
+    img.style.display = 'none';
+    img.src = '';
+    img.alt = '';
+  }
 }
 
 async function init() {
@@ -257,6 +423,10 @@ async function init() {
     li.style.display = showByStock && showByNeed ? 'list-item' : 'none';
     getFinal(item.name).then(async store => {
       const product = await getFinalProduct(item.name);
+      const stores = selections
+        .filter(s => s.name === item.name)
+        .map(s => s.store);
+      await buildWeightPackMap(item.name, stores);
       updateFinalInfo(item.name, finalSpan, finalImg, store, product);
     });
     li.appendChild(finalSpan);
@@ -458,127 +628,6 @@ async function loadCommitData(itemName) {
     getFinalProduct(itemName)
   ]);
   return { store, product };
-}
-
-function getPackInfo(product) {
-  let m = product?.name?.match(/(\d+)\s*(?:pk|pack|ct|count)/i);
-  if (!m && product?.name) {
-    m = product.name.match(/(\d+)\s*[-x\u00d7]\s*\d+/i);
-  }
-  if (!m && product?.size) {
-    m = product.size.match(/pack\s*of\s*(\d+)/i);
-    if (!m) {
-      m = product.size.match(/(\d+)\s*(?:pk|pack|ct|count)/i);
-      if (!m) {
-        m = product.size.match(/(\d+)\s*[-x\u00d7]\s*\d+/i);
-      }
-    }
-  }
-  if (!m && product?.unit) {
-    m = product.unit.match(/pack\s*of\s*(\d+)/i);
-    if (!m) {
-      m = product.unit.match(/(\d+)\s*(?:pk|pack|ct|count)/i);
-      if (!m) {
-        m = product.unit.match(/(\d+)\s*[-x\u00d7]\s*\d+/i);
-      }
-    }
-  }
-
-  if (m) {
-    const count = parseInt(m[1], 10);
-    const source = product.name + ' ' + (product.size || '') + ' ' + (product.unit || '');
-    const hasWeight = /(\d+(?:\.\d+)?)\s*(?:fl\s*oz|oz|lb|kg|g|ml|l|qt|pt|cup|tbsp|tsp|gal)/i.test(source);
-    const isRange = /[-x\u00d7]/.test(m[0]);
-    const weightPerPack = hasWeight && !isRange;
-    return { count, weightPerPack };
-  }
-  return { count: 1, weightPerPack: false };
-}
-
-function getPackCount(product) {
-  return getPackInfo(product).count;
-}
-
-function pricePerHomeUnit(itemName, product) {
-  const item = needsData.find(n => n.name === itemName);
-  if (!item || !product) return null;
-  const { count: pack, weightPerPack } = getPackInfo(product);
-  const mult = weightPerPack ? 1 : pack;
-  const unit = item.home_unit ? item.home_unit.toLowerCase() : 'each';
-  if (unit === 'each') {
-    return product.priceNumber != null ? product.priceNumber / pack : null;
-  }
-  let pricePerOz = product.pricePerUnit;
-  if (pricePerOz == null && product.priceNumber != null) {
-    let ozQty = null;
-    if (product.convertedQty != null) {
-      ozQty = product.convertedQty * mult;
-    } else if (product.sizeQty != null && product.sizeUnit) {
-      ozQty = convert(product.sizeQty * mult, product.sizeUnit, 'oz');
-    }
-    if (ozQty != null) {
-      pricePerOz = product.priceNumber / ozQty;
-    }
-  }
-  if (pricePerOz != null) {
-    const ozPerUnit = convert(1, item.home_unit, 'oz');
-    if (!isNaN(ozPerUnit) && ozPerUnit > 0) {
-      return pricePerOz * ozPerUnit;
-    }
-  }
-  return null;
-}
-
-function monthlyCost(itemName, product) {
-  const cons = consumptionMap.get(itemName);
-  if (!cons) return null;
-  const unitPrice = pricePerHomeUnit(itemName, product);
-  if (unitPrice == null) return null;
-  return unitPrice * (cons.monthly_consumption || 0);
-}
-
-function homeUnitLabel(itemName) {
-  const item = needsData.find(n => n.name === itemName);
-  if (!item || !item.home_unit) return null;
-  const u = item.home_unit.toLowerCase();
-  return u === 'each' ? 'ea' : u;
-}
-
-function formatFinalText(itemName, store, product) {
-  let text = store ? ` - ${store}` : '';
-  if (product) {
-    let pStr =
-      product.priceNumber != null
-        ? `$${product.priceNumber.toFixed(2)}`
-        : product.price;
-    let qStr =
-      product.convertedQty != null
-        ? `${product.convertedQty.toFixed(2)} ${product.unitType || 'oz'}`
-        : product.size;
-    const unitPrice = pricePerHomeUnit(itemName, product);
-    const label = homeUnitLabel(itemName) || product.unitType || 'oz';
-    let uStr =
-      unitPrice != null
-        ? `$${unitPrice.toFixed(2)}/${label}`
-        : product.unit;
-    const cost = monthlyCost(itemName, product);
-    const costStr = cost != null ? ` - $${cost.toFixed(2)}/mo` : '';
-    text += ` - ${product.name} - ${pStr} - ${qStr} - ${uStr}${costStr}`;
-  }
-  return text;
-}
-
-function updateFinalInfo(itemName, span, img, store, product) {
-  span.textContent = formatFinalText(itemName, store, product);
-  if (product) {
-    img.src = product.image || '';
-    img.alt = product.name || '';
-    img.style.display = 'inline';
-  } else {
-    img.style.display = 'none';
-    img.src = '';
-    img.alt = '';
-  }
 }
 
 
