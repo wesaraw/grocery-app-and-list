@@ -30,8 +30,9 @@ const loadMonthlyConsumption = () => loadArray('monthlyConsumption', CONSUMPTION
 
 let needsData = [];
 let consumptionMap = new Map();
+let weightPackMap = new Map();
 
-function getPackInfo(product) {
+function baseGetPackInfo(product) {
   let m = product?.name?.match(/(\d+)\s*(?:pk|pack|ct|count)/i);
   if (!m) {
     m = product?.name?.match(/(\d+)\s*[-x\u00d7]\s*\d+/i);
@@ -64,6 +65,25 @@ function getPackInfo(product) {
     return { count, weightPerPack };
   }
   return { count: 1, weightPerPack: false };
+}
+
+function weightKey(product) {
+  if (product.convertedQty != null) return product.convertedQty.toFixed(2);
+  if (product.sizeQty != null && product.sizeUnit) {
+    const oz = convert(product.sizeQty, product.sizeUnit, 'oz');
+    if (!isNaN(oz)) return oz.toFixed(2);
+  }
+  return null;
+}
+
+function getPackInfo(product) {
+  const base = baseGetPackInfo(product);
+  if (base.count > 1) return base;
+  const key = weightKey(product);
+  if (key && weightPackMap.has(key)) {
+    return weightPackMap.get(key);
+  }
+  return base;
 }
 
 function getPackCount(product) {
@@ -179,6 +199,20 @@ function loadProducts(item, store) {
   });
 }
 
+function buildWeightPackMap(products) {
+  const map = new Map();
+  for (const p of products) {
+    const info = baseGetPackInfo(p);
+    if (info.count > 1) {
+      const key = weightKey(p);
+      if (key && (!map.has(key) || map.get(key).count < info.count)) {
+        map.set(key, info);
+      }
+    }
+  }
+  weightPackMap = map;
+}
+
 function saveSelected(item, store, product) {
   return new Promise(resolve => {
     const key = storageKey('selected', item, store);
@@ -229,6 +263,7 @@ async function init() {
   const week = getCurrentWeek();
   const adjusted = products.map(p => applyCoupon(p, coupons[item], week, store));
   const filtered = adjusted.filter(p => nameMatchesProduct(p.name, item));
+  buildWeightPackMap(filtered);
   if (filtered.length === 0) {
     container.textContent = 'No products found.';
     return;
