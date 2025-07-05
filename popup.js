@@ -345,6 +345,15 @@ function formatFinalText(itemName, store, product) {
 }
 
 function updateFinalInfo(itemName, span, img, store, product) {
+  if (product) {
+    const info = baseGetPackInfo(product);
+    if (info.count > 1) {
+      const wKey = weightKey(product);
+      if (wKey && (!weightPackMap.has(wKey) || weightPackMap.get(wKey).count < info.count)) {
+        weightPackMap.set(wKey, info);
+      }
+    }
+  }
   span.textContent = formatFinalText(itemName, store, product);
   if (product) {
     img.src = product.image || '';
