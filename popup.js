@@ -165,6 +165,11 @@ let filterText = '';
 const headerState = {};
 let weightPackMap = new Map();
 
+let resolveInit;
+const initReady = new Promise(resolve => {
+  resolveInit = resolve;
+});
+
 function getFinal(itemName) {
   const key = `final_${encodeURIComponent(itemName)}`;
   return new Promise(resolve => {
@@ -454,16 +459,19 @@ async function init() {
     finalMap.set(item.name, { li, btn, span: finalSpan, img: finalImg });
     return li;
   }, headerState);
+
+  resolveInit();
 }
 
 init();
 
 // Listen for scraped data sent from content script
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   if (message.type === 'scrapedData') {
     console.log('Received data for', message.item);
     console.log(message.products);
   } else if (message.type === 'finalSelection') {
+    await initReady;
     const rec = finalMap.get(message.item);
     if (rec) {
       const { span, img } = rec;
@@ -640,10 +648,12 @@ chrome.storage.onChanged.addListener((changes, area) => {
       const item = decodeURIComponent(key.replace(/^final(_product)?_/, ''));
       const rec = finalMap.get(item);
       if (rec) {
-        Promise.all([getFinal(item), getFinalProduct(item)]).then(([store, product]) => {
-          const { span, img } = rec;
-          updateFinalInfo(item, span, img, store, product);
-        });
+        initReady.then(() =>
+          Promise.all([getFinal(item), getFinalProduct(item)]).then(([store, product]) => {
+            const { span, img } = rec;
+            updateFinalInfo(item, span, img, store, product);
+          })
+        );
       }
     }
   });
