@@ -404,11 +404,15 @@ async function init() {
 
 
 
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     if (message.type === 'selectedItem' && message.item === itemName) {
       const rec = storeMap.get(message.store);
       if (rec) {
         const selected = message.product;
+
+        // Rebuild the weight pack map to include newly scraped products
+        await buildWeightPackMap(itemName, storeOrder);
+
         const info = baseGetPackInfo(selected);
         if (info.count > 1) {
           const wKey = weightKey(selected);
