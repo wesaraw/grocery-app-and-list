@@ -537,6 +537,13 @@ function monthlyCost(itemName, product) {
   return unitPrice * (cons.monthly_consumption || 0);
 }
 
+function homeUnitLabel(itemName) {
+  const item = needsData.find(n => n.name === itemName);
+  if (!item || !item.home_unit) return null;
+  const u = item.home_unit.toLowerCase();
+  return u === 'each' ? 'ea' : u;
+}
+
 function formatFinalText(itemName, store, product) {
   let text = store ? ` - ${store}` : '';
   if (product) {
@@ -548,9 +555,11 @@ function formatFinalText(itemName, store, product) {
       product.convertedQty != null
         ? `${product.convertedQty.toFixed(2)} ${product.unitType || 'oz'}`
         : product.size;
+    const unitPrice = pricePerHomeUnit(itemName, product);
+    const label = homeUnitLabel(itemName) || product.unitType || 'oz';
     let uStr =
-      product.pricePerUnit != null
-        ? `$${product.pricePerUnit.toFixed(2)}/${product.unitType || 'oz'}`
+      unitPrice != null
+        ? `$${unitPrice.toFixed(2)}/${label}`
         : product.unit;
     const cost = monthlyCost(itemName, product);
     const costStr = cost != null ? ` - $${cost.toFixed(2)}/mo` : '';
