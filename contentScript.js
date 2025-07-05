@@ -434,6 +434,7 @@ function scrapeAmazon() {
 function scrapeShaws() {
   const UNIT_FACTORS = {
     oz: 1,
+    floz: 1,
     lb: 16,
     g: 0.035274,
     kg: 35.274,
@@ -448,6 +449,7 @@ function scrapeShaws() {
     tsp: 0.1667,
     ea: 1,
     ct: 1,
+    count: 1,
     pkg: 1,
     box: 1,
     can: 1,
@@ -467,16 +469,74 @@ function scrapeShaws() {
     unit: 1
   };
 
+  const WEIGHT_UNITS = new Set([
+    'oz',
+    'floz',
+    'lb',
+    'kg',
+    'ml',
+    'l',
+    'gal',
+    'g',
+    'qt',
+    'pt',
+    'cup',
+    'tbsp',
+    'tsp'
+  ]);
+
+  const COUNT_UNITS = new Set([
+    'ea',
+    'ct',
+    'count',
+    'pkg',
+    'box',
+    'can',
+    'bag',
+    'bottle',
+    'stick',
+    'roll',
+    'bar',
+    'pouch',
+    'jar',
+    'packet',
+    'sleeve',
+    'slice',
+    'piece',
+    'tube',
+    'tray',
+    'unit'
+  ]);
+
+  function extractSize(text) {
+    if (!text) return [null, null];
+    const regex = /([\d.]+)\s*(fl\s*oz|oz|lb|kg|ml|l|gal|g|qt|pt|cup|tbsp|tsp|ea|ct|count|pkg|box|can|bag|bottle|stick|roll|bar|pouch|jar|packet|sleeve|slice|piece|tube|tray|unit)/gi;
+    let weightPair = null;
+    let countPair = null;
+    for (const m of text.matchAll(regex)) {
+      let unit = m[2].toLowerCase().replace(/\s+/g, '');
+      if (unit === 'floz') unit = 'oz';
+      else if (unit === 'count') unit = 'ct';
+      const qty = parseFloat(m[1]);
+      if (WEIGHT_UNITS.has(unit)) {
+        if (!weightPair) weightPair = [qty, unit];
+      } else if (COUNT_UNITS.has(unit)) {
+        if (!countPair) countPair = [qty, unit];
+      }
+    }
+    return weightPair || countPair || [null, null];
+  }
+
   const products = [];
   const tiles = document.querySelectorAll('product-item-al-v2');
   tiles.forEach(tile => {
     const titleEl = tile.querySelector('[data-qa="prd-itm-pttl"]');
+    const name = titleEl?.innerText?.trim();
     const linkRel = titleEl?.getAttribute('href');
     const link = linkRel ? new URL(linkRel, 'https://www.shaws.com').href : '';
-    const name = titleEl?.innerText?.trim();
     const priceText = tile.querySelector('[data-qa="prd-itm-prc"]')?.innerText?.trim();
     const sizeText = tile.querySelector('[data-qa="prd-itm-sqty"]')?.innerText?.trim();
-      const image = getImageSrc(tile.querySelector('img[data-qa="prd-itm-img"]'));
+    const image = getImageSrc(tile.querySelector('img[data-qa="prd-itm-img"]'));
 
     let priceNumber = null;
     if (priceText) {
@@ -486,22 +546,11 @@ function scrapeShaws() {
 
     let sizeQty = null;
     let sizeUnit = null;
-    if (sizeText) {
-      const m = sizeText.match(/([\d./]+)\s*(\w+)/);
-      if (m) {
-        sizeQty = parseNumber(m[1]);
-        sizeUnit = m[2];
-      }
-    }
+
+    [sizeQty, sizeUnit] = extractSize(sizeText);
 
     if (sizeQty == null && name) {
-      const m = name.match(/([\d./]+)\s*(fl\s*oz|oz|lb|g|kg|ml|l|gal|qt|pt|cup|tbsp|tsp|ea|ct|count|pkg|box|can|bag|bottle|stick|roll|bar|pouch|jar|packet|sleeve|slice|piece|tube|tray|unit)/i);
-      if (m) {
-        sizeQty = parseNumber(m[1]);
-        sizeUnit = m[2].toLowerCase().replace(/\s+/g, '');
-        if (sizeUnit === 'floz') sizeUnit = 'oz';
-        else if (sizeUnit === 'count') sizeUnit = 'ct';
-      }
+      [sizeQty, sizeUnit] = extractSize(name);
     }
 
     let convertedQty = null;
