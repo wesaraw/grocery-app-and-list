@@ -136,6 +136,7 @@ export function scrapeWalmart() {
         unitType,
         convertedQty,
         pricePerUnit,
+        packCount,
         image,
         link
       });
