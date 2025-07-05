@@ -93,9 +93,9 @@ function scrapeStopAndShop() {
     let unitType = null;
     if (perUnitText) {
       const clean = perUnitText.replace(/[^0-9./a-zA-Z]/g, '');
-      const match = clean.match(/([\d.]+)\/([a-zA-Z]+)/);
+      const match = clean.match(/([\d./]+)\/([a-zA-Z]+)/);
       if (match) {
-        unitQty = parseFloat(match[1]);
+        unitQty = parseNumber(match[1]);
         unitType = match[2];
       }
     }
@@ -109,9 +109,9 @@ function scrapeStopAndShop() {
     let sizeQty = null;
     let sizeUnit = null;
     if (unitSize) {
-      const m = unitSize.match(/([\d.]+)\s*([a-zA-Z]+)/);
+      const m = unitSize.match(/([\d./]+)\s*([a-zA-Z]+)/);
       if (m) {
-        sizeQty = parseFloat(m[1]);
+        sizeQty = parseNumber(m[1]);
         sizeUnit = m[2];
       }
     }
@@ -213,9 +213,9 @@ function scrapeWalmart() {
     let sizeUnit = null;
     let convertedQty = null;
 
-    const sizeMatch = name?.match(/(\d+(?:\.\d+)?)\s*(fl\s*oz|oz|lb|g|kg|ml|l|ct)/i);
+    const sizeMatch = name?.match(/([\d./]+)\s*(fl\s*oz|oz|lb|g|kg|ml|l|ct)/i);
     if (sizeMatch) {
-      sizeQty = parseFloat(sizeMatch[1]);
+      sizeQty = parseNumber(sizeMatch[1]);
       sizeUnit = sizeMatch[2].replace(/\s+/g, '');
       // Removed adjustment that divided size by packCount so that the
       // full item weight is used when computing price per unit.
@@ -236,10 +236,10 @@ function scrapeWalmart() {
     }
 
     if (pricePerUnit == null) {
-      const match = perUnitText?.match(/\$([\d.]+)\/?\s*([\d.]*)\s*(\w+)/);
+      const match = perUnitText?.match(/\$([\d.]+)\/?\s*([\d./]*)\s*(\w+)/);
       if (match) {
         let priceVal = parseFloat(match[1]);
-        const qtyVal = parseFloat(match[2]);
+        const qtyVal = parseNumber(match[2]);
         const qty = !isNaN(qtyVal) && qtyVal !== 0 ? qtyVal : 1;
         pricePerUnit = priceVal / qty;
         unitType = match[3].toLowerCase();
@@ -316,9 +316,9 @@ function scrapeAmazon() {
     let unit = null;
     for (const field of fields) {
       if (!field) continue;
-      const m = field.match(/([\d.]+)[\s-]*(oz|ounce|fluid ounce|fl oz|g|gram|kg|ml|l|gal|gallon|gallons)\b/i);
+      const m = field.match(/([\d./]+)[\s-]*(oz|ounce|fluid ounce|fl oz|g|gram|kg|ml|l|gal|gallon|gallons)\b/i);
       if (m) {
-        unitSize = parseFloat(m[1]);
+        unitSize = parseNumber(m[1]);
         unit = m[2].toLowerCase();
         break;
       }
@@ -487,17 +487,17 @@ function scrapeShaws() {
     let sizeQty = null;
     let sizeUnit = null;
     if (sizeText) {
-      const m = sizeText.match(/([\d.]+)\s*(\w+)/);
+      const m = sizeText.match(/([\d./]+)\s*(\w+)/);
       if (m) {
-        sizeQty = parseFloat(m[1]);
+        sizeQty = parseNumber(m[1]);
         sizeUnit = m[2];
       }
     }
 
     if (sizeQty == null && name) {
-      const m = name.match(/([\d.]+)\s*(fl\s*oz|oz|lb|g|kg|ml|l|gal|qt|pt|cup|tbsp|tsp|ea|ct|count|pkg|box|can|bag|bottle|stick|roll|bar|pouch|jar|packet|sleeve|slice|piece|tube|tray|unit)/i);
+      const m = name.match(/([\d./]+)\s*(fl\s*oz|oz|lb|g|kg|ml|l|gal|qt|pt|cup|tbsp|tsp|ea|ct|count|pkg|box|can|bag|bottle|stick|roll|bar|pouch|jar|packet|sleeve|slice|piece|tube|tray|unit)/i);
       if (m) {
-        sizeQty = parseFloat(m[1]);
+        sizeQty = parseNumber(m[1]);
         sizeUnit = m[2].toLowerCase().replace(/\s+/g, '');
         if (sizeUnit === 'floz') sizeUnit = 'oz';
         else if (sizeUnit === 'count') sizeUnit = 'ct';
@@ -596,9 +596,9 @@ function scrapeRocheBros() {
     let unitType = null;
     if (perUnitText) {
       const clean = perUnitText.replace(/[^0-9./a-zA-Z]/g, '');
-      const match = clean.match(/([\d.]+)\/([a-zA-Z]+)/);
+      const match = clean.match(/([\d./]+)\/([a-zA-Z]+)/);
       if (match) {
-        unitQty = parseFloat(match[1]);
+        unitQty = parseNumber(match[1]);
         unitType = match[2];
       }
     }
@@ -606,9 +606,9 @@ function scrapeRocheBros() {
     let sizeQty = null;
     let sizeUnit = null;
     if (sizeText) {
-      const m = sizeText.match(/([\d.]+)\s*([a-zA-Z]+)/);
+      const m = sizeText.match(/([\d./]+)\s*([a-zA-Z]+)/);
       if (m) {
-        sizeQty = parseFloat(m[1]);
+        sizeQty = parseNumber(m[1]);
         sizeUnit = m[2];
       }
     }
@@ -710,9 +710,9 @@ function scrapeHannaford() {
     let unitType = null;
     if (unitText) {
       const clean = unitText.replace(/[^0-9./a-zA-Z]/g, '');
-      const match = clean.match(/([\d.]+)\/([a-zA-Z]+)/);
+      const match = clean.match(/([\d./]+)\/([a-zA-Z]+)/);
       if (match) {
-        unitQty = parseFloat(match[1]);
+        unitQty = parseNumber(match[1]);
         unitType = match[2];
       }
     }
@@ -720,9 +720,9 @@ function scrapeHannaford() {
     let sizeQty = null;
     let sizeUnit = null;
     if (sizeText) {
-      const m = sizeText.match(/([\d.]+)\s*([a-zA-Z]+)/);
+      const m = sizeText.match(/([\d./]+)\s*([a-zA-Z]+)/);
       if (m) {
-        sizeQty = parseFloat(m[1]);
+        sizeQty = parseNumber(m[1]);
         sizeUnit = m[2];
       }
     }
@@ -793,3 +793,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (el) el.click();
   }
 });
+
+function parseNumber(str) {
+  if (typeof str !== "string") return NaN;
+  let s = str.trim();
+  if (!s) return NaN;
+  const FRACTIONS = {"½":0.5,"¼":0.25,"¾":0.75,"⅓":1/3,"⅔":2/3,"⅛":1/8,"⅜":3/8,"⅝":5/8,"⅞":7/8};
+  if (FRACTIONS[s] !== undefined) return FRACTIONS[s];
+  for (const [u,v] of Object.entries(FRACTIONS)) {
+    if (s.includes(u)) s = s.replace(new RegExp(u,"g"), ` ${v} `);
+  }
+  s = s.trim();
+  let m = s.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+  if (m) return parseInt(m[1],10) + parseInt(m[2],10)/parseInt(m[3],10);
+  m = s.match(/^(\d+)\/(\d+)$/);
+  if (m) return parseInt(m[1],10) / parseInt(m[2],10);
+  m = s.match(/^(\d+)-(?:(\d+)\/(\d+))$/);
+  if (m) return parseInt(m[1],10) + parseInt(m[2],10)/parseInt(m[3],10);
+  const n = parseFloat(s);
+  return isNaN(n) ? NaN : n;
+}
+
