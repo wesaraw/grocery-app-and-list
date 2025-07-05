@@ -59,6 +59,8 @@ export function scrapeHannaford() {
       ? new URL(linkRel, 'https://www.hannaford.com').href
       : '';
     const name = tile.querySelector('.productName .real-product-name')?.innerText?.trim();
+    const packMatch = name?.match(/(\d+)\s*(?:pk|pack|ct|count)/i);
+    const packCount = packMatch ? parseInt(packMatch[1], 10) : 1;
     const priceText = tile.querySelector('.priceCell .item-unit-price')?.innerText?.trim();
     const priceHidden = tile.querySelector('.priceCell .item-price')?.value;
     const sizeText = tile.querySelector('.overline.text-truncate')?.innerText?.trim();
@@ -135,6 +137,7 @@ export function scrapeHannaford() {
         unitType,
         convertedQty,
         pricePerUnit,
+        packCount,
         image,
         link
       });

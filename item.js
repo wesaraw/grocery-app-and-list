@@ -125,6 +125,9 @@ function weightKey(product) {
 }
 
 function getPackInfo(product) {
+  if (product && product.packCount && product.packCount > 1) {
+    return { count: product.packCount, weightPerPack: false };
+  }
   const base = baseGetPackInfo(product);
   if (base.count > 1) return base;
   const key = weightKey(product);

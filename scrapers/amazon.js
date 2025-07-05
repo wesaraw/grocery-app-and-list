@@ -148,6 +148,7 @@ export function scrapeAmazon() {
         unitType,
         convertedQty,
         pricePerUnit,
+        packCount,
         image,
         link
       });
