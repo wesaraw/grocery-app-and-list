@@ -71,6 +71,7 @@ let consumptionMap = new Map();
 // Keep global order of stores and selected product info
 let storeOrder = [];
 let storeMapGlobal = new Map();
+let weightPackMap = new Map();
 
 // Examples that should return 12:
 //   "12 pack"
@@ -82,7 +83,7 @@ let storeMapGlobal = new Map();
 //   "<span>12</span> pack"
 // The function strips simple HTML tags and handles various punctuation between
 // the number and the pack keyword.
-function getPackInfo(product) {
+function baseGetPackInfo(product) {
   const sanitize = str =>
     str
       ?.replace(/<[^>]*>/g, ' ')
@@ -112,6 +113,25 @@ function getPackInfo(product) {
     return { count, weightPerPack };
   }
   return { count: 1, weightPerPack: false };
+}
+
+function weightKey(product) {
+  if (product.convertedQty != null) return product.convertedQty.toFixed(2);
+  if (product.sizeQty != null && product.sizeUnit) {
+    const oz = convert(product.sizeQty, product.sizeUnit, 'oz');
+    if (!isNaN(oz)) return oz.toFixed(2);
+  }
+  return null;
+}
+
+function getPackInfo(product) {
+  const base = baseGetPackInfo(product);
+  if (base.count > 1) return base;
+  const key = weightKey(product);
+  if (key && weightPackMap.has(key)) {
+    return weightPackMap.get(key);
+  }
+  return base;
 }
 
 function getPackCount(product) {
@@ -178,6 +198,23 @@ async function loadScraped(item, store) {
   const k = key('scraped', item, store);
   const data = await getStorage([k]);
   return data[k] || [];
+}
+
+async function buildWeightPackMap(item, stores) {
+  const map = new Map();
+  for (const s of stores) {
+    const arr = await loadScraped(item, s);
+    for (const p of arr) {
+      const info = baseGetPackInfo(p);
+      if (info.count > 1) {
+        const key = weightKey(p);
+        if (key && (!map.has(key) || map.get(key).count < info.count)) {
+          map.set(key, info);
+        }
+      }
+    }
+  }
+  weightPackMap = map;
 }
 
 
@@ -256,6 +293,7 @@ async function init() {
 
   const stores = await getStoreEntries(itemName);
   storeOrder = stores.map(s => s.store);
+  await buildWeightPackMap(itemName, storeOrder);
   const storesContainer = document.getElementById('stores');
   const storeMap = new Map();
   storeMapGlobal = storeMap;
