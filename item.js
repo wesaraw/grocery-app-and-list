@@ -68,6 +68,10 @@ const loadConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
 let needsData = [];
 let consumptionMap = new Map();
 
+// Keep global order of stores and selected product info
+let storeOrder = [];
+let storeMapGlobal = new Map();
+
 // Examples that should return 12:
 //   "12 pack"
 //   "12 pk"
@@ -157,6 +161,12 @@ async function loadSelected(item, store) {
   return data[k] || null;
 }
 
+async function loadScraped(item, store) {
+  const k = key('scraped', item, store);
+  const data = await getStorage([k]);
+  return data[k] || [];
+}
+
 
 async function loadFinal(item) {
   const k = `final_${encodeURIComponent(item)}`;
@@ -167,6 +177,34 @@ async function loadFinal(item) {
 async function saveFinal(item, store, product) {
   const storeKey = `final_${encodeURIComponent(item)}`;
   const productKey = `final_product_${encodeURIComponent(item)}`;
+  const existingData = await getStorage([productKey]);
+  const existingProd = existingData[productKey] || null;
+
+  let image = product?.image || '';
+  if (!image && existingProd && existingProd.image) {
+    image = existingProd.image;
+  }
+  if (!image) {
+    for (const s of storeOrder) {
+      if (s === store) continue;
+      const rec = storeMapGlobal.get(s);
+      if (rec && rec.selectedProduct && rec.selectedProduct.image) {
+        image = rec.selectedProduct.image;
+        break;
+      }
+      const scraped = await loadScraped(item, s);
+      const candidate = scraped.find(p => p.image);
+      if (candidate) {
+        image = candidate.image;
+        break;
+      }
+    }
+  }
+
+  if (product) {
+    product = { ...product, image: image || '' };
+  }
+
   await setStorage({ [storeKey]: store, [productKey]: product });
 }
 
@@ -204,8 +242,10 @@ async function init() {
   });
 
   const stores = await getStoreEntries(itemName);
+  storeOrder = stores.map(s => s.store);
   const storesContainer = document.getElementById('stores');
   const storeMap = new Map();
+  storeMapGlobal = storeMap;
 
   for (const entry of stores) {
     const div = document.createElement('div');
