@@ -450,8 +450,10 @@ async function init() {
         rec.img.style.display = 'block';
         rec.finalBtn.style.display = 'inline';
         rec.selectedProduct = selected;
+        sendResponse({ success: true });
       }
     }
+    return true;
   });
 
   // Listener updates store info when a product is chosen in the results window
