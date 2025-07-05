@@ -196,6 +196,9 @@ function loadScraped(item, store) {
 }
 
 function baseGetPackInfo(product) {
+  if (product && product.packCount && product.packCount > 1) {
+    return { count: product.packCount, weightPerPack: false };
+  }
   const sanitize = str =>
     str
       ?.replace(/<[^>]*>/g, ' ')

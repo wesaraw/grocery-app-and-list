@@ -33,6 +33,9 @@ let consumptionMap = new Map();
 let weightPackMap = new Map();
 
 function baseGetPackInfo(product) {
+  if (product && product.packCount && product.packCount > 1) {
+    return { count: product.packCount, weightPerPack: false };
+  }
   let m = product?.name?.match(/(\d+)\s*(?:pk|pack|ct|count)/i);
   if (!m) {
     m = product?.name?.match(/(\d+)\s*[-x\u00d7]\s*\d+/i);

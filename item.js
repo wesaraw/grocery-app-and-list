@@ -84,6 +84,9 @@ let weightPackMap = new Map();
 // The function strips simple HTML tags and handles various punctuation between
 // the number and the pack keyword.
 function baseGetPackInfo(product) {
+  if (product && product.packCount && product.packCount > 1) {
+    return { count: product.packCount, weightPerPack: false };
+  }
   const sanitize = str =>
     str
       ?.replace(/<[^>]*>/g, ' ')
