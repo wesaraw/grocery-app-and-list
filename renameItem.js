@@ -8,6 +8,26 @@ const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
 const STORE_SELECTION_KEY = 'storeSelections';
 
+const STORE_LINKS = {
+  'Stop & Shop': name =>
+    `https://stopandshop.com/product-search/${name.replace(/ /g, '%20')}?searchRef=&semanticSearch=false`,
+  Walmart: name =>
+    `https://www.walmart.com/search?q=${encodeURIComponent(
+      name.replace(/ /g, '+')
+    )}&facet=fulfillment_method_in_store%3AIn-store%7C%7Cexclude_oos%3AShow+available+items+only`,
+  Amazon: name =>
+    `https://www.amazon.com/s?k=${name
+      .split(/\s+/)
+      .map(encodeURIComponent)
+      .join('+')}`,
+  Shaws: name =>
+    `https://www.shaws.com/shop/search-results.html?q=${name.replace(/ /g, '%20')}`,
+  'Roche Bros': name =>
+    `https://shopping.rochebros.com/search?search_term=${name.replace(/ /g, '%20')}`,
+  Hannaford: name =>
+    `https://www.hannaford.com/search/product?form_state=searchForm&keyword=${name.replace(/ /g, '+')}&ieDummyTextField=&productTypeId=P`
+};
+
 let filterText = '';
 const headerState = {};
 let allItems = [];
@@ -133,7 +153,12 @@ async function renameItem(oldName, newName) {
 
   [needs, consumption, stock, expiration, consumed].forEach(renameInArray);
   selections.forEach(s => {
-    if (normalize(s.name).includes(normOld)) s.name = newName;
+    if (normalize(s.name).includes(normOld)) {
+      s.name = newName;
+      if (STORE_LINKS[s.store]) {
+        s.link = STORE_LINKS[s.store](newName);
+      }
+    }
   });
 
   if (purchases[oldName]) {
