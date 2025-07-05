@@ -31,7 +31,7 @@ const loadMonthlyConsumption = () => loadArray('monthlyConsumption', CONSUMPTION
 let needsData = [];
 let consumptionMap = new Map();
 
-function getPackCount(product) {
+function getPackInfo(product) {
   let m = product?.name?.match(/(\d+)\s*(?:pk|pack|ct|count)/i);
   if (!m) {
     m = product?.name?.match(/(\d+)\s*[-x\u00d7]\s*\d+/i);
@@ -60,19 +60,21 @@ function getPackCount(product) {
     const source = product.name + ' ' + (product.size || '') + ' ' + (product.unit || '');
     const hasWeight = /(\d+(?:\.\d+)?)\s*(?:fl\s*oz|oz|lb|kg|g|ml|l|qt|pt|cup|tbsp|tsp|gal)/i.test(source);
     const isRange = /[-x\u00d7]/.test(m[0]);
-    if (hasWeight && !isRange) {
-      // Likely weight for entire package (e.g., "5 Count - 10 Oz")
-      return 1;
-    }
-    return count;
+    const weightPerPack = hasWeight && !isRange;
+    return { count, weightPerPack };
   }
-  return 1;
+  return { count: 1, weightPerPack: false };
+}
+
+function getPackCount(product) {
+  return getPackInfo(product).count;
 }
 
 function pricePerHomeUnit(itemName, product) {
   const item = needsData.find(n => n.name === itemName);
   if (!item || !product) return null;
-  const pack = getPackCount(product);
+  const { count: pack, weightPerPack } = getPackInfo(product);
+  const mult = weightPerPack ? 1 : pack;
   const unit = item.home_unit ? item.home_unit.toLowerCase() : 'each';
   if (unit === 'each') {
     return product.priceNumber != null ? product.priceNumber / pack : null;
@@ -81,9 +83,9 @@ function pricePerHomeUnit(itemName, product) {
   if (pricePerOz == null && product.priceNumber != null) {
     let ozQty = null;
     if (product.convertedQty != null) {
-      ozQty = product.convertedQty * pack;
+      ozQty = product.convertedQty * mult;
     } else if (product.sizeQty != null && product.sizeUnit) {
-      ozQty = convert(product.sizeQty * pack, product.sizeUnit, 'oz');
+      ozQty = convert(product.sizeQty * mult, product.sizeUnit, 'oz');
     }
     if (ozQty != null) {
       pricePerOz = product.priceNumber / ozQty;
