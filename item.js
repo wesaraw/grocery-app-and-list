@@ -409,6 +409,13 @@ async function init() {
       const rec = storeMap.get(message.store);
       if (rec) {
         const selected = message.product;
+        const info = baseGetPackInfo(selected);
+        if (info.count > 1) {
+          const wKey = weightKey(selected);
+          if (wKey && (!weightPackMap.has(wKey) || weightPackMap.get(wKey).count < info.count)) {
+            weightPackMap.set(wKey, info);
+          }
+        }
         let pStr =
           selected.priceNumber != null
             ? `$${selected.priceNumber.toFixed(2)}`
