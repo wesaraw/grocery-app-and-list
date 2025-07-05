@@ -100,6 +100,8 @@ export function scrapeShaws() {
   tiles.forEach(tile => {
     const titleEl = tile.querySelector('[data-qa="prd-itm-pttl"]');
     const name = titleEl?.innerText?.trim();
+    const packMatch = name?.match(/(\d+)\s*(?:pk|pack|ct|count)/i);
+    const packCount = packMatch ? parseInt(packMatch[1], 10) : 1;
     const linkRel = titleEl?.getAttribute('href');
     const link = linkRel ? new URL(linkRel, 'https://www.shaws.com').href : '';
     const priceText = tile.querySelector('[data-qa="prd-itm-prc"]')?.innerText?.trim();
@@ -174,6 +176,7 @@ export function scrapeShaws() {
         unitType: null,
         convertedQty,
         pricePerUnit,
+        packCount,
         image,
         link
       });
