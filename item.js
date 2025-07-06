@@ -353,17 +353,12 @@ async function init() {
       const rec = storeMap.get(entry.store);
       const product = rec ? rec.selectedProduct : null;
       await saveFinal(itemName, entry.store, product);
-      chrome.runtime.sendMessage(
-        {
-          type: 'finalSelection',
-          item: itemName,
-          store: entry.store,
-          product
-        },
-        () => {
-          window.close();
-        }
-      );
+      chrome.runtime.sendMessage({
+        type: 'finalSelection',
+        item: itemName,
+        store: entry.store,
+        product
+      });
     });
     header.appendChild(finalBtn);
     div.appendChild(header);
