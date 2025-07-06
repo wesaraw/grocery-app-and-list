@@ -1,5 +1,7 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { sortItemsByCategory, renderItemsWithCategoryHeaders } from './utils/sortByCategory.js';
+import { canonicalName } from './utils/nameUtils.js';
+import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -138,14 +140,11 @@ async function renameItem(oldName, newName) {
     loadHistory()
   ]);
 
-  function normalize(name) {
-    return name.toLowerCase().replace(/[^a-z0-9]/g, '');
-  }
-  const normOld = normalize(oldName);
+  const canonOld = canonicalName(oldName);
 
   const renameInArray = arr => {
     arr.forEach(it => {
-      if (normalize(it.name).includes(normOld)) {
+      if (canonicalName(it.name) === canonOld) {
         it.name = newName;
       }
     });
@@ -153,7 +152,7 @@ async function renameItem(oldName, newName) {
 
   [needs, consumption, stock, expiration, consumed].forEach(renameInArray);
   selections.forEach(s => {
-    if (normalize(s.name).includes(normOld)) {
+    if (canonicalName(s.name) === canonOld) {
       s.name = newName;
       if (STORE_LINKS[s.store]) {
         s.link = STORE_LINKS[s.store](newName);
@@ -161,18 +160,17 @@ async function renameItem(oldName, newName) {
     }
   });
 
-  if (purchases[oldName]) {
-    purchases[newName] = purchases[oldName];
-    delete purchases[oldName];
-  }
-  if (overrides[oldName]) {
-    overrides[newName] = overrides[oldName];
-    delete overrides[oldName];
-  }
-  if (history[oldName]) {
-    history[newName] = history[oldName];
-    delete history[oldName];
-  }
+  const renameKeys = obj => {
+    Object.keys(obj).forEach(k => {
+      if (canonicalName(k) === canonOld) {
+        obj[newName] = obj[k];
+        delete obj[k];
+      }
+    });
+  };
+  renameKeys(purchases);
+  renameKeys(overrides);
+  renameKeys(history);
 
   await Promise.all([
     save('yearlyNeeds', needs),
@@ -220,6 +218,7 @@ function createRow(name) {
       return;
     }
     await renameItem(name, newName);
+    await calculateAndSaveMealNeeds();
     span.textContent = newName;
     name = newName;
     input.value = '';
