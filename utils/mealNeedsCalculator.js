@@ -10,18 +10,28 @@ import {
 } from './preparedMealsCalendar.js';
 import { generateWhatToEatCalendar } from './whatToEatCalendar.js';
 import { loadJSON } from './dataLoader.js';
+import { initUomTable, convert } from './uomConverter.js';
 import { loadUsers, loadUserCategoryDays } from './userData.js';
 
-function parseAmount(str) {
-  if (!str) return 0;
-  const frac = str.match(/^(\d+)\/(\d+)/);
+const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
+
+function parseQuantity(str) {
+  if (!str) return { value: 0, unit: null };
+  const m = str.trim().match(/^([\d.]+(?:\/\d+)?)\s*([a-zA-Z]+)?/);
+  if (!m) return { value: 0, unit: null };
+  let numStr = m[1];
+  let value;
+  const frac = numStr.match(/^(\d+)\/(\d+)$/);
   if (frac) {
     const num = parseFloat(frac[1]);
     const den = parseFloat(frac[2]);
-    if (!isNaN(num) && !isNaN(den) && den !== 0) return num / den;
+    value = !isNaN(num) && !isNaN(den) && den !== 0 ? num / den : 0;
+  } else {
+    value = parseFloat(numStr);
   }
-  const val = parseFloat(str);
-  return isNaN(val) ? 0 : val;
+  if (isNaN(value)) value = 0;
+  const unit = m[2] ? m[2].toLowerCase() : null;
+  return { value, unit };
 }
 
 function loadMeals(type) {
@@ -44,6 +54,9 @@ function loadMeals(type) {
 
 export async function calculateAndSaveMealNeeds() {
   await initializeMealCategories();
+  await initUomTable();
+  const needsList = await loadJSON(YEARLY_NEEDS_PATH).catch(() => []);
+  const unitMap = new Map(needsList.map(n => [n.name, n.home_unit]));
   const monthlyMap = {};
   const monthlyBreakdown = {};
   const mealsPerDay = await loadMealsPerDay();
@@ -112,9 +125,14 @@ export async function calculateAndSaveMealNeeds() {
 
       if (monthlySpots <= 0) return;
       (meal.ingredients || []).forEach(ing => {
-        const serving = parseAmount(ing.serving_size || ing.amount);
-        if (!serving) return;
-        const need = serving * monthlySpots;
+        const { value, unit } = parseQuantity(ing.serving_size || ing.amount);
+        if (!value) return;
+        let qty = value;
+        const target = unitMap.get(ing.name);
+        if (unit && target && unit !== target) {
+          qty = convert(value, unit, target);
+        }
+        const need = qty * monthlySpots;
         monthlyMap[ing.name] = (monthlyMap[ing.name] || 0) + need;
         if (!monthlyBreakdown[ing.name]) monthlyBreakdown[ing.name] = {};
         if (!monthlyBreakdown[ing.name][meal.name]) {

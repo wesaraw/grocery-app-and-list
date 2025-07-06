@@ -1,15 +1,23 @@
 import { WEEKS_PER_MONTH } from './constants.js';
+import { convert } from './uomConverter.js';
 
-function parseAmount(str) {
-  if (!str) return 0;
-  const frac = str.match(/^(\d+)\/(\d+)/);
+function parseQuantity(str) {
+  if (!str) return { value: 0, unit: null };
+  const m = str.trim().match(/^([\d.]+(?:\/\d+)?)\s*([a-zA-Z]+)?/);
+  if (!m) return { value: 0, unit: null };
+  let numStr = m[1];
+  let value;
+  const frac = numStr.match(/^(\d+)\/(\d+)$/);
   if (frac) {
     const num = parseFloat(frac[1]);
     const den = parseFloat(frac[2]);
-    if (!isNaN(num) && !isNaN(den) && den !== 0) return num / den;
+    value = !isNaN(num) && !isNaN(den) && den !== 0 ? num / den : 0;
+  } else {
+    value = parseFloat(numStr);
   }
-  const val = parseFloat(str);
-  return isNaN(val) ? 0 : val;
+  if (isNaN(value)) value = 0;
+  const unit = m[2] ? m[2].toLowerCase() : null;
+  return { value, unit };
 }
 
 function weekNumber(dateStr) {
@@ -30,7 +38,7 @@ function buildMealMap(mealsByCategory) {
   return map;
 }
 
-function aggregateCalendar(calendar = {}, mealsByCategory = {}) {
+function aggregateCalendar(calendar = {}, mealsByCategory = {}, needsMap = new Map()) {
   const mealMap = buildMealMap(mealsByCategory);
   const result = new Map();
   Object.values(calendar).forEach(days => {
@@ -43,8 +51,13 @@ function aggregateCalendar(calendar = {}, mealsByCategory = {}) {
           if (!meal) return;
           const mult = meal.people ?? meal.multiplier ?? 1;
           (meal.ingredients || []).forEach(ing => {
-            const qty = parseAmount(ing.serving_size || ing.amount);
-            if (!qty) return;
+            const { value, unit } = parseQuantity(ing.serving_size || ing.amount);
+            if (!value) return;
+            let qty = value;
+            const target = needsMap.get(ing.name);
+            if (unit && target && unit !== target) {
+              qty = convert(value, unit, target);
+            }
             let arr = result.get(ing.name);
             if (!arr) {
               arr = Array(53).fill(0);
@@ -135,7 +148,8 @@ export function calculatePurchaseNeeds(
     total_needed_year: (n.total_needed_year || 0) + (mealMap.get(n.name) || 0)
   }));
 
-  const calendarNeeds = aggregateCalendar(calendar, mealsByCategory);
+  const needsMap = new Map(needs.map(n => [n.name, n.home_unit]));
+  const calendarNeeds = aggregateCalendar(calendar, mealsByCategory, needsMap);
 
   const weeklyNeedMap = new Map();
   mergedNeeds.forEach(item => {
