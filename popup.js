@@ -388,11 +388,17 @@ async function init() {
   const sortedNeeds = sortItemsByCategory(needs);
   const consMap = new Map(consumption.map(c => [c.name, c]));
   const hasCalendar = calendar && Object.keys(calendar).length > 0;
-  (mealMonth || []).forEach(m => {
-    const rec = consMap.get(m.name);
-    if (rec) rec.monthly_consumption += m.monthly_consumption;
-    else consMap.set(m.name, { name: m.name, monthly_consumption: m.monthly_consumption });
-  });
+  if (!hasCalendar) {
+    (mealMonth || []).forEach(m => {
+      const rec = consMap.get(m.name);
+      if (rec) rec.monthly_consumption += m.monthly_consumption;
+      else
+        consMap.set(m.name, {
+          name: m.name,
+          monthly_consumption: m.monthly_consumption
+        });
+    });
+  }
   consumptionData = Array.from(consMap.values());
   consumptionMap = consMap;
   expirationData = expiration;
@@ -557,11 +563,17 @@ async function rerenderAll() {
   const sortedNeeds = sortItemsByCategory(needs);
   const consMap = new Map(consumption.map(c => [c.name, c]));
   const hasCalendar = calendar && Object.keys(calendar).length > 0;
-  (mealMonth || []).forEach(m => {
-    const rec = consMap.get(m.name);
-    if (rec) rec.monthly_consumption += m.monthly_consumption;
-    else consMap.set(m.name, { name: m.name, monthly_consumption: m.monthly_consumption });
-  });
+  if (!hasCalendar) {
+    (mealMonth || []).forEach(m => {
+      const rec = consMap.get(m.name);
+      if (rec) rec.monthly_consumption += m.monthly_consumption;
+      else
+        consMap.set(m.name, {
+          name: m.name,
+          monthly_consumption: m.monthly_consumption
+        });
+    });
+  }
   consumptionData = Array.from(consMap.values());
   consumptionMap = consMap;
   expirationData = expiration;
