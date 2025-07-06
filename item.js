@@ -263,7 +263,8 @@ async function saveFinal(item, store, product) {
   }
 
   if (product) {
-    product = { ...product, image: image || '' };
+    const cost = monthlyCost(item, product);
+    product = { ...product, image: image || '', monthlyCost: cost };
   }
 
   await setStorage({ [storeKey]: store, [productKey]: product });
