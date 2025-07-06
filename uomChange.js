@@ -1,5 +1,6 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { sortItemsByCategory } from './utils/sortByCategory.js';
+import { convert } from './utils/uomConverter.js';
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -162,11 +163,27 @@ async function saveRow(row) {
   if (!changedUnit && !changedWhole) return;
 
   if (changedUnit) {
+    const oldUnit = row.item.home_unit;
     row.item.home_unit = newUnit;
+    row.item.total_needed_year = convert(
+      row.item.total_needed_year,
+      oldUnit,
+      newUnit
+    );
     const cons = consumption.find(c => c.name === row.item.name);
-    if (cons) cons.unit = newUnit;
+    if (cons) {
+      cons.monthly_consumption = convert(
+        cons.monthly_consumption,
+        oldUnit,
+        newUnit
+      );
+      cons.unit = newUnit;
+    }
     const st = stock.find(s => s.name === row.item.name);
-    if (st) st.unit = newUnit;
+    if (st) {
+      st.amount = convert(st.amount, oldUnit, newUnit);
+      st.unit = newUnit;
+    }
     row.homeTd.textContent = newUnit;
   }
   if (changedWhole) {
