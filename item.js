@@ -273,6 +273,7 @@ async function saveFinal(item, store, product) {
   }
 
   await setStorage({ [storeKey]: store, [productKey]: product });
+  return product;
 }
 
 function nameMatchesProduct(productName, itemName) {
@@ -357,8 +358,8 @@ async function init() {
     finalBtn.style.display = 'none';
     finalBtn.addEventListener('click', async () => {
       const rec = storeMap.get(entry.store);
-      const product = rec ? rec.selectedProduct : null;
-      await saveFinal(itemName, entry.store, product);
+      let product = rec ? rec.selectedProduct : null;
+      product = await saveFinal(itemName, entry.store, product);
       chrome.runtime.sendMessage({
         type: 'finalSelection',
         item: itemName,
