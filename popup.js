@@ -340,10 +340,7 @@ function formatFinalText(itemName, store, product) {
       unitPrice != null
         ? `$${unitPrice.toFixed(2)}/${label}`
         : product.unit;
-    const cost =
-      product.monthlyCost != null
-        ? product.monthlyCost
-        : monthlyCost(itemName, product);
+    const cost = monthlyCost(itemName, product);
     const costStr = cost != null ? ` - $${cost.toFixed(2)}/mo` : '';
     text += ` - ${product.name} - ${pStr} - ${qStr} - ${uStr}${costStr}`;
   }
