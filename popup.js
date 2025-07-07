@@ -355,7 +355,7 @@ function formatFinalText(itemName, store, product) {
 
 function updateFinalInfo(itemName, span, img, store, product) {
   if (product) {
-    const info = baseGetPackInfo(product);
+    const info = getPackInfo(product);
     if (info.count > 1) {
       const wKey = weightKey(product);
       if (wKey && (!weightPackMap.has(wKey) || weightPackMap.get(wKey).count < info.count)) {
@@ -469,7 +469,7 @@ async function init() {
         .map(s => s.store);
       await buildWeightPackMap(item.name, stores);
       if (product) {
-        const info = baseGetPackInfo(product);
+        const info = getPackInfo(product);
         if (info.count > 1) {
           const wKey = weightKey(product);
           if (
@@ -505,7 +505,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
       const { span, img } = rec;
       const prod = message.product;
       if (prod) {
-        const info = baseGetPackInfo(prod);
+        const info = getPackInfo(prod);
         if (info.count > 1) {
           const wKey = weightKey(prod);
           if (wKey && (!weightPackMap.has(wKey) || weightPackMap.get(wKey).count < info.count)) {
@@ -646,7 +646,7 @@ async function rerenderAll() {
     getFinal(item.name).then(async store => {
       const product = await getFinalProduct(item.name);
       if (product) {
-        const info = baseGetPackInfo(product);
+        const info = getPackInfo(product);
         if (info.count > 1) {
           const wKey = weightKey(product);
           if (

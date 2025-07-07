@@ -264,10 +264,9 @@ async function saveFinal(item, store, product) {
 
   if (product) {
     const packInfo = getPackInfo(product);
-    const packCount = packInfo.count && packInfo.count > 1 ? packInfo.count : undefined;
     const updated = { ...product, image: image || '' };
-    if (packCount && !updated.packCount) {
-      updated.packCount = packCount;
+    if (packInfo.count && packInfo.count > 1) {
+      updated.packCount = packInfo.count;
     }
     product = updated;
   }
@@ -388,7 +387,7 @@ async function init() {
 
     const selected = await loadSelected(itemName, entry.store);
     if (selected) {
-      const info = baseGetPackInfo(selected);
+      const info = getPackInfo(selected);
       if (info.count > 1) {
         if (!selected.packCount) {
           selected.packCount = info.count;
@@ -441,7 +440,7 @@ async function init() {
           // Rebuild the weight pack map to include newly scraped products
           await buildWeightPackMap(itemName, storeOrder);
 
-          const info = baseGetPackInfo(selected);
+          const info = getPackInfo(selected);
           if (info.count > 1) {
             if (!selected.packCount) {
               selected.packCount = info.count;
