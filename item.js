@@ -263,7 +263,13 @@ async function saveFinal(item, store, product) {
   }
 
   if (product) {
-    product = { ...product, image: image || '' };
+    const packInfo = getPackInfo(product);
+    const packCount = packInfo.count && packInfo.count > 1 ? packInfo.count : undefined;
+    const updated = { ...product, image: image || '' };
+    if (packCount && !updated.packCount) {
+      updated.packCount = packCount;
+    }
+    product = updated;
   }
 
   await setStorage({ [storeKey]: store, [productKey]: product });
@@ -381,6 +387,16 @@ async function init() {
 
     const selected = await loadSelected(itemName, entry.store);
     if (selected) {
+      const info = baseGetPackInfo(selected);
+      if (info.count > 1) {
+        if (!selected.packCount) {
+          selected.packCount = info.count;
+        }
+        const wKey = weightKey(selected);
+        if (wKey && (!weightPackMap.has(wKey) || weightPackMap.get(wKey).count < info.count)) {
+          weightPackMap.set(wKey, info);
+        }
+      }
       let pStr = selected.priceNumber != null ? `$${selected.priceNumber.toFixed(2)}` : selected.price;
       let qStr = selected.convertedQty != null
         ? `${selected.convertedQty.toFixed(2)} ${selected.unitType || 'oz'}`
@@ -426,6 +442,9 @@ async function init() {
 
           const info = baseGetPackInfo(selected);
           if (info.count > 1) {
+            if (!selected.packCount) {
+              selected.packCount = info.count;
+            }
             const wKey = weightKey(selected);
             if (wKey && (!weightPackMap.has(wKey) || weightPackMap.get(wKey).count < info.count)) {
               weightPackMap.set(wKey, info);
