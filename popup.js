@@ -7,12 +7,6 @@ import {
   sortItemsByCategory,
   renderItemsWithCategoryHeaders
 } from './utils/sortByCategory.js';
-import {
-  parseQuantity,
-  weekNumber,
-  buildMealMap,
-  aggregateCalendar
-} from './utils/calendarUtils.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
@@ -69,17 +63,6 @@ function getCurrentWeek() {
   return Math.ceil(((today - start) / 86400000 + start.getDay() + 1) / 7);
 }
 
-
-function buildCalendarMonthlyMap(calendar, mealsByCategory, needs) {
-  const needsMap = new Map(needs.map(n => [n.name, n.home_unit]));
-  const weeklyMap = aggregateCalendar(calendar, mealsByCategory, needsMap);
-  const monthlyMap = new Map();
-  weeklyMap.forEach((arr, name) => {
-    const total = arr.reduce((sum, v) => sum + (v || 0), 0);
-    monthlyMap.set(name, total / 12);
-  });
-  return monthlyMap;
-}
 
 async function loadConsumed() {
   return new Promise(async resolve => {
@@ -182,9 +165,8 @@ let hideZeroItems = false;
 let filterText = '';
 const headerState = {};
 let weightPackMap = new Map();
-let calendarMonthlyMap = new Map();
 let mealMonthMap = new Map();
-let hasCalendarFlag = false;
+let mealPlanMonthMap = new Map();
 
 let resolveInit;
 const initReady = new Promise(resolve => {
@@ -335,8 +317,9 @@ function monthlyCost(itemName, product) {
   const unitPrice = pricePerHomeUnit(itemName, product);
   if (unitPrice == null) return null;
   const base = cons.monthly_consumption || 0;
-  const meal = hasCalendarFlag ? mealMonthMap.get(itemName) || 0 : 0;
-  return unitPrice * (base + meal);
+  const hasCalendar = calendarData && Object.keys(calendarData).length > 0;
+  const planned = hasCalendar ? mealPlanMonthMap.get(itemName) || 0 : 0;
+  return unitPrice * (base + planned);
 }
 
 function homeUnitLabel(itemName) {
@@ -411,8 +394,10 @@ async function init() {
   const sortedNeeds = sortItemsByCategory(needs);
   const consMap = new Map(consumption.map(c => [c.name, c]));
   const hasCalendar = calendar && Object.keys(calendar).length > 0;
-  hasCalendarFlag = hasCalendar;
   mealMonthMap = new Map(
+    (mealMonth || []).map(m => [m.name, m.monthly_consumption])
+  );
+  mealPlanMonthMap = new Map(
     (mealMonth || []).map(m => [m.name, m.monthly_consumption])
   );
   if (!hasCalendar) {
@@ -426,9 +411,6 @@ async function init() {
         });
     });
   }
-  calendarMonthlyMap = hasCalendar
-    ? buildCalendarMonthlyMap(calendar, mealsByCategory, needs)
-    : new Map();
   consumptionData = Array.from(consMap.values());
   consumptionMap = consMap;
   expirationData = expiration;
@@ -593,8 +575,10 @@ async function rerenderAll() {
   const sortedNeeds = sortItemsByCategory(needs);
   const consMap = new Map(consumption.map(c => [c.name, c]));
   const hasCalendar = calendar && Object.keys(calendar).length > 0;
-  hasCalendarFlag = hasCalendar;
   mealMonthMap = new Map(
+    (mealMonth || []).map(m => [m.name, m.monthly_consumption])
+  );
+  mealPlanMonthMap = new Map(
     (mealMonth || []).map(m => [m.name, m.monthly_consumption])
   );
   if (!hasCalendar) {
@@ -608,9 +592,6 @@ async function rerenderAll() {
         });
     });
   }
-  calendarMonthlyMap = hasCalendar
-    ? buildCalendarMonthlyMap(calendar, mealsByCategory, needs)
-    : new Map();
   consumptionData = Array.from(consMap.values());
   consumptionMap = consMap;
   expirationData = expiration;
