@@ -183,6 +183,8 @@ let filterText = '';
 const headerState = {};
 let weightPackMap = new Map();
 let calendarMonthlyMap = new Map();
+let mealMonthMap = new Map();
+let hasCalendarFlag = false;
 
 let resolveInit;
 const initReady = new Promise(resolve => {
@@ -333,8 +335,8 @@ function monthlyCost(itemName, product) {
   const unitPrice = pricePerHomeUnit(itemName, product);
   if (unitPrice == null) return null;
   const base = cons.monthly_consumption || 0;
-  const cal = calendarMonthlyMap.get(itemName) || 0;
-  return unitPrice * (base + cal);
+  const meal = hasCalendarFlag ? mealMonthMap.get(itemName) || 0 : 0;
+  return unitPrice * (base + meal);
 }
 
 function homeUnitLabel(itemName) {
@@ -409,6 +411,10 @@ async function init() {
   const sortedNeeds = sortItemsByCategory(needs);
   const consMap = new Map(consumption.map(c => [c.name, c]));
   const hasCalendar = calendar && Object.keys(calendar).length > 0;
+  hasCalendarFlag = hasCalendar;
+  mealMonthMap = new Map(
+    (mealMonth || []).map(m => [m.name, m.monthly_consumption])
+  );
   if (!hasCalendar) {
     (mealMonth || []).forEach(m => {
       const rec = consMap.get(m.name);
@@ -587,6 +593,10 @@ async function rerenderAll() {
   const sortedNeeds = sortItemsByCategory(needs);
   const consMap = new Map(consumption.map(c => [c.name, c]));
   const hasCalendar = calendar && Object.keys(calendar).length > 0;
+  hasCalendarFlag = hasCalendar;
+  mealMonthMap = new Map(
+    (mealMonth || []).map(m => [m.name, m.monthly_consumption])
+  );
   if (!hasCalendar) {
     (mealMonth || []).forEach(m => {
       const rec = consMap.get(m.name);
