@@ -1,4 +1,5 @@
 import { getImageSrc } from "../utils/imageUtils.js";
+import { parsePriceNumber } from "../utils/priceUtils.js";
 export function scrapeHannaford() {
   const UNIT_FACTORS = {
     oz: 1,
@@ -72,8 +73,8 @@ export function scrapeHannaford() {
       const p = parseFloat(priceHidden);
       if (!isNaN(p)) priceNumber = p;
     } else if (priceText) {
-      const m = priceText.match(/\$?([0-9.]+)/);
-      if (m) priceNumber = parseFloat(m[1]);
+      const p = parsePriceNumber(priceText);
+      if (!isNaN(p)) priceNumber = p;
     }
 
     let unitQty = null;
