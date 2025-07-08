@@ -286,6 +286,11 @@ async function buildWeightPackMap(item, stores) {
 
 
 function extractSheetCount(product) {
+  const { pricePerUnit: ppu, unitType: ut } = getPriceUnitInfo(product);
+  if (ppu != null && ut && /^(?:sf|sqft)$/.test(ut) && product.priceNumber != null) {
+    const totalSqFt = product.priceNumber / ppu;
+    return Math.round(totalSqFt / SHEET_SQFT);
+  }
   const fields = [product?.name, product?.size, product?.unit];
   for (const f of fields) {
     if (!f) continue;
@@ -293,11 +298,6 @@ function extractSheetCount(product) {
     if (m) return parseInt(m[1].replace(/,/g, ''), 10);
     const sq = f.match(/(\d[\d,]*)\s*(?:sq\.?\s*ft|sqft|sf)/i);
     if (sq) return Math.round(parseInt(sq[1].replace(/,/g, ''), 10) / SHEET_SQFT);
-  }
-  const { pricePerUnit: ppu, unitType: ut } = getPriceUnitInfo(product);
-  if (ppu != null && ut && /^(?:sf|sqft)$/.test(ut) && product.priceNumber != null) {
-    const totalSqFt = product.priceNumber / ppu;
-    return Math.round(totalSqFt / SHEET_SQFT);
   }
   return null;
 }
