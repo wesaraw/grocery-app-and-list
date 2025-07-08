@@ -1,4 +1,5 @@
 import { getImageSrc } from "../utils/imageUtils.js";
+import { parsePriceNumber } from "../utils/priceUtils.js";
 export function scrapeWalmart() {
   const UNIT_FACTORS = {
     oz: 1,
@@ -120,7 +121,7 @@ export function scrapeWalmart() {
     const link = tile.querySelector('a[href*="/ip/"]')?.href || '';
     let priceNumber = null;
     if (price) {
-      const p = parseFloat(price.replace(/[^0-9.]/g, ''));
+      const p = parsePriceNumber(price);
       if (!isNaN(p)) priceNumber = p;
     }
     if (name && price) {

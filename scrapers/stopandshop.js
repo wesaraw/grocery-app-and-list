@@ -1,4 +1,5 @@
 import { getImageSrc } from "../utils/imageUtils.js";
+import { parsePriceNumber } from "../utils/priceUtils.js";
 export function scrapeStopAndShop() {
   const UNIT_FACTORS = {
     oz: 1,
@@ -90,7 +91,7 @@ export function scrapeStopAndShop() {
 
     let priceNumber = null;
     if (priceText) {
-      const p = parseFloat(priceText.replace(/[^0-9.]/g, ''));
+      const p = parsePriceNumber(priceText);
       if (!isNaN(p)) priceNumber = p;
     }
 

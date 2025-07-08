@@ -1,5 +1,11 @@
 export const SHEET_SQFT = 0.111;
 
+export function parsePriceNumber(text) {
+  if (!text) return null;
+  const m = text.match(/[0-9]+(?:\.[0-9]+)?/);
+  return m ? parseFloat(m[0]) : null;
+}
+
 export function parseUnitPrice(text) {
   if (!text) return null;
   text = text.replace(/[()]/g, '');
