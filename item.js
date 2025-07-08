@@ -98,7 +98,7 @@ function baseGetPackInfo(product) {
     if (!str) return null;
     const s = sanitize(str);
     return (
-      s.match(/(\d+)\s*[-\u2011\u2012\u2013\u2014]?\s*(?:pack|pk|ct|count)/i) ||
+      s.match(/(\d+)\s*[-\u2011\u2012\u2013\u2014]?\s*(?:pack|pk|ct|count|rolls?)/i) ||
       s.match(/pack\s*of\s*(\d+)/i) ||
       s.match(/(\d+)\s*[-x\u00d7]\s*\d+/i)
     );
@@ -144,12 +144,34 @@ function getPackCount(product, map = weightPackMap) {
   return getPackInfo(product, map).count;
 }
 
+const SHEET_SQFT = 0.111;
+
+function extractSheetCount(product) {
+  const fields = [product?.name, product?.size, product?.unit];
+  for (const f of fields) {
+    if (!f) continue;
+    const m = f.match(/(\d[\d,]*)\s*sheets?/i);
+    if (m) return parseInt(m[1].replace(/,/g, ''), 10);
+  }
+  return null;
+}
+
 function pricePerHomeUnit(itemName, product, map = weightPackMap) {
   const item = needsData.find(n => n.name === itemName);
   if (!item || !product) return null;
   const { count: pack, weightPerPack } = getPackInfo(product, map);
   const mult = weightPerPack ? 1 : pack;
   const unit = item.home_unit ? item.home_unit.toLowerCase() : 'each';
+  if (unit === 'sheets') {
+    if (product.pricePerUnit != null && product.unitType && /sf/.test(product.unitType)) {
+      const pricePerSF = product.pricePerUnit; // price per square foot
+      return pricePerSF * SHEET_SQFT;
+    }
+    const totalSheets = extractSheetCount(product);
+    if (totalSheets && product.priceNumber != null) {
+      return product.priceNumber / totalSheets;
+    }
+  }
   if (unit === 'each') {
     return product.priceNumber != null ? product.priceNumber / pack : null;
   }
