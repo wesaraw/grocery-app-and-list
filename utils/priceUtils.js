@@ -3,15 +3,21 @@ export const SHEET_SQFT = 0.111;
 export function parseUnitPrice(text) {
   if (!text) return null;
   text = text.replace(/[()]/g, '');
-  let m = text.match(/\$([\d.]+)\s*\/\s*([\d.]*)\s*([a-zA-Z]+(?:\s*[a-zA-Z]+)?)/);
+  let m = text.match(/\$([\d.]+)\s*\/\s*(\d+)([a-zA-Z]+)/);
   let priceVal = null;
   let qtyVal = null;
   let unitType = null;
   if (m) {
     priceVal = parseFloat(m[1]);
     qtyVal = parseFloat(m[2]);
-    unitType = m[3].toLowerCase().replace(/\s+/g, '');
+    unitType = m[3].toLowerCase();
   } else {
+    m = text.match(/\$([\d.]+)\s*\/\s*([\d.]*)\s*([a-zA-Z]+(?:\s*[a-zA-Z]+)?)/);
+    if (m) {
+      priceVal = parseFloat(m[1]);
+      qtyVal = parseFloat(m[2]);
+      unitType = m[3].toLowerCase().replace(/\s+/g, '');
+    } else {
     m = text.match(/([\d.]+)\s*¢\s*\/\s*([\d.]*)\s*([a-zA-Z]+(?:\s*[a-zA-Z]+)?)/);
     if (m) {
       priceVal = parseFloat(m[1]) / 100;
