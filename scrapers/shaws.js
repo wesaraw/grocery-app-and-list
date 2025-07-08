@@ -157,6 +157,8 @@ export function scrapeShaws() {
 
     let convertedQty = null;
     let pricePerUnit = null;
+    let unitQty = null;
+    let unitType = null;
     if (sizeQty != null && sizeUnit) {
       const factor = UNIT_FACTORS[sizeUnit.toLowerCase()];
       if (factor) {
@@ -164,6 +166,36 @@ export function scrapeShaws() {
         if (priceNumber != null) {
           pricePerUnit = priceNumber / convertedQty;
         }
+      }
+    }
+
+    if (!pricePerUnit && unitText) {
+      let m = unitText.match(/\$([\d.]+)\s*\/?\s*([\d.]*)\s*([a-zA-Z]+(?:\s*[a-zA-Z]+)?)/);
+      let priceVal = null;
+      let qtyVal = null;
+      if (m) {
+        priceVal = parseFloat(m[1]);
+        qtyVal = parseFloat(m[2]);
+        unitType = m[3].toLowerCase().replace(/\s+/g, '');
+      } else {
+        m = unitText.match(/([\d.]+)\s*¢\s*\/?\s*([\d.]*)\s*([a-zA-Z]+(?:\s*[a-zA-Z]+)?)/);
+        if (m) {
+          priceVal = parseFloat(m[1]) / 100;
+          qtyVal = parseFloat(m[2]);
+          unitType = m[3].toLowerCase().replace(/\s+/g, '');
+        } else {
+          m = unitText.match(/price\s*per\s*([\d.]+)\s*([a-zA-Z]+)\s*\$([\d.]+)/i);
+          if (m) {
+            qtyVal = parseFloat(m[1]);
+            unitType = m[2].toLowerCase();
+            priceVal = parseFloat(m[3]);
+          }
+        }
+      }
+      if (m && !isNaN(priceVal)) {
+        const qty = !isNaN(qtyVal) && qtyVal !== 0 ? qtyVal : 1;
+        pricePerUnit = priceVal / qty;
+        unitQty = qty;
       }
     }
 
@@ -176,8 +208,8 @@ export function scrapeShaws() {
         sizeQty,
         sizeUnit,
         unit: unitText || '',
-        unitQty: null,
-        unitType: null,
+        unitQty,
+        unitType,
         convertedQty,
         pricePerUnit,
         packCount,
