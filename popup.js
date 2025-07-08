@@ -285,6 +285,45 @@ async function buildWeightPackMap(item, stores) {
 
 const SHEET_SQFT = 0.111;
 
+function parseUnitPrice(text) {
+  if (!text) return null;
+  let m = text.match(/\$([\d.]+)\s*\/\s*([\d.]*)\s*([a-zA-Z]+(?:\s*[a-zA-Z]+)?)/);
+  let priceVal = null;
+  let qtyVal = null;
+  let unitType = null;
+  if (m) {
+    priceVal = parseFloat(m[1]);
+    qtyVal = parseFloat(m[2]);
+    unitType = m[3].toLowerCase().replace(/\s+/g, '');
+  } else {
+    m = text.match(/([\d.]+)\s*¢\s*\/\s*([\d.]*)\s*([a-zA-Z]+(?:\s*[a-zA-Z]+)?)/);
+    if (m) {
+      priceVal = parseFloat(m[1]) / 100;
+      qtyVal = parseFloat(m[2]);
+      unitType = m[3].toLowerCase().replace(/\s+/g, '');
+    } else {
+      m = text.match(/([\d.]+)\s*\/\s*([\d.]*)\s*([a-zA-Z]+(?:\s*[a-zA-Z]+)?)/);
+      if (m) {
+        priceVal = parseFloat(m[1]);
+        qtyVal = parseFloat(m[2]);
+        unitType = m[3].toLowerCase().replace(/\s+/g, '');
+      }
+    }
+  }
+  if (!m || isNaN(priceVal)) return null;
+  const qty = !isNaN(qtyVal) && qtyVal !== 0 ? qtyVal : 1;
+  return { pricePerUnit: priceVal / qty, unitType, unitQty: qty };
+}
+
+function getPriceUnitInfo(product) {
+  if (product.pricePerUnit != null && product.unitType) {
+    return { pricePerUnit: product.pricePerUnit, unitType: product.unitType };
+  }
+  const parsed = parseUnitPrice(product.unit);
+  if (parsed) return parsed;
+  return { pricePerUnit: null, unitType: null };
+}
+
 function extractSheetCount(product) {
   const fields = [product?.name, product?.size, product?.unit];
   for (const f of fields) {
@@ -302,13 +341,13 @@ function pricePerHomeUnit(itemName, product, map = weightPackMap) {
   const mult = weightPerPack ? 1 : pack;
   const unit = item.home_unit ? item.home_unit.toLowerCase() : 'each';
   if (unit === 'sheets') {
-    if (product.pricePerUnit != null && product.unitType) {
-      if (/sf/.test(product.unitType)) {
-        const pricePerSF = product.pricePerUnit;
-        return pricePerSF * SHEET_SQFT;
+    const { pricePerUnit: ppu, unitType: ut } = getPriceUnitInfo(product);
+    if (ppu != null && ut) {
+      if (/sf/.test(ut)) {
+        return ppu * SHEET_SQFT;
       }
-      if (/ct|count|sheet/.test(product.unitType)) {
-        return product.pricePerUnit;
+      if (/ct|count|sheet/.test(ut)) {
+        return ppu;
       }
     }
     const totalSheets = extractSheetCount(product);
@@ -319,7 +358,7 @@ function pricePerHomeUnit(itemName, product, map = weightPackMap) {
   if (unit === 'each') {
     return product.priceNumber != null ? product.priceNumber / pack : null;
   }
-  let pricePerOz = product.pricePerUnit;
+  let { pricePerUnit: pricePerOz, unitType } = getPriceUnitInfo(product);
   if (pricePerOz == null && product.priceNumber != null) {
     let ozQty = null;
     if (product.convertedQty != null) {
