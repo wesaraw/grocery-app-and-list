@@ -20,3 +20,8 @@ const alt = parseUnitPrice('price per 100 sq. ft. $6.27');
 if (!alt || Math.abs(alt.pricePerUnit * SHEET_SQFT - 0.0069) > 0.0002) {
   throw new Error('Alt format failed');
 }
+
+const alt2 = parseUnitPrice('$6.27 for 100sf');
+if (!alt2 || Math.abs(alt2.pricePerUnit * SHEET_SQFT - 0.0069) > 0.0002) {
+  throw new Error('For format failed');
+}

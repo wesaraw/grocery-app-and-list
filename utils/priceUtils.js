@@ -8,9 +8,25 @@ export function parsePriceNumber(text) {
 
 export function parseUnitPrice(text) {
   if (!text) return null;
+  text = text.trim();
+  const paren = text.match(/\(([^()]+)\)/);
+  if (paren) {
+    const inner = parseUnitPrice(paren[1].trim());
+    if (inner) return inner;
+  }
   text = text.replace(/[()]/g, '');
 
-  let m = text.match(/\$([\d.]+)\s*\/\s*(\d+)([a-zA-Z\.]+)/);
+  let m = text.match(/\$([\d.]+)\s*for\s*(\d+(?:\.\d+)?)\s*([a-zA-Z\.]+)/i);
+  if (m) {
+    const price = parseFloat(m[1]);
+    const qty = parseFloat(m[2]);
+    const unitType = m[3].toLowerCase().replace(/[\s.]+/g, '');
+    if (!isNaN(price) && !isNaN(qty) && qty !== 0) {
+      return { pricePerUnit: price / qty, unitType, unitQty: qty };
+    }
+  }
+
+  m = text.match(/\$([\d.]+)\s*\/\s*(\d+)([a-zA-Z\.]+)/);
   if (m) {
     const price = parseFloat(m[1]);
     const qty = parseFloat(m[2]);
