@@ -127,27 +127,27 @@ function weightKey(product) {
   return null;
 }
 
-function getPackInfo(product) {
+function getPackInfo(product, map = weightPackMap) {
   if (product && product.packCount && product.packCount > 1) {
     return { count: product.packCount, weightPerPack: false };
   }
   const base = baseGetPackInfo(product);
   if (base.count > 1) return base;
   const key = weightKey(product);
-  if (key && weightPackMap.has(key)) {
-    return weightPackMap.get(key);
+  if (key && map && map.has(key)) {
+    return map.get(key);
   }
   return base;
 }
 
-function getPackCount(product) {
-  return getPackInfo(product).count;
+function getPackCount(product, map = weightPackMap) {
+  return getPackInfo(product, map).count;
 }
 
-function pricePerHomeUnit(itemName, product) {
+function pricePerHomeUnit(itemName, product, map = weightPackMap) {
   const item = needsData.find(n => n.name === itemName);
   if (!item || !product) return null;
-  const { count: pack, weightPerPack } = getPackInfo(product);
+  const { count: pack, weightPerPack } = getPackInfo(product, map);
   const mult = weightPerPack ? 1 : pack;
   const unit = item.home_unit ? item.home_unit.toLowerCase() : 'each';
   if (unit === 'each') {
@@ -181,10 +181,10 @@ function homeUnitLabel(itemName) {
   return u === 'each' ? 'ea' : u;
 }
 
-function monthlyCost(itemName, product) {
+function monthlyCost(itemName, product, map = weightPackMap) {
   const cons = consumptionMap.get(itemName);
   if (!cons) return null;
-  const unitPrice = pricePerHomeUnit(itemName, product);
+  const unitPrice = pricePerHomeUnit(itemName, product, map);
   if (unitPrice == null) return null;
   return unitPrice * (cons.monthly_consumption || 0);
 }
@@ -226,6 +226,7 @@ async function buildWeightPackMap(item, stores) {
     }
   }
   weightPackMap = map;
+  return map;
 }
 
 
