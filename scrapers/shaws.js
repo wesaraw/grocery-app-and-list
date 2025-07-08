@@ -106,6 +106,10 @@ export function scrapeShaws() {
     const link = linkRel ? new URL(linkRel, 'https://www.shaws.com').href : '';
     const priceText = tile.querySelector('[data-qa="prd-itm-prc"]')?.innerText?.trim();
     const sizeText = tile.querySelector('[data-qa="prd-itm-sqty"]')?.innerText?.trim();
+    const unitText =
+      tile.querySelector('[data-qa="prd-itm-upr"]')?.innerText?.trim() ||
+      tile.querySelector('[data-qa="prd-itm-pprc-qty"]')?.innerText?.trim() ||
+      '';
     const image = getImageSrc(tile.querySelector('img[data-qa="prd-itm-img"]'));
 
     let priceNumber = null;
@@ -171,7 +175,7 @@ export function scrapeShaws() {
         size: sizeText || '',
         sizeQty,
         sizeUnit,
-        unit: '',
+        unit: unitText || '',
         unitQty: null,
         unitType: null,
         convertedQty,

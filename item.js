@@ -163,11 +163,18 @@ function parseUnitPrice(text) {
       qtyVal = parseFloat(m[2]);
       unitType = m[3].toLowerCase().replace(/\s+/g, '');
     } else {
-      m = text.match(/([\d.]+)\s*\/\s*([\d.]*)\s*([a-zA-Z]+(?:\s*[a-zA-Z]+)?)/);
+      m = text.match(/price\s*per\s*([\d.]+)\s*([a-zA-Z]+)\s*\$([\d.]+)/i);
       if (m) {
-        priceVal = parseFloat(m[1]);
-        qtyVal = parseFloat(m[2]);
-        unitType = m[3].toLowerCase().replace(/\s+/g, '');
+        qtyVal = parseFloat(m[1]);
+        unitType = m[2].toLowerCase();
+        priceVal = parseFloat(m[3]);
+      } else {
+        m = text.match(/([\d.]+)\s*\/\s*([\d.]*)\s*([a-zA-Z]+(?:\s*[a-zA-Z]+)?)/);
+        if (m) {
+          priceVal = parseFloat(m[1]);
+          qtyVal = parseFloat(m[2]);
+          unitType = m[3].toLowerCase().replace(/\s+/g, '');
+        }
       }
     }
   }
