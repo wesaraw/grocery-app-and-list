@@ -214,7 +214,7 @@ function baseGetPackInfo(product) {
     if (!str) return null;
     const s = sanitize(str);
     return (
-      s.match(/(\d+)\s*[-\u2011\u2012\u2013\u2014]?\s*(?:pack|pk|ct|count|rolls?)/i) ||
+      s.match(/(\d+)\s*[-\u2011\u2012\u2013\u2014]?\s*(?:pack|pk|ct|count|rolls?|rl)/i) ||
       s.match(/pack\s*of\s*(\d+)/i) ||
       s.match(/(\d+)\s*[-x\u00d7]\s*\d+/i)
     );
@@ -330,6 +330,13 @@ function extractSheetCount(product) {
     if (!f) continue;
     const m = f.match(/(\d[\d,]*)\s*sheets?/i);
     if (m) return parseInt(m[1].replace(/,/g, ''), 10);
+    const sq = f.match(/(\d[\d,]*)\s*(?:sq\.?\s*ft|sqft|sf)/i);
+    if (sq) return Math.round(parseInt(sq[1].replace(/,/g, ''), 10) / SHEET_SQFT);
+  }
+  const { pricePerUnit: ppu, unitType: ut } = getPriceUnitInfo(product);
+  if (ppu != null && ut && /^(?:sf|sqft)$/.test(ut) && product.priceNumber != null) {
+    const totalSqFt = product.priceNumber / ppu;
+    return Math.round(totalSqFt / SHEET_SQFT);
   }
   return null;
 }
@@ -343,7 +350,7 @@ function pricePerHomeUnit(itemName, product, map = weightPackMap) {
   if (unit === 'sheets') {
     const { pricePerUnit: ppu, unitType: ut } = getPriceUnitInfo(product);
     if (ppu != null && ut) {
-      if (/sf/.test(ut)) {
+      if (/^(?:sf|sqft)$/.test(ut)) {
         return ppu * SHEET_SQFT;
       }
       if (/ct|count|sheet/.test(ut)) {

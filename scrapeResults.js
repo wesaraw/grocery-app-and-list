@@ -143,6 +143,13 @@ function extractSheetCount(product) {
     if (!f) continue;
     const m = f.match(/(\d[\d,]*)\s*sheets?/i);
     if (m) return parseInt(m[1].replace(/,/g, ''), 10);
+    const sq = f.match(/(\d[\d,]*)\s*(?:sq\.?\s*ft|sqft|sf)/i);
+    if (sq) return Math.round(parseInt(sq[1].replace(/,/g, ''), 10) / SHEET_SQFT);
+  }
+  const { pricePerUnit: ppu, unitType: ut } = getPriceUnitInfo(product);
+  if (ppu != null && ut && /^(?:sf|sqft)$/.test(ut) && product.priceNumber != null) {
+    const totalSqFt = product.priceNumber / ppu;
+    return Math.round(totalSqFt / SHEET_SQFT);
   }
   return null;
 }
@@ -156,7 +163,7 @@ function pricePerHomeUnit(itemName, product) {
   if (unit === 'sheets') {
     const { pricePerUnit: ppu, unitType: ut } = getPriceUnitInfo(product);
     if (ppu != null && ut) {
-      if (/sf/.test(ut)) {
+      if (/^(?:sf|sqft)$/.test(ut)) {
         return ppu * SHEET_SQFT;
       }
       if (/ct|count|sheet/.test(ut)) {
