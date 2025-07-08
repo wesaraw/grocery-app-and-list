@@ -170,6 +170,7 @@ export function scrapeShaws() {
     }
 
     if (!pricePerUnit && unitText) {
+      unitText = unitText.replace(/[()]/g, '');
       let m = unitText.match(/\$([\d.]+)\s*\/?\s*([\d.]*)\s*([a-zA-Z]+(?:\s*[a-zA-Z]+)?)/);
       let priceVal = null;
       let qtyVal = null;
@@ -184,11 +185,18 @@ export function scrapeShaws() {
           qtyVal = parseFloat(m[2]);
           unitType = m[3].toLowerCase().replace(/\s+/g, '');
         } else {
-          m = unitText.match(/price\s*per\s*([\d.]+)\s*([a-zA-Z]+)\s*\$([\d.]+)/i);
+          m = unitText.match(/price\s*per\s*(\d+(?:\.\d+)?)([a-zA-Z]+)\s*\$([\d.]+)/i);
           if (m) {
             qtyVal = parseFloat(m[1]);
             unitType = m[2].toLowerCase();
             priceVal = parseFloat(m[3]);
+          } else {
+            m = unitText.match(/price\s*per\s*([\d.]+)\s*([a-zA-Z]+)\s*\$([\d.]+)/i);
+            if (m) {
+              qtyVal = parseFloat(m[1]);
+              unitType = m[2].toLowerCase();
+              priceVal = parseFloat(m[3]);
+            }
           }
         }
       }
