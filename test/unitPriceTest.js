@@ -15,3 +15,8 @@ console.log('pricePerSheet', pricePerSheet.toFixed(4));
 if (Math.abs(pricePerSheet - 0.0069) > 0.0002) {
   throw new Error(`Expected around 0.0069 but got ${pricePerSheet}`);
 }
+
+const alt = parseUnitPrice('price per 100 sq. ft. $6.27');
+if (!alt || Math.abs(alt.pricePerUnit * SHEET_SQFT - 0.0069) > 0.0002) {
+  throw new Error('Alt format failed');
+}
