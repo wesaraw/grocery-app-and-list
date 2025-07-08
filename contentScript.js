@@ -93,12 +93,19 @@ function scrapeStopAndShop() {
 
     let unitQty = null;
     let unitType = null;
+    let pricePerUnit = null;
     if (perUnitText) {
+      const isCent = perUnitText.includes('¢');
       const clean = perUnitText.replace(/[^0-9./a-zA-Z]/g, '');
-      const match = clean.match(/([\d./]+)\/([a-zA-Z]+)/);
+      const match = clean.match(/([\d.]+)\/([\d.]*)\s*([a-zA-Z]+)/);
       if (match) {
-        unitQty = parseNumber(match[1]);
-        unitType = match[2];
+        const priceVal = parseNumber(match[1]) / (isCent ? 100 : 1);
+        const qtyVal = parseNumber(match[2]);
+        unitQty = !isNaN(qtyVal) && qtyVal !== 0 ? qtyVal : 1;
+        unitType = match[3];
+        if (!isNaN(priceVal)) {
+          pricePerUnit = priceVal / unitQty;
+        }
       }
     }
 
@@ -119,12 +126,11 @@ function scrapeStopAndShop() {
     }
 
     let convertedQty = null;
-    let pricePerUnit = null;
     if (sizeQty != null && sizeUnit) {
       const factor = UNIT_FACTORS[sizeUnit.toLowerCase()];
       if (factor) {
         convertedQty = sizeQty * factor;
-        if (priceNumber != null) {
+        if (priceNumber != null && pricePerUnit == null) {
           pricePerUnit = priceNumber / convertedQty;
         }
       }

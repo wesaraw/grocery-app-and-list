@@ -163,9 +163,14 @@ function pricePerHomeUnit(itemName, product, map = weightPackMap) {
   const mult = weightPerPack ? 1 : pack;
   const unit = item.home_unit ? item.home_unit.toLowerCase() : 'each';
   if (unit === 'sheets') {
-    if (product.pricePerUnit != null && product.unitType && /sf/.test(product.unitType)) {
-      const pricePerSF = product.pricePerUnit; // price per square foot
-      return pricePerSF * SHEET_SQFT;
+    if (product.pricePerUnit != null && product.unitType) {
+      if (/sf/.test(product.unitType)) {
+        const pricePerSF = product.pricePerUnit; // price per square foot
+        return pricePerSF * SHEET_SQFT;
+      }
+      if (/ct|count|sheet/.test(product.unitType)) {
+        return product.pricePerUnit;
+      }
     }
     const totalSheets = extractSheetCount(product);
     if (totalSheets && product.priceNumber != null) {
