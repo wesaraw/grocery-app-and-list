@@ -69,10 +69,11 @@ export function scrapeStopAndShop() {
 
     const perUnitText = tile.querySelector('.product-grid-cell_unit')?.innerText?.trim();
 
-    const image = tile.querySelector('img')?.src || '';
     const image = getImageSrc(tile.querySelector('img'));
 
-    const packMatch = name?.match(/(?:pack\s*of\s*)?(\d+)\s*(?:pk|pack|ct|count)/i) || name?.match(/(\d+)\s*[xX]/);
+    const packMatch =
+      name?.match(/(?:pack\s*of\s*)?(\d+)\s*(?:pk|pack|ct|count|rolls?)/i) ||
+      name?.match(/(\d+)\s*[xX]/);
     const packCount = packMatch ? parseInt(packMatch[1], 10) : 1;
 
     let unitQty = null;
@@ -108,19 +109,31 @@ export function scrapeStopAndShop() {
     let pricePerUnit = null;
 
     if (perUnitText) {
-      const m = perUnitText.match(/\$([\d.]+)\/?\s*([\d.]*)\s*(\w+)/);
+      let m = perUnitText.match(/\$([\d.]+)\/?\s*([\d.]*)\s*(\w+)/);
+      let priceVal = null;
+      let qtyVal = null;
       if (m) {
-        let priceVal = parseFloat(m[1]);
-        const qtyVal = parseFloat(m[2]);
+        priceVal = parseFloat(m[1]);
+        qtyVal = parseFloat(m[2]);
+        unitType = m[3].toLowerCase().replace(/\s+/g, '');
+      } else {
+        m = perUnitText.match(/([\d.]+)\s*¢\/?\s*([\d.]*)\s*(\w+)/);
+        if (m) {
+          priceVal = parseFloat(m[1]) / 100;
+          qtyVal = parseFloat(m[2]);
+          unitType = m[3].toLowerCase().replace(/\s+/g, '');
+        }
+      }
+      if (m) {
+        if (unitType === 'floz') unitType = 'oz';
         const qty = !isNaN(qtyVal) && qtyVal !== 0 ? qtyVal : 1;
         pricePerUnit = priceVal / qty;
-        unitType = m[3].toLowerCase().replace(/\s+/g, '');
-        if (unitType === 'floz') unitType = 'oz';
         const factor = UNIT_FACTORS[unitType];
         if (factor && !COUNT_UNITS.has(unitType)) {
           pricePerUnit = pricePerUnit / factor;
           unitType = 'oz';
         }
+        unitQty = qty;
       }
     }
 

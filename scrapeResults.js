@@ -36,14 +36,14 @@ function baseGetPackInfo(product) {
   if (product && product.packCount && product.packCount > 1) {
     return { count: product.packCount, weightPerPack: false };
   }
-  let m = product?.name?.match(/(\d+)\s*(?:pk|pack|ct|count)/i);
+  let m = product?.name?.match(/(\d+)\s*(?:pk|pack|ct|count|rolls?)/i);
   if (!m) {
     m = product?.name?.match(/(\d+)\s*[-x\u00d7]\s*\d+/i);
   }
   if (!m && product?.size) {
     m = product.size.match(/pack\s*of\s*(\d+)/i);
     if (!m) {
-      m = product.size.match(/(\d+)\s*(?:pk|pack|ct|count)/i);
+      m = product.size.match(/(\d+)\s*(?:pk|pack|ct|count|rolls?)/i);
       if (!m) {
         m = product.size.match(/(\d+)\s*[-x\u00d7]\s*\d+/i);
       }
@@ -52,7 +52,7 @@ function baseGetPackInfo(product) {
   if (!m && product?.unit) {
     m = product.unit.match(/pack\s*of\s*(\d+)/i);
     if (!m) {
-      m = product.unit.match(/(\d+)\s*(?:pk|pack|ct|count)/i);
+      m = product.unit.match(/(\d+)\s*(?:pk|pack|ct|count|rolls?)/i);
       if (!m) {
         m = product.unit.match(/(\d+)\s*[-x\u00d7]\s*\d+/i);
       }
@@ -96,12 +96,34 @@ function getPackCount(product) {
   return getPackInfo(product).count;
 }
 
+const SHEET_SQFT = 0.111;
+
+function extractSheetCount(product) {
+  const fields = [product?.name, product?.size, product?.unit];
+  for (const f of fields) {
+    if (!f) continue;
+    const m = f.match(/(\d[\d,]*)\s*sheets?/i);
+    if (m) return parseInt(m[1].replace(/,/g, ''), 10);
+  }
+  return null;
+}
+
 function pricePerHomeUnit(itemName, product) {
   const item = needsData.find(n => n.name === itemName);
   if (!item || !product) return null;
   const { count: pack, weightPerPack } = getPackInfo(product);
   const mult = weightPerPack ? 1 : pack;
   const unit = item.home_unit ? item.home_unit.toLowerCase() : 'each';
+  if (unit === 'sheets') {
+    if (product.pricePerUnit != null && product.unitType && /sf/.test(product.unitType)) {
+      const pricePerSF = product.pricePerUnit;
+      return pricePerSF * SHEET_SQFT;
+    }
+    const totalSheets = extractSheetCount(product);
+    if (totalSheets && product.priceNumber != null) {
+      return product.priceNumber / totalSheets;
+    }
+  }
   if (unit === 'each') {
     return product.priceNumber != null ? product.priceNumber / pack : null;
   }
