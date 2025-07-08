@@ -167,6 +167,7 @@ const headerState = {};
 let weightPackMap = new Map();
 let mealMonthMap = new Map();
 let mealPlanMonthMap = new Map();
+let selectionsData = [];
 
 let resolveInit;
 const initReady = new Promise(resolve => {
@@ -242,21 +243,21 @@ function weightKey(product) {
   return null;
 }
 
-function getPackInfo(product) {
+function getPackInfo(product, map = weightPackMap) {
   if (product && product.packCount && product.packCount > 1) {
     return { count: product.packCount, weightPerPack: false };
   }
   const base = baseGetPackInfo(product);
   if (base.count > 1) return base;
   const key = weightKey(product);
-  if (key && weightPackMap.has(key)) {
-    return weightPackMap.get(key);
+  if (key && map && map.has(key)) {
+    return map.get(key);
   }
   return base;
 }
 
-function getPackCount(product) {
-  return getPackInfo(product).count;
+function getPackCount(product, map = weightPackMap) {
+  return getPackInfo(product, map).count;
 }
 
 async function buildWeightPackMap(item, stores) {
@@ -279,12 +280,13 @@ async function buildWeightPackMap(item, stores) {
     }
   }
   weightPackMap = map;
+  return map;
 }
 
-function pricePerHomeUnit(itemName, product) {
+function pricePerHomeUnit(itemName, product, map = weightPackMap) {
   const item = needsData.find(n => n.name === itemName);
   if (!item || !product) return null;
-  const { count: pack, weightPerPack } = getPackInfo(product);
+  const { count: pack, weightPerPack } = getPackInfo(product, map);
   const mult = weightPerPack ? 1 : pack;
   const unit = item.home_unit ? item.home_unit.toLowerCase() : 'each';
   if (unit === 'each') {
@@ -311,10 +313,10 @@ function pricePerHomeUnit(itemName, product) {
   return null;
 }
 
-function monthlyCost(itemName, product) {
+function monthlyCost(itemName, product, map = weightPackMap) {
   const cons = consumptionMap.get(itemName);
   if (!cons) return null;
-  const unitPrice = pricePerHomeUnit(itemName, product);
+  const unitPrice = pricePerHomeUnit(itemName, product, map);
   if (unitPrice == null) return null;
   const base = cons.monthly_consumption || 0;
   const hasCalendar = calendarData && Object.keys(calendarData).length > 0;
@@ -329,7 +331,7 @@ function homeUnitLabel(itemName) {
   return u === 'each' ? 'ea' : u;
 }
 
-function formatFinalText(itemName, store, product) {
+function formatFinalText(itemName, store, product, map = weightPackMap) {
   let text = store ? ` - ${store}` : '';
   if (product) {
     let pStr =
@@ -340,30 +342,30 @@ function formatFinalText(itemName, store, product) {
       product.convertedQty != null
         ? `${product.convertedQty.toFixed(2)} ${product.unitType || 'oz'}`
         : product.size;
-    const unitPrice = pricePerHomeUnit(itemName, product);
+    const unitPrice = pricePerHomeUnit(itemName, product, map);
     const label = homeUnitLabel(itemName) || product.unitType || 'oz';
     let uStr =
       unitPrice != null
         ? `$${unitPrice.toFixed(2)}/${label}`
         : product.unit;
-    const cost = monthlyCost(itemName, product);
+    const cost = monthlyCost(itemName, product, map);
     const costStr = cost != null ? ` - $${cost.toFixed(2)}/mo` : '';
     text += ` - ${product.name} - ${pStr} - ${qStr} - ${uStr}${costStr}`;
   }
   return text;
 }
 
-function updateFinalInfo(itemName, span, img, store, product) {
+function updateFinalInfo(itemName, span, img, store, product, map = weightPackMap) {
   if (product) {
-    const info = getPackInfo(product);
+    const info = getPackInfo(product, map);
     if (info.count > 1) {
       const wKey = weightKey(product);
-      if (wKey && (!weightPackMap.has(wKey) || weightPackMap.get(wKey).count < info.count)) {
-        weightPackMap.set(wKey, info);
+      if (wKey && map && (!map.has(wKey) || map.get(wKey).count < info.count)) {
+        map.set(wKey, info);
       }
     }
   }
-  span.textContent = formatFinalText(itemName, store, product);
+  span.textContent = formatFinalText(itemName, store, product, map);
   if (product) {
     img.src = product.image || '';
     img.alt = product.name || '';
@@ -391,6 +393,7 @@ async function init() {
     mealsByCategory
   } = await getData();
   needsData = needs;
+  selectionsData = selections;
   const sortedNeeds = sortItemsByCategory(needs);
   const consMap = new Map(consumption.map(c => [c.name, c]));
   const hasCalendar = calendar && Object.keys(calendar).length > 0;
@@ -467,20 +470,20 @@ async function init() {
       const stores = selections
         .filter(s => s.name === item.name)
         .map(s => s.store);
-      await buildWeightPackMap(item.name, stores);
+      const weightMap = await buildWeightPackMap(item.name, stores);
       if (product) {
-        const info = getPackInfo(product);
+        const info = getPackInfo(product, weightMap);
         if (info.count > 1) {
           const wKey = weightKey(product);
           if (
             wKey &&
-            (!weightPackMap.has(wKey) || weightPackMap.get(wKey).count < info.count)
+            (!weightMap.has(wKey) || weightMap.get(wKey).count < info.count)
           ) {
-            weightPackMap.set(wKey, info);
+            weightMap.set(wKey, info);
           }
         }
       }
-      updateFinalInfo(item.name, finalSpan, finalImg, store, product);
+      updateFinalInfo(item.name, finalSpan, finalImg, store, product, weightMap);
     });
     li.appendChild(finalSpan);
     li.appendChild(finalImg);
@@ -504,16 +507,20 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     if (rec) {
       const { span, img } = rec;
       const prod = message.product;
+      const stores = selectionsData
+        .filter(s => s.name === message.item)
+        .map(s => s.store);
+      const weightMap = await buildWeightPackMap(message.item, stores);
       if (prod) {
-        const info = getPackInfo(prod);
+        const info = getPackInfo(prod, weightMap);
         if (info.count > 1) {
           const wKey = weightKey(prod);
-          if (wKey && (!weightPackMap.has(wKey) || weightPackMap.get(wKey).count < info.count)) {
-            weightPackMap.set(wKey, info);
+          if (wKey && (!weightMap.has(wKey) || weightMap.get(wKey).count < info.count)) {
+            weightMap.set(wKey, info);
           }
         }
       }
-      updateFinalInfo(message.item, span, img, message.store, prod);
+      updateFinalInfo(message.item, span, img, message.store, prod, weightMap);
     }
   }
 });
@@ -572,6 +579,7 @@ async function rerenderAll() {
     mealsByCategory
   } = await getData();
   needsData = needs;
+  selectionsData = selections;
   const sortedNeeds = sortItemsByCategory(needs);
   const consMap = new Map(consumption.map(c => [c.name, c]));
   const hasCalendar = calendar && Object.keys(calendar).length > 0;
@@ -645,19 +653,23 @@ async function rerenderAll() {
     li.style.display = showByStock && showByNeed ? 'list-item' : 'none';
     getFinal(item.name).then(async store => {
       const product = await getFinalProduct(item.name);
+      const stores = selectionsData
+        .filter(s => s.name === item.name)
+        .map(s => s.store);
+      const weightMap = await buildWeightPackMap(item.name, stores);
       if (product) {
-        const info = getPackInfo(product);
+        const info = getPackInfo(product, weightMap);
         if (info.count > 1) {
           const wKey = weightKey(product);
           if (
             wKey &&
-            (!weightPackMap.has(wKey) || weightPackMap.get(wKey).count < info.count)
+            (!weightMap.has(wKey) || weightMap.get(wKey).count < info.count)
           ) {
-            weightPackMap.set(wKey, info);
+            weightMap.set(wKey, info);
           }
         }
       }
-      updateFinalInfo(item.name, finalSpan, finalImg, store, product);
+      updateFinalInfo(item.name, finalSpan, finalImg, store, product, weightMap);
     });
     li.appendChild(finalSpan);
     li.appendChild(finalImg);
@@ -687,9 +699,16 @@ chrome.storage.onChanged.addListener((changes, area) => {
       const rec = finalMap.get(item);
       if (rec) {
         initReady.then(() =>
-          Promise.all([getFinal(item), getFinalProduct(item)]).then(([store, product]) => {
+          Promise.all([
+            getFinal(item),
+            getFinalProduct(item)
+          ]).then(async ([store, product]) => {
             const { span, img } = rec;
-            updateFinalInfo(item, span, img, store, product);
+            const stores = selectionsData
+              .filter(s => s.name === item)
+              .map(s => s.store);
+            const weightMap = await buildWeightPackMap(item, stores);
+            updateFinalInfo(item, span, img, store, product, weightMap);
           })
         );
       }
@@ -736,7 +755,7 @@ async function commitSelections() {
   for (const item of needsData) {
     const { store, product } = await loadCommitData(item.name);
     if (!product) continue;
-    const { count: pack, weightPerPack } = getPackInfo(product);
+    const { count: pack, weightPerPack } = getPackInfo(product, new Map());
 
     let amount = pack;
     if (item.home_unit.toLowerCase() !== 'each') {
