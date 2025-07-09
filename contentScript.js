@@ -1,3 +1,4 @@
+import { parseUnitPrice } from "./utils/priceUtils.js";
 console.log("✅ contentScript.js loaded on page:", window.location.href);
 function getImageSrc(el) {
   if (!el) return "";
@@ -549,6 +550,11 @@ function scrapeShaws() {
     const link = linkRel ? new URL(linkRel, 'https://www.shaws.com').href : '';
     const priceText = tile.querySelector('[data-qa="prd-itm-prc"]')?.innerText?.trim();
     const sizeText = tile.querySelector('[data-qa="prd-itm-sqty"]')?.innerText?.trim();
+    const unitText = (
+      tile.querySelector('[data-qa="prd-itm-upr"]')?.textContent ||
+      tile.querySelector('[data-qa="prd-itm-pprc-qty"]')?.textContent ||
+      ''
+    ).trim();
     const image = getImageSrc(tile.querySelector('img[data-qa="prd-itm-img"]'));
 
     let priceNumber = null;
@@ -595,13 +601,18 @@ function scrapeShaws() {
     }
 
     let convertedQty = null;
-    let pricePerUnit = null;
+    const parsedInfo = parseUnitPrice(unitText);
+    let pricePerUnit = parsedInfo ? parsedInfo.pricePerUnit : null;
+    let unitQty = parsedInfo ? parsedInfo.unitQty : null;
+    let unitType = parsedInfo ? parsedInfo.unitType : null;
     if (sizeQty != null && sizeUnit) {
       const factor = UNIT_FACTORS[sizeUnit.toLowerCase()];
       if (factor) {
         convertedQty = sizeQty * factor;
-        if (priceNumber != null) {
+        if (priceNumber != null && pricePerUnit == null) {
           pricePerUnit = priceNumber / convertedQty;
+          unitQty = 1;
+          unitType = sizeUnit.toLowerCase();
         }
       }
     }
@@ -614,9 +625,9 @@ function scrapeShaws() {
         size: sizeText || '',
         sizeQty,
         sizeUnit,
-        unit: '',
-        unitQty: null,
-        unitType: null,
+        unit: unitText || '',
+        unitQty,
+        unitType,
         convertedQty,
         pricePerUnit,
         packCount,
