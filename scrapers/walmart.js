@@ -66,7 +66,9 @@ export function scrapeWalmart() {
     const packCount = packMatch ? parseInt(packMatch[1], 10) : 1;
     const priceMatch = tile.querySelector('[data-automation-id="product-price"]')?.innerText?.match(/\$?\d+\.\d{2}/);
     const price = priceMatch ? priceMatch[0] : null;
-    const perUnitText = tile.querySelector('.gray')?.innerText?.trim();
+    const perUnitText =
+      tile.querySelector('[data-testid="product-price-per-unit"]')?.innerText?.trim() ||
+      tile.querySelector('.gray')?.innerText?.trim();
     let pricePerUnit = null;
     let unitType = null;
     let sizeQty = null;
