@@ -144,6 +144,19 @@ export function scrapeWalmart() {
         }
       }
     }
+
+    if (pricePerUnit == null && price) {
+      const sheetMatch = name?.match(/(\d+)\s*sheets?\s*per\s*roll/i);
+      if (sheetMatch) {
+        const sheetsPerRoll = parseInt(sheetMatch[1], 10);
+        const totalSheets = sheetsPerRoll * (packCount || 1);
+        const p = parseFloat(price.replace(/[^0-9.]/g, ''));
+        if (!isNaN(p) && totalSheets > 0) {
+          pricePerUnit = p / totalSheets;
+          unitType = 'sheet';
+        }
+      }
+    }
     const image = getImageSrc(tile.querySelector('img[data-testid="productTileImage"]'));
     const link = tile.querySelector('a[href*="/ip/"]')?.href || '';
     let priceNumber = null;
