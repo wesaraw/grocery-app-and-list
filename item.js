@@ -248,12 +248,14 @@ async function buildWeightPackMap(item, stores) {
   for (const s of stores) {
     const arr = await loadScraped(item, s);
     for (const p of arr) {
-      let info;
-      if (p && p.packCount && p.packCount > 1) {
-        info = { count: p.packCount, weightPerPack: false };
-      } else {
-        info = baseGetPackInfo(p);
+      const baseInfo = baseGetPackInfo(p);
+      let count = baseInfo.count;
+      let weightPerPack = baseInfo.weightPerPack;
+      if (p && p.packCount && p.packCount > count) {
+        count = p.packCount;
+        weightPerPack = false;
       }
+      const info = { count, weightPerPack };
       if (info.count > 1) {
         const key = weightKey(p);
         if (key && (!map.has(key) || map.get(key).count < info.count)) {
