@@ -40,14 +40,14 @@ function baseGetPackInfo(product) {
   }
   let m = product?.name?.match(/(\d+)\s*(?:pk|pack|ct|count|rolls?)/i);
   if (!m) {
-    m = product?.name?.match(/(\d+)\s*[-x\u00d7]\s*\d+/i);
+    m = product?.name?.match(/(\d+)(?:\s*\w+){0,3}\s*(?:rolls?|rl)/i);
   }
   if (!m && product?.size) {
     m = product.size.match(/pack\s*of\s*(\d+)/i);
     if (!m) {
       m = product.size.match(/(\d+)\s*(?:pk|pack|ct|count|rolls?)/i);
       if (!m) {
-        m = product.size.match(/(\d+)\s*[-x\u00d7]\s*\d+/i);
+        m = product.size.match(/(\d+)(?:\s*\w+){0,3}\s*(?:rolls?|rl)/i);
       }
     }
   }
@@ -56,7 +56,7 @@ function baseGetPackInfo(product) {
     if (!m) {
       m = product.unit.match(/(\d+)\s*(?:pk|pack|ct|count|rolls?)/i);
       if (!m) {
-        m = product.unit.match(/(\d+)\s*[-x\u00d7]\s*\d+/i);
+        m = product.unit.match(/(\d+)(?:\s*\w+){0,3}\s*(?:rolls?|rl)/i);
       }
     }
   }
