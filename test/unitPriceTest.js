@@ -63,3 +63,29 @@ console.log('perSheet', perSheet);
 if (perSheet == null || Math.abs(perSheet - 0.0225) > 0.0001) {
   throw new Error(`Expected around 0.0225 but got ${perSheet}`);
 }
+
+// Walmart Bounty paper towels parsing
+const walmartHtml = fs.readFileSync('Bounty Paper Towels - Walmart.com.html', 'utf8');
+const walmartDom = new JSDOM(walmartHtml);
+Object.defineProperty(walmartDom.window.HTMLElement.prototype, 'innerText', {
+  get() {
+    return this.textContent;
+  },
+  set(v) {
+    this.textContent = v;
+  }
+});
+global.document = walmartDom.window.document;
+global.window = walmartDom.window;
+const { scrapeWalmart } = await import('../scrapers/walmart.js');
+const walmartProducts = scrapeWalmart();
+const walmartItem = walmartProducts.find(p => /12\s*Double\s*Rolls/i.test(p.name));
+if (!walmartItem) throw new Error('Failed to find Walmart Bounty item');
+if (walmartItem.packCount !== 12) {
+  throw new Error(`Expected packCount 12 but got ${walmartItem.packCount}`);
+}
+const perSheetWalmart = pricePerHomeUnit('Bounty Paper Towels', walmartItem);
+console.log('perSheetWalmart', perSheetWalmart);
+if (perSheetWalmart == null || Math.abs(perSheetWalmart - 0.022) > 0.001) {
+  throw new Error(`Expected around 0.022 but got ${perSheetWalmart}`);
+}
