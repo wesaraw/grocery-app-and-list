@@ -25,3 +25,15 @@ const alt2 = parseUnitPrice('$6.27 for 100sf');
 if (!alt2 || Math.abs(alt2.pricePerUnit * SHEET_SQFT - 0.0069) > 0.0002) {
   throw new Error('For format failed');
 }
+
+const perSheetInfo = parseUnitPrice('$2.25/100 ct');
+if (!perSheetInfo || Math.abs(perSheetInfo.pricePerUnit - 0.0225) > 0.0001) {
+  throw new Error('Per-sheet parse failed');
+}
+const packCount = 12;
+const sheetsPerRoll = 82;
+const examplePrice = 22.18;
+const computedPerSheet = examplePrice / (packCount * sheetsPerRoll);
+if (Math.abs(computedPerSheet - perSheetInfo.pricePerUnit) > 0.0001) {
+  throw new Error('Pack multiplier sheet price mismatch');
+}

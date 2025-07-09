@@ -38,14 +38,14 @@ function baseGetPackInfo(product) {
   if (product && product.packCount && product.packCount > 1) {
     return { count: product.packCount, weightPerPack: false };
   }
-  let m = product?.name?.match(/(\d+)\s*(?:pk|pack|ct|count|rolls?)/i);
+  let m = product?.name?.match(/(\d+)\s*(?:\w+\s*)?(?:pk|pack|ct|count|rolls?)/i);
   if (!m) {
     m = product?.name?.match(/(\d+)\s*[-x\u00d7]\s*\d+/i);
   }
   if (!m && product?.size) {
     m = product.size.match(/pack\s*of\s*(\d+)/i);
     if (!m) {
-      m = product.size.match(/(\d+)\s*(?:pk|pack|ct|count|rolls?)/i);
+      m = product.size.match(/(\d+)\s*(?:\w+\s*)?(?:pk|pack|ct|count|rolls?)/i);
       if (!m) {
         m = product.size.match(/(\d+)\s*[-x\u00d7]\s*\d+/i);
       }
@@ -54,7 +54,7 @@ function baseGetPackInfo(product) {
   if (!m && product?.unit) {
     m = product.unit.match(/pack\s*of\s*(\d+)/i);
     if (!m) {
-      m = product.unit.match(/(\d+)\s*(?:pk|pack|ct|count|rolls?)/i);
+      m = product.unit.match(/(\d+)\s*(?:\w+\s*)?(?:pk|pack|ct|count|rolls?)/i);
       if (!m) {
         m = product.unit.match(/(\d+)\s*[-x\u00d7]\s*\d+/i);
       }
@@ -136,7 +136,7 @@ function pricePerHomeUnit(itemName, product) {
     }
     const totalSheets = extractSheetCount(itemName, product);
     if (totalSheets && product.priceNumber != null) {
-      return product.priceNumber / totalSheets;
+      return product.priceNumber / (totalSheets * mult);
     }
   }
   if (unit === 'each') {
