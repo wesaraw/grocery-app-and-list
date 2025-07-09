@@ -1,4 +1,9 @@
 export const SHEET_SQFT = 0.111;
+export const TOWEL_SHEET_SQFT = 0.451;
+
+export function sheetSqFtFor(name = '') {
+  return /paper\s*towels?/i.test(name) ? TOWEL_SHEET_SQFT : SHEET_SQFT;
+}
 
 export function parsePriceNumber(text) {
   if (!text) return null;

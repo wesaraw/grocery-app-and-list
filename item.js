@@ -1,7 +1,7 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
-import { parseUnitPrice, getPriceUnitInfo, SHEET_SQFT } from './utils/priceUtils.js';
+import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
 
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
 const STORE_SELECTION_KEY = 'storeSelections';
@@ -146,11 +146,12 @@ function getPackCount(product, map = weightPackMap) {
 }
 
 
-function extractSheetCount(product) {
+function extractSheetCount(itemName, product) {
+  const sqft = sheetSqFtFor(itemName);
   const { pricePerUnit: ppu, unitType: ut } = getPriceUnitInfo(product);
   if (ppu != null && ut && /^(?:sf|sqft)$/.test(ut) && product.priceNumber != null) {
     const totalSqFt = product.priceNumber / ppu;
-    return Math.round(totalSqFt / SHEET_SQFT);
+    return Math.round(totalSqFt / sqft);
   }
   const fields = [product?.name, product?.size, product?.unit];
   for (const f of fields) {
@@ -158,7 +159,7 @@ function extractSheetCount(product) {
     const m = f.match(/(\d[\d,]*)\s*sheets?/i);
     if (m) return parseInt(m[1].replace(/,/g, ''), 10);
     const sq = f.match(/(\d[\d,]*)\s*(?:sq\.?\s*ft|sqft|sf)/i);
-    if (sq) return Math.round(parseInt(sq[1].replace(/,/g, ''), 10) / SHEET_SQFT);
+    if (sq) return Math.round(parseInt(sq[1].replace(/,/g, ''), 10) / sqft);
   }
   return null;
 }
@@ -170,16 +171,17 @@ function pricePerHomeUnit(itemName, product, map = weightPackMap) {
   const mult = weightPerPack ? 1 : pack;
   const unit = item.home_unit ? item.home_unit.toLowerCase() : 'each';
   if (unit === 'sheets') {
+    const sheetSqFt = sheetSqFtFor(itemName);
     const { pricePerUnit: ppu, unitType: ut } = getPriceUnitInfo(product);
     if (ppu != null && ut) {
       if (/^(?:sf|sqft)$/.test(ut)) {
-        return ppu * SHEET_SQFT;
+        return ppu * sheetSqFt;
       }
       if (/ct|count|sheet/.test(ut)) {
         return ppu;
       }
     }
-    const totalSheets = extractSheetCount(product);
+    const totalSheets = extractSheetCount(itemName, product);
     if (totalSheets && product.priceNumber != null) {
       return product.priceNumber / totalSheets;
     }
