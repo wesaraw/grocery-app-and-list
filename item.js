@@ -312,14 +312,6 @@ async function saveFinal(item, store, product) {
   return product;
 }
 
-function nameMatchesProduct(productName, itemName) {
-  const itemWords = itemName
-    .toLowerCase()
-    .split(/\s+/)
-    .filter(Boolean);
-  const prod = productName.toLowerCase();
-  return itemWords.some(w => prod.includes(w));
-}
 
 
 async function init() {

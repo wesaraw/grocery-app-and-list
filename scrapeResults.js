@@ -1,6 +1,7 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
 import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from "./utils/priceUtils.js";
+import { nameMatchesProduct } from './utils/nameUtils.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -267,14 +268,6 @@ function saveSelected(item, store, product) {
   });
 }
 
-function nameMatchesProduct(productName, itemName) {
-  const itemWords = itemName
-    .toLowerCase()
-    .split(/\s+/)
-    .filter(Boolean);
-  const prod = productName.toLowerCase();
-  return itemWords.some(w => prod.includes(w));
-}
 
 const params = new URLSearchParams(location.search);
 const item = params.get('item');
