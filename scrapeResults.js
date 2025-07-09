@@ -279,6 +279,8 @@ const container = document.getElementById('products');
 const PLACEHOLDER_IMG =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><rect width='100%' height='100%' fill='%23ccc'/></svg>";
 
+const imagesToRetry = [];
+
 title.textContent = `${item} - ${store}`;
 
 async function init() {
@@ -328,6 +330,7 @@ async function init() {
       img.src = PLACEHOLDER_IMG;
     };
     div.appendChild(img);
+    imagesToRetry.push({ img, url: prod.image });
 
     let pStr = prod.priceNumber != null ? `$${prod.priceNumber.toFixed(2)}` : prod.price;
     let qStr = prod.convertedQty != null ? `${prod.convertedQty.toFixed(2)} oz` : prod.size;
@@ -361,6 +364,22 @@ async function init() {
     div.appendChild(btn);
     container.appendChild(div);
   });
+
+  async function retryMissingImages() {
+    let anyMissing = false;
+    for (const rec of imagesToRetry) {
+      if (rec.url && rec.img.src === PLACEHOLDER_IMG) {
+        rec.img.src = rec.url;
+        anyMissing = true;
+        await new Promise(r => setTimeout(r, 1000));
+      }
+    }
+    if (imagesToRetry.some(r => r.url && r.img.src === PLACEHOLDER_IMG)) {
+      setTimeout(retryMissingImages, anyMissing ? 1000 : 0);
+    }
+  }
+
+  retryMissingImages();
 }
 
 init();
