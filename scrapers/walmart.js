@@ -58,12 +58,37 @@ export function scrapeWalmart() {
     'unit'
   ]);
 
+  function sanitize(str) {
+    return str
+      ?.replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;|&#160;/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function matchPack(str) {
+    if (!str) return null;
+    const s = sanitize(str);
+    return (
+      s.match(/(\d+)\s*[-\u2011\u2012\u2013\u2014]?\s*(?:pack|pk|ct|count|rolls?|rl)/i) ||
+      s.match(/(\d+)(?:\s*\w+){0,3}\s*(?:rolls?|rl)/i) ||
+      s.match(/pack\s*of\s*(\d+)/i) ||
+      s.match(/(\d+)\s*[-x\u00d7]\s*\d+/i)
+    );
+  }
+
+  function getPackCount(name, size, unit) {
+    let m = matchPack(name);
+    if (!m) m = matchPack(size);
+    if (!m) m = matchPack(unit);
+    return m ? parseInt(m[1], 10) : 1;
+  }
+
   const products = [];
   const tiles = document.querySelectorAll('[data-testid="list-view"] > div');
   tiles.forEach((tile, i) => {
     const name = tile.querySelector('[data-automation-id="product-title"]')?.innerText?.trim();
-    const packMatch = name?.match(/(\d+)\s*(?:pack|pk)/i);
-    const packCount = packMatch ? parseInt(packMatch[1], 10) : 1;
+    const packCount = getPackCount(name, null, null);
     const priceMatch = tile.querySelector('[data-automation-id="product-price"]')?.innerText?.match(/\$?\d+\.\d{2}/);
     const price = priceMatch ? priceMatch[0] : null;
     const perUnitText =
