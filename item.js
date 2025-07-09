@@ -183,7 +183,7 @@ function pricePerHomeUnit(itemName, product, map = weightPackMap) {
     }
     const totalSheets = extractSheetCount(itemName, product);
     if (totalSheets && product.priceNumber != null) {
-      return product.priceNumber / totalSheets;
+      return product.priceNumber / (totalSheets * mult);
     }
   }
   if (unit === 'each') {
