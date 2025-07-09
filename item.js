@@ -100,6 +100,7 @@ function baseGetPackInfo(product) {
     const s = sanitize(str);
     return (
       s.match(/(\d+)\s*[-\u2011\u2012\u2013\u2014]?\s*(?:pack|pk|ct|count|rolls?|rl)/i) ||
+      s.match(/(\d+)(?:\s*\w+){0,3}\s*(?:rolls?|rl)/i) ||
       s.match(/pack\s*of\s*(\d+)/i) ||
       s.match(/(\d+)\s*[-x\u00d7]\s*\d+/i)
     );
