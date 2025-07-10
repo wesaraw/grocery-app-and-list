@@ -332,11 +332,16 @@ async function init() {
     div.appendChild(img);
     imagesToRetry.push({ img, url: prod.image });
 
-    let pStr = prod.priceNumber != null ? `$${prod.priceNumber.toFixed(2)}` : prod.price;
-    let qStr = prod.convertedQty != null ? `${prod.convertedQty.toFixed(2)} oz` : prod.size;
+    let pStr =
+      prod.priceNumber != null ? `$${prod.priceNumber.toFixed(2)}` : prod.price;
+    let qStr =
+      prod.convertedQty != null
+        ? `${prod.convertedQty.toFixed(2)} ${prod.unitType || 'oz'}`
+        : prod.size;
     const unitPrice = pricePerHomeUnit(item, prod);
-    const label = homeUnitLabel(item) || prod.unit;
-    let uStr = unitPrice != null ? `$${unitPrice.toFixed(2)}/${label}` : prod.unit;
+    const label = homeUnitLabel(item) || prod.unitType || 'oz';
+    let uStr =
+      unitPrice != null ? `$${unitPrice.toFixed(2)}/${label}` : prod.unit;
     const cost = monthlyCost(item, prod);
     const costStr = cost != null ? ` - $${cost.toFixed(2)}/mo` : '';
     const info = document.createElement('span');
