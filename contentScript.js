@@ -383,11 +383,19 @@ function scrapeAmazon() {
 
     let pricePerUnit = null;
     let unitType = null;
+    let unitQty = null;
     if (unitText) {
-      const m = unitText.match(/\$([\d.]+).*\/(\w+)/);
-      if (m) {
-        pricePerUnit = parseFloat(m[1]);
-        unitType = m[2].toLowerCase();
+      const parsed = parseUnitPrice(unitText);
+      if (parsed) {
+        pricePerUnit = parsed.pricePerUnit;
+        unitType = parsed.unitType;
+        unitQty = parsed.unitQty;
+      } else {
+        const m = unitText.match(/\$([\d.]+).*\/(\w+)/);
+        if (m) {
+          pricePerUnit = parseFloat(m[1]);
+          unitType = m[2].toLowerCase();
+        }
       }
     }
 
@@ -417,6 +425,7 @@ function scrapeAmazon() {
         if (pricePerUnit == null && unitType !== 'count' && unitType !== 'ct') {
           pricePerUnit = priceNumber / totalConverted;
           unitType = 'oz';
+          unitQty = 1;
         }
       }
     }
@@ -430,7 +439,7 @@ function scrapeAmazon() {
         sizeQty,
         sizeUnit,
         unit: unitText || '',
-        unitQty: null,
+        unitQty,
         unitType,
         convertedQty,
         pricePerUnit,
@@ -926,7 +935,10 @@ const UNIT_ALIASES = {
   pound: 'lb',
   pounds: 'lb',
   perpound: 'lb',
-  perlb: 'lb'
+  perlb: 'lb',
+  floz: 'oz',
+  fluidounce: 'oz',
+  flounce: 'oz'
 };
 
 function normalizeUnit(unit) {
