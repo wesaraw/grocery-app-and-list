@@ -135,19 +135,19 @@ export function scrapeWalmart() {
     }
 
     if (pricePerUnit == null) {
-      let m = perUnitText?.match(/\$([\d.]+)\/?\s*([\d.]*)\s*(\w+)/);
+      let m = perUnitText?.match(/\$([\d.]+)\/?\s*([\d.]*)\s*([a-zA-Z]+(?:\s*[a-zA-Z]+)*)/);
       let priceVal = null;
       let qtyVal = null;
       if (m) {
         priceVal = parseFloat(m[1]);
         qtyVal = parseFloat(m[2]);
-        unitType = m[3].toLowerCase();
+        unitType = m[3].replace(/\s+/g, '').toLowerCase();
       } else {
-        m = perUnitText?.match(/([\d.]+)\s*¢\/?\s*([\d.]*)\s*(\w+)/);
+        m = perUnitText?.match(/([\d.]+)\s*¢\/?\s*([\d.]*)\s*([a-zA-Z]+(?:\s*[a-zA-Z]+)*)/);
         if (m) {
           priceVal = parseFloat(m[1]) / 100;
           qtyVal = parseFloat(m[2]);
-          unitType = m[3].toLowerCase();
+          unitType = m[3].replace(/\s+/g, '').toLowerCase();
         }
       }
       if (m) {
