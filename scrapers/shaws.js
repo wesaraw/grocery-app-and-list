@@ -84,6 +84,14 @@ export function scrapeShaws() {
       const r = new RegExp(`\\b${word}\\b`, 'g');
       normalized = normalized.replace(r, abbr);
     }
+    const hyphenMatch = normalized.match(/\b\d+\s*-\s*([\d.]+)\s*(fl\s*oz|oz|lb|kg|ml|l|gal|g|qt|pt|cup|tbsp|tsp)/i);
+    if (hyphenMatch) {
+      let unit = hyphenMatch[2].toLowerCase().replace(/\s+/g, '');
+      if (unit === 'floz') unit = 'oz';
+      unit = UNIT_ALIASES[unit] || unit;
+      const qty = parseFloat(hyphenMatch[1]);
+      return [qty, unit];
+    }
     const regex = /([\d.]+)\s*(fl\s*oz|oz|lb|kg|ml|l|gal|g|qt|pt|cup|tbsp|tsp|ea|ct|count|pkg|box|can|bag|bottle|stick|roll|bar|pouch|jar|packet|sleeve|slice|piece|tube|tray|unit)/gi;
     let weightPair = null;
     let countPair = null;
