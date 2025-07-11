@@ -136,7 +136,7 @@ function scrapeStopAndShop() {
       }
     }
 
-    if (name && priceText) {
+    if (name) {
       console.log(`🧾 Tile ${index + 1}:`, {
         name,
         price: priceText,
@@ -376,8 +376,15 @@ function scrapeAmazon() {
     const link = tile.querySelector('a.a-link-normal.s-no-outline')?.href || '';
     const name = tile.querySelector('h2.a-size-base-plus span')?.innerText?.trim();
       const image = getImageSrc(tile.querySelector('img.s-image'));
-    const priceText = tile
+    let priceText = tile
       .querySelector('span.a-price span.a-offscreen')?.innerText?.trim();
+    if (!priceText) {
+      const whole = tile.querySelector('span.a-price-whole')?.innerText?.trim();
+      if (whole) {
+        const frac = tile.querySelector('span.a-price-fraction')?.innerText?.trim();
+        priceText = `$${whole}${frac ? '.' + frac : ''}`;
+      }
+    }
     const unitText = tile
       .querySelector('span.a-size-base.a-color-secondary')
       ?.innerText?.trim();
@@ -437,7 +444,7 @@ function scrapeAmazon() {
       }
     }
 
-    if (name && priceText) {
+    if (name) {
       const clean = cleanSize(countText || '', packCount);
       products.push({
         name,
