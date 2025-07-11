@@ -341,13 +341,9 @@ async function init() {
 
     let pStr =
       prod.priceNumber != null ? `$${prod.priceNumber.toFixed(2)}` : prod.price;
-    let totalQty = null;
-    if (prod.convertedQty != null) {
-      totalQty = prod.convertedQty * (prod.packCount || 1);
-    }
     let qStr =
-      totalQty != null
-        ? `${totalQty.toFixed(2)} ${prod.unitType || 'oz'}`
+      prod.convertedQty != null
+        ? `${prod.convertedQty.toFixed(2)} ${prod.unitType || 'oz'}`
         : prod.size;
     const unitPrice = pricePerHomeUnit(item, prod);
     const label = homeUnitLabel(item) || prod.unitType || 'oz';
