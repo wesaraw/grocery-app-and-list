@@ -92,18 +92,6 @@ export function scrapeAmazon() {
     return { unitSize, unit, packCount };
   }
 
-  function cleanSize(sizeText, packCount) {
-    if (!sizeText) return '';
-    let text = sizeText.replace(/\s+/g, ' ');
-    if (packCount > 1) {
-      text = text.replace(/\(.*?pack[^)]*\)/i, '');
-      text = text.replace(/pack\s*of\s*\d+/i, '');
-      text = text.replace(/\b\d+\s*(?:pack|pk|ct|count)\b/i, '');
-      text = text.replace(/\b\d+\s*[xX]\b/, '');
-    }
-    return text.replace(/small business/i, '').trim();
-  }
-
   const products = [];
   const tiles = document.querySelectorAll(
     'div[data-asin][data-component-type="s-search-result"]'
@@ -174,12 +162,11 @@ export function scrapeAmazon() {
     }
 
     if (name && priceText) {
-      const clean = cleanSize(countText || '', packCount);
       products.push({
         name,
         price: priceText,
         priceNumber,
-        size: clean,
+        size: countText || '',
         sizeQty,
         sizeUnit,
         unit: unitText || '',
