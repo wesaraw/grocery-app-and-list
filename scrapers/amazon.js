@@ -112,14 +112,7 @@ export function scrapeAmazon() {
     const link = tile.querySelector('a.a-link-normal.s-no-outline')?.href || '';
     const name = tile.querySelector('h2.a-size-base-plus span')?.innerText?.trim();
     const image = getImageSrc(tile.querySelector('img.s-image'));
-    let priceText = tile.querySelector('span.a-price span.a-offscreen')?.innerText?.trim();
-    if (!priceText) {
-      const whole = tile.querySelector('span.a-price-whole')?.innerText?.trim();
-      if (whole) {
-        const frac = tile.querySelector('span.a-price-fraction')?.innerText?.trim();
-        priceText = `$${whole}${frac ? '.' + frac : ''}`;
-      }
-    }
+    const priceText = tile.querySelector('span.a-price span.a-offscreen')?.innerText?.trim();
     const unitText = tile
       .querySelector('span.a-size-base.a-color-secondary')
       ?.innerText?.trim();
@@ -180,7 +173,7 @@ export function scrapeAmazon() {
       }
     }
 
-    if (name) {
+    if (name && priceText) {
       const clean = cleanSize(countText || '', packCount);
       products.push({
         name,
