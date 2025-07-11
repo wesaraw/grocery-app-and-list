@@ -321,11 +321,12 @@ function scrapeAmazon() {
 
 
   function parseUnitInfo(name, unitText, sizeText) {
-    const fields = [unitText, sizeText, name];
+    const fields = [sizeText, name, unitText];
     let unitSize = null;
     let unit = null;
     for (const field of fields) {
       if (!field) continue;
+      if (field.includes('$') || field.includes('¢')) continue;
       const m = field.match(/([\d./]+)[\s-]*(oz|ounce|fluid ounce|fl oz|g|gram|kg|ml|l|gal|gallon|gallons|lb|lbs?|pound|pounds)\b/i);
       if (m) {
         unitSize = parseNumber(m[1]);
