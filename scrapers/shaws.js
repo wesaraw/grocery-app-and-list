@@ -195,10 +195,14 @@ export function scrapeShaws() {
       const factor = UNIT_FACTORS[unit];
       if (factor) {
         convertedQty = sizeQty * factor;
+        if (WEIGHT_UNITS.has(unit)) {
+          unitType = 'oz';
+        } else if (!unitType) {
+          unitType = unit;
+        }
         if (priceNumber != null && pricePerUnit == null) {
           pricePerUnit = priceNumber / convertedQty;
           unitQty = 1;
-          unitType = WEIGHT_UNITS.has(unit) ? 'oz' : unit;
         }
       }
     }

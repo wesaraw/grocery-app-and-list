@@ -37,6 +37,23 @@ export function scrapeHannaford() {
     unit: 1
   };
 
+  const WEIGHT_UNITS = new Set([
+    'oz',
+    'floz',
+    'lb',
+    'kg',
+    'ml',
+    'l',
+    'gal',
+    'ga',
+    'g',
+    'qt',
+    'pt',
+    'cup',
+    'tbsp',
+    'tsp'
+  ]);
+
   const UNIT_ALIASES = {
     quart: 'qt',
     quarts: 'qt',
@@ -116,9 +133,15 @@ export function scrapeHannaford() {
     let convertedQty = null;
     let pricePerUnit = null;
     if (sizeQty != null && sizeUnit) {
-      const factor = UNIT_FACTORS[sizeUnit.toLowerCase()];
+      const unit = sizeUnit.toLowerCase();
+      const factor = UNIT_FACTORS[unit];
       if (factor) {
         convertedQty = sizeQty * factor;
+        if (WEIGHT_UNITS.has(unit)) {
+          unitType = 'oz';
+        } else if (!unitType) {
+          unitType = unit;
+        }
         if (priceNumber != null) {
           pricePerUnit = priceNumber / convertedQty;
         }

@@ -37,6 +37,23 @@ export function scrapeRocheBros() {
     unit: 1
   };
 
+  const WEIGHT_UNITS = new Set([
+    'oz',
+    'floz',
+    'lb',
+    'kg',
+    'ml',
+    'l',
+    'gal',
+    'ga',
+    'g',
+    'qt',
+    'pt',
+    'cup',
+    'tbsp',
+    'tsp'
+  ]);
+
   const products = [];
   const tiles = document.querySelectorAll('[data-test="product-cell"]');
   tiles.forEach(tile => {
@@ -91,12 +108,17 @@ export function scrapeRocheBros() {
 
     let convertedQty = null;
     if (sizeQty != null && sizeUnit) {
-      const factor = UNIT_FACTORS[sizeUnit.toLowerCase()];
+      const unit = sizeUnit.toLowerCase();
+      const factor = UNIT_FACTORS[unit];
       if (factor) {
         convertedQty = sizeQty * factor;
+        if (WEIGHT_UNITS.has(unit)) {
+          unitType = 'oz';
+        } else if (!unitType) {
+          unitType = unit;
+        }
         if (priceNumber != null && pricePerUnit == null) {
           pricePerUnit = priceNumber / convertedQty;
-          unitType = 'oz';
         }
       }
     }
