@@ -117,26 +117,28 @@ export function scrapeWalmart() {
     if (sizeMatch) {
       rawSize = sizeMatch[0];
       sizeQty = parseFloat(sizeMatch[1]);
-      sizeUnit = sizeMatch[2].replace(/\s+/g, '');
-      const factor = UNIT_FACTORS[sizeUnit.toLowerCase()];
+      sizeUnit = sizeMatch[2].replace(/\s+/g, '').toLowerCase();
+      if (sizeUnit === 'floz') sizeUnit = 'oz';
+      const factor = UNIT_FACTORS[sizeUnit];
       if (factor) {
-        if (!COUNT_UNITS.has(sizeUnit.toLowerCase())) {
+        if (!COUNT_UNITS.has(sizeUnit)) {
+          sizeQty = sizeQty * packCount;
           convertedQty = sizeQty * factor;
           unitType = 'oz';
           if (price) {
             const p = parseFloat(price.replace(/[^0-9.]/g, ''));
             if (!isNaN(p)) {
-              const totalConverted = convertedQty * packCount;
-              pricePerUnit = p / totalConverted;
+              pricePerUnit = p / convertedQty;
             }
           }
         } else {
-          unitType = sizeUnit.toLowerCase();
+          sizeQty = sizeQty * packCount;
+          convertedQty = sizeQty;
+          unitType = sizeUnit;
           if (price) {
             const p = parseFloat(price.replace(/[^0-9.]/g, ''));
-            if (!isNaN(p)) {
-              const totalCount = sizeQty * packCount;
-              pricePerUnit = p / totalCount;
+            if (!isNaN(p) && sizeQty > 0) {
+              pricePerUnit = p / sizeQty;
             }
           }
         }
