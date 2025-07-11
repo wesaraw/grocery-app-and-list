@@ -137,13 +137,14 @@ export function scrapeAmazon() {
       unitType = 'count';
     }
 
-    let sizeQty = unitInfo.unitSize;
+    const baseSizeQty = unitInfo.unitSize;
+    let sizeQty = baseSizeQty != null ? baseSizeQty * packCount : null;
     let sizeUnit = unitInfo.unit;
 
     let convertedQty = null;
-    if (sizeQty != null && sizeUnit && UNIT_FACTORS[sizeUnit]) {
-      const totalQty = sizeQty * packCount;
-      convertedQty = sizeQty * UNIT_FACTORS[sizeUnit];
+    if (baseSizeQty != null && sizeUnit && UNIT_FACTORS[sizeUnit]) {
+      const totalQty = baseSizeQty * packCount;
+      convertedQty = totalQty * UNIT_FACTORS[sizeUnit];
       if (WEIGHT_UNITS.has(sizeUnit)) {
         unitType = 'oz';
       } else if (!unitType) {
