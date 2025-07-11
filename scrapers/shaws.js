@@ -164,14 +164,13 @@ export function scrapeShaws() {
     let unitType = parsedInfo ? parsedInfo.unitType : null;
 
     if (sizeQty != null && sizeUnit) {
-      const unit = sizeUnit.toLowerCase();
-      const factor = UNIT_FACTORS[unit];
+      const factor = UNIT_FACTORS[sizeUnit.toLowerCase()];
       if (factor) {
         convertedQty = sizeQty * factor;
         if (priceNumber != null && pricePerUnit == null) {
           pricePerUnit = priceNumber / convertedQty;
           unitQty = 1;
-          unitType = WEIGHT_UNITS.has(unit) ? 'oz' : unit;
+          unitType = sizeUnit.toLowerCase();
         }
       }
     }
