@@ -100,6 +100,7 @@ export function scrapeWalmart() {
     let sizeQty = null;
     let sizeUnit = null;
     let convertedQty = null;
+    let unitQty = null;
 
     const sizeMatch = name?.match(/(\d+(?:\.\d+)?)\s*(fl\s*oz|oz|lb|g|kg|ml|l|ct)/i);
     if (sizeMatch) {
@@ -108,23 +109,25 @@ export function scrapeWalmart() {
       if (sizeUnit === 'floz') sizeUnit = 'oz';
       const factor = UNIT_FACTORS[sizeUnit];
       if (factor) {
-        if (!COUNT_UNITS.has(sizeUnit.toLowerCase())) {
+        sizeQty = sizeQty * packCount;
+        if (!COUNT_UNITS.has(sizeUnit)) {
           convertedQty = sizeQty * factor;
           unitType = 'oz';
+          unitQty = 1;
           if (price) {
             const p = parseFloat(price.replace(/[^0-9.]/g, ''));
             if (!isNaN(p)) {
-              const totalConverted = convertedQty * packCount;
-              pricePerUnit = p / totalConverted;
+              pricePerUnit = p / convertedQty;
             }
           }
         } else {
-          unitType = sizeUnit.toLowerCase();
+          convertedQty = sizeQty;
+          unitType = sizeUnit;
+          unitQty = 1;
           if (price) {
             const p = parseFloat(price.replace(/[^0-9.]/g, ''));
-            if (!isNaN(p)) {
-              const totalCount = sizeQty * packCount;
-              pricePerUnit = p / totalCount;
+            if (!isNaN(p) && convertedQty > 0) {
+              pricePerUnit = p / convertedQty;
             }
           }
         }
@@ -151,6 +154,7 @@ export function scrapeWalmart() {
         if (unitType === 'floz') unitType = 'oz';
         const qty = !isNaN(qtyVal) && qtyVal !== 0 ? qtyVal : 1;
         pricePerUnit = priceVal / qty;
+        unitQty = qty;
         const factor = UNIT_FACTORS[unitType];
         if (factor && !COUNT_UNITS.has(unitType)) {
           pricePerUnit = pricePerUnit / factor;
@@ -187,7 +191,7 @@ export function scrapeWalmart() {
         sizeQty,
         sizeUnit,
         unit: perUnitText || '',
-        unitQty: null,
+        unitQty,
         unitType,
         convertedQty,
         pricePerUnit,
