@@ -376,9 +376,13 @@ function formatFinalText(itemName, store, product, map = weightPackMap) {
       product.priceNumber != null
         ? `$${product.priceNumber.toFixed(2)}`
         : product.price;
+    let totalQty = null;
+    if (product.convertedQty != null) {
+      totalQty = product.convertedQty * (product.packCount || 1);
+    }
     let qStr =
-      product.convertedQty != null
-        ? `${product.convertedQty.toFixed(2)} ${product.unitType || 'oz'}`
+      totalQty != null
+        ? `${totalQty.toFixed(2)} ${product.unitType || 'oz'}`
         : product.size;
     const unitPrice = pricePerHomeUnit(itemName, product, map);
     const label = homeUnitLabel(itemName) || product.unitType || 'oz';

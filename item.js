@@ -431,8 +431,12 @@ async function init() {
         }
       }
       let pStr = selected.priceNumber != null ? `$${selected.priceNumber.toFixed(2)}` : selected.price;
-      let qStr = selected.convertedQty != null
-        ? `${selected.convertedQty.toFixed(2)} ${selected.unitType || 'oz'}`
+      let totalQty = null;
+      if (selected.convertedQty != null) {
+        totalQty = selected.convertedQty * (selected.packCount || 1);
+      }
+      let qStr = totalQty != null
+        ? `${totalQty.toFixed(2)} ${selected.unitType || 'oz'}`
         : selected.size;
       const unitPrice = pricePerHomeUnit(itemName, selected);
       const label = homeUnitLabel(itemName) || selected.unitType || 'oz';
@@ -487,9 +491,13 @@ async function init() {
             selected.priceNumber != null
               ? `$${selected.priceNumber.toFixed(2)}`
               : selected.price;
+          let totalQty = null;
+          if (selected.convertedQty != null) {
+            totalQty = selected.convertedQty * (selected.packCount || 1);
+          }
           let qStr =
-            selected.convertedQty != null
-              ? `${selected.convertedQty.toFixed(2)} ${selected.unitType || 'oz'}`
+            totalQty != null
+              ? `${totalQty.toFixed(2)} ${selected.unitType || 'oz'}`
               : selected.size;
           const unitPrice = pricePerHomeUnit(itemName, selected);
           const label = homeUnitLabel(itemName) || selected.unitType || 'oz';
