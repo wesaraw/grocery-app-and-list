@@ -4,7 +4,8 @@ const {
   parseUnitPrice,
   SHEET_SQFT,
   getPriceUnitInfo,
-  sheetSqFtFor
+  sheetSqFtFor,
+  UNIT_ALIASES
 } = await import('../utils/priceUtils.js');
 
 const html = fs.readFileSync("Search Results toilet paper _ Shaw's.html", 'utf8');
@@ -113,4 +114,78 @@ if (dentItem.unitType !== 'oz') {
 }
 if (Math.abs(dentItem.pricePerUnit - 0.7137) > 0.001) {
   throw new Error(`Expected price per oz around 0.714 but got ${dentItem.pricePerUnit}`);
+}
+
+function baseGetPackInfo(product) {
+  if (product && product.packCount && product.packCount > 1) {
+    return { count: product.packCount, weightPerPack: false };
+  }
+  const sanitize = str =>
+    str?.replace(/<[^>]*>/g, ' ').replace(/&nbsp;|&#160;/gi, ' ').replace(/\s+/g, ' ').trim();
+  const matchPack = str => {
+    if (!str) return null;
+    const s = sanitize(str);
+    return (
+      s.match(/(\d+)\s*[-\u2011\u2012\u2013\u2014]?\s*(?:pack|pk|ct|count|rolls?|rl)/i) ||
+      s.match(/(\d+)(?:\s*\w+){0,3}\s*(?:rolls?|rl)/i) ||
+      s.match(/pack\s*of\s*(\d+)/i) ||
+      s.match(/(\d+)\s*[-x\u00d7]\s*\d+/i) ||
+      s.match(/(\d+)\s*-\s*\d+(?:\.\d+)?\s*(?:fl\s*oz|oz|lb|kg|g|ml|l|qt|pt|cup|tbsp|tsp|gal)/i)
+    );
+  };
+  let m = matchPack(product?.name);
+  if (!m) m = matchPack(product?.size);
+  if (!m) m = matchPack(product?.unit);
+  if (m) {
+    const count = parseInt(m[1], 10);
+    const source = `${product?.name || ''} ${product?.size || ''} ${product?.unit || ''}`;
+    const hasWeight = /(\d+(?:\.\d+)?)\s*(?:fl\s*oz|oz|lb|kg|g|ml|l|qt|pt|cup|tbsp|tsp|gal)/i.test(source);
+    const isRange = /[-x\u00d7]/.test(m[0]);
+    const weightPerPack = hasWeight && !isRange;
+    return { count, weightPerPack };
+  }
+  return { count: 1, weightPerPack: false };
+}
+
+const packInfo = baseGetPackInfo(dentItem);
+if (packInfo.count !== 32) {
+  throw new Error(`Expected pack count 32 but got ${packInfo.count}`);
+}
+
+function extractSize(text) {
+  if (!text) return [null, null];
+  let normalized = text.toLowerCase();
+  for (const [word, abbr] of Object.entries(UNIT_ALIASES)) {
+    const r = new RegExp(`\\b${word}\\b`, 'g');
+    normalized = normalized.replace(r, abbr);
+  }
+  const hyphenMatch = normalized.match(/\b\d+\s*-\s*([\d.]+)\s*(fl\s*oz|oz|lb|kg|ml|l|gal|g|qt|pt|cup|tbsp|tsp)/i);
+  if (hyphenMatch) {
+    let unit = hyphenMatch[2].toLowerCase().replace(/\s+/g, '');
+    if (unit === 'floz') unit = 'oz';
+    unit = UNIT_ALIASES[unit] || unit;
+    const qty = parseFloat(hyphenMatch[1]);
+    return [qty, unit];
+  }
+  const regex = /([\d.]+)\s*(fl\s*oz|oz|lb|kg|ml|l|gal|g|qt|pt|cup|tbsp|tsp|ea|ct|count)/gi;
+  for (const m of normalized.matchAll(regex)) {
+    let unit = m[2].toLowerCase().replace(/\s+/g, '');
+    if (unit === 'floz') unit = 'oz';
+    else if (unit === 'count') unit = 'ct';
+    unit = UNIT_ALIASES[unit] || unit;
+    return [parseFloat(m[1]), unit];
+  }
+  return [null, null];
+}
+
+const [qty, unit] = extractSize('32-1.66 Lbs');
+const UNIT_FACTORS = { oz: 1, lb: 16 };
+const converted = qty * UNIT_FACTORS[unit];
+if (Math.abs(converted - 26.56) > 0.001) {
+  throw new Error(`Expected converted qty 26.56 but got ${converted}`);
+}
+const price = 18.99;
+const ppu = price / converted;
+if (Math.abs(ppu - 0.715) > 0.001) {
+  throw new Error(`Expected price per oz about 0.715 but got ${ppu}`);
 }

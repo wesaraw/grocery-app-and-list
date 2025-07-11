@@ -38,14 +38,18 @@ function baseGetPackInfo(product) {
   if (product && product.packCount && product.packCount > 1) {
     return { count: product.packCount, weightPerPack: false };
   }
-  let m = product?.name?.match(/(\d+)\s*(?:pk|pack|ct|count|rolls?)/i);
+  let m = product?.name?.match(/(\d+)\s*-\s*\d+(?:\.\d+)?\s*(?:fl\s*oz|oz|lb|kg|g|ml|l|qt|pt|cup|tbsp|tsp|gal)/i);
+  if (!m) m = product?.name?.match(/(\d+)\s*(?:pk|pack|ct|count|rolls?)/i);
   if (!m) {
     m = product?.name?.match(/(\d+)(?:\s*\w+){0,3}\s*(?:rolls?|rl)/i);
   }
   if (!m && product?.size) {
     m = product.size.match(/pack\s*of\s*(\d+)/i);
     if (!m) {
-      m = product.size.match(/(\d+)\s*(?:pk|pack|ct|count|rolls?)/i);
+      m = product.size.match(/(\d+)\s*-\s*\d+(?:\.\d+)?\s*(?:fl\s*oz|oz|lb|kg|g|ml|l|qt|pt|cup|tbsp|tsp|gal)/i);
+      if (!m) {
+        m = product.size.match(/(\d+)\s*(?:pk|pack|ct|count|rolls?)/i);
+      }
       if (!m) {
         m = product.size.match(/(\d+)(?:\s*\w+){0,3}\s*(?:rolls?|rl)/i);
       }
@@ -54,7 +58,10 @@ function baseGetPackInfo(product) {
   if (!m && product?.unit) {
     m = product.unit.match(/pack\s*of\s*(\d+)/i);
     if (!m) {
-      m = product.unit.match(/(\d+)\s*(?:pk|pack|ct|count|rolls?)/i);
+      m = product.unit.match(/(\d+)\s*-\s*\d+(?:\.\d+)?\s*(?:fl\s*oz|oz|lb|kg|g|ml|l|qt|pt|cup|tbsp|tsp|gal)/i);
+      if (!m) {
+        m = product.unit.match(/(\d+)\s*(?:pk|pack|ct|count|rolls?)/i);
+      }
       if (!m) {
         m = product.unit.match(/(\d+)(?:\s*\w+){0,3}\s*(?:rolls?|rl)/i);
       }
