@@ -84,6 +84,18 @@ export function scrapeWalmart() {
     return m ? parseInt(m[1], 10) : 1;
   }
 
+  function cleanSize(sizeText, packCount) {
+    if (!sizeText) return '';
+    let text = sizeText.replace(/\s+/g, ' ');
+    if (packCount > 1) {
+      text = text.replace(/\(.*?pack[^)]*\)/i, '');
+      text = text.replace(/pack\s*of\s*\d+/i, '');
+      text = text.replace(/\b\d+\s*(?:pack|pk|ct|count)\b/i, '');
+      text = text.replace(/\b\d+\s*[xX]\b/, '');
+    }
+    return text.replace(/small business/i, '').trim();
+  }
+
   const products = [];
   const tiles = document.querySelectorAll('[data-testid="list-view"] > div');
   tiles.forEach((tile, i) => {
@@ -99,9 +111,11 @@ export function scrapeWalmart() {
     let sizeQty = null;
     let sizeUnit = null;
     let convertedQty = null;
+    let rawSize = '';
 
     const sizeMatch = name?.match(/(\d+(?:\.\d+)?)\s*(fl\s*oz|oz|lb|g|kg|ml|l|ct)/i);
     if (sizeMatch) {
+      rawSize = sizeMatch[0];
       sizeQty = parseFloat(sizeMatch[1]);
       sizeUnit = sizeMatch[2].replace(/\s+/g, '');
       const factor = UNIT_FACTORS[sizeUnit.toLowerCase()];
@@ -159,6 +173,7 @@ export function scrapeWalmart() {
     }
     const image = getImageSrc(tile.querySelector('img[data-testid="productTileImage"]'));
     const link = tile.querySelector('a[href*="/ip/"]')?.href || '';
+    const clean = cleanSize(rawSize, packCount);
     let priceNumber = null;
     if (price) {
       const p = parsePriceNumber(price);
@@ -169,7 +184,7 @@ export function scrapeWalmart() {
         name,
         price,
         priceNumber,
-        size: '',
+        size: clean,
         sizeQty,
         sizeUnit,
         unit: perUnitText || '',
