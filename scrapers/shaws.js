@@ -1,5 +1,5 @@
 import { getImageSrc } from "../utils/imageUtils.js";
-import { parsePriceNumber, parseUnitPrice } from "../utils/priceUtils.js";
+import { parsePriceNumber, parseUnitPrice, UNIT_ALIASES } from "../utils/priceUtils.js";
 export function scrapeShaws() {
   const UNIT_FACTORS = {
     oz: 1,
@@ -79,13 +79,19 @@ export function scrapeShaws() {
 
   function extractSize(text) {
     if (!text) return [null, null];
+    let normalized = text.toLowerCase();
+    for (const [word, abbr] of Object.entries(UNIT_ALIASES)) {
+      const r = new RegExp(`\\b${word}\\b`, 'g');
+      normalized = normalized.replace(r, abbr);
+    }
     const regex = /([\d.]+)\s*(fl\s*oz|oz|lb|kg|ml|l|gal|g|qt|pt|cup|tbsp|tsp|ea|ct|count|pkg|box|can|bag|bottle|stick|roll|bar|pouch|jar|packet|sleeve|slice|piece|tube|tray|unit)/gi;
     let weightPair = null;
     let countPair = null;
-    for (const m of text.matchAll(regex)) {
+    for (const m of normalized.matchAll(regex)) {
       let unit = m[2].toLowerCase().replace(/\s+/g, '');
       if (unit === 'floz') unit = 'oz';
       else if (unit === 'count') unit = 'ct';
+      unit = UNIT_ALIASES[unit] || unit;
       const qty = parseFloat(m[1]);
       if (WEIGHT_UNITS.has(unit)) {
         if (!weightPair) weightPair = [qty, unit];
@@ -157,20 +163,29 @@ export function scrapeShaws() {
       }
     }
 
+    if (sizeUnit) {
+      const key = sizeUnit.toLowerCase();
+      sizeUnit = UNIT_ALIASES[key] || key;
+    }
+
     let convertedQty = null;
     const parsedInfo = parseUnitPrice(unitText);
     let pricePerUnit = parsedInfo ? parsedInfo.pricePerUnit : null;
     let unitQty = parsedInfo ? parsedInfo.unitQty : null;
     let unitType = parsedInfo ? parsedInfo.unitType : null;
+    if (unitType) {
+      unitType = UNIT_ALIASES[unitType] || unitType;
+    }
 
     if (sizeQty != null && sizeUnit) {
-      const factor = UNIT_FACTORS[sizeUnit.toLowerCase()];
+      const unit = sizeUnit.toLowerCase();
+      const factor = UNIT_FACTORS[unit];
       if (factor) {
         convertedQty = sizeQty * factor;
         if (priceNumber != null && pricePerUnit == null) {
           pricePerUnit = priceNumber / convertedQty;
           unitQty = 1;
-          unitType = sizeUnit.toLowerCase();
+          unitType = WEIGHT_UNITS.has(unit) ? 'oz' : unit;
         }
       }
     }
