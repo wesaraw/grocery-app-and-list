@@ -1,5 +1,5 @@
 import { getImageSrc } from "../utils/imageUtils.js";
-import { parsePriceNumber } from "../utils/priceUtils.js";
+import { parsePriceNumber, normalizeUnit } from "../utils/priceUtils.js";
 export function scrapeWalmart() {
   const UNIT_FACTORS = {
     oz: 1,
@@ -102,11 +102,10 @@ export function scrapeWalmart() {
     let convertedQty = null;
     let unitQty = null;
 
-    const sizeMatch = name?.match(/(\d+(?:\.\d+)?)\s*(fl\s*oz|oz|lb|g|kg|ml|l|ct)/i);
+    const sizeMatch = name?.match(/(\d+(?:\.\d+)?)\s*(fl\.?\s*oz|oz|lb|g|kg|ml|l|ct)/i);
     if (sizeMatch) {
       sizeQty = parseFloat(sizeMatch[1]);
-      sizeUnit = sizeMatch[2].replace(/\s+/g, '').toLowerCase();
-      if (sizeUnit === 'floz') sizeUnit = 'oz';
+      sizeUnit = normalizeUnit(sizeMatch[2]);
       const factor = UNIT_FACTORS[sizeUnit];
       if (factor) {
         sizeQty = sizeQty * packCount;
@@ -135,25 +134,23 @@ export function scrapeWalmart() {
     }
 
     if (pricePerUnit == null) {
-      let m = perUnitText?.match(/\$([\d.]+)\/?\s*([\d.]*)\s*([a-zA-Z]+(?:\s*[a-zA-Z]+)*)/);
+      let m = perUnitText?.match(/\$([\d.]+)\/?\s*([\d.]*)\s*([a-zA-Z\.]+(?:\s*[a-zA-Z\.]+)*)/);
       let priceVal = null;
       let qtyVal = null;
       if (m) {
         priceVal = parseFloat(m[1]);
         qtyVal = parseFloat(m[2]);
-        unitType = m[3].replace(/\s+/g, '').toLowerCase();
+        unitType = normalizeUnit(m[3]);
       } else {
-        m = perUnitText?.match(/([\d.]+)\s*¢\/?\s*([\d.]*)\s*([a-zA-Z]+(?:\s*[a-zA-Z]+)*)/);
+        m = perUnitText?.match(/([\d.]+)\s*¢\/?\s*([\d.]*)\s*([a-zA-Z\.]+(?:\s*[a-zA-Z\.]+)*)/);
         if (m) {
           priceVal = parseFloat(m[1]) / 100;
           qtyVal = parseFloat(m[2]);
-          unitType = m[3].replace(/\s+/g, '').toLowerCase();
+          unitType = normalizeUnit(m[3]);
         }
       }
       if (m) {
-        if (unitType === 'floz') unitType = 'oz';
         const qty = !isNaN(qtyVal) && qtyVal !== 0 ? qtyVal : 1;
-        pricePerUnit = priceVal / qty;
         unitQty = qty;
         const factor = UNIT_FACTORS[unitType];
         if (factor && !COUNT_UNITS.has(unitType)) {
