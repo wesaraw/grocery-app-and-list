@@ -54,7 +54,10 @@ export function scrapeAmazon() {
 
 
   function parseUnitInfo(name, unitText, sizeText) {
-    const fields = [unitText, sizeText, name];
+    // Prefer size information from the dedicated size text or product name
+    // before falling back to the unit text which often contains price per unit
+    // values like "$0.37/fl oz" that can confuse the parser.
+    const fields = [sizeText, name, unitText];
     let unitSize = null;
     let unit = null;
     for (const field of fields) {
@@ -97,6 +100,7 @@ export function scrapeAmazon() {
     const link = tile.querySelector('a.a-link-normal.s-no-outline')?.href || '';
     const name = tile.querySelector('h2.a-size-base-plus span')?.innerText?.trim();
     const image = getImageSrc(tile.querySelector('img.s-image'));
+    const priceText = tile.querySelector('span.a-price span.a-offscreen')?.innerText?.trim();
     const unitText = tile
       .querySelector('span.a-size-base.a-color-secondary')
       ?.innerText?.trim();
