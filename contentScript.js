@@ -422,7 +422,7 @@ function scrapeAmazon() {
     let convertedQty = null;
     if (baseSizeQty != null && sizeUnit && UNIT_FACTORS[sizeUnit]) {
       const totalQty = baseSizeQty * packCount;
-      convertedQty = baseSizeQty * UNIT_FACTORS[sizeUnit];
+      convertedQty = totalQty * UNIT_FACTORS[sizeUnit];
       if (priceNumber != null && totalQty != null) {
         const totalConverted = totalQty * UNIT_FACTORS[sizeUnit];
         if (pricePerUnit == null && unitType !== 'count' && unitType !== 'ct') {
