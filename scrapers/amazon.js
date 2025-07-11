@@ -43,7 +43,7 @@ export function scrapeAmazon() {
     let unit = null;
     for (const field of fields) {
       if (!field) continue;
-      const m = field.match(/([\d.]+)[\s-]*(oz|ounce|fluid ounce|fl oz|g|gram|kg|ml|l|gal|gallon|gallons)\b/i);
+      const m = field.match(/([\d.]+)[\s-]*(oz|ounce|fluid ounce|fl oz|g|gram|kg|ml|l|gal|gallon|gallons|lb|lbs?|pound|pounds)\b/i);
       if (m) {
         unitSize = parseFloat(m[1]);
         unit = m[2].toLowerCase();
@@ -55,6 +55,7 @@ export function scrapeAmazon() {
       if (unit === 'ounce' || unit === 'ounces' || unit === 'floz' || unit === 'fluidounce' || unit === 'flounce') unit = 'oz';
       else if (unit === 'gram') unit = 'g';
       else if (unit === 'gallon' || unit === 'gallons') unit = 'gal';
+      else if (unit === 'lbs' || unit === 'pound' || unit === 'pounds') unit = 'lb';
     }
 
     const packFields = [name, unitText, sizeText];
