@@ -414,13 +414,15 @@ function scrapeAmazon() {
       unitType = 'count';
     }
 
-    let sizeQty = unitInfo.unitSize;
+    const baseSizeQty = unitInfo.unitSize;
+    let sizeQty = baseSizeQty != null ? baseSizeQty * packCount : null;
     let sizeUnit = unitInfo.unit;
+    let size = baseSizeQty != null ? String(baseSizeQty) : countText || '';
 
     let convertedQty = null;
-    if (sizeQty != null && sizeUnit && UNIT_FACTORS[sizeUnit]) {
-      const totalQty = sizeQty * packCount;
-      convertedQty = sizeQty * UNIT_FACTORS[sizeUnit];
+    if (baseSizeQty != null && sizeUnit && UNIT_FACTORS[sizeUnit]) {
+      const totalQty = baseSizeQty * packCount;
+      convertedQty = baseSizeQty * UNIT_FACTORS[sizeUnit];
       if (priceNumber != null && totalQty != null) {
         const totalConverted = totalQty * UNIT_FACTORS[sizeUnit];
         if (pricePerUnit == null && unitType !== 'count' && unitType !== 'ct') {
@@ -436,7 +438,7 @@ function scrapeAmazon() {
         name,
         price: priceText,
         priceNumber,
-        size: countText || '',
+        size,
         sizeQty,
         sizeUnit,
         unit: unitText || '',
