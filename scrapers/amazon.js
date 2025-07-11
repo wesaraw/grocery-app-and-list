@@ -36,6 +36,22 @@ export function scrapeAmazon() {
     unit: 1
   };
 
+  const WEIGHT_UNITS = new Set([
+    'oz',
+    'lb',
+    'g',
+    'kg',
+    'ml',
+    'l',
+    'gal',
+    'ga',
+    'qt',
+    'pt',
+    'cup',
+    'tbsp',
+    'tsp'
+  ]);
+
 
   function parseUnitInfo(name, unitText, sizeText) {
     const fields = [unitText, sizeText, name];
@@ -128,11 +144,15 @@ export function scrapeAmazon() {
     if (sizeQty != null && sizeUnit && UNIT_FACTORS[sizeUnit]) {
       const totalQty = sizeQty * packCount;
       convertedQty = sizeQty * UNIT_FACTORS[sizeUnit];
+      if (WEIGHT_UNITS.has(sizeUnit)) {
+        unitType = 'oz';
+      } else if (!unitType) {
+        unitType = sizeUnit;
+      }
       if (priceNumber != null && totalQty != null) {
         const totalConverted = totalQty * UNIT_FACTORS[sizeUnit];
         if (pricePerUnit == null && unitType !== 'count' && unitType !== 'ct') {
           pricePerUnit = priceNumber / totalConverted;
-          unitType = 'oz';
         }
       }
     }

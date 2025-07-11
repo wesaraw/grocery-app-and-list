@@ -37,6 +37,23 @@ export function scrapeStopAndShop() {
     unit: 1
   };
 
+  const WEIGHT_UNITS = new Set([
+    'oz',
+    'floz',
+    'lb',
+    'kg',
+    'ml',
+    'l',
+    'gal',
+    'ga',
+    'g',
+    'qt',
+    'pt',
+    'cup',
+    'tbsp',
+    'tsp'
+  ]);
+
   const COUNT_UNITS = new Set([
     'ea',
     'ct',
@@ -143,13 +160,13 @@ export function scrapeStopAndShop() {
       if (factor) {
         if (!COUNT_UNITS.has(sizeUnit.toLowerCase())) {
           convertedQty = sizeQty * factor;
+          unitType = 'oz';
           if (priceNumber != null && pricePerUnit == null) {
             const totalConverted = convertedQty * packCount;
             pricePerUnit = priceNumber / totalConverted;
-            unitType = 'oz';
           }
         } else {
-          unitType = sizeUnit.toLowerCase();
+          if (!unitType) unitType = sizeUnit.toLowerCase();
           if (priceNumber != null && pricePerUnit == null) {
             const totalCount = sizeQty * packCount;
             pricePerUnit = priceNumber / totalCount;
