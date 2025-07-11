@@ -605,6 +605,11 @@ function scrapeShaws() {
     let pricePerUnit = parsedInfo ? parsedInfo.pricePerUnit : null;
     let unitQty = parsedInfo ? parsedInfo.unitQty : null;
     let unitType = parsedInfo ? parsedInfo.unitType : null;
+    if (pricePerUnit != null && unitType && WEIGHT_UNITS.has(unitType) && UNIT_FACTORS[unitType]) {
+      pricePerUnit = pricePerUnit / UNIT_FACTORS[unitType];
+      unitQty = 1;
+      unitType = 'oz';
+    }
     if (sizeQty != null && sizeUnit) {
       const factor = UNIT_FACTORS[sizeUnit.toLowerCase()];
       if (factor) {
