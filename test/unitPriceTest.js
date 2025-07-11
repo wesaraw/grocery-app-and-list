@@ -189,3 +189,26 @@ const ppu = price / converted;
 if (Math.abs(ppu - 0.715) > 0.001) {
   throw new Error(`Expected price per oz about 0.715 but got ${ppu}`);
 }
+
+// Amazon pickle size parsing
+const pickleHtml = fs.readFileSync('Amazon.com _ Mt. Olive Pickles Bread & Butter Chips Condiments Pickles.html', 'utf8');
+const pickleDom = new JSDOM(pickleHtml);
+Object.defineProperty(pickleDom.window.HTMLElement.prototype, 'innerText', {
+  get() { return this.textContent; },
+  set(v) { this.textContent = v; }
+});
+global.document = pickleDom.window.document;
+global.window = pickleDom.window;
+const { scrapeAmazon } = await import('../scrapers/amazon.js');
+const amazonProducts = scrapeAmazon();
+const pickleItem = amazonProducts.find(p => /Zesty Garlic Kosher Pickle Spears/i.test(p.name));
+if (!pickleItem) throw new Error('Failed to find Amazon pickle item');
+if (pickleItem.packCount !== 2) {
+  throw new Error(`Expected packCount 2 but got ${pickleItem.packCount}`);
+}
+if (pickleItem.sizeQty !== 24) {
+  throw new Error(`Expected sizeQty 24 but got ${pickleItem.sizeQty}`);
+}
+if (pickleItem.unitType !== 'oz') {
+  throw new Error(`Expected unitType oz but got ${pickleItem.unitType}`);
+}
