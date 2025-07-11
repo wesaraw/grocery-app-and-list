@@ -175,6 +175,11 @@ export function scrapeShaws() {
     let unitType = parsedInfo ? parsedInfo.unitType : null;
     if (unitType) {
       unitType = UNIT_ALIASES[unitType] || unitType;
+      if (pricePerUnit != null && WEIGHT_UNITS.has(unitType) && UNIT_FACTORS[unitType]) {
+        pricePerUnit = pricePerUnit / UNIT_FACTORS[unitType];
+        unitQty = 1;
+        unitType = 'oz';
+      }
     }
 
     if (sizeQty != null && sizeUnit) {

@@ -89,3 +89,28 @@ console.log('perSheetWalmart', perSheetWalmart);
 if (perSheetWalmart == null || Math.abs(perSheetWalmart - 0.022) > 0.001) {
   throw new Error(`Expected around 0.022 but got ${perSheetWalmart}`);
 }
+
+// Shaws Dentastix parsing
+const dentHtml = fs.readFileSync("Search Results Dentastixs _ Shaw's.html", 'utf8');
+const dentDom = new JSDOM(dentHtml);
+Object.defineProperty(dentDom.window.HTMLElement.prototype, 'innerText', {
+  get() {
+    return this.textContent;
+  },
+  set(v) {
+    this.textContent = v;
+  }
+});
+global.document = dentDom.window.document;
+global.window = dentDom.window;
+const { scrapeShaws } = await import('../scrapers/shaws.js');
+const dentProducts = scrapeShaws();
+const dentItem = dentProducts.find(p => /Dentastix/i.test(p.name));
+if (!dentItem) throw new Error('Failed to find Dentastix item');
+console.log('dentastixPrice', dentItem.pricePerUnit.toFixed(3));
+if (dentItem.unitType !== 'oz') {
+  throw new Error(`Expected unitType oz but got ${dentItem.unitType}`);
+}
+if (Math.abs(dentItem.pricePerUnit - 0.7137) > 0.001) {
+  throw new Error(`Expected price per oz around 0.714 but got ${dentItem.pricePerUnit}`);
+}
