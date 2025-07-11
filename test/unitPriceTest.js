@@ -87,8 +87,37 @@ if (walmartItem.packCount !== 12) {
 }
 const perSheetWalmart = pricePerHomeUnit('Bounty Paper Towels', walmartItem);
 console.log('perSheetWalmart', perSheetWalmart);
-if (perSheetWalmart == null || Math.abs(perSheetWalmart - 0.022) > 0.001) {
-  throw new Error(`Expected around 0.022 but got ${perSheetWalmart}`);
+  if (perSheetWalmart == null || Math.abs(perSheetWalmart - 0.022) > 0.001) {
+    throw new Error(`Expected around 0.022 but got ${perSheetWalmart}`);
+  }
+
+// Walmart fl. oz parsing
+const snippetHtml = `
+<div data-testid="list-view">
+  <div>
+    <div data-automation-id="product-title">Test Oil 12 fl. oz</div>
+    <div data-automation-id="product-price">$1.20</div>
+    <div data-testid="product-price-per-unit">$0.10/fl. oz</div>
+    <img data-testid="productTileImage" src="test.jpg" />
+    <a href="/ip/test"></a>
+  </div>
+</div>`;
+const snippetDom = new JSDOM(snippetHtml);
+Object.defineProperty(snippetDom.window.HTMLElement.prototype, 'innerText', {
+  get() {
+    return this.textContent;
+  },
+  set(v) {
+    this.textContent = v;
+  }
+});
+global.document = snippetDom.window.document;
+global.window = snippetDom.window;
+const { scrapeWalmart: scrapeWalmartSnippet } = await import('../scrapers/walmart.js');
+const snippetProducts = scrapeWalmartSnippet();
+const snippetItem = snippetProducts[0];
+if (!snippetItem || snippetItem.unitType !== 'oz' || Math.abs(snippetItem.pricePerUnit - 0.1) > 0.0001) {
+  throw new Error('Failed to parse fl. oz unit');
 }
 
 // Shaws Dentastix parsing
