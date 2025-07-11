@@ -3,6 +3,7 @@ import { parsePriceNumber } from "../utils/priceUtils.js";
 export function scrapeWalmart() {
   const UNIT_FACTORS = {
     oz: 1,
+    floz: 1,
     lb: 16,
     g: 0.035274,
     kg: 35.274,
@@ -99,30 +100,34 @@ export function scrapeWalmart() {
     let sizeQty = null;
     let sizeUnit = null;
     let convertedQty = null;
+    let unitQty = null;
 
     const sizeMatch = name?.match(/(\d+(?:\.\d+)?)\s*(fl\s*oz|oz|lb|g|kg|ml|l|ct)/i);
     if (sizeMatch) {
       sizeQty = parseFloat(sizeMatch[1]);
-      sizeUnit = sizeMatch[2].replace(/\s+/g, '');
-      const factor = UNIT_FACTORS[sizeUnit.toLowerCase()];
+      sizeUnit = sizeMatch[2].replace(/\s+/g, '').toLowerCase();
+      if (sizeUnit === 'floz') sizeUnit = 'oz';
+      const factor = UNIT_FACTORS[sizeUnit];
       if (factor) {
-        if (!COUNT_UNITS.has(sizeUnit.toLowerCase())) {
+        sizeQty = sizeQty * packCount;
+        if (!COUNT_UNITS.has(sizeUnit)) {
           convertedQty = sizeQty * factor;
           unitType = 'oz';
+          unitQty = 1;
           if (price) {
             const p = parseFloat(price.replace(/[^0-9.]/g, ''));
             if (!isNaN(p)) {
-              const totalConverted = convertedQty * packCount;
-              pricePerUnit = p / totalConverted;
+              pricePerUnit = p / convertedQty;
             }
           }
         } else {
-          unitType = sizeUnit.toLowerCase();
+          convertedQty = sizeQty;
+          unitType = sizeUnit;
+          unitQty = 1;
           if (price) {
             const p = parseFloat(price.replace(/[^0-9.]/g, ''));
-            if (!isNaN(p)) {
-              const totalCount = sizeQty * packCount;
-              pricePerUnit = p / totalCount;
+            if (!isNaN(p) && convertedQty > 0) {
+              pricePerUnit = p / convertedQty;
             }
           }
         }
@@ -130,13 +135,26 @@ export function scrapeWalmart() {
     }
 
     if (pricePerUnit == null) {
-      const match = perUnitText?.match(/\$([\d.]+)\/?\s*([\d.]*)\s*(\w+)/);
-      if (match) {
-        let priceVal = parseFloat(match[1]);
-        const qtyVal = parseFloat(match[2]);
+      let m = perUnitText?.match(/\$([\d.]+)\/?\s*([\d.]*)\s*([a-zA-Z]+(?:\s*[a-zA-Z]+)*)/);
+      let priceVal = null;
+      let qtyVal = null;
+      if (m) {
+        priceVal = parseFloat(m[1]);
+        qtyVal = parseFloat(m[2]);
+        unitType = m[3].replace(/\s+/g, '').toLowerCase();
+      } else {
+        m = perUnitText?.match(/([\d.]+)\s*¢\/?\s*([\d.]*)\s*([a-zA-Z]+(?:\s*[a-zA-Z]+)*)/);
+        if (m) {
+          priceVal = parseFloat(m[1]) / 100;
+          qtyVal = parseFloat(m[2]);
+          unitType = m[3].replace(/\s+/g, '').toLowerCase();
+        }
+      }
+      if (m) {
+        if (unitType === 'floz') unitType = 'oz';
         const qty = !isNaN(qtyVal) && qtyVal !== 0 ? qtyVal : 1;
         pricePerUnit = priceVal / qty;
-        unitType = match[3].toLowerCase();
+        unitQty = qty;
         const factor = UNIT_FACTORS[unitType];
         if (factor && !COUNT_UNITS.has(unitType)) {
           pricePerUnit = pricePerUnit / factor;
@@ -173,7 +191,7 @@ export function scrapeWalmart() {
         sizeQty,
         sizeUnit,
         unit: perUnitText || '',
-        unitQty: null,
+        unitQty,
         unitType,
         convertedQty,
         pricePerUnit,
