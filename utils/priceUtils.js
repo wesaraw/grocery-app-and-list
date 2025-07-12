@@ -7,9 +7,9 @@ export const UNIT_ALIASES = {
   pounds: 'lb',
   perpound: 'lb',
   perlb: 'lb',
-  floz: 'oz',
-  fluidounce: 'oz',
-  flounce: 'oz'
+  floz: 'floz',
+  fluidounce: 'floz',
+  flounce: 'floz'
 };
 
 export function normalizeUnit(unit) {

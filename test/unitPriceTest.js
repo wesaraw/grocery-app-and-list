@@ -116,7 +116,7 @@ global.window = snippetDom.window;
 const { scrapeWalmart: scrapeWalmartSnippet } = await import('../scrapers/walmart.js');
 const snippetProducts = scrapeWalmartSnippet();
 const snippetItem = snippetProducts[0];
-if (!snippetItem || snippetItem.unitType !== 'oz' || Math.abs(snippetItem.pricePerUnit - 0.1) > 0.0001) {
+if (!snippetItem || snippetItem.unitType !== 'floz' || Math.abs(snippetItem.pricePerUnit - 0.1) > 0.0001) {
   throw new Error('Failed to parse fl. oz unit');
 }
 
@@ -144,7 +144,7 @@ global.document = snippetDom2.window.document;
 global.window = snippetDom2.window;
 const snippetProducts2 = scrapeWalmartSnippet();
 const snippetItem2 = snippetProducts2[0];
-if (!snippetItem2 || snippetItem2.unitType !== 'oz' || snippetItem2.unitQty !== 1 || Math.abs(snippetItem2.pricePerUnit - 0.12) > 0.0001) {
+if (!snippetItem2 || snippetItem2.unitType !== 'floz' || snippetItem2.unitQty !== 1 || Math.abs(snippetItem2.pricePerUnit - 0.12) > 0.0001) {
   throw new Error('Failed to parse cents per fl. oz unit');
 }
 
@@ -219,7 +219,6 @@ function extractSize(text) {
   const hyphenMatch = normalized.match(/\b\d+\s*-\s*([\d.]+)\s*(fl\s*oz|oz|lb|kg|ml|l|gal|g|qt|pt|cup|tbsp|tsp)/i);
   if (hyphenMatch) {
     let unit = hyphenMatch[2].toLowerCase().replace(/\s+/g, '');
-    if (unit === 'floz') unit = 'oz';
     unit = UNIT_ALIASES[unit] || unit;
     const qty = parseFloat(hyphenMatch[1]);
     return [qty, unit];
@@ -227,8 +226,7 @@ function extractSize(text) {
   const regex = /([\d.]+)\s*(fl\s*oz|oz|lb|kg|ml|l|gal|g|qt|pt|cup|tbsp|tsp|ea|ct|count)/gi;
   for (const m of normalized.matchAll(regex)) {
     let unit = m[2].toLowerCase().replace(/\s+/g, '');
-    if (unit === 'floz') unit = 'oz';
-    else if (unit === 'count') unit = 'ct';
+    if (unit === 'count') unit = 'ct';
     unit = UNIT_ALIASES[unit] || unit;
     return [parseFloat(m[1]), unit];
   }

@@ -112,7 +112,7 @@ export function scrapeWalmart() {
         sizeQty = sizeQty * packCount;
         if (!COUNT_UNITS.has(sizeUnit)) {
           convertedQty = sizeQty * factor;
-          unitType = 'oz';
+          unitType = sizeUnit === 'floz' ? 'floz' : 'oz';
           unitQty = 1;
           if (price) {
             const p = parseFloat(price.replace(/[^0-9.]/g, ''));
@@ -143,7 +143,9 @@ export function scrapeWalmart() {
         const factor = UNIT_FACTORS[unitType];
         if (factor && !COUNT_UNITS.has(unitType)) {
           pricePerUnit = pricePerUnit / factor;
-          unitType = 'oz';
+          if (unitType !== 'floz') {
+            unitType = 'oz';
+          }
         }
       }
     }
