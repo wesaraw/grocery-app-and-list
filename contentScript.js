@@ -1,5 +1,4 @@
-(async () => {
-  const { UNIT_ALIASES, normalizeUnit, parseUnitPrice } = await import(chrome.runtime.getURL('utils/unitUtils.js'));
+import { UNIT_ALIASES, normalizeUnit, parseUnitPrice } from './utils/unitUtils.js';
 console.log("✅ contentScript.js loaded on page:", window.location.href);
 function getImageSrc(el) {
   if (!el) return "";
@@ -956,4 +955,3 @@ function parseNumber(str) {
   return isNaN(n) ? NaN : n;
 }
 
-})();
