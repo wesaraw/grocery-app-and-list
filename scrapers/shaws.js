@@ -1,5 +1,6 @@
 import { getImageSrc } from "../utils/imageUtils.js";
-import { parsePriceNumber, parseUnitPrice, UNIT_ALIASES } from "../utils/priceUtils.js";
+import { parsePriceNumber } from "../utils/priceUtils.js";
+import { parseUnitPrice, UNIT_ALIASES } from "../utils/unitUtils.js";
 export function scrapeShaws() {
   const UNIT_FACTORS = {
     oz: 1,
