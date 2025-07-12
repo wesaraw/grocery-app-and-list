@@ -1,5 +1,6 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
+import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from "./utils/priceUtils.js";
 import { nameMatchesProduct } from './utils/nameUtils.js';
 
@@ -33,6 +34,7 @@ const loadMonthlyConsumption = () => loadArray('monthlyConsumption', CONSUMPTION
 let needsData = [];
 let consumptionMap = new Map();
 let weightPackMap = new Map();
+let densityMap = {};
 
 function baseGetPackInfo(product) {
   if (product && product.packCount && product.packCount > 1) {
@@ -79,30 +81,36 @@ function baseGetPackInfo(product) {
   return { count: 1, weightPerPack: false };
 }
 
-function weightKey(product) {
+function weightKey(product, itemName) {
   if (product.convertedQty != null) return product.convertedQty.toFixed(2);
   if (product.sizeQty != null && product.sizeUnit) {
-    const oz = convert(product.sizeQty, product.sizeUnit, 'oz');
+    const info = densityMap[itemName] || {};
+    const oz = convertWithDensity(
+      product.sizeQty,
+      product.sizeUnit,
+      'oz',
+      { convert_volume_to_weight: info.convert, custom_density_ratio: info.ratio }
+    );
     if (!isNaN(oz)) return oz.toFixed(2);
   }
   return null;
 }
 
-function getPackInfo(product) {
+function getPackInfo(product, itemName = null) {
   if (product && product.packCount && product.packCount > 1) {
     return { count: product.packCount, weightPerPack: false };
   }
   const base = baseGetPackInfo(product);
   if (base.count > 1) return base;
-  const key = weightKey(product);
+  const key = weightKey(product, itemName);
   if (key && weightPackMap.has(key)) {
     return weightPackMap.get(key);
   }
   return base;
 }
 
-function getPackCount(product) {
-  return getPackInfo(product).count;
+function getPackCount(product, itemName = null) {
+  return getPackInfo(product, itemName).count;
 }
 
 
@@ -127,7 +135,8 @@ function extractSheetCount(itemName, product) {
 function pricePerHomeUnit(itemName, product) {
   const item = needsData.find(n => n.name === itemName);
   if (!item || !product) return null;
-  const { count: pack, weightPerPack } = getPackInfo(product);
+  const info = densityMap[itemName] || {};
+  const { count: pack, weightPerPack } = getPackInfo(product, itemName);
   const mult = weightPerPack ? 1 : pack;
   const unit = item.home_unit ? item.home_unit.toLowerCase() : 'each';
   if (unit === 'sheets') {
@@ -155,14 +164,24 @@ function pricePerHomeUnit(itemName, product) {
     if (product.convertedQty != null) {
       ozQty = product.convertedQty * mult;
     } else if (product.sizeQty != null && product.sizeUnit) {
-      ozQty = convert(product.sizeQty * mult, product.sizeUnit, 'oz');
+      ozQty = convertWithDensity(
+        product.sizeQty * mult,
+        product.sizeUnit,
+        'oz',
+        { convert_volume_to_weight: info.convert, custom_density_ratio: info.ratio }
+      );
     }
     if (ozQty != null) {
       pricePerOz = product.priceNumber / ozQty;
     }
   }
   if (pricePerOz != null) {
-    const ozPerUnit = convert(1, item.home_unit, 'oz');
+    const ozPerUnit = convertWithDensity(
+      1,
+      item.home_unit,
+      'oz',
+      { convert_volume_to_weight: info.convert, custom_density_ratio: info.ratio }
+    );
     if (!isNaN(ozPerUnit) && ozPerUnit > 0) {
       return pricePerOz * ozPerUnit;
     }
@@ -232,7 +251,13 @@ function applyCoupon(prod, coupons, week, store) {
   } else if (copy.convertedQty != null) {
     copy.pricePerUnit = price / copy.convertedQty;
   } else if (copy.sizeQty != null && copy.sizeUnit) {
-    const oz = convert(copy.sizeQty, copy.sizeUnit, 'oz');
+    const info = densityMap[item] || {};
+    const oz = convertWithDensity(
+      copy.sizeQty,
+      copy.sizeUnit,
+      'oz',
+      { convert_volume_to_weight: info.convert, custom_density_ratio: info.ratio }
+    );
     if (!isNaN(oz)) {
       copy.convertedQty = oz;
       copy.pricePerUnit = price / oz;
@@ -259,7 +284,7 @@ function buildWeightPackMap(products) {
       info = baseGetPackInfo(p);
     }
     if (info.count > 1) {
-      const key = weightKey(p);
+      const key = weightKey(p, item);
       if (key && (!map.has(key) || map.get(key).count < info.count)) {
         map.set(key, info);
       }
@@ -292,15 +317,17 @@ title.textContent = `${item} - ${store}`;
 
 async function init() {
   await initUomTable();
-  const [products, coupons, needs, consumption, mealMonth] = await Promise.all([
+  const [products, coupons, needs, consumption, mealMonth, dMap] = await Promise.all([
     loadProducts(item, store),
     loadCoupons(),
     loadNeeds(),
     loadMonthlyConsumption(),
-    loadMealPlanMonth()
+    loadMealPlanMonth(),
+    loadDensityMap()
   ]);
 
   needsData = needs;
+  densityMap = dMap;
   const consMap = new Map(consumption.map(c => [c.name, c]));
   (mealMonth || []).forEach(m => {
     const rec = consMap.get(m.name);

@@ -1,6 +1,7 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { calculatePurchaseNeeds } from './utils/purchaseCalculator.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
+import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import {
@@ -122,7 +123,7 @@ async function loadMealsByCategory() {
 }
 
 async function getData() {
-  const [needs, selections, consumption, stock, expiration, consumed, purchases, mealYear, mealMonth, calendar, meals] =
+  const [needs, selections, consumption, stock, expiration, consumed, purchases, mealYear, mealMonth, calendar, meals, dMap] =
     await Promise.all([
       loadNeeds(),
       loadJSON(STORE_SELECTION_PATH),
@@ -134,7 +135,8 @@ async function getData() {
       loadStoredArray('mealPlanYearly'),
       loadMealPlanMonth(),
       loadCalendar(),
-      loadMealsByCategory()
+      loadMealsByCategory(),
+      loadDensityMap()
     ]);
   return {
     needs,
@@ -147,7 +149,8 @@ async function getData() {
     mealYear,
     mealMonth,
     calendar,
-    mealsByCategory: meals
+    mealsByCategory: meals,
+    density: dMap
   };
 }
 
@@ -166,6 +169,7 @@ let hideZeroItems = false;
 let filterText = '';
 const headerState = {};
 let weightPackMap = new Map();
+let densityMap = {};
 let mealMonthMap = new Map();
 let mealPlanMonthMap = new Map();
 let selectionsData = [];
@@ -237,30 +241,36 @@ function baseGetPackInfo(product) {
   return { count: 1, weightPerPack: false };
 }
 
-function weightKey(product) {
+function weightKey(product, itemName) {
   if (product.convertedQty != null) return product.convertedQty.toFixed(2);
   if (product.sizeQty != null && product.sizeUnit) {
-    const oz = convert(product.sizeQty, product.sizeUnit, 'oz');
+    const info = densityMap[itemName] || {};
+    const oz = convertWithDensity(
+      product.sizeQty,
+      product.sizeUnit,
+      'oz',
+      { convert_volume_to_weight: info.convert, custom_density_ratio: info.ratio }
+    );
     if (!isNaN(oz)) return oz.toFixed(2);
   }
   return null;
 }
 
-function getPackInfo(product, map = weightPackMap) {
+function getPackInfo(product, map = weightPackMap, itemName = null) {
   if (product && product.packCount && product.packCount > 1) {
     return { count: product.packCount, weightPerPack: false };
   }
   const base = baseGetPackInfo(product);
   if (base.count > 1) return base;
-  const key = weightKey(product);
+  const key = weightKey(product, itemName);
   if (key && map && map.has(key)) {
     return map.get(key);
   }
   return base;
 }
 
-function getPackCount(product, map = weightPackMap) {
-  return getPackInfo(product, map).count;
+function getPackCount(product, map = weightPackMap, itemName = null) {
+  return getPackInfo(product, map, itemName).count;
 }
 
 async function buildWeightPackMap(item, stores) {
@@ -275,7 +285,7 @@ async function buildWeightPackMap(item, stores) {
         info = baseGetPackInfo(p);
       }
       if (info.count > 1) {
-        const key = weightKey(p);
+        const key = weightKey(p, item);
         if (key && (!map.has(key) || map.get(key).count < info.count)) {
           map.set(key, info);
         }
@@ -308,7 +318,8 @@ function extractSheetCount(itemName, product) {
 function pricePerHomeUnit(itemName, product, map = weightPackMap) {
   const item = needsData.find(n => n.name === itemName);
   if (!item || !product) return null;
-  const { count: pack, weightPerPack } = getPackInfo(product, map);
+  const info = densityMap[itemName] || {};
+  const { count: pack, weightPerPack } = getPackInfo(product, map, itemName);
   const mult = weightPerPack ? 1 : pack;
   const unit = item.home_unit ? item.home_unit.toLowerCase() : 'each';
   if (unit === 'sheets') {
@@ -336,14 +347,24 @@ function pricePerHomeUnit(itemName, product, map = weightPackMap) {
     if (product.convertedQty != null) {
       ozQty = product.convertedQty * mult;
     } else if (product.sizeQty != null && product.sizeUnit) {
-      ozQty = convert(product.sizeQty * mult, product.sizeUnit, 'oz');
+      ozQty = convertWithDensity(
+        product.sizeQty * mult,
+        product.sizeUnit,
+        'oz',
+        { convert_volume_to_weight: info.convert, custom_density_ratio: info.ratio }
+      );
     }
     if (ozQty != null) {
       pricePerOz = product.priceNumber / ozQty;
     }
   }
   if (pricePerOz != null) {
-    const ozPerUnit = convert(1, item.home_unit, 'oz');
+    const ozPerUnit = convertWithDensity(
+      1,
+      item.home_unit,
+      'oz',
+      { convert_volume_to_weight: info.convert, custom_density_ratio: info.ratio }
+    );
     if (!isNaN(ozPerUnit) && ozPerUnit > 0) {
       return pricePerOz * ozPerUnit;
     }
@@ -395,9 +416,9 @@ function formatFinalText(itemName, store, product, map = weightPackMap) {
 
 function updateFinalInfo(itemName, span, img, store, product, map = weightPackMap) {
   if (product) {
-    const info = getPackInfo(product, map);
+    const info = getPackInfo(product, map, itemName);
     if (info.count > 1) {
-      const wKey = weightKey(product);
+      const wKey = weightKey(product, itemName);
       if (wKey && map && (!map.has(wKey) || map.get(wKey).count < info.count)) {
         map.set(wKey, info);
       }
@@ -428,9 +449,11 @@ async function init() {
     mealYear,
     mealMonth,
     calendar,
-    mealsByCategory
+    mealsByCategory,
+    density
   } = await getData();
   needsData = needs;
+  densityMap = density;
   selectionsData = selections;
   const sortedNeeds = sortItemsByCategory(needs);
   const consMap = new Map(consumption.map(c => [c.name, c]));
@@ -473,7 +496,8 @@ async function init() {
     week,
     calendar,
     mealsByCategory,
-    !hasCalendar
+    !hasCalendar,
+    densityMap
   );
   const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
   const stockMap = new Map(stock.map(i => [i.name, i]));
@@ -510,9 +534,9 @@ async function init() {
         .map(s => s.store);
       const weightMap = await buildWeightPackMap(item.name, stores);
       if (product) {
-        const info = getPackInfo(product, weightMap);
+        const info = getPackInfo(product, weightMap, item.name);
         if (info.count > 1) {
-          const wKey = weightKey(product);
+          const wKey = weightKey(product, item.name);
           if (
             wKey &&
             (!weightMap.has(wKey) || weightMap.get(wKey).count < info.count)
@@ -550,9 +574,9 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
         .map(s => s.store);
       const weightMap = await buildWeightPackMap(message.item, stores);
       if (prod) {
-        const info = getPackInfo(prod, weightMap);
+        const info = getPackInfo(prod, weightMap, message.item);
         if (info.count > 1) {
-          const wKey = weightKey(prod);
+          const wKey = weightKey(prod, message.item);
           if (wKey && (!weightMap.has(wKey) || weightMap.get(wKey).count < info.count)) {
             weightMap.set(wKey, info);
           }
@@ -577,7 +601,8 @@ async function refreshNeeds(stock = stockData, consumed = consumedYearData) {
     getCurrentWeek(),
     calendarData,
     mealsByCategoryData,
-    !hasCalendar
+    !hasCalendar,
+    densityMap
   );
   const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
   const stockMap = new Map(stock.map(i => [i.name, i]));
@@ -659,7 +684,8 @@ async function rerenderAll() {
     week,
     calendar,
     mealsByCategory,
-    !hasCalendar
+    !hasCalendar,
+    densityMap
   );
   const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
   const stockMap = new Map(stock.map(i => [i.name, i]));
@@ -696,9 +722,9 @@ async function rerenderAll() {
         .map(s => s.store);
       const weightMap = await buildWeightPackMap(item.name, stores);
       if (product) {
-        const info = getPackInfo(product, weightMap);
+        const info = getPackInfo(product, weightMap, item.name);
         if (info.count > 1) {
-          const wKey = weightKey(product);
+          const wKey = weightKey(product, item.name);
           if (
             wKey &&
             (!weightMap.has(wKey) || weightMap.get(wKey).count < info.count)
@@ -793,7 +819,12 @@ async function commitSelections() {
   for (const item of needsData) {
     const { store, product } = await loadCommitData(item.name);
     if (!product) continue;
-    const { count: pack, weightPerPack } = getPackInfo(product, new Map());
+    const info = densityMap[item.name] || {};
+    const { count: pack, weightPerPack } = getPackInfo(
+      product,
+      new Map(),
+      item.name
+    );
 
     let amount = pack;
     if (item.home_unit.toLowerCase() !== 'each') {
@@ -802,10 +833,20 @@ async function commitSelections() {
       if (product.convertedQty != null) {
         ozQty = product.convertedQty * mult;
       } else if (product.sizeQty != null && product.sizeUnit) {
-        ozQty = convert(product.sizeQty * mult, product.sizeUnit, 'oz');
+        ozQty = convertWithDensity(
+          product.sizeQty * mult,
+          product.sizeUnit,
+          'oz',
+          { convert_volume_to_weight: info.convert, custom_density_ratio: info.ratio }
+        );
       }
       if (ozQty != null) {
-        amount = convert(ozQty, 'oz', item.home_unit);
+        amount = convertWithDensity(
+          ozQty,
+          'oz',
+          item.home_unit,
+          { convert_volume_to_weight: info.convert, custom_density_ratio: info.ratio }
+        );
       }
     }
 

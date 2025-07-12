@@ -11,6 +11,7 @@ import {
 import { generateWhatToEatCalendar } from './whatToEatCalendar.js';
 import { loadJSON } from './dataLoader.js';
 import { initUomTable, convert } from './uomConverter.js';
+import { loadDensityMap, convertWithDensity } from './unitNormalize.js';
 import { loadUsers, loadUserCategoryDays } from './userData.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -55,6 +56,7 @@ function loadMeals(type) {
 export async function calculateAndSaveMealNeeds() {
   await initializeMealCategories();
   await initUomTable();
+  const densityMap = await loadDensityMap();
   const needsList = await loadJSON(YEARLY_NEEDS_PATH).catch(() => []);
   const unitMap = new Map(needsList.map(n => [n.name, n.home_unit]));
   const monthlyMap = {};
@@ -130,7 +132,11 @@ export async function calculateAndSaveMealNeeds() {
         let qty = value;
         const target = unitMap.get(ing.name);
         if (unit && target && unit !== target) {
-          qty = convert(value, unit, target);
+          const info = densityMap[ing.name] || {};
+          qty = convertWithDensity(value, unit, target, {
+            convert_volume_to_weight: info.convert,
+            custom_density_ratio: info.ratio
+          });
         }
         const need = qty * monthlySpots;
         monthlyMap[ing.name] = (monthlyMap[ing.name] || 0) + need;
