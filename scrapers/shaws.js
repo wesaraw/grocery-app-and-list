@@ -150,7 +150,7 @@ export function scrapeShaws() {
     const packCount = getPackCount(name, sizeText, unitText);
     const linkRel = titleEl?.getAttribute('href');
     const link = linkRel ? new URL(linkRel, 'https://www.shaws.com').href : '';
-    const priceText = tile.querySelector('[data-qa="prd-itm-prc"]')?.innerText?.trim();
+    const priceText = tile.querySelector('[data-qa="prd-itm-prc"]')?.textContent?.trim();
     const image = getImageSrc(tile.querySelector('img[data-qa="prd-itm-img"]'));
 
     let priceNumber = null;
