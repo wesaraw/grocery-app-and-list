@@ -1,5 +1,5 @@
 import { getImageSrc } from "../utils/imageUtils.js";
-import { parsePriceNumber, normalizeUnit } from "../utils/priceUtils.js";
+import { parsePriceNumber, normalizeUnit, parseUnitPrice } from "../utils/priceUtils.js";
 export function scrapeWalmart() {
   const UNIT_FACTORS = {
     oz: 1,
@@ -133,25 +133,12 @@ export function scrapeWalmart() {
       }
     }
 
-    if (pricePerUnit == null) {
-      let m = perUnitText?.match(/\$([\d.]+)\/?\s*([\d.]*)\s*([a-zA-Z\.]+(?:\s*[a-zA-Z\.]+)*)/);
-      let priceVal = null;
-      let qtyVal = null;
-      if (m) {
-        priceVal = parseFloat(m[1]);
-        qtyVal = parseFloat(m[2]);
-        unitType = normalizeUnit(m[3]);
-      } else {
-        m = perUnitText?.match(/([\d.]+)\s*¢\/?\s*([\d.]*)\s*([a-zA-Z\.]+(?:\s*[a-zA-Z\.]+)*)/);
-        if (m) {
-          priceVal = parseFloat(m[1]) / 100;
-          qtyVal = parseFloat(m[2]);
-          unitType = normalizeUnit(m[3]);
-        }
-      }
-      if (m) {
-        const qty = !isNaN(qtyVal) && qtyVal !== 0 ? qtyVal : 1;
-        unitQty = qty;
+    if (pricePerUnit == null && perUnitText) {
+      const parsed = parseUnitPrice(perUnitText);
+      if (parsed) {
+        pricePerUnit = parsed.pricePerUnit;
+        unitType = parsed.unitType;
+        unitQty = parsed.unitQty;
         const factor = UNIT_FACTORS[unitType];
         if (factor && !COUNT_UNITS.has(unitType)) {
           pricePerUnit = pricePerUnit / factor;

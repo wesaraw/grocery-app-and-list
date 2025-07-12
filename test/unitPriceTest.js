@@ -120,6 +120,34 @@ if (!snippetItem || snippetItem.unitType !== 'oz' || Math.abs(snippetItem.priceP
   throw new Error('Failed to parse fl. oz unit');
 }
 
+// Walmart cents per fl. oz without size in name
+const snippetHtml2 = `
+<div data-testid="list-view">
+  <div>
+    <div data-automation-id="product-title">Test Oil</div>
+    <div data-automation-id="product-price">$1.44</div>
+    <div data-testid="product-price-per-unit">12.0 ¢/fl oz</div>
+    <img data-testid="productTileImage" src="test.jpg" />
+    <a href="/ip/test"></a>
+  </div>
+</div>`;
+const snippetDom2 = new JSDOM(snippetHtml2);
+Object.defineProperty(snippetDom2.window.HTMLElement.prototype, 'innerText', {
+  get() {
+    return this.textContent;
+  },
+  set(v) {
+    this.textContent = v;
+  }
+});
+global.document = snippetDom2.window.document;
+global.window = snippetDom2.window;
+const snippetProducts2 = scrapeWalmartSnippet();
+const snippetItem2 = snippetProducts2[0];
+if (!snippetItem2 || snippetItem2.unitType !== 'oz' || snippetItem2.unitQty !== 1 || Math.abs(snippetItem2.pricePerUnit - 0.12) > 0.0001) {
+  throw new Error('Failed to parse cents per fl. oz unit');
+}
+
 // Shaws Dentastix parsing
 const dentHtml = fs.readFileSync("Search Results Dentastixs _ Shaw's.html", 'utf8');
 const dentDom = new JSDOM(dentHtml);
