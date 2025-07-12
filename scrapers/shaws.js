@@ -140,8 +140,8 @@ export function scrapeShaws() {
   const tiles = document.querySelectorAll('product-item-al-v2');
   tiles.forEach(tile => {
     const titleEl = tile.querySelector('[data-qa="prd-itm-pttl"]');
-    const name = titleEl?.innerText?.trim();
-    const sizeText = tile.querySelector('[data-qa="prd-itm-sqty"]')?.innerText?.trim();
+    const name = titleEl?.textContent?.trim();
+    const sizeText = tile.querySelector('[data-qa="prd-itm-sqty"]')?.textContent?.trim();
     const unitText = (
       tile.querySelector('[data-qa="prd-itm-upr"]')?.textContent ||
       tile.querySelector('[data-qa="prd-itm-pprc-qty"]')?.textContent ||

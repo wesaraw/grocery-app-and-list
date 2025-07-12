@@ -105,15 +105,16 @@ export function scrapeStopAndShop() {
   const products = [];
   const tiles = document.querySelectorAll('li.tile.product-cell.product-grid-cell');
   tiles.forEach(tile => {
-    const name = tile.querySelector('.product-grid-cell_price-container > .sr-only')?.innerText?.trim();
+    const name = tile.querySelector('.product-grid-cell_price-container > .sr-only')?.textContent?.trim();
 
-    const priceText = tile.querySelector('.product-grid-cell_main-price')?.innerText?.trim();
+    const priceText = tile.querySelector('.product-grid-cell_main-price')?.textContent?.trim();
 
-    const unitSize = tile.querySelector('.product-grid-cell_size')?.innerText?.trim();
+    const unitSize = tile.querySelector('.product-grid-cell_size')?.textContent?.trim();
 
-    const perUnitText = tile.querySelector('.product-grid-cell_unit')?.innerText?.trim();
+    const perUnitText = tile.querySelector('.product-grid-cell_unit')?.textContent?.trim();
 
     const image = getImageSrc(tile.querySelector('img'));
+    const link = tile.querySelector('a[href*="/product/"]')?.href || '';
 
     const packCount = getPackCount(name, unitSize, perUnitText);
 

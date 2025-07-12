@@ -88,13 +88,13 @@ export function scrapeWalmart() {
   const products = [];
   const tiles = document.querySelectorAll('[data-testid="list-view"] > div');
   tiles.forEach((tile, i) => {
-    const name = tile.querySelector('[data-automation-id="product-title"]')?.innerText?.trim();
+    const name = tile.querySelector('[data-automation-id="product-title"]')?.textContent?.trim();
     const packCount = getPackCount(name, null, null);
-    const priceMatch = tile.querySelector('[data-automation-id="product-price"]')?.innerText?.match(/\$?\d+\.\d{2}/);
+    const priceMatch = tile.querySelector('[data-automation-id="product-price"]')?.textContent?.match(/\$?\d+\.\d{2}/);
     const price = priceMatch ? priceMatch[0] : null;
     const perUnitTextRaw =
-      tile.querySelector('[data-testid="product-price-per-unit"]')?.innerText?.trim() ||
-      tile.querySelector('.gray')?.innerText?.trim();
+      tile.querySelector('[data-testid="product-price-per-unit"]')?.textContent?.trim() ||
+      tile.querySelector('.gray')?.textContent?.trim();
     const perUnitTextSanitized = perUnitTextRaw?.replace(/[^\x00-\x7F]+/g, '');
     let pricePerUnit = null;
     let unitType = null;

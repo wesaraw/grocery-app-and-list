@@ -95,16 +95,16 @@ export function scrapeAmazon() {
   );
   tiles.forEach(tile => {
     const link = tile.querySelector('a.a-link-normal.s-no-outline')?.href || '';
-    const name = tile.querySelector('h2.a-size-base-plus span')?.innerText?.trim();
+    const name = tile.querySelector('h2.a-size-base-plus span')?.textContent?.trim();
     const image = getImageSrc(tile.querySelector('img.s-image'));
     const priceText = tile
-      .querySelector('span.a-price span.a-offscreen')?.innerText?.trim();
+      .querySelector('span.a-price span.a-offscreen')?.textContent?.trim();
     const unitText = tile
       .querySelector('span.a-size-base.a-color-secondary')
-      ?.innerText?.trim();
+      ?.textContent?.trim();
     const countText = tile
       .querySelector('span.a-size-base.a-color-base')
-      ?.innerText?.trim();
+      ?.textContent?.trim();
 
     const unitInfo = parseUnitInfo(name, unitText, countText);
     const packCount = unitInfo.packCount;
