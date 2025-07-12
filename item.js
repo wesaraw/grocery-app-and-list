@@ -1,5 +1,6 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
+import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
 
@@ -73,6 +74,7 @@ let consumptionMap = new Map();
 let storeOrder = [];
 let storeMapGlobal = new Map();
 let weightPackMap = new Map();
+let densityMap = {};
 
 // Examples that should return 12:
 //   "12 pack"
@@ -121,30 +123,36 @@ function baseGetPackInfo(product) {
   return { count: 1, weightPerPack: false };
 }
 
-function weightKey(product) {
+function weightKey(product, itemName) {
   if (product.convertedQty != null) return product.convertedQty.toFixed(2);
   if (product.sizeQty != null && product.sizeUnit) {
-    const oz = convert(product.sizeQty, product.sizeUnit, 'oz');
+    const info = densityMap[itemName] || {};
+    const oz = convertWithDensity(
+      product.sizeQty,
+      product.sizeUnit,
+      'oz',
+      { convert_volume_to_weight: info.convert, custom_density_ratio: info.ratio }
+    );
     if (!isNaN(oz)) return oz.toFixed(2);
   }
   return null;
 }
 
-function getPackInfo(product, map = weightPackMap) {
+function getPackInfo(product, map = weightPackMap, itemName = null) {
   if (product && product.packCount && product.packCount > 1) {
     return { count: product.packCount, weightPerPack: false };
   }
   const base = baseGetPackInfo(product);
   if (base.count > 1) return base;
-  const key = weightKey(product);
+  const key = weightKey(product, itemName);
   if (key && map && map.has(key)) {
     return map.get(key);
   }
   return base;
 }
 
-function getPackCount(product, map = weightPackMap) {
-  return getPackInfo(product, map).count;
+function getPackCount(product, map = weightPackMap, itemName = null) {
+  return getPackInfo(product, map, itemName).count;
 }
 
 
@@ -169,7 +177,8 @@ function extractSheetCount(itemName, product) {
 function pricePerHomeUnit(itemName, product, map = weightPackMap) {
   const item = needsData.find(n => n.name === itemName);
   if (!item || !product) return null;
-  const { count: pack, weightPerPack } = getPackInfo(product, map);
+  const info = densityMap[itemName] || {};
+  const { count: pack, weightPerPack } = getPackInfo(product, map, itemName);
   const mult = weightPerPack ? 1 : pack;
   const unit = item.home_unit ? item.home_unit.toLowerCase() : 'each';
   if (unit === 'sheets') {
@@ -197,14 +206,27 @@ function pricePerHomeUnit(itemName, product, map = weightPackMap) {
     if (product.convertedQty != null) {
       ozQty = product.convertedQty * mult;
     } else if (product.sizeQty != null && product.sizeUnit) {
-      ozQty = convert(product.sizeQty * mult, product.sizeUnit, 'oz');
+      ozQty = convertWithDensity(
+        product.sizeQty * mult,
+        product.sizeUnit,
+        'oz',
+        {
+          convert_volume_to_weight: info.convert,
+          custom_density_ratio: info.ratio
+        }
+      );
     }
     if (ozQty != null) {
       pricePerOz = product.priceNumber / ozQty;
     }
   }
   if (pricePerOz != null) {
-    const ozPerUnit = convert(1, item.home_unit, 'oz');
+    const ozPerUnit = convertWithDensity(
+      1,
+      item.home_unit,
+      'oz',
+      { convert_volume_to_weight: info.convert, custom_density_ratio: info.ratio }
+    );
     if (!isNaN(ozPerUnit) && ozPerUnit > 0) {
       return pricePerOz * ozPerUnit;
     }
@@ -258,7 +280,7 @@ async function buildWeightPackMap(item, stores) {
       }
       const info = { count, weightPerPack };
       if (info.count > 1) {
-        const key = weightKey(p);
+        const key = weightKey(p, item);
         if (key && (!map.has(key) || map.get(key).count < info.count)) {
           map.set(key, info);
         }
@@ -304,7 +326,7 @@ async function saveFinal(item, store, product) {
   }
 
   if (product) {
-    const packInfo = getPackInfo(product);
+    const packInfo = getPackInfo(product, weightPackMap, item);
     const updated = { ...product, image: image || '' };
     if (packInfo.count && packInfo.count > 1) {
       updated.packCount = packInfo.count;
@@ -323,12 +345,14 @@ async function init() {
   const params = new URLSearchParams(location.search);
   const itemName = params.get('item');
 
-  const [needs, consumption, mealMonth] = await Promise.all([
+  const [needs, consumption, mealMonth, dMap] = await Promise.all([
     loadNeeds(),
     loadConsumption(),
-    loadMealPlanMonth()
+    loadMealPlanMonth(),
+    loadDensityMap()
   ]);
   needsData = needs;
+  densityMap = dMap;
   const consMap = new Map(consumption.map(c => [c.name, c]));
   (mealMonth || []).forEach(m => {
     const rec = consMap.get(m.name);
@@ -420,12 +444,12 @@ async function init() {
 
     const selected = await loadSelected(itemName, entry.store);
     if (selected) {
-      const info = getPackInfo(selected);
+      const info = getPackInfo(selected, weightPackMap, itemName);
       if (info.count > 1) {
         if (!selected.packCount) {
           selected.packCount = info.count;
         }
-        const wKey = weightKey(selected);
+        const wKey = weightKey(selected, itemName);
         if (wKey && (!weightPackMap.has(wKey) || weightPackMap.get(wKey).count < info.count)) {
           weightPackMap.set(wKey, info);
         }
@@ -473,12 +497,12 @@ async function init() {
           // Rebuild the weight pack map to include newly scraped products
           await buildWeightPackMap(itemName, storeOrder);
 
-          const info = getPackInfo(selected);
+          const info = getPackInfo(selected, weightPackMap, itemName);
           if (info.count > 1) {
             if (!selected.packCount) {
               selected.packCount = info.count;
             }
-            const wKey = weightKey(selected);
+            const wKey = weightKey(selected, itemName);
             if (wKey && (!weightPackMap.has(wKey) || weightPackMap.get(wKey).count < info.count)) {
               weightPackMap.set(wKey, info);
             }

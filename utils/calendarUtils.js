@@ -1,4 +1,5 @@
 import { convert } from './uomConverter.js';
+import { loadDensityMap, convertWithDensity } from './unitNormalize.js';
 
 export function parseQuantity(str) {
   if (!str) return { value: 0, unit: null };
@@ -37,7 +38,7 @@ export function buildMealMap(mealsByCategory) {
   return map;
 }
 
-export function aggregateCalendar(calendar = {}, mealsByCategory = {}, needsMap = new Map()) {
+export function aggregateCalendar(calendar = {}, mealsByCategory = {}, needsMap = new Map(), densityMap = {}) {
   const mealMap = buildMealMap(mealsByCategory);
   const result = new Map();
   Object.values(calendar).forEach(days => {
@@ -55,7 +56,11 @@ export function aggregateCalendar(calendar = {}, mealsByCategory = {}, needsMap 
             let qty = value;
             const target = needsMap.get(ing.name);
             if (unit && target && unit !== target) {
-              qty = convert(value, unit, target);
+              const info = densityMap[ing.name] || {};
+              qty = convertWithDensity(value, unit, target, {
+                convert_volume_to_weight: info.convert,
+                custom_density_ratio: info.ratio
+              });
             }
             let arr = result.get(ing.name);
             if (!arr) {

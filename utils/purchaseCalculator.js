@@ -5,6 +5,7 @@ import {
   buildMealMap,
   aggregateCalendar
 } from './calendarUtils.js';
+import { loadDensityMap } from './unitNormalize.js';
 
 
 function sumRange(arr, start, end) {
@@ -70,7 +71,8 @@ export function calculatePurchaseNeeds(
   week = 1,
   calendar = {},
   mealsByCategory = {},
-  useMealPlanTotals = true
+  useMealPlanTotals = true,
+  densityMap = {}
 ) {
   const consMap = new Map(consumption.map(i => [i.name, i]));
   const expMap = new Map(expiration.map(i => [i.name, i]));
@@ -84,7 +86,7 @@ export function calculatePurchaseNeeds(
   }));
 
   const needsMap = new Map(needs.map(n => [n.name, n.home_unit]));
-  const calendarNeeds = aggregateCalendar(calendar, mealsByCategory, needsMap);
+  const calendarNeeds = aggregateCalendar(calendar, mealsByCategory, needsMap, densityMap);
 
   const weeklyNeedMap = new Map();
   mergedNeeds.forEach(item => {

@@ -90,3 +90,20 @@ export function normalizeUnit(settings = {}, quantityStr) {
   return { quantity: oz, unit: 'oz' };
 }
 
+
+export function convertWithDensity(qty, fromUnit, toUnit = 'oz', settings = {}) {
+  if (qty == null) return null;
+  if (!fromUnit || !toUnit) return qty;
+  const ratio =
+    settings.custom_density_ratio != null ? settings.custom_density_ratio : 1.0;
+  const convertVol = settings.convert_volume_to_weight;
+  let fromKey = fromUnit.toLowerCase();
+  let toKey = toUnit.toLowerCase();
+  if (fromKey === 'floz') fromKey = 'fl oz';
+  if (toKey === 'floz') toKey = 'fl oz';
+  if (convertVol && VOLUME_UNITS.has(fromKey) && WEIGHT_UNITS.has(toKey)) {
+    const ml = qty * (VOLUME_TO_ML[fromKey] || 1);
+    return convertToWeightFromVolume(ml, ratio);
+  }
+  return convert(qty, fromKey, toKey);
+}
