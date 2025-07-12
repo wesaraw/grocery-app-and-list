@@ -152,7 +152,7 @@ function scrapeStopAndShop() {
         size: unitSize || '',
         sizeQty,
         sizeUnit,
-        unit: perUnitText || '',
+        unit: perUnitTextSanitized || '',
         unitQty,
         unitType,
         convertedQty,
@@ -215,7 +215,8 @@ function scrapeWalmart() {
       const p = parseFloat(price.replace(/[^0-9.]/g, ''));
       if (!isNaN(p)) priceNumber = p;
     }
-    const perUnitText = tile.querySelector('.gray')?.innerText?.trim();
+    const perUnitTextRaw = tile.querySelector('.gray')?.innerText?.trim();
+    const perUnitTextSanitized = perUnitTextRaw?.replace(/[^\x00-\x7F]+/g, '');
     let pricePerUnit = null;
     let unitType = null;
     let sizeQty = null;
@@ -244,8 +245,8 @@ function scrapeWalmart() {
       }
     }
 
-    if (pricePerUnit == null) {
-      const match = perUnitText?.match(/\$([\d.]+)\/?\s*([\d./]*)\s*(\w+)/);
+      if (pricePerUnit == null) {
+        const match = perUnitTextRaw?.match(/\$([\d.]+)\/?\s*([\d./]*)\s*(\w+)/);
       if (match) {
         let priceVal = parseFloat(match[1]);
         const qtyVal = parseNumber(match[2]);
@@ -269,7 +270,7 @@ function scrapeWalmart() {
         size: '',
         sizeQty,
         sizeUnit,
-        unit: perUnitText || '',
+        unit: perUnitTextSanitized || '',
         unitQty: null,
         unitType,
         convertedQty,
