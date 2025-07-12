@@ -105,16 +105,16 @@ export function scrapeRocheBros() {
   const products = [];
   const tiles = document.querySelectorAll('[data-test="product-cell"]');
   tiles.forEach(tile => {
-    const name = tile.querySelector('.cell-title-text')?.innerText?.trim();
-    const sizeText = tile.querySelector('.cell-product-size')?.innerText?.trim();
-    let unitText = tile.querySelector('[data-test="per-unit-price"]')?.innerText?.trim();
+    const name = tile.querySelector('.cell-title-text')?.textContent?.trim();
+    const sizeText = tile.querySelector('.cell-product-size')?.textContent?.trim();
+    let unitText = tile.querySelector('[data-test="per-unit-price"]')?.textContent?.trim();
     const packCount = getPackCount(name, sizeText, unitText);
     const link = tile.querySelector('a[href]')?.href || '';
     const addBtn =
       tile.querySelector('button[data-test="add-to-cart-button"]') ||
       tile.querySelector('button[data-test-id^="add-to-cart-button"]');
     const addToCartId = addBtn?.id || addBtn?.getAttribute('data-test-id') || '';
-    const priceText = tile.querySelector('[data-test="amount"] span')?.innerText?.trim();
+    const priceText = tile.querySelector('[data-test="amount"] span')?.textContent?.trim();
     const imageEl = tile.querySelector('.cell-image');
     const image = getImageSrc(imageEl);
 

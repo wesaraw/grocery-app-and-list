@@ -124,11 +124,11 @@ export function scrapeHannaford() {
     const link = linkRel
       ? new URL(linkRel, 'https://www.hannaford.com').href
       : '';
-    const name = tile.querySelector('.productName .real-product-name')?.innerText?.trim();
-    const sizeText = tile.querySelector('.overline.text-truncate')?.innerText?.trim();
-    const unitText = tile.querySelector('.unitPriceDisplay')?.innerText?.trim();
+    const name = tile.querySelector('.productName .real-product-name')?.textContent?.trim();
+    const sizeText = tile.querySelector('.overline.text-truncate')?.textContent?.trim();
+    const unitText = tile.querySelector('.unitPriceDisplay')?.textContent?.trim();
     const packCount = getPackCount(name, sizeText, unitText);
-    const priceText = tile.querySelector('.priceCell .item-unit-price')?.innerText?.trim();
+    const priceText = tile.querySelector('.priceCell .item-unit-price')?.textContent?.trim();
     const priceHidden = tile.querySelector('.priceCell .item-price')?.value;
     const image = getImageSrc(tile.querySelector('img'));
 
