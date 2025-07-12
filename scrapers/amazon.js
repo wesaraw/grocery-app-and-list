@@ -97,6 +97,8 @@ export function scrapeAmazon() {
     const link = tile.querySelector('a.a-link-normal.s-no-outline')?.href || '';
     const name = tile.querySelector('h2.a-size-base-plus span')?.innerText?.trim();
     const image = getImageSrc(tile.querySelector('img.s-image'));
+    const priceText = tile
+      .querySelector('span.a-price span.a-offscreen')?.innerText?.trim();
     const unitText = tile
       .querySelector('span.a-size-base.a-color-secondary')
       ?.innerText?.trim();

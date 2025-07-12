@@ -122,13 +122,14 @@ function scrapeStopAndShop() {
   tiles.forEach((tile, index) => {
     console.log(`🔍 Tile ${index + 1} innerHTML:`, tile.innerHTML);
     const name = tile.querySelector('.product-grid-cell_price-container > .sr-only')?.innerText?.trim();
-    const packCount = getPackCount(name, unitSize, perUnitText);
 
     const priceText = tile.querySelector('.product-grid-cell_main-price')?.innerText?.trim();
 
     const unitSize = tile.querySelector('.product-grid-cell_size')?.innerText?.trim();
 
     const perUnitText = tile.querySelector('.product-grid-cell_unit')?.innerText?.trim();
+
+    const packCount = getPackCount(name, unitSize, perUnitText);
     const image = getImageSrc(tile.querySelector('img'));
     const link = tile.querySelector('a[href*="/product/"]')?.href || '';
 
@@ -257,7 +258,6 @@ function scrapeWalmart() {
   const tiles = document.querySelectorAll('[data-testid="list-view"] > div');
   tiles.forEach((tile, i) => {
     const name = tile.querySelector('[data-automation-id="product-title"]')?.innerText?.trim();
-    const packCount = getPackCount(name, null, perUnitTextRaw);
     const priceMatch = tile.querySelector('[data-automation-id="product-price"]')?.innerText?.match(/\$?\d+\.\d{2}/);
     const price = priceMatch ? priceMatch[0] : null;
     let priceNumber = null;
@@ -267,6 +267,7 @@ function scrapeWalmart() {
     }
     const perUnitTextRaw = tile.querySelector('.gray')?.innerText?.trim();
     const perUnitTextSanitized = perUnitTextRaw?.replace(/[^\x00-\x7F]+/g, '');
+    const packCount = getPackCount(name, null, perUnitTextRaw);
     let pricePerUnit = null;
     let unitType = null;
     let sizeQty = null;
