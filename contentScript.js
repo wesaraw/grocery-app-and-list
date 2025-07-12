@@ -74,14 +74,55 @@ function scrapeStopAndShop() {
     unit: 1
   };
 
+  const sanitize = str =>
+    str?.replace(/<[^>]*>/g, ' ').replace(/&nbsp;|&#160;/gi, ' ').replace(/\s+/g, ' ').trim();
+
+  const matchPack = str => {
+    if (!str) return null;
+    const s = sanitize(str);
+    return (
+      s.match(/(\d+)\s*[-\u2011\u2012\u2013\u2014]?\s*(?:pack|pk|ct|count|rolls?|rl)/i) ||
+      s.match(/(\d+)(?:\s*\w+){0,3}\s*(?:rolls?|rl)/i) ||
+      s.match(/pack\s*of\s*(\d+)/i) ||
+      s.match(/(\d+)\s*[-x\u00d7]\s*\d+/i)
+    );
+  };
+
+  const getPackCount = (name, size, unit) => {
+    let m = matchPack(name);
+    if (!m) m = matchPack(size);
+    if (!m) m = matchPack(unit);
+    return m ? parseInt(m[1], 10) : 1;
+  };
+
+  const sanitize = str =>
+    str?.replace(/<[^>]*>/g, ' ').replace(/&nbsp;|&#160;/gi, ' ').replace(/\s+/g, ' ').trim();
+
+  const matchPack = str => {
+    if (!str) return null;
+    const s = sanitize(str);
+    return (
+      s.match(/(\d+)\s*[-\u2011\u2012\u2013\u2014]?\s*(?:pack|pk|ct|count|rolls?|rl)/i) ||
+      s.match(/(\d+)(?:\s*\w+){0,3}\s*(?:rolls?|rl)/i) ||
+      s.match(/pack\s*of\s*(\d+)/i) ||
+      s.match(/(\d+)\s*[-x\u00d7]\s*\d+/i)
+    );
+  };
+
+  const getPackCount = (name, size, unit) => {
+    let m = matchPack(name);
+    if (!m) m = matchPack(size);
+    if (!m) m = matchPack(unit);
+    return m ? parseInt(m[1], 10) : 1;
+  };
+
   const products = [];
   const tiles = document.querySelectorAll('li.tile.product-cell.product-grid-cell');
   console.log(`🧱 Found ${tiles.length} product tiles`);
   tiles.forEach((tile, index) => {
     console.log(`🔍 Tile ${index + 1} innerHTML:`, tile.innerHTML);
     const name = tile.querySelector('.product-grid-cell_price-container > .sr-only')?.innerText?.trim();
-    const packMatch = name?.match(/(\d+)\s*(?:pack|pk|ct|count)/i);
-    const packCount = packMatch ? parseInt(packMatch[1], 10) : 1;
+    const packCount = getPackCount(name, unitSize, perUnitText);
 
     const priceText = tile.querySelector('.product-grid-cell_main-price')?.innerText?.trim();
 
@@ -125,6 +166,15 @@ function scrapeStopAndShop() {
       }
     }
 
+    let totalSizeQty = null;
+    if (sizeQty != null) {
+      totalSizeQty = sizeQty * packCount;
+    } else if (unitQty != null && unitType) {
+      totalSizeQty = unitQty * packCount;
+      sizeUnit = unitType;
+    }
+    sizeQty = totalSizeQty;
+
     let convertedQty = null;
     if (sizeQty != null && sizeUnit) {
       const factor = UNIT_FACTORS[sizeUnit.toLowerCase()];
@@ -145,11 +195,12 @@ function scrapeStopAndShop() {
         image,
         link
       });
+      const sizeStr = sizeQty != null && sizeUnit ? `${sizeQty} ${sizeUnit}` : unitSize || '';
       products.push({
         name,
         price: priceText,
         priceNumber,
-        size: unitSize || '',
+        size: sizeStr,
         sizeQty,
         sizeUnit,
         unit: perUnitTextSanitized || '',
@@ -206,8 +257,7 @@ function scrapeWalmart() {
   const tiles = document.querySelectorAll('[data-testid="list-view"] > div');
   tiles.forEach((tile, i) => {
     const name = tile.querySelector('[data-automation-id="product-title"]')?.innerText?.trim();
-    const packMatch = name?.match(/(\d+)\s*(?:pack|pk)/i);
-    const packCount = packMatch ? parseInt(packMatch[1], 10) : 1;
+    const packCount = getPackCount(name, null, perUnitTextRaw);
     const priceMatch = tile.querySelector('[data-automation-id="product-price"]')?.innerText?.match(/\$?\d+\.\d{2}/);
     const price = priceMatch ? priceMatch[0] : null;
     let priceNumber = null;

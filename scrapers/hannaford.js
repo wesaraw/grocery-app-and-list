@@ -69,6 +69,54 @@ export function scrapeHannaford() {
     ounces: 'oz'
   };
 
+  const COUNT_UNITS = new Set([
+    'ea',
+    'ct',
+    'pkg',
+    'box',
+    'can',
+    'bag',
+    'bottle',
+    'stick',
+    'roll',
+    'bar',
+    'pouch',
+    'jar',
+    'packet',
+    'sleeve',
+    'slice',
+    'piece',
+    'tube',
+    'tray',
+    'unit'
+  ]);
+
+  function sanitize(str) {
+    return str
+      ?.replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;|&#160;/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function matchPack(str) {
+    if (!str) return null;
+    const s = sanitize(str);
+    return (
+      s.match(/(\d+)\s*[-\u2011\u2012\u2013\u2014]?\s*(?:pack|pk|ct|count|rolls?|rl)/i) ||
+      s.match(/(\d+)(?:\s*\w+){0,3}\s*(?:rolls?|rl)/i) ||
+      s.match(/pack\s*of\s*(\d+)/i) ||
+      s.match(/(\d+)\s*[-x\u00d7]\s*\d+/i)
+    );
+  }
+
+  function getPackCount(name, size, unit) {
+    let m = matchPack(name);
+    if (!m) m = matchPack(size);
+    if (!m) m = matchPack(unit);
+    return m ? parseInt(m[1], 10) : 1;
+  }
+
   const products = [];
   const tiles = document.querySelectorAll('div.catalog-product');
   tiles.forEach(tile => {
@@ -77,8 +125,7 @@ export function scrapeHannaford() {
       ? new URL(linkRel, 'https://www.hannaford.com').href
       : '';
     const name = tile.querySelector('.productName .real-product-name')?.innerText?.trim();
-    const packMatch = name?.match(/(\d+)\s*(?:pk|pack|ct|count)/i);
-    const packCount = packMatch ? parseInt(packMatch[1], 10) : 1;
+    const packCount = getPackCount(name, sizeText, unitText);
     const priceText = tile.querySelector('.priceCell .item-unit-price')?.innerText?.trim();
     const priceHidden = tile.querySelector('.priceCell .item-price')?.value;
     const sizeText = tile.querySelector('.overline.text-truncate')?.innerText?.trim();
@@ -130,18 +177,28 @@ export function scrapeHannaford() {
       }
     }
 
+    let totalSizeQty = null;
+    if (sizeQty != null) {
+      totalSizeQty = sizeQty * packCount;
+    } else if (unitQty != null && unitType) {
+      totalSizeQty = unitQty * packCount;
+      sizeUnit = unitType;
+    }
+    sizeQty = totalSizeQty;
+
     let convertedQty = null;
     let pricePerUnit = null;
     if (sizeQty != null && sizeUnit) {
       const unit = sizeUnit.toLowerCase();
       const factor = UNIT_FACTORS[unit];
       if (factor) {
-        convertedQty = sizeQty * factor;
-        if (WEIGHT_UNITS.has(unit)) {
-          unitType = 'oz';
-        } else if (!unitType) {
+        if (!WEIGHT_UNITS.has(unit) && !unitType) {
           unitType = unit;
         }
+        if (WEIGHT_UNITS.has(unit)) {
+          unitType = 'oz';
+        }
+        convertedQty = COUNT_UNITS.has(unit) ? sizeQty : sizeQty * factor;
         if (priceNumber != null) {
           pricePerUnit = priceNumber / convertedQty;
         }
@@ -149,11 +206,12 @@ export function scrapeHannaford() {
     }
 
     if (name && (priceText || priceNumber != null)) {
+      const sizeStr = sizeQty != null && sizeUnit ? `${sizeQty} ${sizeUnit}` : sizeText || '';
       products.push({
         name,
         price: priceText || (priceNumber != null ? `$${priceNumber.toFixed(2)}` : ''),
         priceNumber,
-        size: sizeText || '',
+        size: sizeStr,
         sizeQty,
         sizeUnit,
         unit: unitText || '',
