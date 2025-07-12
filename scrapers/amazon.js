@@ -159,11 +159,12 @@ export function scrapeAmazon() {
     }
 
     if (name && priceText) {
+      const sizeStr = sizeQty != null && sizeUnit ? `${sizeQty} ${sizeUnit}` : countText || '';
       products.push({
         name,
         price: priceText,
         priceNumber,
-        size: countText || '',
+        size: sizeStr,
         sizeQty,
         sizeUnit,
         unit: unitText || '',

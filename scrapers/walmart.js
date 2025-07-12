@@ -134,6 +134,26 @@ export function scrapeWalmart() {
       }
     }
 
+    if (sizeQty == null && unitQty != null && unitType) {
+      sizeQty = unitQty * packCount;
+      sizeUnit = unitType;
+      const factor = UNIT_FACTORS[sizeUnit];
+      if (factor) {
+        if (!COUNT_UNITS.has(sizeUnit)) {
+          convertedQty = sizeQty * factor;
+          unitType = 'oz';
+        } else {
+          convertedQty = sizeQty;
+        }
+        if (price && pricePerUnit == null) {
+          const p = parseFloat(price.replace(/[^0-9.]/g, ''));
+          if (!isNaN(p) && convertedQty > 0) {
+            pricePerUnit = p / convertedQty;
+          }
+        }
+      }
+    }
+
     if (pricePerUnit == null && perUnitTextRaw) {
       const parsed = parseUnitPrice(perUnitTextRaw);
       if (parsed) {
@@ -168,11 +188,12 @@ export function scrapeWalmart() {
       if (!isNaN(p)) priceNumber = p;
     }
     if (name && price) {
+      const sizeStr = sizeQty != null && sizeUnit ? `${sizeQty} ${sizeUnit}` : '';
       products.push({
         name,
         price,
         priceNumber,
-        size: '',
+        size: sizeStr,
         sizeQty,
         sizeUnit,
         unit: perUnitTextSanitized || '',

@@ -76,6 +76,32 @@ export function scrapeStopAndShop() {
     'unit'
   ]);
 
+  function sanitize(str) {
+    return str
+      ?.replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;|&#160;/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function matchPack(str) {
+    if (!str) return null;
+    const s = sanitize(str);
+    return (
+      s.match(/(\d+)\s*[-\u2011\u2012\u2013\u2014]?\s*(?:pack|pk|ct|count|rolls?|rl)/i) ||
+      s.match(/(\d+)(?:\s*\w+){0,3}\s*(?:rolls?|rl)/i) ||
+      s.match(/pack\s*of\s*(\d+)/i) ||
+      s.match(/(\d+)\s*[-x\u00d7]\s*\d+/i)
+    );
+  }
+
+  function getPackCount(name, size, unit) {
+    let m = matchPack(name);
+    if (!m) m = matchPack(size);
+    if (!m) m = matchPack(unit);
+    return m ? parseInt(m[1], 10) : 1;
+  }
+
   const products = [];
   const tiles = document.querySelectorAll('li.tile.product-cell.product-grid-cell');
   tiles.forEach(tile => {
@@ -89,10 +115,7 @@ export function scrapeStopAndShop() {
 
     const image = getImageSrc(tile.querySelector('img'));
 
-    const packMatch =
-      name?.match(/(?:pack\s*of\s*)?(\d+)\s*(?:pk|pack|ct|count|rolls?)/i) ||
-      name?.match(/(\d+)\s*[xX]/);
-    const packCount = packMatch ? parseInt(packMatch[1], 10) : 1;
+    const packCount = getPackCount(name, unitSize, perUnitText);
 
     let unitQty = null;
     let unitType = null;
@@ -122,6 +145,15 @@ export function scrapeStopAndShop() {
         if (sizeUnit === 'floz') sizeUnit = 'oz';
       }
     }
+
+    let totalSizeQty = null;
+    if (sizeQty != null) {
+      totalSizeQty = sizeQty * packCount;
+    } else if (unitQty != null && unitType) {
+      totalSizeQty = unitQty * packCount;
+      sizeUnit = unitType;
+    }
+    sizeQty = totalSizeQty;
 
     let convertedQty = null;
     let pricePerUnit = null;
@@ -162,25 +194,25 @@ export function scrapeStopAndShop() {
           convertedQty = sizeQty * factor;
           unitType = 'oz';
           if (priceNumber != null && pricePerUnit == null) {
-            const totalConverted = convertedQty * packCount;
-            pricePerUnit = priceNumber / totalConverted;
+            pricePerUnit = priceNumber / convertedQty;
           }
         } else {
+          convertedQty = sizeQty;
           if (!unitType) unitType = sizeUnit.toLowerCase();
           if (priceNumber != null && pricePerUnit == null) {
-            const totalCount = sizeQty * packCount;
-            pricePerUnit = priceNumber / totalCount;
+            pricePerUnit = priceNumber / convertedQty;
           }
         }
       }
     }
 
     if (name && priceText) {
+      const sizeStr = sizeQty != null && sizeUnit ? `${sizeQty} ${sizeUnit}` : unitSize || '';
       products.push({
         name,
         price: priceText,
         priceNumber,
-        size: unitSize || '',
+        size: sizeStr,
         sizeQty,
         sizeUnit,
         unit: perUnitText || '',
