@@ -337,7 +337,8 @@ function scrapeAmazon() {
     }
     if (unit) {
       unit = unit.replace(/\s+/g, '');
-      if (unit === 'ounce' || unit === 'ounces' || unit === 'floz' || unit === 'fluidounce' || unit === 'flounce') unit = 'oz';
+      if (unit === 'ounce' || unit === 'ounces') unit = 'oz';
+      else if (unit === 'floz' || unit === 'fluidounce' || unit === 'flounce') unit = 'floz';
       else if (unit === 'gram') unit = 'g';
       else if (unit === 'gallon' || unit === 'gallons') unit = 'gal';
       else if (unit === 'lbs' || unit === 'pound' || unit === 'pounds') unit = 'lb';
@@ -543,7 +544,6 @@ function scrapeShaws() {
     const hyphenMatch = normalized.match(/\b\d+\s*-\s*([\d.]+)\s*(fl\s*oz|oz|lb|kg|ml|l|gal|g|qt|pt|cup|tbsp|tsp)/i);
     if (hyphenMatch) {
       let unit = hyphenMatch[2].toLowerCase().replace(/\s+/g, '');
-      if (unit === 'floz') unit = 'oz';
       unit = UNIT_ALIASES[unit] || unit;
       const qty = parseFloat(hyphenMatch[1]);
       return [qty, unit];
@@ -553,8 +553,7 @@ function scrapeShaws() {
     let countPair = null;
     for (const m of normalized.matchAll(regex)) {
       let unit = m[2].toLowerCase().replace(/\s+/g, '');
-      if (unit === 'floz') unit = 'oz';
-      else if (unit === 'count') unit = 'ct';
+      if (unit === 'count') unit = 'ct';
       unit = UNIT_ALIASES[unit] || unit;
       const qty = parseFloat(m[1]);
       if (WEIGHT_UNITS.has(unit)) {
@@ -940,9 +939,9 @@ const UNIT_ALIASES = {
   pounds: 'lb',
   perpound: 'lb',
   perlb: 'lb',
-  floz: 'oz',
-  fluidounce: 'oz',
-  flounce: 'oz'
+  floz: 'floz',
+  fluidounce: 'floz',
+  flounce: 'floz'
 };
 
 function normalizeUnit(unit) {
