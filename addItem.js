@@ -1,4 +1,5 @@
 import { loadJSON } from './utils/dataLoader.js';
+import { loadDensityMap, saveDensityMap } from './utils/unitNormalize.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -14,6 +15,7 @@ const DEFAULTS = {
   shelf: 6
 };
 
+const DENSITY_KEY = "densityRatios";
 const STORE_LINKS = {
   'Stop & Shop': name =>
     `https://stopandshop.com/product-search/${name
@@ -145,19 +147,30 @@ async function commit() {
   const yearly = parseFloat(document.getElementById('yearly').value) || DEFAULTS.yearly;
   const unit = document.getElementById('unit').value.trim() || DEFAULTS.unit;
   const whole = document.getElementById('whole').checked;
+  const ratioText = document.getElementById('ratio').value.trim() || '1:1';
   const monthly = parseFloat(document.getElementById('monthly').value) || DEFAULTS.monthly;
   const shelf = parseFloat(document.getElementById('shelf').value) || DEFAULTS.shelf;
   const stockAmt = parseFloat(stockVal);
   const week = parseInt(document.getElementById('week').value, 10) || getCurrentWeek();
 
-  const [needs, consumption, stock, expiration, consumed, storeSelections, purchases] = await Promise.all([
+  function parseRatio(text) {
+    const m1 = text.match(/^([0-9.]+)\s*:\s*1$/);
+    if (m1) return parseFloat(m1[1]);
+    const m2 = text.match(/^1\s*:\s*([0-9.]+)$/);
+    if (m2) return 1 / parseFloat(m2[1]);
+    return 1;
+  }
+  const densityRatio = parseRatio(ratioText);
+
+  const [needs, consumption, stock, expiration, consumed, storeSelections, purchases, densityMap] = await Promise.all([
     loadNeeds(),
     loadConsumption(),
     loadStock(),
     loadExpiration(),
     loadConsumed(),
     loadStoreSelections(),
-    loadPurchases()
+    loadPurchases(),
+    loadDensityMap()
   ]);
 
   needs.push({
@@ -231,6 +244,8 @@ async function commit() {
     }
   );
 
+  densityMap[name] = { convert: false, ratio: densityRatio };
+
   if (!purchases[name]) purchases[name] = [];
   purchases[name].push({
     purchase_week: week,
@@ -245,7 +260,8 @@ async function commit() {
     save('expirationData', expiration),
     save('consumedThisYear', consumed),
     save(STORE_SELECTION_KEY, storeSelections),
-    savePurchases(purchases)
+    savePurchases(purchases),
+    saveDensityMap(densityMap)
   ]);
 
   window.close();
