@@ -92,9 +92,10 @@ export function scrapeWalmart() {
     const packCount = getPackCount(name, null, null);
     const priceMatch = tile.querySelector('[data-automation-id="product-price"]')?.innerText?.match(/\$?\d+\.\d{2}/);
     const price = priceMatch ? priceMatch[0] : null;
-    const perUnitText =
+    const perUnitTextRaw =
       tile.querySelector('[data-testid="product-price-per-unit"]')?.innerText?.trim() ||
       tile.querySelector('.gray')?.innerText?.trim();
+    const perUnitTextSanitized = perUnitTextRaw?.replace(/[^\x00-\x7F]+/g, '');
     let pricePerUnit = null;
     let unitType = null;
     let sizeQty = null;
@@ -133,8 +134,8 @@ export function scrapeWalmart() {
       }
     }
 
-    if (pricePerUnit == null && perUnitText) {
-      const parsed = parseUnitPrice(perUnitText);
+    if (pricePerUnit == null && perUnitTextRaw) {
+      const parsed = parseUnitPrice(perUnitTextRaw);
       if (parsed) {
         pricePerUnit = parsed.pricePerUnit;
         unitType = parsed.unitType;
@@ -174,7 +175,7 @@ export function scrapeWalmart() {
         size: '',
         sizeQty,
         sizeUnit,
-        unit: perUnitText || '',
+        unit: perUnitTextSanitized || '',
         unitQty,
         unitType,
         convertedQty,
