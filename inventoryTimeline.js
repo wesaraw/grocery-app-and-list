@@ -649,6 +649,9 @@ async function init() {
   document.getElementById('uomChange').addEventListener('click', () => {
     openOrFocusWindow('uomChange.html');
   });
+  document.getElementById('densityRatios').addEventListener('click', () => {
+    openOrFocusWindow('densityRatios.html');
+  });
   document.getElementById('mealMultiplier').addEventListener('click', () => {
     openOrFocusWindow('mealMultiplier.html');
   });

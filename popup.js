@@ -900,9 +900,17 @@ function openUomChange() {
   openOrFocusWindow('uomChange.html');
 }
 
+function openDensityRatios() {
+  openOrFocusWindow('densityRatios.html');
+}
+
 document
   .getElementById('uomChange')
   .addEventListener('click', openUomChange);
+
+document
+  .getElementById('densityRatios')
+  .addEventListener('click', openDensityRatios);
 
 function openMealMultiplier() {
   openOrFocusWindow('mealMultiplier.html');
