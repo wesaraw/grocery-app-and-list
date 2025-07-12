@@ -904,6 +904,14 @@ document
   .getElementById('uomChange')
   .addEventListener('click', openUomChange);
 
+function openDensityRatios() {
+  openOrFocusWindow('densityRatios.html');
+}
+
+document
+  .getElementById('densityRatios')
+  .addEventListener('click', openDensityRatios);
+
 function openMealMultiplier() {
   openOrFocusWindow('mealMultiplier.html');
 }

@@ -3,7 +3,7 @@
     "jsdom": "^26.1.0"
   },
   "scripts": {
-    "test": "node test/unitPriceTest.js"
+    "test": "node test/unitPriceTest.js && node test/densityUtilsTest.js"
   },
   "type": "module"
 }
