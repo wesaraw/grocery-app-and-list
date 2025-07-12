@@ -152,6 +152,7 @@ export function scrapeWalmart() {
       if (m) {
         const qty = !isNaN(qtyVal) && qtyVal !== 0 ? qtyVal : 1;
         unitQty = qty;
+        pricePerUnit = priceVal / qty;
         const factor = UNIT_FACTORS[unitType];
         if (factor && !COUNT_UNITS.has(unitType)) {
           pricePerUnit = pricePerUnit / factor;
