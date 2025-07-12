@@ -1,5 +1,6 @@
 import { getImageSrc } from "../utils/imageUtils.js";
-import { parsePriceNumber, normalizeUnit, parseUnitPrice } from "../utils/priceUtils.js";
+import { parsePriceNumber } from "../utils/priceUtils.js";
+import { normalizeUnit, parseUnitPrice } from "../utils/unitUtils.js";
 export function scrapeWalmart() {
   const UNIT_FACTORS = {
     oz: 1,
