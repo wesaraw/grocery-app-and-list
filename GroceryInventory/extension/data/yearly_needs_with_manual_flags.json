@@ -793,7 +793,7 @@
   {
     "name": "Mt. Olive Pickles Bread & Butter Chips Condiments Pickles",
     "total_needed_year": 12.0,
-    "home_unit": "floz",
+    "home_unit": "oz",
     "treat_as_whole_unit": false,
     "category": "Refrigerator"
   },
