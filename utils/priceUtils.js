@@ -24,6 +24,7 @@ export function sheetSqFtFor(name = '') {
 
 export function parsePriceNumber(text) {
   if (!text) return null;
+  text = text.replace(/[^\x00-\x7F]+/g, '');
   const m = text.match(/[0-9]+(?:\.[0-9]+)?/);
   return m ? parseFloat(m[0]) : null;
 }
@@ -31,6 +32,8 @@ export function parsePriceNumber(text) {
 export function parseUnitPrice(text) {
   if (!text) return null;
   text = text.trim();
+  const hadCent = /\u00A2/.test(text);
+  text = text.replace(/[^\x00-\x7F]+/g, '');
   const paren = text.match(/\(([^()]+)\)/);
   if (paren) {
     const inner = parseUnitPrice(paren[1].trim());
@@ -68,16 +71,6 @@ export function parseUnitPrice(text) {
     return { pricePerUnit: price / qty, unitType, unitQty: qty };
   }
 
-  m = text.match(/([\d.]+)\s*\u00A2\s*\/\s*([\d.]*)\s*([a-zA-Z\.]+(?:\s*[a-zA-Z\.]+)?)/);
-  if (m) {
-    const price = parseFloat(m[1]) / 100;
-    const qtyVal = parseFloat(m[2]);
-    let unitType = m[3].toLowerCase().replace(/[\s.]+/g, '');
-    unitType = normalizeUnit(unitType);
-    const qty = !isNaN(qtyVal) && qtyVal !== 0 ? qtyVal : 1;
-    return { pricePerUnit: price / qty, unitType, unitQty: qty };
-  }
-
   m = text.match(/price\s*per\s*(\d+(?:\.\d+)?)\s*([a-zA-Z\.]+(?:\s*[a-zA-Z\.]+)*)\s*\$([\d.]+)/i);
   if (m) {
     const qtyVal = parseFloat(m[1]);
@@ -100,7 +93,8 @@ export function parseUnitPrice(text) {
 
   m = text.match(/([\d.]+)\s*\/\s*([\d.]*)\s*([a-zA-Z\.]+(?:\s*[a-zA-Z\.]+)?)/);
   if (m) {
-    const price = parseFloat(m[1]);
+    let price = parseFloat(m[1]);
+    if (hadCent) price = price / 100;
     const qtyVal = parseFloat(m[2]);
     let unitType = m[3].toLowerCase().replace(/[\s.]+/g, '');
     unitType = normalizeUnit(unitType);
