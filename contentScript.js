@@ -184,7 +184,7 @@ function scrapeStopAndShop() {
         size: sizeStr,
         sizeQty,
         sizeUnit,
-        unit: perUnitTextSanitized || '',
+        unit: perUnitText || '',
         unitQty,
         unitType,
         convertedQty,
