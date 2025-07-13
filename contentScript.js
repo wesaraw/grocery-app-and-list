@@ -237,15 +237,15 @@ function scrapeWalmart() {
   const products = [];
   const tiles = document.querySelectorAll('[data-testid="list-view"] > div');
   tiles.forEach((tile, i) => {
-    const name = tile.querySelector('[data-automation-id="product-title"]')?.innerText?.trim();
-    const priceMatch = tile.querySelector('[data-automation-id="product-price"]')?.innerText?.match(/\$?\d+\.\d{2}/);
+    const name = tile.querySelector('[data-automation-id="product-title"]')?.textContent?.trim();
+    const priceMatch = tile.querySelector('[data-automation-id="product-price"]')?.textContent?.match(/\$?\d+\.\d{2}/);
     const price = priceMatch ? priceMatch[0] : null;
     let priceNumber = null;
     if (price) {
       const p = parseFloat(price.replace(/[^0-9.]/g, ''));
       if (!isNaN(p)) priceNumber = p;
     }
-    const perUnitTextRaw = tile.querySelector('.gray')?.innerText?.trim();
+    const perUnitTextRaw = tile.querySelector('.gray')?.textContent?.trim();
     const perUnitTextSanitized = perUnitTextRaw?.replace(/[^\x00-\x7F]+/g, '');
     const packCount = getPackCount(name, null, perUnitTextRaw);
     let pricePerUnit = null;
