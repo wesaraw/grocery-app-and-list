@@ -86,7 +86,9 @@ export function scrapeWalmart() {
   }
 
   const products = [];
-  const tiles = document.querySelectorAll('[data-testid="list-view"] > div');
+  // Use the list-view container directly instead of assuming it has a div child
+  // so the scraper keeps working if Walmart adjusts its tile markup.
+  const tiles = document.querySelectorAll('[data-testid="list-view"]');
   tiles.forEach((tile, i) => {
     const name = tile.querySelector('[data-automation-id="product-title"]')?.textContent?.trim();
     const packCount = getPackCount(name, null, null);
