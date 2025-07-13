@@ -86,7 +86,10 @@ export function scrapeWalmart() {
   }
 
   const products = [];
-  const tiles = document.querySelectorAll('[data-testid="list-view"] > div');
+  // Walmart product tiles are identified with `data-item-id` but some older
+  // markup only uses `data-testid="list-view"`. Query both selectors so the
+  // scraper continues to work across markup variations.
+  const tiles = document.querySelectorAll('[data-item-id], [data-testid="list-view"]');
   tiles.forEach((tile, i) => {
     const name = tile.querySelector('[data-automation-id="product-title"]')?.textContent?.trim();
     const packCount = getPackCount(name, null, null);
