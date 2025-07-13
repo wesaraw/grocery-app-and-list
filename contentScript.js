@@ -235,10 +235,10 @@ function scrapeWalmart() {
   };
 
   const products = [];
-  // Walmart product listings sometimes nest additional divs under the
-  // `list-view` containers. Query the container elements directly to avoid
-  // missing items if the DOM structure changes.
-  const tiles = document.querySelectorAll('[data-testid="list-view"]');
+  // Walmart product tiles use a `data-item-id` attribute on the outer element,
+  // but some markup still relies on `data-testid="list-view"`. Query both to
+  // avoid missing items when Walmart updates their HTML structure.
+  const tiles = document.querySelectorAll('[data-item-id], [data-testid="list-view"]');
   tiles.forEach((tile, i) => {
     const name = tile.querySelector('[data-automation-id="product-title"]')?.textContent?.trim();
     const priceMatch = tile.querySelector('[data-automation-id="product-price"]')?.textContent?.match(/\$?\d+\.\d{2}/);
