@@ -25,7 +25,17 @@ export function sheetSqFtFor(name = '') {
 export function parsePriceNumber(text) {
   if (!text) return null;
   text = text.replace(/[^\x00-\x7F]+/g, '');
-  const m = text.match(/[0-9]+(?:\.[0-9]+)?/);
+  // Prefer a number that includes a decimal point as those are
+  // less likely to be concatenated digits (e.g. `1268` vs `12.68`).
+  let m = text.match(/([0-9]+\.[0-9]+)/);
+  if (m) return parseFloat(m[1]);
+
+  // Fall back to a number that directly follows a dollar sign
+  // (handles formats like "$12" without cents).
+  m = text.match(/\$\s*([0-9]+)/);
+  if (m) return parseFloat(m[1]);
+
+  m = text.match(/[0-9]+/);
   return m ? parseFloat(m[0]) : null;
 }
 
