@@ -1,6 +1,34 @@
 import { getImageSrc } from "../utils/imageUtils.js";
 import { parsePriceNumber } from "../utils/priceUtils.js";
 
+export function extractWalmartPrice(tile) {
+  const container = tile.querySelector('[data-automation-id="product-price"]');
+  if (!container) return { priceText: null, priceNumber: null };
+
+  const charEl =
+    container.querySelector('[data-automation-id="price-characteristic"], .price-characteristic');
+  const mantEl =
+    container.querySelector('[data-automation-id="price-mantissa"], .price-mantissa');
+
+  let num = null;
+  if (charEl && mantEl) {
+    const characteristic = charEl.textContent.replace(/[^0-9]/g, '').trim();
+    const mantissa = mantEl.textContent.replace(/[^0-9]/g, '').trim();
+    if (characteristic) {
+      num = parseFloat(`${characteristic}.${mantissa || '00'}`);
+    }
+  }
+
+  if (num == null || isNaN(num)) {
+    const text = container.textContent.trim();
+    const parsed = parsePriceNumber(text);
+    if (!isNaN(parsed)) num = parsed;
+  }
+
+  const text = num != null && !isNaN(num) ? `$${num.toFixed(2)}` : container.textContent.trim();
+  return { priceText: text, priceNumber: num != null && !isNaN(num) ? num : null };
+}
+
 export function scrapeWalmart() {
   const UNIT_FACTORS = {
     oz: 1,
@@ -108,7 +136,7 @@ export function scrapeWalmart() {
   tiles.forEach(tile => {
     const name = tile.querySelector('[data-automation-id="product-title"]')?.textContent?.trim();
 
-    const priceText = tile.querySelector('[data-automation-id="product-price"]')?.textContent?.trim();
+    const { priceText, priceNumber: extractedNumber } = extractWalmartPrice(tile);
 
     let unitSize = null;
     const sizeMatch = name?.match(/(\d+(?:\.\d+)?)\s*(fl\.?\s*oz|oz|lb|kg|ml|l|gal|g|qt|pt|cup|tbsp|tsp|ea|ct|pkg|box|can|bag|bottle|stick|roll|bar|pouch|jar|packet|sleeve|slice|piece|tube|tray|unit)/i);
@@ -158,11 +186,7 @@ export function scrapeWalmart() {
       }
     }
 
-    let priceNumber = null;
-    if (priceText) {
-      const p = parsePriceNumber(priceText);
-      if (!isNaN(p)) priceNumber = p;
-    }
+    let priceNumber = extractedNumber;
 
     let sizeQty = null;
     let sizeUnit = null;

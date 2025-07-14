@@ -148,6 +148,41 @@ if (!snippetItem2 || snippetItem2.unitType !== 'oz' || snippetItem2.unitQty !== 
   throw new Error('Failed to parse cents per fl. oz unit');
 }
 
+// Walmart split price markup
+const snippetHtml3 = `
+<div data-testid="list-view">
+  <div>
+    <div data-automation-id="product-title">Split Price Item</div>
+    <div data-automation-id="product-price">
+      <span data-automation-id="price-characteristic">6</span>
+      <span data-automation-id="price-mantissa">48</span>
+    </div>
+    <div data-testid="product-price-per-unit">$1.00/lb</div>
+    <img data-testid="productTileImage" src="test.jpg" />
+    <a href="/ip/test"></a>
+  </div>
+</div>`;
+const snippetDom3 = new JSDOM(snippetHtml3);
+Object.defineProperty(snippetDom3.window.HTMLElement.prototype, 'innerText', {
+  get() {
+    return this.textContent;
+  },
+  set(v) {
+    this.textContent = v;
+  }
+});
+global.document = snippetDom3.window.document;
+global.window = snippetDom3.window;
+const snippetProducts3 = scrapeWalmartSnippet();
+const snippetItem3 = snippetProducts3[0];
+if (
+  !snippetItem3 ||
+  Math.abs(snippetItem3.priceNumber - 6.48) > 0.001 ||
+  snippetItem3.price !== '$6.48'
+) {
+  throw new Error('Failed to parse split price markup');
+}
+
 // Shaws Dentastix parsing
 const dentHtml = fs.readFileSync("Search Results Dentastixs _ Shaw's.html", 'utf8');
 const dentDom = new JSDOM(dentHtml);
