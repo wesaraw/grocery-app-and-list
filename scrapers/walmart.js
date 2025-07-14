@@ -1,6 +1,23 @@
 import { getImageSrc } from "../utils/imageUtils.js";
 import { parsePriceNumber } from "../utils/priceUtils.js";
 
+export function extractWalmartPrice(tile) {
+  const container = tile.querySelector('[data-automation-id="product-price"]');
+  if (!container) return { priceText: null, priceNumber: null };
+  const charEl =
+    container.querySelector('[data-automation-id="price-characteristic"], .price-characteristic');
+  const mantEl =
+    container.querySelector('[data-automation-id="price-mantissa"], .price-mantissa');
+  let text;
+  if (charEl && mantEl) {
+    text = `${charEl.textContent.trim()}.${mantEl.textContent.trim()}`;
+    if (!text.startsWith('$')) text = '$' + text;
+  } else {
+    text = container.textContent.trim();
+  }
+  return { priceText: text, priceNumber: parsePriceNumber(text) };
+}
+
 export function scrapeWalmart() {
   const UNIT_FACTORS = {
     oz: 1,
@@ -108,7 +125,7 @@ export function scrapeWalmart() {
   tiles.forEach(tile => {
     const name = tile.querySelector('[data-automation-id="product-title"]')?.textContent?.trim();
 
-    const priceText = tile.querySelector('[data-automation-id="product-price"]')?.textContent?.trim();
+    const { priceText, priceNumber: extractedNumber } = extractWalmartPrice(tile);
 
     let unitSize = null;
     const sizeMatch = name?.match(/(\d+(?:\.\d+)?)\s*(fl\.?\s*oz|oz|lb|kg|ml|l|gal|g|qt|pt|cup|tbsp|tsp|ea|ct|pkg|box|can|bag|bottle|stick|roll|bar|pouch|jar|packet|sleeve|slice|piece|tube|tray|unit)/i);
@@ -158,11 +175,7 @@ export function scrapeWalmart() {
       }
     }
 
-    let priceNumber = null;
-    if (priceText) {
-      const p = parsePriceNumber(priceText);
-      if (!isNaN(p)) priceNumber = p;
-    }
+    let priceNumber = extractedNumber;
 
     let sizeQty = null;
     let sizeUnit = null;
