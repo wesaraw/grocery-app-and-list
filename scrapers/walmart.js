@@ -8,14 +8,23 @@ export function extractWalmartPrice(tile) {
     container.querySelector('[data-automation-id="price-characteristic"], .price-characteristic');
   const mantEl =
     container.querySelector('[data-automation-id="price-mantissa"], .price-mantissa');
-  let text;
+
+  let priceNumber = null;
+  let priceText = null;
   if (charEl && mantEl) {
-    text = `${charEl.textContent.trim()}.${mantEl.textContent.trim()}`;
-    if (!text.startsWith('$')) text = '$' + text;
-  } else {
-    text = container.textContent.trim();
+    const num = parseFloat(`${charEl.textContent.trim()}.${mantEl.textContent.trim()}`);
+    if (!isNaN(num)) {
+      priceNumber = num;
+      priceText = `$${num.toFixed(2)}`;
+    }
   }
-  return { priceText: text, priceNumber: parsePriceNumber(text) };
+
+  if (priceNumber == null) {
+    priceText = container.textContent.trim();
+    priceNumber = parsePriceNumber(priceText);
+  }
+
+  return { priceText, priceNumber };
 }
 
 export function scrapeWalmart() {

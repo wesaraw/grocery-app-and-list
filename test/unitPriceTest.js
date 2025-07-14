@@ -175,7 +175,11 @@ global.document = snippetDom3.window.document;
 global.window = snippetDom3.window;
 const snippetProducts3 = scrapeWalmartSnippet();
 const snippetItem3 = snippetProducts3[0];
-if (!snippetItem3 || Math.abs(snippetItem3.priceNumber - 6.48) > 0.001) {
+if (
+  !snippetItem3 ||
+  Math.abs(snippetItem3.priceNumber - 6.48) > 0.001 ||
+  snippetItem3.price !== '$6.48'
+) {
   throw new Error('Failed to parse split price markup');
 }
 

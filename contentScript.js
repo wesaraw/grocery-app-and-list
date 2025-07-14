@@ -200,18 +200,27 @@ function scrapeStopAndShop() {
 
 function extractWalmartPrice(tile) {
   const container = tile.querySelector('[data-automation-id="product-price"]');
-  if (!container) return { priceText: '', priceNumber: null };
+  if (!container) return { priceText: null, priceNumber: null };
   const charEl = container.querySelector('[data-automation-id="price-characteristic"], .price-characteristic');
   const mantEl = container.querySelector('[data-automation-id="price-mantissa"], .price-mantissa');
-  let text;
+
+  let priceNumber = null;
+  let priceText = null;
   if (charEl && mantEl) {
-    text = `${charEl.textContent.trim()}.${mantEl.textContent.trim()}`;
-    if (!text.startsWith('$')) text = '$' + text;
-  } else {
-    text = container.textContent.trim();
+    const num = parseFloat(`${charEl.textContent.trim()}.${mantEl.textContent.trim()}`);
+    if (!isNaN(num)) {
+      priceNumber = num;
+      priceText = `$${num.toFixed(2)}`;
+    }
   }
-  const num = parseFloat(text.replace(/[^0-9.]/g, ''));
-  return { priceText: text, priceNumber: isNaN(num) ? null : num };
+
+  if (priceNumber == null) {
+    priceText = container.textContent.trim();
+    const num = parseFloat(priceText.replace(/[^0-9.]/g, ''));
+    priceNumber = isNaN(num) ? null : num;
+  }
+
+  return { priceText, priceNumber };
 }
 
 function scrapeWalmart() {
