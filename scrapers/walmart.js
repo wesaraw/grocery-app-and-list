@@ -4,25 +4,32 @@ import { parsePriceNumber } from "../utils/priceUtils.js";
 export function extractWalmartPrice(tile) {
   const container = tile.querySelector('[data-automation-id="product-price"]');
   if (!container) return { priceText: null, priceNumber: null };
-  const charEl =
-    container.querySelector('[data-automation-id="price-characteristic"], .price-characteristic');
-  const mantEl =
-    container.querySelector('[data-automation-id="price-mantissa"], .price-mantissa');
 
-  let priceNumber = null;
-  let priceText = null;
+  // First try the split markup Walmart often uses where the integer and decimal
+  // portions are separated into their own elements. This avoids accidentally
+  // picking up additional numbers that may appear in the same container.
+  const charEl = container.querySelector('[data-automation-id="price-characteristic"], .price-characteristic');
+  const mantEl = container.querySelector('[data-automation-id="price-mantissa"], .price-mantissa');
   if (charEl && mantEl) {
-    const num = parseFloat(`${charEl.textContent.trim()}.${mantEl.textContent.trim()}`);
-    if (!isNaN(num)) {
-      priceNumber = num;
-      priceText = `$${num.toFixed(2)}`;
+    const whole = charEl.textContent.replace(/[^0-9]/g, '').trim();
+    const frac = mantEl.textContent.replace(/[^0-9]/g, '').trim();
+    if (whole && frac) {
+      const num = parseFloat(`${whole}.${frac}`);
+      if (!isNaN(num)) {
+        return { priceText: `$${num.toFixed(2)}`, priceNumber: num };
+      }
     }
   }
 
-  if (priceNumber == null) {
-    priceText = container.textContent.trim();
-    priceNumber = parsePriceNumber(priceText);
-  }
+  // Fall back to parsing the raw text of the container. Walmart sometimes
+  // includes multiple numeric values here (such as unit price or previous
+  // price). Grab the first value that looks like a currency amount.
+  const raw = container.textContent.replace(/\s+/g, ' ').trim();
+  let match = raw.match(/\$\s*([0-9]+(?:\.[0-9]+)?)/);
+  if (!match) match = raw.match(/([0-9]+(?:\.[0-9]+)?)/);
+  const num = match ? parseFloat(match[1]) : parsePriceNumber(raw);
+  const priceNumber = isNaN(num) ? null : num;
+  const priceText = priceNumber != null ? `$${priceNumber.toFixed(2)}` : raw;
 
   return { priceText, priceNumber };
 }
