@@ -124,7 +124,7 @@ function scrapeStopAndShop() {
         const priceVal = parseNumber(match[1]) / (isCent ? 100 : 1);
         const qtyVal = parseNumber(match[2]);
         unitQty = !isNaN(qtyVal) && qtyVal !== 0 ? qtyVal : 1;
-        unitType = match[3];
+        unitType = match[3].replace(/[\s.]+/g, '');
         if (!isNaN(priceVal)) {
           pricePerUnit = priceVal / unitQty;
         }
@@ -143,7 +143,7 @@ function scrapeStopAndShop() {
       const m = unitSize.match(/([\d./]+)\s*([a-zA-Z]+)/);
       if (m) {
         sizeQty = parseNumber(m[1]);
-        sizeUnit = m[2];
+        sizeUnit = m[2].replace(/[\s.]+/g, '');
       }
     }
 
@@ -234,78 +234,110 @@ function scrapeWalmart() {
     unit: 1
   };
 
+  const sanitize = str =>
+    str?.replace(/<[^>]*>/g, ' ').replace(/&nbsp;|&#160;/gi, ' ').replace(/\s+/g, ' ').trim();
+
+  const matchPack = str => {
+    if (!str) return null;
+    const s = sanitize(str);
+    return (
+      s.match(/(\d+)\s*[-\u2011\u2012\u2013\u2014]?\s*(?:pack|pk|ct|count|rolls?|rl)/i) ||
+      s.match(/(\d+)(?:\s*\w+){0,3}\s*(?:rolls?|rl)/i) ||
+      s.match(/pack\s*of\s*(\d+)/i) ||
+      s.match(/(\d+)\s*[-x\u00d7]\s*\d+/i)
+    );
+  };
+
+  const getPackCount = (name, size, unit) => {
+    let m = matchPack(name);
+    if (!m) m = matchPack(size);
+    if (!m) m = matchPack(unit);
+    return m ? parseInt(m[1], 10) : 1;
+  };
+
   const products = [];
-  // Walmart product tiles use a `data-item-id` attribute on the outer element,
-  // but some markup still relies on `data-testid="list-view"`. Query both to
-  // avoid missing items when Walmart updates their HTML structure.
   const tiles = document.querySelectorAll('[data-item-id], [data-testid="list-view"]');
-  tiles.forEach((tile, i) => {
-    const name = tile.querySelector('[data-automation-id="product-title"]')?.textContent?.trim();
-    const priceMatch = tile.querySelector('[data-automation-id="product-price"]')?.textContent?.match(/\$?\d+\.\d{2}/);
-    const price = priceMatch ? priceMatch[0] : null;
+  tiles.forEach((tile, index) => {
+    const name = tile.querySelector('[data-automation-id="product-title"]')?.innerText?.trim();
+    const priceText = tile.querySelector('[data-automation-id="product-price"]')?.innerText?.trim();
+    const perUnitText =
+      tile.querySelector('[data-testid="product-price-per-unit"]')?.innerText?.trim() ||
+      tile.querySelector('.gray')?.innerText?.trim();
+    let unitSize = null;
+    const sizeMatch = name?.match(/([\d./]+)\s*(fl\.?\s*oz|oz|lb|kg|ml|l|gal|g|qt|pt|cup|tbsp|tsp|ea|ct|pkg|box|can|bag|bottle|stick|roll|bar|pouch|jar|packet|sleeve|slice|piece|tube|tray|unit)/i);
+    if (sizeMatch) {
+      unitSize = `${sizeMatch[1]} ${sizeMatch[2]}`;
+    }
+
+    const packCount = getPackCount(name, unitSize, perUnitText);
+    const image = getImageSrc(tile.querySelector('img[data-testid="productTileImage"]'));
+    const link = tile.querySelector('a[href*="/ip/"]')?.href || '';
+
+    let unitQty = null;
+    let unitType = null;
+    let pricePerUnit = null;
+    if (perUnitText) {
+      const isCent = perUnitText.includes('¢');
+      const clean = perUnitText.replace(/[^0-9./a-zA-Z]/g, '');
+      const match = clean.match(/([\d.]+)\/([\d.]*)\s*([a-zA-Z]+)/);
+      if (match) {
+        const priceVal = parseNumber(match[1]) / (isCent ? 100 : 1);
+        const qtyVal = parseNumber(match[2]);
+        unitQty = !isNaN(qtyVal) && qtyVal !== 0 ? qtyVal : 1;
+        unitType = match[3].replace(/[\s.]+/g, '');
+        if (!isNaN(priceVal)) {
+          pricePerUnit = priceVal / unitQty;
+        }
+      }
+    }
+
     let priceNumber = null;
-    if (price) {
-      const p = parseFloat(price.replace(/[^0-9.]/g, ''));
+    if (priceText) {
+      const p = parseFloat(priceText.replace(/[^0-9.]/g, ''));
       if (!isNaN(p)) priceNumber = p;
     }
-    const perUnitTextRaw = tile.querySelector('.gray')?.textContent?.trim();
-    const perUnitTextSanitized = perUnitTextRaw?.replace(/[^\x00-\x7F]+/g, '');
-    const packCount = getPackCount(name, null, perUnitTextRaw);
-    let pricePerUnit = null;
-    let unitType = null;
+
     let sizeQty = null;
     let sizeUnit = null;
-    let convertedQty = null;
+    if (unitSize) {
+      const m = unitSize.match(/([\d./]+)\s*([a-zA-Z]+)/);
+      if (m) {
+        sizeQty = parseNumber(m[1]);
+        sizeUnit = m[2].replace(/[\s.]+/g, '');
+      }
+    }
 
-    const sizeMatch = name?.match(/([\d./]+)\s*(fl\s*oz|oz|lb|g|kg|ml|l|ct)/i);
-    if (sizeMatch) {
-      sizeQty = parseNumber(sizeMatch[1]);
-      sizeUnit = sizeMatch[2].replace(/\s+/g, '');
-      // Removed adjustment that divided size by packCount so that the
-      // full item weight is used when computing price per unit.
-      // if (packCount > 1) {
-      //   sizeQty = sizeQty / packCount;
-      // }
+    let totalSizeQty = null;
+    if (sizeQty != null) {
+      totalSizeQty = sizeQty * packCount;
+    } else if (unitQty != null && unitType) {
+      totalSizeQty = unitQty * packCount;
+      sizeUnit = unitType;
+    }
+    sizeQty = totalSizeQty;
+
+    let convertedQty = null;
+    if (sizeQty != null && sizeUnit) {
       const factor = UNIT_FACTORS[sizeUnit.toLowerCase()];
       if (factor) {
         convertedQty = sizeQty * factor;
-        unitType = 'oz';
-        if (price) {
-          const p = parseFloat(price.replace(/[^0-9.]/g, ''));
-          if (!isNaN(p)) {
-            pricePerUnit = p / (convertedQty * packCount);
-          }
+        if (priceNumber != null && pricePerUnit == null) {
+          pricePerUnit = priceNumber / convertedQty;
         }
       }
     }
 
-      if (pricePerUnit == null) {
-        const match = perUnitTextRaw?.match(/\$([\d.]+)\/?\s*([\d./]*)\s*(\w+)/);
-      if (match) {
-        let priceVal = parseFloat(match[1]);
-        const qtyVal = parseNumber(match[2]);
-        const qty = !isNaN(qtyVal) && qtyVal !== 0 ? qtyVal : 1;
-        pricePerUnit = priceVal / qty;
-        unitType = match[3].toLowerCase();
-        const factor = UNIT_FACTORS[unitType];
-        if (factor) {
-          pricePerUnit = pricePerUnit / factor;
-          unitType = 'oz';
-        }
-      }
-    }
-      const image = getImageSrc(tile.querySelector('img[data-testid="productTileImage"]'));
-    const link = tile.querySelector('a[href*="/ip/"]')?.href || '';
-    if (name && price) {
+    if (name && priceText) {
+      const sizeStr = sizeQty != null && sizeUnit ? `${sizeQty} ${sizeUnit}` : unitSize || '';
       products.push({
         name,
-        price,
+        price: priceText,
         priceNumber,
-        size: '',
+        size: sizeStr,
         sizeQty,
         sizeUnit,
-        unit: perUnitTextSanitized || '',
-        unitQty: null,
+        unit: perUnitText || '',
+        unitQty,
         unitType,
         convertedQty,
         pricePerUnit,
