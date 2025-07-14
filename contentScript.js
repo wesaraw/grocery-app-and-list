@@ -1043,6 +1043,19 @@ function normalizeUnit(unit) {
   return UNIT_ALIASES[key] || key;
 }
 
+function parsePriceNumber(text) {
+  if (!text) return null;
+  text = text.replace(/[^\x00-\x7F]+/g, '');
+  let m = text.match(/([0-9]+\.[0-9]+)/);
+  if (m) return parseFloat(m[1]);
+
+  m = text.match(/\$\s*([0-9]+)/);
+  if (m) return parseFloat(m[1]);
+
+  m = text.match(/[0-9]+/);
+  return m ? parseFloat(m[0]) : null;
+}
+
 function parseUnitPrice(text) {
   if (!text) return null;
   text = text.trim();
