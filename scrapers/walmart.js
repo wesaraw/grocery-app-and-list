@@ -1,5 +1,6 @@
 import { getImageSrc } from "../utils/imageUtils.js";
-import { parsePriceNumber, normalizeUnit, parseUnitPrice } from "../utils/priceUtils.js";
+import { parsePriceNumber } from "../utils/priceUtils.js";
+
 export function scrapeWalmart() {
   const UNIT_FACTORS = {
     oz: 1,
@@ -36,6 +37,23 @@ export function scrapeWalmart() {
     tray: 1,
     unit: 1
   };
+
+  const WEIGHT_UNITS = new Set([
+    'oz',
+    'floz',
+    'lb',
+    'kg',
+    'ml',
+    'l',
+    'gal',
+    'ga',
+    'g',
+    'qt',
+    'pt',
+    'cup',
+    'tbsp',
+    'tsp'
+  ]);
 
   const COUNT_UNITS = new Set([
     'ea',
@@ -86,120 +104,147 @@ export function scrapeWalmart() {
   }
 
   const products = [];
-  // Walmart product tiles are identified with `data-item-id` but some older
-  // markup only uses `data-testid="list-view"`. Query both selectors so the
-  // scraper continues to work across markup variations.
   const tiles = document.querySelectorAll('[data-item-id], [data-testid="list-view"]');
-  tiles.forEach((tile, i) => {
+  tiles.forEach(tile => {
     const name = tile.querySelector('[data-automation-id="product-title"]')?.textContent?.trim();
-    const packCount = getPackCount(name, null, null);
-    const priceMatch = tile.querySelector('[data-automation-id="product-price"]')?.textContent?.match(/\$?\d+\.\d{2}/);
-    const price = priceMatch ? priceMatch[0] : null;
-    const perUnitTextRaw =
+
+    const priceText = tile.querySelector('[data-automation-id="product-price"]')?.textContent?.trim();
+
+    let unitSize = null;
+    const sizeMatch = name?.match(/(\d+(?:\.\d+)?)\s*(fl\.?\s*oz|oz|lb|kg|ml|l|gal|g|qt|pt|cup|tbsp|tsp|ea|ct|pkg|box|can|bag|bottle|stick|roll|bar|pouch|jar|packet|sleeve|slice|piece|tube|tray|unit)/i);
+    if (sizeMatch) {
+      unitSize = `${sizeMatch[1]} ${sizeMatch[2]}`;
+    }
+
+    const perUnitText =
       tile.querySelector('[data-testid="product-price-per-unit"]')?.textContent?.trim() ||
       tile.querySelector('.gray')?.textContent?.trim();
-    const perUnitTextSanitized = perUnitTextRaw?.replace(/[^\x00-\x7F]+/g, '');
-    let pricePerUnit = null;
+
+    const image = getImageSrc(tile.querySelector('img[data-testid="productTileImage"]'));
+    const link = tile.querySelector('a[href*="/ip/"]')?.href || '';
+
+    const packCount = getPackCount(name, unitSize, perUnitText);
+
+    let unitQty = null;
     let unitType = null;
+    if (perUnitText) {
+      const clean = perUnitText.replace(/[^0-9./a-zA-Z¢$]/g, '');
+      let m = clean.match(/\$([\d.]+)\/(\d*\.?\d*)\s*(\w+)/);
+      let priceVal = null;
+      let qtyVal = null;
+      if (m) {
+        priceVal = parseFloat(m[1]);
+        qtyVal = parseFloat(m[2]);
+        unitType = m[3].toLowerCase().replace(/[\s.]+/g, '');
+      } else {
+        m = clean.match(/([\d.]+)¢\/(\d*\.?\d*)\s*(\w+)/);
+        if (m) {
+          priceVal = parseFloat(m[1]) / 100;
+          qtyVal = parseFloat(m[2]);
+          unitType = m[3].toLowerCase().replace(/[\s.]+/g, '');
+        }
+      }
+      if (m) {
+        if (unitType === 'floz') unitType = 'oz';
+        const qty = !isNaN(qtyVal) && qtyVal !== 0 ? qtyVal : 1;
+        const factor = UNIT_FACTORS[unitType];
+        let pricePerUnit = priceVal / qty;
+        if (factor && !COUNT_UNITS.has(unitType)) {
+          pricePerUnit = pricePerUnit / factor;
+          unitType = 'oz';
+        }
+        unitQty = qty;
+        var computedPPU = pricePerUnit;
+      }
+    }
+
+    let priceNumber = null;
+    if (priceText) {
+      const p = parsePriceNumber(priceText);
+      if (!isNaN(p)) priceNumber = p;
+    }
+
     let sizeQty = null;
     let sizeUnit = null;
-    let convertedQty = null;
-    let unitQty = null;
-
-    const sizeMatch = name?.match(/(\d+(?:\.\d+)?)\s*(fl\.?\s*oz|oz|lb|g|kg|ml|l|ct)/i);
-    if (sizeMatch) {
-      sizeQty = parseFloat(sizeMatch[1]);
-      sizeUnit = normalizeUnit(sizeMatch[2]);
-      const factor = UNIT_FACTORS[sizeUnit];
-      if (factor) {
-        sizeQty = sizeQty * packCount;
-        if (!COUNT_UNITS.has(sizeUnit)) {
-          convertedQty = sizeQty * factor;
-          unitType = 'oz';
-          unitQty = 1;
-          if (price) {
-            const p = parseFloat(price.replace(/[^0-9.]/g, ''));
-            if (!isNaN(p)) {
-              pricePerUnit = p / convertedQty;
-            }
-          }
-        } else {
-          convertedQty = sizeQty;
-          unitType = sizeUnit;
-          unitQty = 1;
-          if (price) {
-            const p = parseFloat(price.replace(/[^0-9.]/g, ''));
-            if (!isNaN(p) && convertedQty > 0) {
-              pricePerUnit = p / convertedQty;
-            }
-          }
-        }
+    if (unitSize) {
+      const m = unitSize.match(/([\d.]+)\s*(fl\.?\s*oz|oz|lb|kg|ml|l|gal|g|qt|pt|cup|tbsp|tsp|ea|ct|pkg|box|can|bag|bottle|stick|roll|bar|pouch|jar|packet|sleeve|slice|piece|tube|tray|unit)/i);
+      if (m) {
+        sizeQty = parseFloat(m[1]);
+        sizeUnit = m[2].toLowerCase().replace(/[\s.]+/g, '');
+        if (sizeUnit === 'floz') sizeUnit = 'oz';
       }
     }
 
-    if (sizeQty == null && unitQty != null && unitType) {
-      sizeQty = unitQty * packCount;
+    let totalSizeQty = null;
+    if (sizeQty != null) {
+      totalSizeQty = sizeQty * packCount;
+    } else if (unitQty != null && unitType) {
+      totalSizeQty = unitQty * packCount;
       sizeUnit = unitType;
-      const factor = UNIT_FACTORS[sizeUnit];
-      if (factor) {
-        if (!COUNT_UNITS.has(sizeUnit)) {
-          convertedQty = sizeQty * factor;
-          unitType = 'oz';
-        } else {
-          convertedQty = sizeQty;
-        }
-        if (price && pricePerUnit == null) {
-          const p = parseFloat(price.replace(/[^0-9.]/g, ''));
-          if (!isNaN(p) && convertedQty > 0) {
-            pricePerUnit = p / convertedQty;
-          }
+    }
+    sizeQty = totalSizeQty;
+
+    let convertedQty = null;
+    let pricePerUnit = typeof computedPPU === 'number' ? computedPPU : null;
+
+    if (perUnitText && pricePerUnit == null) {
+      let m = perUnitText.match(/\$([\d.]+)\/?\s*([\d.]*)\s*(\w+)/);
+      let priceVal = null;
+      let qtyVal = null;
+      if (m) {
+        priceVal = parseFloat(m[1]);
+        qtyVal = parseFloat(m[2]);
+        unitType = m[3].toLowerCase().replace(/\s+/g, '');
+      } else {
+        m = perUnitText.match(/([\d.]+)\s*¢\/?\s*([\d.]*)\s*(\w+)/);
+        if (m) {
+          priceVal = parseFloat(m[1]) / 100;
+          qtyVal = parseFloat(m[2]);
+          unitType = m[3].toLowerCase().replace(/\s+/g, '');
         }
       }
-    }
-
-    if (pricePerUnit == null && perUnitTextRaw) {
-      const parsed = parseUnitPrice(perUnitTextRaw);
-      if (parsed) {
-        pricePerUnit = parsed.pricePerUnit;
-        unitType = parsed.unitType;
-        unitQty = parsed.unitQty;
+      if (m) {
+        if (unitType === 'floz') unitType = 'oz';
+        const qty = !isNaN(qtyVal) && qtyVal !== 0 ? qtyVal : 1;
+        pricePerUnit = priceVal / qty;
         const factor = UNIT_FACTORS[unitType];
         if (factor && !COUNT_UNITS.has(unitType)) {
           pricePerUnit = pricePerUnit / factor;
           unitType = 'oz';
         }
+        unitQty = qty;
       }
     }
 
-    if (pricePerUnit == null && price) {
-      const sheetMatch = name?.match(/(\d+)\s*sheets?\s*per\s*roll/i);
-      if (sheetMatch) {
-        const sheetsPerRoll = parseInt(sheetMatch[1], 10);
-        const totalSheets = sheetsPerRoll * (packCount || 1);
-        const p = parseFloat(price.replace(/[^0-9.]/g, ''));
-        if (!isNaN(p) && totalSheets > 0) {
-          pricePerUnit = p / totalSheets;
-          unitType = 'sheet';
+    if (sizeQty != null && sizeUnit) {
+      const factor = UNIT_FACTORS[sizeUnit.toLowerCase()];
+      if (factor) {
+        if (!COUNT_UNITS.has(sizeUnit.toLowerCase())) {
+          convertedQty = sizeQty * factor;
+          unitType = 'oz';
+          if (priceNumber != null && pricePerUnit == null) {
+            pricePerUnit = priceNumber / convertedQty;
+          }
+        } else {
+          convertedQty = sizeQty;
+          if (!unitType) unitType = sizeUnit.toLowerCase();
+          if (priceNumber != null && pricePerUnit == null) {
+            pricePerUnit = priceNumber / convertedQty;
+          }
         }
       }
     }
-    const image = getImageSrc(tile.querySelector('img[data-testid="productTileImage"]'));
-    const link = tile.querySelector('a[href*="/ip/"]')?.href || '';
-    let priceNumber = null;
-    if (price) {
-      const p = parsePriceNumber(price);
-      if (!isNaN(p)) priceNumber = p;
-    }
-    if (name && price) {
-      const sizeStr = sizeQty != null && sizeUnit ? `${sizeQty} ${sizeUnit}` : '';
+
+    if (name && priceText) {
+      const sizeStr = sizeQty != null && sizeUnit ? `${sizeQty} ${sizeUnit}` : unitSize || '';
       products.push({
         name,
-        price,
+        price: priceText,
         priceNumber,
         size: sizeStr,
         sizeQty,
         sizeUnit,
-        unit: perUnitTextSanitized || '',
+        unit: perUnitText || '',
         unitQty,
         unitType,
         convertedQty,
