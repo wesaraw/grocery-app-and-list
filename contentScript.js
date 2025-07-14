@@ -216,12 +216,12 @@ function extractWalmartPrice(tile) {
     }
   }
 
-  // Fallback to pulling the first currency-looking value from the raw text.
+  // Fall back to parsing the raw text of the container. Walmart sometimes
+  // embeds the decimal digits in separate elements (e.g. using <sup> tags).
+  // Parse the first decimal-looking value instead of just the first digits
+  // to avoid misreading "$234" when the actual price is "$2.34".
   const raw = container.textContent.replace(/\s+/g, ' ').trim();
-  let match = raw.match(/\$\s*([0-9]+(?:\.[0-9]+)?)/);
-  if (!match) match = raw.match(/([0-9]+(?:\.[0-9]+)?)/);
-
-  const num = match ? parseFloat(match[1]) : parseFloat(raw.replace(/[^0-9.]/g, ''));
+  const num = parsePriceNumber(raw);
   const priceNumber = isNaN(num) ? null : num;
   const priceText = priceNumber != null ? `$${priceNumber.toFixed(2)}` : raw;
 

@@ -22,12 +22,11 @@ export function extractWalmartPrice(tile) {
   }
 
   // Fall back to parsing the raw text of the container. Walmart sometimes
-  // includes multiple numeric values here (such as unit price or previous
-  // price). Grab the first value that looks like a currency amount.
+  // embeds the decimal digits in separate elements, producing text like
+  // "$234 current price $2.34". Parse the first decimal-looking value so we
+  // don't misinterpret the price as 234.
   const raw = container.textContent.replace(/\s+/g, ' ').trim();
-  let match = raw.match(/\$\s*([0-9]+(?:\.[0-9]+)?)/);
-  if (!match) match = raw.match(/([0-9]+(?:\.[0-9]+)?)/);
-  const num = match ? parseFloat(match[1]) : parsePriceNumber(raw);
+  const num = parsePriceNumber(raw);
   const priceNumber = isNaN(num) ? null : num;
   const priceText = priceNumber != null ? `$${priceNumber.toFixed(2)}` : raw;
 
