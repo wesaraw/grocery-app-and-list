@@ -198,6 +198,22 @@ function scrapeStopAndShop() {
   return products;
 }
 
+function extractWalmartPrice(tile) {
+  const container = tile.querySelector('[data-automation-id="product-price"]');
+  if (!container) return { priceText: '', priceNumber: null };
+  const charEl = container.querySelector('[data-automation-id="price-characteristic"], .price-characteristic');
+  const mantEl = container.querySelector('[data-automation-id="price-mantissa"], .price-mantissa');
+  let text;
+  if (charEl && mantEl) {
+    text = `${charEl.textContent.trim()}.${mantEl.textContent.trim()}`;
+    if (!text.startsWith('$')) text = '$' + text;
+  } else {
+    text = container.textContent.trim();
+  }
+  const num = parseFloat(text.replace(/[^0-9.]/g, ''));
+  return { priceText: text, priceNumber: isNaN(num) ? null : num };
+}
+
 function scrapeWalmart() {
   const UNIT_FACTORS = {
     oz: 1,
@@ -259,7 +275,7 @@ function scrapeWalmart() {
   const tiles = document.querySelectorAll('[data-item-id], [data-testid="list-view"]');
   tiles.forEach((tile, index) => {
     const name = tile.querySelector('[data-automation-id="product-title"]')?.innerText?.trim();
-    const priceText = tile.querySelector('[data-automation-id="product-price"]')?.innerText?.trim();
+    const { priceText, priceNumber: extractedNumber } = extractWalmartPrice(tile);
     const perUnitText =
       tile.querySelector('[data-testid="product-price-per-unit"]')?.innerText?.trim() ||
       tile.querySelector('.gray')?.innerText?.trim();
@@ -291,11 +307,7 @@ function scrapeWalmart() {
       }
     }
 
-    let priceNumber = null;
-    if (priceText) {
-      const p = parseFloat(priceText.replace(/[^0-9.]/g, ''));
-      if (!isNaN(p)) priceNumber = p;
-    }
+    let priceNumber = extractedNumber;
 
     let sizeQty = null;
     let sizeUnit = null;
