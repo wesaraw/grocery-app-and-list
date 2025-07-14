@@ -4,25 +4,31 @@ import { parsePriceNumber } from "../utils/priceUtils.js";
 export function extractWalmartPrice(tile) {
   const container = tile.querySelector('[data-automation-id="product-price"]');
   if (!container) return { priceText: null, priceNumber: null };
-  const charEl =
-    container.querySelector('[data-automation-id="price-characteristic"], .price-characteristic');
-  const mantEl =
-    container.querySelector('[data-automation-id="price-mantissa"], .price-mantissa');
 
-  let priceNumber = null;
-  let priceText = null;
+  // First try the split markup Walmart often uses where the integer and decimal
+  // portions are separated into their own elements. This avoids accidentally
+  // picking up additional numbers that may appear in the same container.
+  const charEl = container.querySelector('[data-automation-id="price-characteristic"], .price-characteristic');
+  const mantEl = container.querySelector('[data-automation-id="price-mantissa"], .price-mantissa');
   if (charEl && mantEl) {
-    const num = parseFloat(`${charEl.textContent.trim()}.${mantEl.textContent.trim()}`);
-    if (!isNaN(num)) {
-      priceNumber = num;
-      priceText = `$${num.toFixed(2)}`;
+    const whole = charEl.textContent.replace(/[^0-9]/g, '').trim();
+    const frac = mantEl.textContent.replace(/[^0-9]/g, '').trim();
+    if (whole && frac) {
+      const num = parseFloat(`${whole}.${frac}`);
+      if (!isNaN(num)) {
+        return { priceText: `$${num.toFixed(2)}`, priceNumber: num };
+      }
     }
   }
 
-  if (priceNumber == null) {
-    priceText = container.textContent.trim();
-    priceNumber = parsePriceNumber(priceText);
-  }
+  // Fall back to parsing the raw text of the container. Walmart sometimes
+  // embeds the decimal digits in separate elements, producing text like
+  // "$234 current price $2.34". Parse the first decimal-looking value so we
+  // don't misinterpret the price as 234.
+  const raw = container.textContent.replace(/\s+/g, ' ').trim();
+  const num = parsePriceNumber(raw);
+  const priceNumber = isNaN(num) ? null : num;
+  const priceText = priceNumber != null ? `$${priceNumber.toFixed(2)}` : raw;
 
   return { priceText, priceNumber };
 }

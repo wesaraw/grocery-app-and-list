@@ -201,24 +201,29 @@ function scrapeStopAndShop() {
 function extractWalmartPrice(tile) {
   const container = tile.querySelector('[data-automation-id="product-price"]');
   if (!container) return { priceText: null, priceNumber: null };
+
+  // Try the split markup (characteristic and mantissa) first.
   const charEl = container.querySelector('[data-automation-id="price-characteristic"], .price-characteristic');
   const mantEl = container.querySelector('[data-automation-id="price-mantissa"], .price-mantissa');
-
-  let priceNumber = null;
-  let priceText = null;
   if (charEl && mantEl) {
-    const num = parseFloat(`${charEl.textContent.trim()}.${mantEl.textContent.trim()}`);
-    if (!isNaN(num)) {
-      priceNumber = num;
-      priceText = `$${num.toFixed(2)}`;
+    const whole = charEl.textContent.replace(/[^0-9]/g, '').trim();
+    const frac = mantEl.textContent.replace(/[^0-9]/g, '').trim();
+    if (whole && frac) {
+      const num = parseFloat(`${whole}.${frac}`);
+      if (!isNaN(num)) {
+        return { priceText: `$${num.toFixed(2)}`, priceNumber: num };
+      }
     }
   }
 
-  if (priceNumber == null) {
-    priceText = container.textContent.trim();
-    const num = parseFloat(priceText.replace(/[^0-9.]/g, ''));
-    priceNumber = isNaN(num) ? null : num;
-  }
+  // Fall back to parsing the raw text of the container. Walmart sometimes
+  // embeds the decimal digits in separate elements (e.g. using <sup> tags).
+  // Parse the first decimal-looking value instead of just the first digits
+  // to avoid misreading "$234" when the actual price is "$2.34".
+  const raw = container.textContent.replace(/\s+/g, ' ').trim();
+  const num = parsePriceNumber(raw);
+  const priceNumber = isNaN(num) ? null : num;
+  const priceText = priceNumber != null ? `$${priceNumber.toFixed(2)}` : raw;
 
   return { priceText, priceNumber };
 }
