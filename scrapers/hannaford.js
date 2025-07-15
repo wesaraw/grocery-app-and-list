@@ -37,16 +37,13 @@ export function scrapeHannaford() {
     unit: 1
   };
 
-  const WEIGHT_UNITS = new Set([
-    'oz',
+  const WEIGHT_UNITS = new Set(['oz', 'lb', 'g', 'kg']);
+  const VOLUME_UNITS = new Set([
     'floz',
-    'lb',
-    'kg',
     'ml',
     'l',
     'gal',
     'ga',
-    'g',
     'qt',
     'pt',
     'cup',
@@ -201,13 +198,15 @@ export function scrapeHannaford() {
         }
       }
       if (m) {
-        if (unitType === 'floz') unitType = 'oz';
+        const origUnit = unitType;
         const qty = !isNaN(qtyVal) && qtyVal !== 0 ? qtyVal : 1;
         pricePerUnit = priceVal / qty;
-        const factor = UNIT_FACTORS[unitType];
-        if (factor && !COUNT_UNITS.has(unitType)) {
+        const factor = UNIT_FACTORS[origUnit];
+        if (factor && !COUNT_UNITS.has(origUnit)) {
           pricePerUnit = pricePerUnit / factor;
-          unitType = 'oz';
+          unitType = VOLUME_UNITS.has(origUnit) ? 'fl oz' : 'oz';
+        } else {
+          unitType = origUnit;
         }
         unitQty = qty;
       }
@@ -218,7 +217,7 @@ export function scrapeHannaford() {
       if (factor) {
         if (!COUNT_UNITS.has(sizeUnit.toLowerCase())) {
           convertedQty = sizeQty * factor;
-          unitType = 'oz';
+          unitType = VOLUME_UNITS.has(sizeUnit.toLowerCase()) ? 'fl oz' : 'oz';
           if (priceNumber != null && pricePerUnit == null) {
             pricePerUnit = priceNumber / convertedQty;
           }
