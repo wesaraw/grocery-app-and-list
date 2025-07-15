@@ -802,7 +802,7 @@ function scrapeRocheBros() {
   const products = [];
   const tiles = document.querySelectorAll('li.product-wrapper.cell-wrapper');
   tiles.forEach(tile => {
-    const name = tile.querySelector('.cell-title-text')?.innerText?.trim();
+    const name = tile.querySelector('.cell-title-text')?.textContent?.trim();
     const packMatch = name?.match(/(\d+)\s*(?:pk|pack|ct|count)/i);
     const packCount = packMatch ? parseInt(packMatch[1], 10) : 1;
       const image = getImageSrc(tile.querySelector(".cell-image"));
@@ -810,9 +810,9 @@ function scrapeRocheBros() {
     const addBtn = tile.querySelector('button[data-test="add-to-cart-button"]') ||
       tile.querySelector('button[data-test-id^="add-to-cart-button"]');
     const addToCartId = addBtn?.id || addBtn?.getAttribute('data-test-id') || '';
-    const priceText = tile.querySelector('span[data-test="amount"] span')?.innerText?.trim();
-    const perUnitText = tile.querySelector('span[data-test="per-unit-price"]')?.innerText?.trim();
-    const sizeText = tile.querySelector('.cell-product-size')?.innerText?.trim();
+    const priceText = tile.querySelector('span[data-test="amount"] span')?.textContent?.trim();
+    const perUnitText = tile.querySelector('span[data-test="per-unit-price"]')?.textContent?.trim();
+    const sizeText = tile.querySelector('.cell-product-size')?.textContent?.trim();
 
     let priceNumber = null;
     if (priceText) {
