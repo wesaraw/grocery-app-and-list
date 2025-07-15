@@ -302,14 +302,14 @@ const quartItem = hannProducts.find(
 );
 if (!quartItem) throw new Error('Failed to find Hannaford quart item');
 const expectedPpu = 1.51 / 32;
-if (quartItem.unitType !== 'oz') {
-  throw new Error(`Expected unitType oz but got ${quartItem.unitType}`);
+if (quartItem.unitType !== 'fl oz') {
+  throw new Error(`Expected unitType fl oz but got ${quartItem.unitType}`);
 }
 if (Math.abs(quartItem.pricePerUnit - expectedPpu) > 0.0001) {
-  throw new Error(`Expected price per oz about ${expectedPpu} but got ${quartItem.pricePerUnit}`);
+  throw new Error(`Expected price per fl oz about ${expectedPpu} but got ${quartItem.pricePerUnit}`);
 }
-if (quartItem.unit !== '$0.05/oz') {
-  throw new Error(`Expected unit $0.05/oz but got ${quartItem.unit}`);
+if (quartItem.unit !== '$0.05/fl oz') {
+  throw new Error(`Expected unit $0.05/fl oz but got ${quartItem.unit}`);
 }
 
 const hannHtmlNoSpace = hannHtml.replace(/Per quart/g, 'Perquart');
@@ -329,6 +329,6 @@ const quartItem2 = hannProducts2.find(
   p => /Pepsi Zero Sugar/i.test(p.name) && p.sizeUnit === 'l' && Math.abs(p.sizeQty - 2) < 0.01
 );
 if (!quartItem2) throw new Error('Failed to find Hannaford quart item variant');
-if (quartItem2.unit !== '$0.05/oz') {
+if (quartItem2.unit !== '$0.05/fl oz') {
   throw new Error(`Perquart unit not normalized: ${quartItem2.unit}`);
 }
