@@ -1079,7 +1079,7 @@ function scrapeHannaford() {
   return products;
 }
 
-function runScrape() {
+function runScrape(attempt = 0) {
   chrome.storage.local.get('currentItemInfo', info => {
     const { item = '', store = 'Stop & Shop' } = info.currentItemInfo || {};
     let data = [];
@@ -1095,6 +1095,10 @@ function runScrape() {
       data = scrapeRocheBros();
     } else if (store === 'Hannaford') {
       data = scrapeHannaford();
+    }
+    if (!data.length && attempt < 5) {
+      setTimeout(() => runScrape(attempt + 1), 1000);
+      return;
     }
     chrome.runtime.sendMessage({ type: 'scrapedData', item, store, products: data });
   });
