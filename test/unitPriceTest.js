@@ -332,3 +332,35 @@ if (!quartItem2) throw new Error('Failed to find Hannaford quart item variant');
 if (quartItem2.unit !== '$0.05/fl oz') {
   throw new Error(`Perquart unit not normalized: ${quartItem2.unit}`);
 }
+
+// Amazon unit parsing snippet
+const amazonHtml = `
+<div data-asin="test" data-component-type="s-search-result">
+  <a class="a-link-normal s-no-outline" href="/test"></a>
+  <h2 class="a-size-base-plus"><span>Sample Drink 12 Fl Oz Cans (Pack of 12)</span></h2>
+  <img class="s-image" src="test.jpg" />
+  <span class="a-price"><span class="a-offscreen">$6.00</span></span>
+  <span class="a-size-base a-color-secondary">($0.04/fl oz)</span>
+  <span class="a-size-base a-color-base">12 Fl Oz Cans (Pack of 12)</span>
+</div>`;
+const amazonDom = new JSDOM(amazonHtml);
+Object.defineProperty(amazonDom.window.HTMLElement.prototype, 'innerText', {
+  get() {
+    return this.textContent;
+  },
+  set(v) {
+    this.textContent = v;
+  }
+});
+global.document = amazonDom.window.document;
+global.window = amazonDom.window;
+const { scrapeAmazon } = await import('../scrapers/amazon.js');
+const amazonProducts = scrapeAmazon();
+const amazonItem = amazonProducts[0];
+if (
+  !amazonItem ||
+  amazonItem.sizeQty !== 144 ||
+  Math.abs(amazonItem.pricePerUnit - 0.04) > 0.0001
+) {
+  throw new Error('Amazon snippet parsing failed');
+}
