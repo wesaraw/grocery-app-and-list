@@ -283,7 +283,7 @@ if (Math.abs(ppu - 0.715) > 0.001) {
 }
 
 // Hannaford quart unit normalization
-const hannHtml = fs.readFileSync("Search Results on 'Pepsi Zero' _ Hannaford Supermarket.html", 'utf8');
+const hannHtml = fs.readFileSync("'pepsi' _ Hannaford Supermarket.html", 'utf8');
 const hannDom = new JSDOM(hannHtml);
 Object.defineProperty(hannDom.window.HTMLElement.prototype, 'innerText', {
   get() {
