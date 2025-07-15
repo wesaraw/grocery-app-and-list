@@ -9,7 +9,19 @@ export const UNIT_ALIASES = {
   perlb: 'lb',
   floz: 'oz',
   fluidounce: 'oz',
-  flounce: 'oz'
+  flounce: 'oz',
+  ga: 'gal',
+  gl: 'gal',
+  quart: 'qt',
+  quarts: 'qt',
+  perquart: 'qt',
+  pint: 'pt',
+  pints: 'pt',
+  perpint: 'pt',
+  liter: 'l',
+  liters: 'l',
+  litre: 'l',
+  litres: 'l'
 };
 
 export function normalizeUnit(unit) {

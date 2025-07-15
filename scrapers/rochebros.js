@@ -1,5 +1,5 @@
 import { getImageSrc } from "../utils/imageUtils.js";
-import { parsePriceNumber } from "../utils/priceUtils.js";
+import { parsePriceNumber, parseUnitPrice } from "../utils/priceUtils.js";
 export function scrapeRocheBros() {
   const UNIT_FACTORS = {
     oz: 1,
@@ -161,15 +161,14 @@ export function scrapeRocheBros() {
     let unitType = null;
     let pricePerUnit = null;
     if (unitText) {
-      const clean = unitText.replace(/^[\s(]+|[\s)]+$/g, '');
-      const m = clean.match(/\$([\d.]+)\s*\/\s*(fl\s*oz|oz|lb|kg|ml|l|gal|ga|gl|g|qt|pt|cup|tbsp|tsp|ea|ct|pkg|box|can|bag|bottle|stick|roll|bar|pouch|jar|packet|sleeve|slice|piece|tube|tray|unit)/i);
-      if (m) {
-        pricePerUnit = parseFloat(m[1]);
-        unitType = m[2].toLowerCase().replace(/\s+/g, '');
-        if (unitType === 'floz') unitType = 'oz';
+      const parsed = parseUnitPrice(unitText);
+      if (parsed) {
+        pricePerUnit = parsed.pricePerUnit;
+        unitType = parsed.unitType;
+        unitQty = parsed.unitQty;
         if (unitType === 'gl') unitType = 'gal';
         const factor = UNIT_FACTORS[unitType];
-        if (factor) {
+        if (factor && !COUNT_UNITS.has(unitType)) {
           pricePerUnit = pricePerUnit / factor;
           unitType = 'oz';
         }

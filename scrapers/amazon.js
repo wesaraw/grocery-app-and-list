@@ -1,5 +1,5 @@
 import { getImageSrc } from "../utils/imageUtils.js";
-import { parsePriceNumber } from "../utils/priceUtils.js";
+import { parsePriceNumber, parseUnitPrice } from "../utils/priceUtils.js";
 export function scrapeAmazon() {
   const UNIT_FACTORS = {
     oz: 1,
@@ -115,13 +115,20 @@ export function scrapeAmazon() {
       if (!isNaN(p)) priceNumber = p;
     }
 
-    let pricePerUnit = null;
+    let unitQty = null;
     let unitType = null;
+    let pricePerUnit = null;
     if (unitText) {
-      const m = unitText.match(/\$([\d.]+).*\/(\w+)/);
-      if (m) {
-        pricePerUnit = parseFloat(m[1]);
-        unitType = m[2].toLowerCase();
+      const parsed = parseUnitPrice(unitText);
+      if (parsed) {
+        pricePerUnit = parsed.pricePerUnit;
+        unitType = parsed.unitType;
+        unitQty = parsed.unitQty;
+        const factor = UNIT_FACTORS[unitType];
+        if (factor && WEIGHT_UNITS.has(unitType)) {
+          pricePerUnit = pricePerUnit / factor;
+          unitType = 'oz';
+        }
       }
     }
 
@@ -142,21 +149,21 @@ export function scrapeAmazon() {
     const baseSizeQty = unitInfo.unitSize;
     let sizeQty = baseSizeQty != null ? baseSizeQty * packCount : null;
     let sizeUnit = unitInfo.unit;
+    if (sizeQty == null && unitQty != null && unitType) {
+      sizeQty = unitQty * packCount;
+      sizeUnit = unitType;
+    }
 
     let convertedQty = null;
-    if (baseSizeQty != null && sizeUnit && UNIT_FACTORS[sizeUnit]) {
-      const totalQty = baseSizeQty * packCount;
-      convertedQty = totalQty * UNIT_FACTORS[sizeUnit];
+    if (sizeQty != null && sizeUnit && UNIT_FACTORS[sizeUnit]) {
+      convertedQty = sizeQty * UNIT_FACTORS[sizeUnit];
       if (WEIGHT_UNITS.has(sizeUnit)) {
         unitType = 'oz';
       } else if (!unitType) {
         unitType = sizeUnit;
       }
-      if (priceNumber != null && totalQty != null) {
-        const totalConverted = totalQty * UNIT_FACTORS[sizeUnit];
-        if (pricePerUnit == null && unitType !== 'count' && unitType !== 'ct') {
-          pricePerUnit = priceNumber / totalConverted;
-        }
+      if (priceNumber != null && pricePerUnit == null && unitType !== 'count' && unitType !== 'ct') {
+        pricePerUnit = priceNumber / convertedQty;
       }
     }
 
@@ -170,7 +177,7 @@ export function scrapeAmazon() {
         sizeQty,
         sizeUnit,
         unit: unitText || '',
-        unitQty: null,
+        unitQty,
         unitType,
         convertedQty,
         pricePerUnit,
