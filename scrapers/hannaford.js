@@ -57,17 +57,24 @@ export function scrapeHannaford() {
   const UNIT_ALIASES = {
     quart: 'qt',
     quarts: 'qt',
+    perquart: 'qt',
     pint: 'pt',
     pints: 'pt',
+    perpint: 'pt',
     liter: 'l',
     liters: 'l',
     litre: 'l',
     litres: 'l',
     pound: 'lb',
     pounds: 'lb',
+    perlb: 'lb',
+    perpound: 'lb',
     ounce: 'oz',
-    ounces: 'oz'
+    ounces: 'oz',
+    peroz: 'oz',
+    perounce: 'oz'
   };
+
 
   const COUNT_UNITS = new Set([
     'ea',
@@ -126,17 +133,13 @@ export function scrapeHannaford() {
       : '';
     const name = tile.querySelector('.productName .real-product-name')?.textContent?.trim();
     const sizeText = tile.querySelector('.overline.text-truncate')?.textContent?.trim();
-    const unitText = tile.querySelector('.unitPriceDisplay')?.textContent?.trim();
-    const packCount = getPackCount(name, sizeText, unitText);
+    const perUnitText = tile.querySelector('.unitPriceDisplay')?.textContent?.trim();
+    const packCount = getPackCount(name, sizeText, perUnitText);
     const priceText = tile.querySelector('.priceCell .item-unit-price')?.textContent?.trim();
-    const priceHidden = tile.querySelector('.priceCell .item-price')?.value;
     const image = getImageSrc(tile.querySelector('img'));
 
     let priceNumber = null;
-    if (priceHidden) {
-      const p = parseFloat(priceHidden);
-      if (!isNaN(p)) priceNumber = p;
-    } else if (priceText) {
+    if (priceText) {
       const p = parsePriceNumber(priceText);
       if (!isNaN(p)) priceNumber = p;
     }
@@ -144,44 +147,6 @@ export function scrapeHannaford() {
     let unitQty = null;
     let unitType = null;
     let pricePerUnit = null;
-    if (unitText) {
-      let normalized = unitText.toLowerCase();
-      normalized = normalized.replace(/per\s+/g, '');
-      normalized = normalized.replace(/-/g, ' ');
-      for (const [word, abbr] of Object.entries(UNIT_ALIASES)) {
-        const r = new RegExp(`\\b${word}\\b`, 'g');
-        normalized = normalized.replace(r, abbr);
-      }
-      const priceMatch = normalized.match(/\$([\d.]+)\/?\s*([\d.]*)\s*(\w+)/);
-      if (priceMatch) {
-        const priceVal = parseFloat(priceMatch[1]);
-        const qtyVal = parseFloat(priceMatch[2]);
-        unitType = priceMatch[3];
-        unitQty = !isNaN(qtyVal) && qtyVal !== 0 ? qtyVal : 1;
-        if (unitType === 'floz') unitType = 'oz';
-        const factor = UNIT_FACTORS[unitType];
-        if (factor && !COUNT_UNITS.has(unitType)) {
-          pricePerUnit = priceVal / factor / unitQty;
-          unitType = 'oz';
-        } else {
-          pricePerUnit = priceVal / unitQty;
-        }
-      } else {
-        const clean = normalized.replace(/[^0-9./a-zA-Z]/g, '');
-        const match = clean.match(/([\d.]+)\/(fl\s*oz|oz|lb|kg|ml|l|gal|g|qt|pt|cup|tbsp|tsp|ea|ct|pkg|box|can|bag|bottle|stick|roll|bar|pouch|jar|packet|sleeve|slice|piece|tube|tray|unit)/i);
-        if (match) {
-          pricePerUnit = parseFloat(match[1]);
-          unitType = match[2].toLowerCase().replace(/\s+/g, '');
-          unitQty = 1;
-          if (unitType === 'floz') unitType = 'oz';
-          const factor = UNIT_FACTORS[unitType];
-          if (factor && !COUNT_UNITS.has(unitType)) {
-            pricePerUnit = pricePerUnit / factor;
-            unitType = 'oz';
-          }
-        }
-      }
-    }
 
     let sizeQty = null;
     let sizeUnit = null;
@@ -210,19 +175,59 @@ export function scrapeHannaford() {
     sizeQty = totalSizeQty;
 
     let convertedQty = null;
-    if (sizeQty != null && sizeUnit) {
-      const unit = sizeUnit.toLowerCase();
-      const factor = UNIT_FACTORS[unit];
-      if (factor) {
-        if (!WEIGHT_UNITS.has(unit) && !unitType) {
-          unitType = unit;
+
+    if (perUnitText) {
+      let normalizedUnit = perUnitText.toLowerCase();
+      normalizedUnit = normalizedUnit.replace(/per\s*/g, '');
+      normalizedUnit = normalizedUnit.replace(/-/g, ' ');
+      for (const [word, abbr] of Object.entries(UNIT_ALIASES)) {
+        const r = new RegExp(`\\b${word}\\b`, 'g');
+        normalizedUnit = normalizedUnit.replace(r, abbr);
+      }
+
+      let m = normalizedUnit.match(/\$([\d.]+)\/?\s*([\d.]*)\s*(\w+)/);
+      let priceVal = null;
+      let qtyVal = null;
+      if (m) {
+        priceVal = parseFloat(m[1]);
+        qtyVal = parseFloat(m[2]);
+        unitType = m[3].toLowerCase().replace(/\s+/g, '');
+      } else {
+        m = normalizedUnit.match(/([\d.]+)\s*¢\/?\s*([\d.]*)\s*(\w+)/);
+        if (m) {
+          priceVal = parseFloat(m[1]) / 100;
+          qtyVal = parseFloat(m[2]);
+          unitType = m[3].toLowerCase().replace(/\s+/g, '');
         }
-        if (WEIGHT_UNITS.has(unit)) {
+      }
+      if (m) {
+        if (unitType === 'floz') unitType = 'oz';
+        const qty = !isNaN(qtyVal) && qtyVal !== 0 ? qtyVal : 1;
+        pricePerUnit = priceVal / qty;
+        const factor = UNIT_FACTORS[unitType];
+        if (factor && !COUNT_UNITS.has(unitType)) {
+          pricePerUnit = pricePerUnit / factor;
           unitType = 'oz';
         }
-        convertedQty = COUNT_UNITS.has(unit) ? sizeQty : sizeQty * factor;
-        if (priceNumber != null && pricePerUnit == null) {
-          pricePerUnit = priceNumber / convertedQty;
+        unitQty = qty;
+      }
+    }
+
+    if (sizeQty != null && sizeUnit) {
+      const factor = UNIT_FACTORS[sizeUnit.toLowerCase()];
+      if (factor) {
+        if (!COUNT_UNITS.has(sizeUnit.toLowerCase())) {
+          convertedQty = sizeQty * factor;
+          unitType = 'oz';
+          if (priceNumber != null && pricePerUnit == null) {
+            pricePerUnit = priceNumber / convertedQty;
+          }
+        } else {
+          convertedQty = sizeQty;
+          if (!unitType) unitType = sizeUnit.toLowerCase();
+          if (priceNumber != null && pricePerUnit == null) {
+            pricePerUnit = priceNumber / convertedQty;
+          }
         }
       }
     }
@@ -230,7 +235,7 @@ export function scrapeHannaford() {
     const normalizedUnit =
       pricePerUnit != null && unitType
         ? `$${pricePerUnit.toFixed(2)}/${unitType}`
-        : unitText || '';
+        : perUnitText || '';
 
     if (name && (priceText || priceNumber != null)) {
       const sizeStr = sizeQty != null && sizeUnit ? `${sizeQty} ${sizeUnit}` : sizeText || '';
