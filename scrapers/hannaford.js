@@ -57,16 +57,22 @@ export function scrapeHannaford() {
   const UNIT_ALIASES = {
     quart: 'qt',
     quarts: 'qt',
+    perquart: 'qt',
     pint: 'pt',
     pints: 'pt',
+    perpint: 'pt',
     liter: 'l',
     liters: 'l',
     litre: 'l',
     litres: 'l',
     pound: 'lb',
     pounds: 'lb',
+    perlb: 'lb',
+    perpound: 'lb',
     ounce: 'oz',
-    ounces: 'oz'
+    ounces: 'oz',
+    peroz: 'oz',
+    perounce: 'oz'
   };
 
 
@@ -172,7 +178,7 @@ export function scrapeHannaford() {
 
     if (perUnitText) {
       let normalizedUnit = perUnitText.toLowerCase();
-      normalizedUnit = normalizedUnit.replace(/per\s+/g, '');
+      normalizedUnit = normalizedUnit.replace(/per\s*/g, '');
       normalizedUnit = normalizedUnit.replace(/-/g, ' ');
       for (const [word, abbr] of Object.entries(UNIT_ALIASES)) {
         const r = new RegExp(`\\b${word}\\b`, 'g');
