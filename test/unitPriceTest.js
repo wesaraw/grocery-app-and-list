@@ -281,3 +281,33 @@ const ppu = price / converted;
 if (Math.abs(ppu - 0.715) > 0.001) {
   throw new Error(`Expected price per oz about 0.715 but got ${ppu}`);
 }
+
+// Hannaford quart unit normalization
+const hannHtml = fs.readFileSync("Search Results on 'Pepsi Zero' _ Hannaford Supermarket.html", 'utf8');
+const hannDom = new JSDOM(hannHtml);
+Object.defineProperty(hannDom.window.HTMLElement.prototype, 'innerText', {
+  get() {
+    return this.textContent;
+  },
+  set(v) {
+    this.textContent = v;
+  }
+});
+global.document = hannDom.window.document;
+global.window = hannDom.window;
+const { scrapeHannaford } = await import('../scrapers/hannaford.js');
+const hannProducts = scrapeHannaford();
+const quartItem = hannProducts.find(
+  p => /Pepsi Zero Sugar/i.test(p.name) && p.sizeUnit === 'l' && Math.abs(p.sizeQty - 2) < 0.01
+);
+if (!quartItem) throw new Error('Failed to find Hannaford quart item');
+const expectedPpu = 1.51 / 32;
+if (quartItem.unitType !== 'oz') {
+  throw new Error(`Expected unitType oz but got ${quartItem.unitType}`);
+}
+if (Math.abs(quartItem.pricePerUnit - expectedPpu) > 0.0001) {
+  throw new Error(`Expected price per oz about ${expectedPpu} but got ${quartItem.pricePerUnit}`);
+}
+if (quartItem.unit !== '$0.05/oz') {
+  throw new Error(`Expected unit $0.05/oz but got ${quartItem.unit}`);
+}
