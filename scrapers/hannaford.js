@@ -227,6 +227,11 @@ export function scrapeHannaford() {
       }
     }
 
+    const normalizedUnit =
+      pricePerUnit != null && unitType
+        ? `$${pricePerUnit.toFixed(2)}/${unitType}`
+        : unitText || '';
+
     if (name && (priceText || priceNumber != null)) {
       const sizeStr = sizeQty != null && sizeUnit ? `${sizeQty} ${sizeUnit}` : sizeText || '';
       products.push({
@@ -236,7 +241,7 @@ export function scrapeHannaford() {
         size: sizeStr,
         sizeQty,
         sizeUnit,
-        unit: unitText || '',
+        unit: normalizedUnit,
         unitQty,
         unitType,
         convertedQty,
