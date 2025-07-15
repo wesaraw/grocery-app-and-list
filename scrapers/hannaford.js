@@ -143,6 +143,7 @@ export function scrapeHannaford() {
 
     let unitQty = null;
     let unitType = null;
+    let pricePerUnit = null;
     if (unitText) {
       let normalized = unitText.toLowerCase();
       normalized = normalized.replace(/per\s+/g, '');
@@ -151,12 +152,34 @@ export function scrapeHannaford() {
         const r = new RegExp(`\\b${word}\\b`, 'g');
         normalized = normalized.replace(r, abbr);
       }
-      const clean = normalized.replace(/[^0-9./a-zA-Z]/g, '');
-      const match = clean.match(/([\d.]+)\/(fl\s*oz|oz|lb|kg|ml|l|gal|g|qt|pt|cup|tbsp|tsp|ea|ct|pkg|box|can|bag|bottle|stick|roll|bar|pouch|jar|packet|sleeve|slice|piece|tube|tray|unit)/i);
-      if (match) {
-        unitQty = parseFloat(match[1]);
-        unitType = match[2].toLowerCase().replace(/\s+/g, '');
+      const priceMatch = normalized.match(/\$([\d.]+)\/?\s*([\d.]*)\s*(\w+)/);
+      if (priceMatch) {
+        const priceVal = parseFloat(priceMatch[1]);
+        const qtyVal = parseFloat(priceMatch[2]);
+        unitType = priceMatch[3];
+        unitQty = !isNaN(qtyVal) && qtyVal !== 0 ? qtyVal : 1;
         if (unitType === 'floz') unitType = 'oz';
+        const factor = UNIT_FACTORS[unitType];
+        if (factor && !COUNT_UNITS.has(unitType)) {
+          pricePerUnit = priceVal / factor / unitQty;
+          unitType = 'oz';
+        } else {
+          pricePerUnit = priceVal / unitQty;
+        }
+      } else {
+        const clean = normalized.replace(/[^0-9./a-zA-Z]/g, '');
+        const match = clean.match(/([\d.]+)\/(fl\s*oz|oz|lb|kg|ml|l|gal|g|qt|pt|cup|tbsp|tsp|ea|ct|pkg|box|can|bag|bottle|stick|roll|bar|pouch|jar|packet|sleeve|slice|piece|tube|tray|unit)/i);
+        if (match) {
+          pricePerUnit = parseFloat(match[1]);
+          unitType = match[2].toLowerCase().replace(/\s+/g, '');
+          unitQty = 1;
+          if (unitType === 'floz') unitType = 'oz';
+          const factor = UNIT_FACTORS[unitType];
+          if (factor && !COUNT_UNITS.has(unitType)) {
+            pricePerUnit = pricePerUnit / factor;
+            unitType = 'oz';
+          }
+        }
       }
     }
 
@@ -187,7 +210,6 @@ export function scrapeHannaford() {
     sizeQty = totalSizeQty;
 
     let convertedQty = null;
-    let pricePerUnit = null;
     if (sizeQty != null && sizeUnit) {
       const unit = sizeUnit.toLowerCase();
       const factor = UNIT_FACTORS[unit];
@@ -199,7 +221,7 @@ export function scrapeHannaford() {
           unitType = 'oz';
         }
         convertedQty = COUNT_UNITS.has(unit) ? sizeQty : sizeQty * factor;
-        if (priceNumber != null) {
+        if (priceNumber != null && pricePerUnit == null) {
           pricePerUnit = priceNumber / convertedQty;
         }
       }
