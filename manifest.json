@@ -13,7 +13,7 @@
     "https://www.walmart.com/*",
     "https://www.amazon.com/*",
     "https://www.shaws.com/*",
-    "https://shopping.rochebros.com/*",
+    "https://onlineshopping.rochebros.com/*",
     "https://www.hannaford.com/*"
   ],
   "action": {
@@ -29,7 +29,7 @@
         "https://www.walmart.com/*",
         "https://www.amazon.com/*",
         "https://www.shaws.com/*",
-        "https://shopping.rochebros.com/*",
+        "https://onlineshopping.rochebros.com/*",
         "https://www.hannaford.com/*"
       ],
       "js": [

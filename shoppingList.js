@@ -11,7 +11,7 @@ const PLACEHOLDER_IMG =
 
 const STORE_LINKS = {
   'Roche Bros': name =>
-    `https://shopping.rochebros.com/search?search_term=${name.replace(/ /g, '%20')}`
+    `https://onlineshopping.rochebros.com/search?searchTerms=${name.replace(/ /g, '%20')}`
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
