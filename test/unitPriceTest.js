@@ -8,7 +8,7 @@ const {
   UNIT_ALIASES
 } = await import('../utils/priceUtils.js');
 
-const html = fs.readFileSync("Search Results toilet paper _ Shaw's.html", 'utf8');
+const html = fs.readFileSync('test/samples/shaws-toilet-paper.html', 'utf8');
 const dom = new JSDOM(html);
 const tile = dom.window.document.querySelector('product-item-al-v2');
 const unitText = tile.querySelector('[data-qa="prd-itm-pprc-qty"]').textContent.trim();
@@ -66,7 +66,7 @@ if (perSheet == null || Math.abs(perSheet - 0.0225) > 0.0001) {
 }
 
 // Walmart Bounty paper towels parsing
-const walmartHtml = fs.readFileSync('Bounty Paper Towels - Walmart.com.html', 'utf8');
+const walmartHtml = fs.readFileSync('test/samples/walmart-bounty.html', 'utf8');
 const walmartDom = new JSDOM(walmartHtml);
 Object.defineProperty(walmartDom.window.HTMLElement.prototype, 'innerText', {
   get() {
@@ -184,7 +184,7 @@ if (
 }
 
 // Shaws Dentastix parsing
-const dentHtml = fs.readFileSync("Search Results Dentastixs _ Shaw's.html", 'utf8');
+const dentHtml = fs.readFileSync('test/samples/shaws-dentastixs.html', 'utf8');
 const dentDom = new JSDOM(dentHtml);
 Object.defineProperty(dentDom.window.HTMLElement.prototype, 'innerText', {
   get() {
@@ -283,7 +283,7 @@ if (Math.abs(ppu - 0.715) > 0.001) {
 }
 
 // Hannaford quart unit normalization
-const hannHtml = fs.readFileSync("'pepsi' _ Hannaford Supermarket.html", 'utf8');
+const hannHtml = fs.readFileSync('test/samples/hannaford-pepsi.html', 'utf8');
 const hannDom = new JSDOM(hannHtml);
 Object.defineProperty(hannDom.window.HTMLElement.prototype, 'innerText', {
   get() {
