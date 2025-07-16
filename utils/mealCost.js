@@ -28,14 +28,22 @@ function loadFinalProduct(item) {
   });
 }
 
-function pricePerHomeUnit(itemName, product) {
-  const item = needsMap.get(canonicalName(itemName));
+export async function getItemAndProduct(ingredient) {
+  if (!ingredient) return { item: null, product: null };
+  const key = ingredient.item || ingredient.name;
+  if (!key) return { item: null, product: null };
+  const item = needsMap.get(canonicalName(key));
+  const product = await loadFinalProduct(key);
+  return { item, product };
+}
+
+function pricePerHomeUnit(item, product) {
   if (!item || !product || product.priceNumber == null) return null;
-  const info = densityMap[itemName] || {};
+  const info = densityMap[item.name] || {};
   const pack = product.packCount && product.packCount > 1 ? product.packCount : 1;
   const unit = item.home_unit ? item.home_unit.toLowerCase() : 'each';
   if (unit === 'sheets') {
-    const sheetSqFt = sheetSqFtFor(itemName);
+    const sheetSqFt = sheetSqFtFor(item.name);
     const { pricePerUnit: ppu, unitType: ut } = getPriceUnitInfo(product);
     if (ppu != null && ut) {
       if (/^(?:sf|sqft)$/.test(ut)) return ppu * sheetSqFt;
@@ -84,19 +92,17 @@ export async function computeMealCost(meal) {
   if (!meal || !Array.isArray(meal.ingredients)) return null;
   let total = 0;
   for (const ing of meal.ingredients) {
-    if (!ing.name || !ing.amount) continue;
-    const product = await loadFinalProduct(ing.name);
-    if (!product) continue;
+    if (!ing.amount) continue;
+    const { item, product } = await getItemAndProduct(ing);
+    if (!item || !product) continue;
     const info = getPriceUnitInfo(product);
-    const unitPrice = pricePerHomeUnit(ing.name, product);
+    const unitPrice = pricePerHomeUnit(item, product);
     if (unitPrice == null && !(info.unitType === 'fl oz' && info.pricePerUnit != null)) continue;
-    const item = needsMap.get(canonicalName(ing.name));
-    if (!item) continue;
     const { value, unit } = parseQuantity(ing.amount || ing.serving_size || '');
     if (!value) continue;
     let qty = value;
     if (unit && item.home_unit && unit.toLowerCase() !== item.home_unit.toLowerCase()) {
-      const dInfo = densityMap[ing.name] || {};
+      const dInfo = densityMap[item.name] || {};
       qty = convertWithDensity(value, unit, item.home_unit, {
         convert_volume_to_weight: dInfo.convert,
         custom_density_ratio: dInfo.ratio
