@@ -13,6 +13,8 @@ import { loadJSON } from './dataLoader.js';
 import { initUomTable, convert } from './uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './unitNormalize.js';
 import { loadUsers, loadUserCategoryDays } from './userData.js';
+import { computeMealCost } from './mealCost.js';
+import { loadMealPriceCap } from './mealPrice.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 
@@ -181,6 +183,18 @@ export async function calculateAndSaveMealNeeds() {
   for (const type of Object.keys(MEAL_TYPES)) {
     mealsByCategory[type] = await loadMeals(type);
   }
+  const priceCap = await loadMealPriceCap();
+  const mealCostMap = {};
+  if (priceCap != null) {
+    for (const list of Object.values(mealsByCategory)) {
+      for (const meal of list) {
+        const id = meal.id || meal.name;
+        if (mealCostMap[id] === undefined) {
+          mealCostMap[id] = await computeMealCost(meal);
+        }
+      }
+    }
+  }
   const startDate = new Date();
   const preparedCal = generatePreparedMealsCalendar(
     dayCats,
@@ -190,17 +204,22 @@ export async function calculateAndSaveMealNeeds() {
 
   const subscriptions = {};
   users.forEach(u => (subscriptions[u] = {}));
-  Object.entries(mealsByCategory).forEach(([cat, meals]) => {
-    meals.forEach(meal => {
-      if (!Array.isArray(meal.users)) return;
+  for (const [cat, meals] of Object.entries(mealsByCategory)) {
+    for (const meal of meals) {
+      if (!Array.isArray(meal.users)) continue;
+      if (priceCap != null) {
+        const id = meal.id || meal.name;
+        const cost = mealCostMap[id];
+        if (cost != null && cost > priceCap) continue;
+      }
       meal.users.forEach((use, idx) => {
         if (!use) return;
         const user = users[idx];
         if (!subscriptions[user][cat]) subscriptions[user][cat] = [];
         subscriptions[user][cat].push(meal);
       });
-    });
-  });
+    }
+  }
 
   const eatingDays = {};
   users.forEach((u, idx) => {
