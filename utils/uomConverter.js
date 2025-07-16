@@ -8,6 +8,8 @@ const ALIAS_MAP = {
   gallons: 'gal',
   ounce: 'oz',
   ounces: 'oz',
+  floz: 'fl oz',
+  fluidounce: 'fl oz',
   each: 'ea'
 };
 

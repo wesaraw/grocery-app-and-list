@@ -176,8 +176,9 @@ function pricePerHomeUnit(itemName, product) {
 async function ingredientCost(name, amountStr) {
   const prod = await loadFinalProduct(name);
   if (!prod) return null;
+  const { pricePerUnit: ppu, unitType } = getPriceUnitInfo(prod);
   const pricePerUnit = pricePerHomeUnit(name, prod);
-  if (pricePerUnit == null) return null;
+  if (pricePerUnit == null && !(unitType === 'fl oz' && ppu != null)) return null;
   const item = needsMap.get(canonicalName(name));
   if (!item) return null;
   const { value, unit } = parseQuantity(amountStr);
@@ -191,6 +192,13 @@ async function ingredientCost(name, amountStr) {
     });
   }
   if (qty == null || isNaN(qty)) return null;
+  if (unitType === 'fl oz' && ppu != null) {
+    const fromUnit = item.home_unit || unit;
+    const flozQty = convert(qty, fromUnit, 'fl oz');
+    if (!isNaN(flozQty)) {
+      return ppu * flozQty;
+    }
+  }
   return pricePerUnit * qty;
 }
 
