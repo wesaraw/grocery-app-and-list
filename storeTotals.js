@@ -1,6 +1,6 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { calculatePurchaseNeeds } from './utils/purchaseCalculator.js';
-import { initUomTable, convert } from './utils/uomConverter.js';
+import { initUomTable } from './utils/uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
@@ -10,6 +10,8 @@ const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.jso
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
 const CONSUMED_PATH = 'consumedThisYear';
+const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
+const STORE_SELECTION_KEY = 'storeSelections';
 
 async function loadPurchases() {
   return new Promise(resolve => {
@@ -76,6 +78,30 @@ function loadStoredArray(key) {
 
 const loadMealPlanMonth = () => loadStoredArray('mealPlanMonthly');
 
+function key(type, item, store) {
+  return `${type}_${encodeURIComponent(item)}_${encodeURIComponent(store)}`;
+}
+
+async function loadStoreSelections() {
+  return new Promise(async resolve => {
+    chrome.storage.local.get(STORE_SELECTION_KEY, async data => {
+      if (data[STORE_SELECTION_KEY]) {
+        resolve(data[STORE_SELECTION_KEY]);
+      } else {
+        const arr = await loadJSON(STORE_SELECTION_PATH);
+        resolve(arr);
+      }
+    });
+  });
+}
+
+function loadSelected(item, store) {
+  return new Promise(resolve => {
+    const k = key('selected', item, store);
+    chrome.storage.local.get([k], data => resolve(data[k] || null));
+  });
+}
+
 function loadCalendar() {
   return new Promise(resolve => {
     chrome.storage.local.get('whatToEatCalendar', data => {
@@ -110,7 +136,7 @@ async function loadMealsByCategory() {
 }
 
 async function getData() {
-  const [needs, consumption, stock, expiration, consumed, purchases, mealYear, mealMonth, calendar, meals, dMap] =
+  const [needs, consumption, stock, expiration, consumed, purchases, mealYear, mealMonth, calendar, meals, dMap, selections] =
     await Promise.all([
       loadNeeds(),
       loadMonthlyConsumption(),
@@ -122,7 +148,8 @@ async function getData() {
       loadMealPlanMonth(),
       loadCalendar(),
       loadMealsByCategory(),
-      loadDensityMap()
+      loadDensityMap(),
+      loadStoreSelections()
     ]);
   return {
     needs,
@@ -135,23 +162,11 @@ async function getData() {
     mealMonth,
     calendar,
     mealsByCategory: meals,
-    density: dMap
+    density: dMap,
+    selections
   };
 }
 
-function getFinal(itemName) {
-  const key = `final_${encodeURIComponent(itemName)}`;
-  return new Promise(resolve => {
-    chrome.storage.local.get([key], data => resolve(data[key]));
-  });
-}
-
-function getFinalProduct(itemName) {
-  const key = `final_product_${encodeURIComponent(itemName)}`;
-  return new Promise(resolve => {
-    chrome.storage.local.get([key], data => resolve(data[key]));
-  });
-}
 
 let needsData = [];
 let consumptionMap = new Map();
@@ -282,9 +297,9 @@ function monthlyCost(itemName, product) {
   return unitPrice * (base + planned);
 }
 
-async function init() {
+async function renderTotals() {
   await initUomTable();
-  const { needs, consumption, stock, expiration, consumed, purchases, mealYear, mealMonth, calendar, mealsByCategory, density } = await getData();
+  const { needs, consumption, stock, expiration, consumed, purchases, mealYear, mealMonth, calendar, mealsByCategory, density, selections } = await getData();
   needsData = needs;
   densityMap = density;
   calendarData = calendar;
@@ -318,17 +333,20 @@ async function init() {
   const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
   const totals = {};
   for (const item of needs) {
-    const [store, product] = await Promise.all([getFinal(item.name), getFinalProduct(item.name)]);
-    if (!store || !product) continue;
-    const qty = purchaseMap.get(item.name)?.toBuy || 0;
-    if (!qty) continue;
-    const unitPrice = pricePerHomeUnit(item.name, product);
-    if (unitPrice == null) continue;
-    const cost = unitPrice * qty;
-    const month = monthlyCost(item.name, product);
-    if (!totals[store]) totals[store] = { purchase: 0, monthly: 0 };
-    totals[store].purchase += cost;
-    if (month != null) totals[store].monthly += month;
+    const stores = selections.filter(s => s.name === item.name).map(s => s.store);
+    for (const store of stores) {
+      const product = await loadSelected(item.name, store);
+      if (!product) continue;
+      const qty = purchaseMap.get(item.name)?.toBuy || 0;
+      if (!qty) continue;
+      const unitPrice = pricePerHomeUnit(item.name, product);
+      if (unitPrice == null) continue;
+      const cost = unitPrice * qty;
+      const month = monthlyCost(item.name, product);
+      if (!totals[store]) totals[store] = { purchase: 0, monthly: 0 };
+      totals[store].purchase += cost;
+      if (month != null) totals[store].monthly += month;
+    }
   }
 
   const ul = document.getElementById('totals');
@@ -339,6 +357,18 @@ async function init() {
   });
   const totalMonthly = Object.values(totals).reduce((sum, r) => sum + r.monthly, 0);
   document.getElementById('monthlyTotal').textContent = `Total Monthly Cost: $${totalMonthly.toFixed(2)}`;
+}
+
+function init() {
+  renderTotals();
+  chrome.storage.onChanged.addListener(() => {
+    renderTotals();
+  });
+  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg.type === 'selectedItem' || msg.type === 'finalSelection') {
+      renderTotals();
+    }
+  });
 }
 
 document.addEventListener('DOMContentLoaded', init);
