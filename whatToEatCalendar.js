@@ -5,6 +5,7 @@ import {
 } from './utils/mealData.js';
 import { loadUsers } from './utils/userData.js';
 import { loadJSON } from './utils/dataLoader.js';
+import { openOrFocusWindow } from './utils/windowUtils.js';
 
 function loadCalendar() {
   return new Promise(resolve => {
@@ -300,6 +301,20 @@ async function saveOrder() {
   buildHeader(false);
 }
 
+function openCookView() {
+  const params = new URLSearchParams();
+  const start = document.getElementById('startDate').value;
+  const days = document.getElementById('numDays').value;
+  if (start) params.set('start', start);
+  if (days) params.set('days', days);
+  const url = 'whatToCookWhen.html' + (params.toString() ? '?' + params.toString() : '');
+  if (chrome.runtime?.getURL) {
+    openOrFocusWindow(url);
+  } else {
+    location.href = url;
+  }
+}
+
 async function init() {
   await initializeMealCategories();
   const mealsPerDay = await loadMealsPerDay();
@@ -322,6 +337,7 @@ async function init() {
   applySavedOrderForUser(userSelect.value);
   buildHeader();
   document.getElementById('showBtn').addEventListener('click', render);
+  document.getElementById('cookViewBtn').addEventListener('click', openCookView);
   document.getElementById('reorderBtn').addEventListener('click', startReorder);
   document.getElementById('saveOrderBtn').addEventListener('click', saveOrder);
   userSelect.addEventListener('change', () => {
