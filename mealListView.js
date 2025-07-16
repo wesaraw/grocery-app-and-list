@@ -68,6 +68,7 @@ function loadMeals() {
       if (Array.isArray(arr)) {
         arr.forEach(m => {
           if (m.prepared === undefined) m.prepared = false;
+          if (m.prepAhead === undefined) m.prepAhead = false;
         });
       }
       resolve(arr || []);
@@ -253,11 +254,32 @@ function createRows(meal, arr) {
       const prepChk = document.createElement('input');
       prepChk.type = 'checkbox';
       prepChk.checked = meal.prepared || false;
+      const prepAheadLabel = document.createElement('label');
+      prepAheadLabel.style.marginLeft = '4px';
+      const prepAheadChk = document.createElement('input');
+      prepAheadChk.type = 'checkbox';
+      prepAheadChk.checked = meal.prepAhead || false;
+      prepAheadLabel.appendChild(prepAheadChk);
+      prepAheadLabel.appendChild(document.createTextNode(' prep ahead'));
+      function togglePrepAhead() {
+        prepAheadLabel.style.display = prepChk.checked ? '' : 'none';
+        if (!prepChk.checked) {
+          prepAheadChk.checked = false;
+          meal.prepAhead = false;
+        }
+      }
+      togglePrepAhead();
       prepChk.addEventListener('change', async () => {
         meal.prepared = prepChk.checked;
+        togglePrepAhead();
+        await saveMeals(arr);
+      });
+      prepAheadChk.addEventListener('change', async () => {
+        meal.prepAhead = prepAheadChk.checked;
         await saveMeals(arr);
       });
       prepTd.appendChild(prepChk);
+      prepTd.appendChild(prepAheadLabel);
       if (ingredients.length > 1) prepTd.rowSpan = ingredients.length;
 
       imageTd = document.createElement('td');
@@ -405,11 +427,32 @@ function createRows(meal, arr) {
     const prepChk = document.createElement('input');
     prepChk.type = 'checkbox';
     prepChk.checked = meal.prepared || false;
+    const prepAheadLabel = document.createElement('label');
+    prepAheadLabel.style.marginLeft = '4px';
+    const prepAheadChk = document.createElement('input');
+    prepAheadChk.type = 'checkbox';
+    prepAheadChk.checked = meal.prepAhead || false;
+    prepAheadLabel.appendChild(prepAheadChk);
+    prepAheadLabel.appendChild(document.createTextNode(' prep ahead'));
+    function togglePrepAhead2() {
+      prepAheadLabel.style.display = prepChk.checked ? '' : 'none';
+      if (!prepChk.checked) {
+        prepAheadChk.checked = false;
+        meal.prepAhead = false;
+      }
+    }
+    togglePrepAhead2();
     prepChk.addEventListener('change', async () => {
       meal.prepared = prepChk.checked;
+      togglePrepAhead2();
+      await saveMeals(arr);
+    });
+    prepAheadChk.addEventListener('change', async () => {
+      meal.prepAhead = prepAheadChk.checked;
       await saveMeals(arr);
     });
     prepTd.appendChild(prepChk);
+    prepTd.appendChild(prepAheadLabel);
 
     const ingTd = document.createElement('td');
     ingTds.push(ingTd);

@@ -15,6 +15,7 @@ function loadMeals() {
       if (Array.isArray(arr)) {
         arr.forEach(m => {
           if (m.prepared === undefined) m.prepared = false;
+          if (m.prepAhead === undefined) m.prepAhead = false;
         });
       }
       resolve(arr || []);
@@ -93,6 +94,14 @@ async function init() {
   const tbody = document.getElementById('mealBody');
   const rows = [];
   const preparedBox = document.getElementById('preparedChk');
+  const prepAheadBox = document.getElementById('prepAheadChk');
+  const prepAheadLabel = document.getElementById('prepAheadLbl');
+  function togglePrepAhead() {
+    prepAheadLabel.style.display = preparedBox.checked ? '' : 'none';
+    if (!preparedBox.checked) prepAheadBox.checked = false;
+  }
+  preparedBox.addEventListener('change', togglePrepAhead);
+  togglePrepAhead();
 
   function addRow() {
     const row = createRow(units);
@@ -168,6 +177,7 @@ async function init() {
       ingredients,
       people: 1,
       prepared: preparedBox.checked,
+      prepAhead: preparedBox.checked && prepAheadBox.checked,
       image: null
     });
     await saveMeals(meals);
