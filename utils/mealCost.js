@@ -89,35 +89,7 @@ function pricePerHomeUnit(item, product) {
 
 export async function computeMealCost(meal) {
   await init();
-  if (!meal || !Array.isArray(meal.ingredients)) return null;
-  let total = 0;
-  for (const ing of meal.ingredients) {
-    if (!ing.amount) continue;
-    const { item, product } = await getItemAndProduct(ing);
-    if (!item || !product) continue;
-    const info = getPriceUnitInfo(product);
-    const unitPrice = pricePerHomeUnit(item, product);
-    if (unitPrice == null && !(info.unitType === 'fl oz' && info.pricePerUnit != null)) continue;
-    const { value, unit } = parseQuantity(ing.amount || ing.serving_size || '');
-    if (!value) continue;
-    let qty = value;
-    if (unit && item.home_unit && unit.toLowerCase() !== item.home_unit.toLowerCase()) {
-      const dInfo = densityMap[item.name] || {};
-      qty = convertWithDensity(value, unit, item.home_unit, {
-        convert_volume_to_weight: dInfo.convert,
-        custom_density_ratio: dInfo.ratio
-      });
-    }
-    if (qty == null || isNaN(qty)) continue;
-    if (info.unitType === 'fl oz' && info.pricePerUnit != null) {
-      const fromUnit = item.home_unit || unit;
-      const flozQty = convert(qty, fromUnit, 'fl oz');
-      if (!isNaN(flozQty)) {
-        total += info.pricePerUnit * flozQty;
-        continue;
-      }
-    }
-    total += unitPrice * qty;
-  }
-  return total;
+  if (!meal) return null;
+  const total = parseFloat(meal.totalCost);
+  return isNaN(total) ? null : total;
 }

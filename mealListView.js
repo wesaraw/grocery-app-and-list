@@ -375,6 +375,10 @@ function createRows(meal, arr) {
     if (firstTotalTd && mealCost.total > 0) {
       firstTotalTd.textContent = `$${mealCost.total.toFixed(2)}`;
     }
+    if (meal.totalCost !== mealCost.total) {
+      meal.totalCost = mealCost.total;
+      saveMeals(arr);
+    }
   });
 
   if (ingredients.length === 0) {
@@ -682,6 +686,14 @@ async function init() {
       loadAndRender();
     }
   });
+
+  try {
+    chrome.runtime.onMessage.addListener(msg => {
+      if (msg && msg.type === 'finalSelection') {
+        loadAndRender();
+      }
+    });
+  } catch (_) {}
 }
 
 document.addEventListener('DOMContentLoaded', init);
