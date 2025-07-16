@@ -49,8 +49,21 @@ function getParams() {
 
 function buildData(cal, users, mealMap, start, days, prepDay) {
   const date = start ? new Date(start) : new Date();
+
+  let calcDays = days;
+  if (prepDay) {
+    const last = new Date(date);
+    last.setDate(last.getDate() + days - 1);
+    while (true) {
+      last.setDate(last.getDate() + 1);
+      calcDays++;
+      const dayName = last.toLocaleDateString('en-US', { weekday: 'long' });
+      if (dayName === prepDay) break;
+    }
+  }
+
   const rows = [];
-  for (let i = 0; i < days; i++) {
+  for (let i = 0; i < calcDays; i++) {
     const dStr = date.toISOString().split('T')[0];
     const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
     const counts = {};
@@ -85,7 +98,7 @@ function buildData(cal, users, mealMap, start, days, prepDay) {
     }
   }
 
-  return rows;
+  return rows.slice(0, days);
 }
 
 function renderRows(data, mealMap) {
