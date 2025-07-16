@@ -1,6 +1,7 @@
 import { loadUsers } from './utils/userData.js';
 import { MEAL_TYPES, DEFAULT_MEALS_PER_DAY, loadMealsPerDay, initializeMealCategories } from './utils/mealData.js';
 import { loadJSON } from './utils/dataLoader.js';
+import { canonicalName } from './utils/nameUtils.js';
 
 function getCurrentWeek() {
   const start = new Date(new Date().getFullYear(), 0, 1);
@@ -18,6 +19,11 @@ function loadMeals(type) {
         arr.forEach(m => {
           if (m.prepared === undefined) m.prepared = false;
           if (m.prepAhead === undefined) m.prepAhead = false;
+          if (Array.isArray(m.ingredients)) {
+            m.ingredients.forEach(ing => {
+              if (ing && !ing.item) ing.item = canonicalName(ing.name);
+            });
+          }
         });
       }
       resolve(arr || []);
