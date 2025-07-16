@@ -343,20 +343,36 @@ async function renderTotals() {
       if (unitPrice == null) continue;
       const cost = unitPrice * qty;
       const month = monthlyCost(item.name, product);
-      if (!totals[store]) totals[store] = { purchase: 0, monthly: 0 };
+      if (!totals[store]) totals[store] = { purchase: 0, monthly: 0, items: [] };
       totals[store].purchase += cost;
       if (month != null) totals[store].monthly += month;
+      totals[store].items.push({ name: item.name, purchase: cost, monthly: month });
     }
   }
 
-  const ul = document.getElementById('totals');
-  Object.keys(totals).sort().forEach(s => {
-    const li = document.createElement('li');
-    li.textContent = `${s} - Purchase: $${totals[s].purchase.toFixed(2)} - Monthly: $${totals[s].monthly.toFixed(2)}`;
-    ul.appendChild(li);
-  });
-  const totalMonthly = Object.values(totals).reduce((sum, r) => sum + r.monthly, 0);
-  document.getElementById('monthlyTotal').textContent = `Total Monthly Cost: $${totalMonthly.toFixed(2)}`;
+  const container = document.getElementById('totals');
+  container.innerHTML = '';
+  Object.keys(totals)
+    .sort()
+    .forEach(store => {
+      const header = document.createElement('h3');
+      header.className = 'store-header';
+      header.textContent = `${store} - Purchase: $${totals[store].purchase.toFixed(2)} - Monthly: $${totals[store].monthly.toFixed(2)}`;
+      container.appendChild(header);
+      const list = document.createElement('ul');
+      list.className = 'item-list';
+      totals[store].items.forEach(it => {
+        const li = document.createElement('li');
+        const monthlyText = it.monthly != null ? ` - Monthly: $${it.monthly.toFixed(2)}` : '';
+        li.textContent = `${it.name} - Purchase: $${it.purchase.toFixed(2)}${monthlyText}`;
+        list.appendChild(li);
+      });
+      list.style.display = 'none';
+      header.addEventListener('click', () => {
+        list.style.display = list.style.display === 'none' ? 'block' : 'none';
+      });
+      container.appendChild(list);
+    });
 }
 
 function init() {
