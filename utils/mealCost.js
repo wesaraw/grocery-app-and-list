@@ -90,6 +90,8 @@ function pricePerHomeUnit(item, product) {
 export async function computeMealCost(meal) {
   await init();
   if (!meal || !Array.isArray(meal.ingredients)) return null;
+  const saved = parseFloat(meal.totalCost);
+  if (!isNaN(saved)) return saved;
   let total = 0;
   for (const ing of meal.ingredients) {
     if (!ing.amount) continue;
