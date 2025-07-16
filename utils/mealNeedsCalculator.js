@@ -274,3 +274,40 @@ export function loadMealPlanData() {
     );
   });
 }
+
+// One-time migration to populate missing ingredient.item fields
+export async function migrateIngredientItems() {
+  await initializeMealCategories();
+  const needs = await loadJSON(YEARLY_NEEDS_PATH).catch(() => []);
+  const needsMap = new Map(needs.map(n => [canonicalName(n.name), n.name]));
+
+  for (const type of Object.keys(MEAL_TYPES)) {
+    const { key, path } = MEAL_TYPES[type];
+    const meals = await new Promise(resolve => {
+      chrome.storage.local.get(key, async data => {
+        let arr = data[key];
+        if (!arr) arr = await loadJSON(path);
+        resolve(Array.isArray(arr) ? arr : []);
+      });
+    });
+
+    let changed = false;
+    meals.forEach(meal => {
+      meal.ingredients?.forEach(ing => {
+        if (ing && !ing.item) {
+          const match = needsMap.get(canonicalName(ing.name));
+          if (match) {
+            ing.item = match;
+            changed = true;
+          }
+        }
+      });
+    });
+
+    if (changed) {
+      await new Promise(resolve => {
+        chrome.storage.local.set({ [key]: meals }, () => resolve());
+      });
+    }
+  }
+}
