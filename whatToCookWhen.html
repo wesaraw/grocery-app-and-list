@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>What To Cook</title>
+  <style>
+    body { font-family: Arial, sans-serif; width: 350px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 4px; border-bottom: 1px solid #ccc; vertical-align: top; }
+  </style>
+</head>
+<body>
+  <h1>What To Cook</h1>
+  <div>
+    <label>Start:
+      <input type="date" id="startDate">
+    </label>
+    <label>Days:
+      <input type="number" id="numDays" value="7" min="1" max="365">
+    </label>
+    <button id="showBtn">Show</button>
+    <button id="eatViewBtn">What To Eat When</button>
+  </div>
+  <table>
+    <thead><tr><th>Date</th><th>Meals</th></tr></thead>
+    <tbody id="cookBody"></tbody>
+  </table>
+  <script type="module" src="whatToCookWhen.js"></script>
+</body>
+</html>
