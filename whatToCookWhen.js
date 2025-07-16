@@ -1,4 +1,4 @@
-import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
+import { MEAL_TYPES, initializeMealCategories, loadCookingDays } from './utils/mealData.js';
 import { loadUsers } from './utils/userData.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 
@@ -47,33 +47,51 @@ function getParams() {
   };
 }
 
-function buildCounts(cal, users, mealMap, start, days) {
+function buildData(cal, users, mealMap, start, days, prepDay) {
   const date = start ? new Date(start) : new Date();
-  const result = [];
+  const rows = [];
   for (let i = 0; i < days; i++) {
     const dStr = date.toISOString().split('T')[0];
+    const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
     const counts = {};
+    const ahead = {};
     users.forEach(u => {
       const rec = cal[u]?.[dStr] || {};
       Object.values(rec).forEach(val => {
         const meals = Array.isArray(val) ? val : [val];
         meals.forEach(id => {
           const meal = mealMap[id];
-          if (!meal || !meal.prepared) return;
-          counts[id] = (counts[id] || 0) + 1;
+          if (meal?.prepared) counts[id] = (counts[id] || 0) + 1;
+          if (meal?.prepAhead) ahead[id] = (ahead[id] || 0) + 1;
         });
       });
     });
-    result.push({ date: dStr, counts });
+    rows.push({ date: dStr, dayName, counts, ahead });
     date.setDate(date.getDate() + 1);
   }
-  return result;
+
+  // compute prep ahead lists for prep days
+  for (let i = 0; i < rows.length; i++) {
+    if (prepDay && rows[i].dayName === prepDay) {
+      const next = rows.slice(i + 1).findIndex(r => r.dayName === prepDay);
+      const end = next === -1 ? rows.length : i + 1 + next;
+      const totals = {};
+      for (let j = i + 1; j < end; j++) {
+        Object.entries(rows[j].ahead).forEach(([id, c]) => {
+          totals[id] = (totals[id] || 0) + c;
+        });
+      }
+      rows[i].prepList = totals;
+    }
+  }
+
+  return rows;
 }
 
 function renderRows(data, mealMap) {
   const tbody = document.getElementById('cookBody');
   tbody.innerHTML = '';
-  data.forEach(({ date, counts }) => {
+  data.forEach(({ date, counts, prepList }) => {
     const row = document.createElement('tr');
     const dtd = document.createElement('td');
     dtd.textContent = date;
@@ -86,6 +104,16 @@ function renderRows(data, mealMap) {
       mealsTd.appendChild(div);
     });
     row.appendChild(mealsTd);
+    const prepTd = document.createElement('td');
+    if (prepList) {
+      Object.entries(prepList).forEach(([id, cnt]) => {
+        const div = document.createElement('div');
+        const name = mealMap[id]?.name || id;
+        div.textContent = `${name} (${cnt})`;
+        prepTd.appendChild(div);
+      });
+    }
+    row.appendChild(prepTd);
     tbody.appendChild(row);
   });
 }
@@ -109,6 +137,8 @@ async function init() {
   const users = await loadUsers();
   const calendar = await loadCalendar();
   const mealMap = await loadAllMeals();
+  const cookingDays = await loadCookingDays();
+  const prepDay = Array.isArray(cookingDays.prepDay) ? cookingDays.prepDay[0] : null;
   const { start, days } = getParams();
   document.getElementById('startDate').value = start || new Date().toISOString().split('T')[0];
   document.getElementById('numDays').value = days;
@@ -116,7 +146,7 @@ async function init() {
   function update() {
     const startVal = document.getElementById('startDate').value;
     const daysVal = parseInt(document.getElementById('numDays').value, 10) || 7;
-    const data = buildCounts(calendar, users, mealMap, startVal, daysVal);
+    const data = buildData(calendar, users, mealMap, startVal, daysVal, prepDay);
     renderRows(data, mealMap);
   }
 

@@ -7,6 +7,7 @@ export function generatePreparedMealsCalendar(cookingDays, mealsByCategory, star
     const dateStr = date.toISOString().split('T')[0];
     if (!calendar[dateStr]) calendar[dateStr] = {};
     Object.entries(cookingDays).forEach(([category, days]) => {
+      if (!mealsByCategory[category]) return;
       if (days.includes(dayName)) {
         const meals = (mealsByCategory[category] || []).filter(m => m.prepared);
         if (meals.length) {

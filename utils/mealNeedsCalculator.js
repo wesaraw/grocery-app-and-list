@@ -173,13 +173,17 @@ export async function calculateAndSaveMealNeeds() {
 
   // build prepared and What To Eat calendars
   const cookingDays = await loadCookingDays();
+  const dayCats = {};
+  Object.keys(cookingDays).forEach(key => {
+    if (MEAL_TYPES[key]) dayCats[key] = cookingDays[key];
+  });
   const mealsByCategory = {};
   for (const type of Object.keys(MEAL_TYPES)) {
     mealsByCategory[type] = await loadMeals(type);
   }
   const startDate = new Date();
   const preparedCal = generatePreparedMealsCalendar(
-    cookingDays,
+    dayCats,
     mealsByCategory,
     startDate
   );
