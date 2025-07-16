@@ -977,6 +977,14 @@ document
   .getElementById('mealChooser')
   .addEventListener('click', openMealChooser);
 
+function openStoreTotals() {
+  openOrFocusWindow('storeTotals.html');
+}
+
+document
+  .getElementById('storeTotals')
+  .addEventListener('click', openStoreTotals);
+
 function openEatCalendar() {
   openOrFocusWindow('whatToEatCalendar.html');
 }
