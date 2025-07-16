@@ -17,6 +17,7 @@ function loadMeals(type) {
       if (Array.isArray(arr)) {
         arr.forEach(m => {
           if (m.prepared === undefined) m.prepared = false;
+          if (m.prepAhead === undefined) m.prepAhead = false;
         });
       }
       resolve(arr || []);
