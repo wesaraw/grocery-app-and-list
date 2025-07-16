@@ -4,8 +4,13 @@ import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 import { loadUsers } from './utils/userData.js';
 import { canonicalName } from './utils/nameUtils.js';
+import { parseQuantity } from './utils/calendarUtils.js';
+import { initUomTable, convert } from './utils/uomConverter.js';
+import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
+import { getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
+const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 
 const params = new URLSearchParams(location.search);
 let type = params.get('type') || 'breakfast';
@@ -16,6 +21,8 @@ const ingredientCells = {};
 let userNames = [];
 let deleteMode = false;
 const deleteButtons = [];
+let needsMap = new Map();
+let densityMap = {};
 
 function loadFinalProduct(item) {
   return new Promise(resolve => {
@@ -81,10 +88,110 @@ function loadStock() {
   });
 }
 
+function loadNeeds() {
+  return new Promise(async resolve => {
+    chrome.storage.local.get('yearlyNeeds', async data => {
+      if (data.yearlyNeeds) {
+        resolve(data.yearlyNeeds);
+      } else {
+        const arr = await loadJSON(NEEDS_PATH);
+        resolve(arr);
+      }
+    });
+  });
+}
+
 function saveMeals(arr) {
   return new Promise(resolve => {
     chrome.storage.local.set({ [key]: arr }, () => resolve());
   });
+}
+
+function pricePerHomeUnit(itemName, product) {
+  const item = needsMap.get(canonicalName(itemName));
+  if (!item || !product || product.priceNumber == null) return null;
+  const info = densityMap[itemName] || {};
+  const pack = product.packCount && product.packCount > 1 ? product.packCount : 1;
+  const unit = item.home_unit ? item.home_unit.toLowerCase() : 'each';
+  if (unit === 'sheets') {
+    const sheetSqFt = sheetSqFtFor(itemName);
+    const { pricePerUnit: ppu, unitType: ut } = getPriceUnitInfo(product);
+    if (ppu != null && ut) {
+      if (/^(?:sf|sqft)$/.test(ut)) {
+        return ppu * sheetSqFt;
+      }
+      if (/ct|count|sheet/.test(ut)) {
+        return ppu;
+      }
+    }
+    const totalSheets = product.sizeQty && /sheet/i.test(product.sizeUnit || '')
+      ? product.sizeQty
+      : null;
+    if (totalSheets && product.priceNumber != null) {
+      return product.priceNumber / (totalSheets * pack);
+    }
+  }
+  if (unit === 'each') {
+    return product.priceNumber / pack;
+  }
+  let { pricePerUnit: pricePerOz, unitType } = getPriceUnitInfo(product);
+  if (pricePerOz == null) {
+    let ozQty = null;
+    if (product.convertedQty != null) {
+      ozQty = product.convertedQty * pack;
+    } else if (product.sizeQty != null && product.sizeUnit) {
+      ozQty = convertWithDensity(
+        product.sizeQty * pack,
+        product.sizeUnit,
+        'oz',
+        { convert_volume_to_weight: info.convert, custom_density_ratio: info.ratio }
+      );
+    }
+    if (ozQty != null) {
+      pricePerOz = product.priceNumber / ozQty;
+    }
+  } else if (unitType && unitType !== 'oz') {
+    const conv = convertWithDensity(1, unitType, 'oz', {
+      convert_volume_to_weight: info.convert,
+      custom_density_ratio: info.ratio
+    });
+    if (!isNaN(conv) && conv > 0) {
+      pricePerOz = pricePerOz / conv;
+    }
+  }
+  if (pricePerOz != null) {
+    const ozPerUnit = convertWithDensity(
+      1,
+      item.home_unit,
+      'oz',
+      { convert_volume_to_weight: info.convert, custom_density_ratio: info.ratio }
+    );
+    if (!isNaN(ozPerUnit) && ozPerUnit > 0) {
+      return pricePerOz * ozPerUnit;
+    }
+  }
+  return null;
+}
+
+async function ingredientCost(name, amountStr) {
+  const prod = await loadFinalProduct(name);
+  if (!prod) return null;
+  const pricePerUnit = pricePerHomeUnit(name, prod);
+  if (pricePerUnit == null) return null;
+  const item = needsMap.get(canonicalName(name));
+  if (!item) return null;
+  const { value, unit } = parseQuantity(amountStr);
+  if (!value) return null;
+  let qty = value;
+  if (unit && item.home_unit && unit.toLowerCase() !== item.home_unit.toLowerCase()) {
+    const info = densityMap[name] || {};
+    qty = convertWithDensity(value, unit, item.home_unit, {
+      convert_volume_to_weight: info.convert,
+      custom_density_ratio: info.ratio
+    });
+  }
+  if (qty == null || isNaN(qty)) return null;
+  return pricePerUnit * qty;
 }
 
 function createRows(meal, arr) {
@@ -104,6 +211,10 @@ function createRows(meal, arr) {
     }
   }
   meal.people = meal.users.filter(Boolean).length;
+
+  const mealCost = { total: 0 };
+  const costPromises = [];
+  let firstTotalTd = null;
 
   ingredients.forEach((ing, idx) => {
     const tr = document.createElement('tr');
@@ -189,6 +300,14 @@ function createRows(meal, arr) {
     const amtTd = document.createElement('td');
     amtTd.textContent = ing.amount || ing.serving_size || '';
 
+    const costTd = document.createElement('td');
+    let totalTd;
+    if (idx === 0) {
+      totalTd = document.createElement('td');
+      if (ingredients.length > 1) totalTd.rowSpan = ingredients.length;
+      firstTotalTd = totalTd;
+    }
+
     const actionTd = document.createElement('td');
     if (ing.name) actionTd.dataset.name = ing.name;
     const key = ing.name ? canonicalName(ing.name) : '';
@@ -199,12 +318,27 @@ function createRows(meal, arr) {
 
     tr.appendChild(ingTd);
     tr.appendChild(amtTd);
+    tr.appendChild(costTd);
+    if (totalTd) tr.appendChild(totalTd);
     tr.appendChild(actionTd);
     rows.push(tr);
 
     if (ing.name) {
       if (!ingredientCells[key]) ingredientCells[key] = [];
       ingredientCells[key].push({ ingTd, actionTd });
+      const promise = ingredientCost(ing.name, ing.amount || ing.serving_size).then(c => {
+        if (c != null) {
+          costTd.textContent = `$${c.toFixed(2)}`;
+          mealCost.total += c;
+        }
+      });
+      costPromises.push(promise);
+    }
+  });
+
+  Promise.all(costPromises).then(() => {
+    if (firstTotalTd && mealCost.total > 0) {
+      firstTotalTd.textContent = `$${mealCost.total.toFixed(2)}`;
     }
   });
 
@@ -272,6 +406,8 @@ function createRows(meal, arr) {
     const ingTd = document.createElement('td');
     ingTds.push(ingTd);
     const amtTd = document.createElement('td');
+    const costTd = document.createElement('td');
+    const totalTd = document.createElement('td');
     const actionTd = document.createElement('td');
     tr.appendChild(useTd);
     tr.appendChild(imageTd);
@@ -279,6 +415,8 @@ function createRows(meal, arr) {
     tr.appendChild(prepTd);
     tr.appendChild(ingTd);
     tr.appendChild(amtTd);
+    tr.appendChild(costTd);
+    tr.appendChild(totalTd);
     tr.appendChild(actionTd);
     rows.push(tr);
   }
@@ -445,6 +583,10 @@ async function loadAndRender() {
 
 async function init() {
   await initializeMealCategories();
+  await initUomTable();
+  const [needs, dMap] = await Promise.all([loadNeeds(), loadDensityMap()]);
+  needsMap = new Map(needs.map(n => [canonicalName(n.name), n]));
+  densityMap = dMap;
   const info = MEAL_TYPES[type] || MEAL_TYPES.breakfast;
   key = info.key;
   path = info.path;
