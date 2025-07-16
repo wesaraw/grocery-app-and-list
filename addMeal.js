@@ -1,6 +1,7 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
+import { canonicalName } from './utils/nameUtils.js';
 
 const params = new URLSearchParams(location.search);
 const mealType = params.get('type') || 'lunchDinner';
@@ -16,6 +17,11 @@ function loadMeals() {
         arr.forEach(m => {
           if (m.prepared === undefined) m.prepared = false;
           if (m.prepAhead === undefined) m.prepAhead = false;
+          if (Array.isArray(m.ingredients)) {
+            m.ingredients.forEach(ing => {
+              if (ing && !ing.item) ing.item = canonicalName(ing.name);
+            });
+          }
         });
       }
       resolve(arr || []);
@@ -167,6 +173,7 @@ async function init() {
 
     const ingredients = validRows.map(r => ({
       name: r.ing,
+      item: canonicalName(r.ing),
       amount: `${r.amt} ${r.unit}`,
       serving_size: `${r.amt} ${r.unit}`
     }));

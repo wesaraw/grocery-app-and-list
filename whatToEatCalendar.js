@@ -7,6 +7,7 @@ import { loadUsers } from './utils/userData.js';
 import { loadJSON } from './utils/dataLoader.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
+import { canonicalName } from './utils/nameUtils.js';
 
 function loadCalendar() {
   return new Promise(resolve => {
@@ -86,6 +87,11 @@ function loadMeals(type) {
       if (Array.isArray(arr)) {
         arr.forEach(m => {
           if (m.prepared === undefined) m.prepared = false;
+          if (Array.isArray(m.ingredients)) {
+            m.ingredients.forEach(ing => {
+              if (ing && !ing.item) ing.item = canonicalName(ing.name);
+            });
+          }
         });
       }
       resolve(arr || []);

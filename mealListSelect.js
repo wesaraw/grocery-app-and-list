@@ -1,6 +1,7 @@
 import { MEAL_TYPES, initializeMealCategories, addMealCategory } from './utils/mealData.js';
 import { loadJSON } from './utils/dataLoader.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
+import { canonicalName } from './utils/nameUtils.js';
 
 function loadMeals(type) {
   const { key, path } = MEAL_TYPES[type];
@@ -12,6 +13,11 @@ function loadMeals(type) {
         arr.forEach(m => {
           if (m.prepared === undefined) m.prepared = false;
           if (m.prepAhead === undefined) m.prepAhead = false;
+          if (Array.isArray(m.ingredients)) {
+            m.ingredients.forEach(ing => {
+              if (ing && !ing.item) ing.item = canonicalName(ing.name);
+            });
+          }
         });
       }
       resolve(arr || []);

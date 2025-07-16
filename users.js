@@ -8,6 +8,7 @@ import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 import { loadJSON } from './utils/dataLoader.js';
 import { sortItemsByCategory } from './utils/sortByCategory.js';
+import { canonicalName } from './utils/nameUtils.js';
 
 const btnContainer = document.getElementById('userButtons');
 const mealList = document.getElementById('mealList');
@@ -113,6 +114,11 @@ function loadMeals(type) {
       arr.forEach(m => {
         if (!m.category) m.category = info.label;
         if (m.prepared === undefined) m.prepared = false;
+        if (Array.isArray(m.ingredients)) {
+          m.ingredients.forEach(ing => {
+            if (ing && !ing.item) ing.item = canonicalName(ing.name);
+          });
+        }
       });
       resolve(arr);
     });
