@@ -6,6 +6,7 @@ import {
 import { loadUsers } from './utils/userData.js';
 import { loadJSON } from './utils/dataLoader.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
+import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 
 function loadCalendar() {
   return new Promise(resolve => {
@@ -315,11 +316,19 @@ function openCookView() {
   }
 }
 
+async function recalcCalendar() {
+  await calculateAndSaveMealNeeds();
+}
+
 async function init() {
   await initializeMealCategories();
   const mealsPerDay = await loadMealsPerDay();
   users = await loadUsers();
   calendar = await loadCalendar();
+  if (!Object.keys(calendar).length) {
+    await calculateAndSaveMealNeeds();
+    calendar = await loadCalendar();
+  }
   columnOrder = await loadColumnOrder();
   await loadAllMeals();
 
@@ -338,6 +347,7 @@ async function init() {
   buildHeader();
   document.getElementById('showBtn').addEventListener('click', render);
   document.getElementById('cookViewBtn').addEventListener('click', openCookView);
+  document.getElementById('recalcBtn').addEventListener('click', recalcCalendar);
   document.getElementById('reorderBtn').addEventListener('click', startReorder);
   document.getElementById('saveOrderBtn').addEventListener('click', saveOrder);
   userSelect.addEventListener('change', () => {
