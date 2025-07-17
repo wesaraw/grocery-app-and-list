@@ -21,7 +21,14 @@ export const UNIT_ALIASES = {
   liter: 'l',
   liters: 'l',
   litre: 'l',
-  litres: 'l'
+  litres: 'l',
+  doz: 'doz',
+  dozen: 'doz',
+  dozens: 'doz',
+  'halfdoz': 'halfdoz',
+  'half-doz': 'halfdoz',
+  halfdozen: 'halfdoz',
+  'half-dozen': 'halfdoz'
 };
 
 export function normalizeUnit(unit) {
@@ -63,62 +70,62 @@ export function parseUnitPrice(text) {
   }
   text = text.replace(/[()]/g, '');
 
-  let m = text.match(/\$([\d.]+)\s*for\s*(\d+(?:\.\d+)?)\s*([a-zA-Z\.]+)/i);
+  let m = text.match(/\$([\d.]+)\s*for\s*(\d+(?:\.\d+)?)\s*([a-zA-Z\.\-]+)/i);
   if (m) {
     const price = parseFloat(m[1]);
     const qty = parseFloat(m[2]);
-    let unitType = m[3].toLowerCase().replace(/[\s.]+/g, '');
+    let unitType = m[3].toLowerCase().replace(/[\s.\-]+/g, '');
     unitType = normalizeUnit(unitType);
     if (!isNaN(price) && !isNaN(qty) && qty !== 0) {
       return { pricePerUnit: price / qty, unitType, unitQty: qty };
     }
   }
 
-  m = text.match(/\$([\d.]+)\s*\/\s*(\d+)([a-zA-Z\.]+)/);
+  m = text.match(/\$([\d.]+)\s*\/\s*(\d+)([a-zA-Z\.\-]+)/);
   if (m) {
     const price = parseFloat(m[1]);
     const qty = parseFloat(m[2]);
-    let unitType = m[3].toLowerCase().replace(/[\s.]+/g, '');
+    let unitType = m[3].toLowerCase().replace(/[\s.\-]+/g, '');
     unitType = normalizeUnit(unitType);
     return { pricePerUnit: price / qty, unitType, unitQty: qty };
   }
 
-  m = text.match(/\$([\d.]+)\s*\/\s*([\d.]*)\s*([a-zA-Z\.]+(?:\s*[a-zA-Z\.]+)?)/);
+  m = text.match(/\$([\d.]+)\s*\/\s*([\d.]*)\s*([a-zA-Z\.\-]+(?:\s*[a-zA-Z\.\-]+)?)/);
   if (m) {
     const price = parseFloat(m[1]);
     const qtyVal = parseFloat(m[2]);
-    let unitType = m[3].toLowerCase().replace(/[\s.]+/g, '');
+    let unitType = m[3].toLowerCase().replace(/[\s.\-]+/g, '');
     unitType = normalizeUnit(unitType);
     const qty = !isNaN(qtyVal) && qtyVal !== 0 ? qtyVal : 1;
     return { pricePerUnit: price / qty, unitType, unitQty: qty };
   }
 
-  m = text.match(/price\s*per\s*(\d+(?:\.\d+)?)\s*([a-zA-Z\.]+(?:\s*[a-zA-Z\.]+)*)\s*\$([\d.]+)/i);
+  m = text.match(/price\s*per\s*(\d+(?:\.\d+)?)\s*([a-zA-Z\.\-]+(?:\s*[a-zA-Z\.\-]+)*)\s*\$([\d.]+)/i);
   if (m) {
     const qtyVal = parseFloat(m[1]);
-    let unitType = m[2].toLowerCase().replace(/[\s.]+/g, '');
+    let unitType = m[2].toLowerCase().replace(/[\s.\-]+/g, '');
     unitType = normalizeUnit(unitType);
     const price = parseFloat(m[3]);
     const qty = !isNaN(qtyVal) && qtyVal !== 0 ? qtyVal : 1;
     return { pricePerUnit: price / qty, unitType, unitQty: qty };
   }
 
-  m = text.match(/price\s*per\s*([\d.]+)\s*([a-zA-Z\.]+)\s*\$([\d.]+)/i);
+  m = text.match(/price\s*per\s*([\d.]+)\s*([a-zA-Z\.\-]+)\s*\$([\d.]+)/i);
   if (m) {
     const qtyVal = parseFloat(m[1]);
-    let unitType = m[2].toLowerCase().replace(/[\s.]+/g, '');
+    let unitType = m[2].toLowerCase().replace(/[\s.\-]+/g, '');
     unitType = normalizeUnit(unitType);
     const price = parseFloat(m[3]);
     const qty = !isNaN(qtyVal) && qtyVal !== 0 ? qtyVal : 1;
     return { pricePerUnit: price / qty, unitType, unitQty: qty };
   }
 
-  m = text.match(/([\d.]+)\s*\/\s*([\d.]*)\s*([a-zA-Z\.]+(?:\s*[a-zA-Z\.]+)?)/);
+  m = text.match(/([\d.]+)\s*\/\s*([\d.]*)\s*([a-zA-Z\.\-]+(?:\s*[a-zA-Z\.\-]+)?)/);
   if (m) {
     let price = parseFloat(m[1]);
     if (hadCent) price = price / 100;
     const qtyVal = parseFloat(m[2]);
-    let unitType = m[3].toLowerCase().replace(/[\s.]+/g, '');
+    let unitType = m[3].toLowerCase().replace(/[\s.\-]+/g, '');
     unitType = normalizeUnit(unitType);
     const qty = !isNaN(qtyVal) && qtyVal !== 0 ? qtyVal : 1;
     return { pricePerUnit: price / qty, unitType, unitQty: qty };

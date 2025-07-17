@@ -7,7 +7,7 @@ export function parseQuantity(str) {
   if (/^(?:just\s+a\s+)?pinch(?:\b|\s|$)/i.test(text)) {
     return { value: 1 / 16, unit: 'tsp' };
   }
-  const m = text.match(/^([\d.]+(?:\/\d+)?)\s*([a-zA-Z]+)?/);
+  const m = text.match(/^([\d.]+(?:\/\d+)?)\s*([a-zA-Z-]+)?/);
   if (!m) return { value: 0, unit: null };
   let numStr = m[1];
   let value;
@@ -20,7 +20,8 @@ export function parseQuantity(str) {
     value = parseFloat(numStr);
   }
   if (isNaN(value)) value = 0;
-  const unit = m[2] ? m[2].toLowerCase() : null;
+  let unit = m[2] ? m[2].toLowerCase() : null;
+  if (!unit) unit = 'ea';
   return { value, unit };
 }
 

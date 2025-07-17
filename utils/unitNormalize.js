@@ -56,13 +56,15 @@ function parseQuantity(text) {
     const r = new RegExp(`\\b${word}\\b`, 'g');
     normalized = normalized.replace(r, abbr);
   }
-  const m = normalized.match(/([\d.]+)\s*(fl\s*oz|oz|lb|kg|ml|l|gal|g|qt|pt|cup|tbsp|tsp)/i);
+  const m = normalized.match(/([\d.]+)\s*(fl\s*oz|oz|lb|kg|ml|l|gal|g|qt|pt|cup|tbsp|tsp|doz|dozen|halfdoz|half\-doz|halfdozen|half\-dozen)/i);
   if (m) {
     let unit = m[2].toLowerCase().replace(/\s+/g, '');
     if (unit === 'floz') unit = 'fl oz';
     unit = UNIT_ALIASES[unit] || unit;
     return [parseFloat(m[1]), unit];
   }
+  const num = parseFloat(normalized);
+  if (!isNaN(num)) return [num, 'ea'];
   return [null, null];
 }
 
