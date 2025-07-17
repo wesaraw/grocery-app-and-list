@@ -345,12 +345,6 @@ async function init() {
     buildHeader(editMode);
     render();
   });
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && changes.whatToEatCalendar) {
-      calendar = changes.whatToEatCalendar.newValue || {};
-      render();
-    }
-  });
   render();
 }
 
