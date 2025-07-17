@@ -5,7 +5,8 @@ export function generateWhatToEatCalendar(
   eatingDays,
   mealsPerDay,
   startDate,
-  weeks = 4
+  weeks = 4,
+  priceThresholds = {}
 ) {
   const calendar = {};
   const nonPrepIndex = {};
@@ -27,21 +28,37 @@ export function generateWhatToEatCalendar(
         const numSlots = mealsPerDay[cat] || 1;
         const prepMealId = preparedCal[dateStr]?.[cat];
         const idxRec = nonPrepIndex[user] || (nonPrepIndex[user] = {});
-        const nonPrepMeals = meals.filter(m => !m.prepared);
+        const maxPrice =
+          priceThresholds[user] !== undefined ? priceThresholds[user] : Infinity;
+        const nonPrepMeals = meals.filter(
+          m => !m.prepared && (m.totalCost == null || m.totalCost <= maxPrice)
+        );
+        const affordableAll = meals.filter(
+          m => m.totalCost == null || m.totalCost <= maxPrice
+        );
+        const nonPrepFallback = meals.filter(m => !m.prepared);
         const choices = [];
         for (let s = 0; s < numSlots; s++) {
           let chosen;
-          if (s === 0 && prepMealId && meals.find(m => (m.id || m.name) === prepMealId)) {
+          const prepMeal = meals.find(m => (m.id || m.name) === prepMealId);
+          const prepOk =
+            prepMeal && (prepMeal.totalCost == null || prepMeal.totalCost <= maxPrice);
+          if (s === 0 && prepOk) {
             chosen = prepMealId;
           } else {
-            const list = nonPrepMeals.length ? nonPrepMeals : meals;
+            let list = nonPrepMeals.length
+              ? nonPrepMeals
+              : affordableAll.length
+              ? affordableAll.filter(m => !m.prepared)
+              : [];
+            if (!list.length) list = nonPrepFallback.length ? nonPrepFallback : meals;
             const idx = idxRec[cat] || 0;
             const meal = list[idx % list.length];
             chosen = meal.id || meal.name || String(idx);
             idxRec[cat] = idx + 1;
           }
           // advance index even for prepared meals to keep rotation
-          if (s === 0 && prepMealId && meals.find(m => (m.id || m.name) === prepMealId)) {
+          if (s === 0 && prepOk) {
             idxRec[cat] = (idxRec[cat] || 0) + 1;
           }
           choices.push(chosen);
