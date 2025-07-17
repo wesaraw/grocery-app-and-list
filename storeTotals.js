@@ -4,7 +4,6 @@ import { initUomTable } from './utils/uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
-import { canonicalName } from './utils/nameUtils.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -120,11 +119,6 @@ function loadMeals(type) {
       if (Array.isArray(arr)) {
         arr.forEach(m => {
           if (m.prepared === undefined) m.prepared = false;
-          if (Array.isArray(m.ingredients)) {
-            m.ingredients.forEach(ing => {
-              if (ing && !ing.item) ing.item = canonicalName(ing.name);
-            });
-          }
         });
       }
       resolve(arr || []);

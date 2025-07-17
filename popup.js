@@ -4,7 +4,6 @@ import { initUomTable, convert } from './utils/uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
-import { canonicalName } from './utils/nameUtils.js';
 import {
   sortItemsByCategory,
   renderItemsWithCategoryHeaders
@@ -107,11 +106,6 @@ function loadMeals(type) {
       if (Array.isArray(arr)) {
         arr.forEach(m => {
           if (m.prepared === undefined) m.prepared = false;
-          if (Array.isArray(m.ingredients)) {
-            m.ingredients.forEach(ing => {
-              if (ing && !ing.item) ing.item = canonicalName(ing.name);
-            });
-          }
         });
       }
       resolve(arr || []);
