@@ -10,7 +10,13 @@ const ALIAS_MAP = {
   ounces: 'oz',
   floz: 'fl oz',
   fluidounce: 'fl oz',
-  each: 'ea'
+  each: 'ea',
+  dozen: 'doz',
+  doz: 'doz',
+  'halfdoz': 'halfdoz',
+  'half-doz': 'halfdoz',
+  halfdozen: 'halfdoz',
+  'half-dozen': 'halfdoz'
 };
 
 export async function initUomTable() {

@@ -37,5 +37,11 @@
   "piece": 1,
   "tube": 1,
   "tray": 1,
-  "unit": 1
+  "unit": 1,
+  "doz": 12,
+  "dozen": 12,
+  "halfdoz": 6,
+  "half-doz": 6,
+  "halfdozen": 6,
+  "half-dozen": 6
 }

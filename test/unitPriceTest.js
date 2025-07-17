@@ -7,6 +7,10 @@ const {
   sheetSqFtFor,
   UNIT_ALIASES
 } = await import('../utils/priceUtils.js');
+const { initUomTable, convert } = await import('../utils/uomConverter.js');
+import { pathToFileURL } from 'url';
+global.chrome = { runtime: { getURL: p => pathToFileURL(process.cwd() + '/' + p).href } };
+global.fetch = async url => ({ json: async () => JSON.parse(fs.readFileSync(new URL(url), 'utf8')) });
 
 const html = fs.readFileSync('test/samples/shaws-toilet-paper.html', 'utf8');
 const dom = new JSDOM(html);
@@ -30,6 +34,15 @@ if (!alt || Math.abs(alt.pricePerUnit * SHEET_SQFT - 0.0069) > 0.0002) {
 const alt2 = parseUnitPrice('$6.27 for 100sf');
 if (!alt2 || Math.abs(alt2.pricePerUnit * SHEET_SQFT - 0.0069) > 0.0002) {
   throw new Error('For format failed');
+}
+
+await initUomTable();
+const dozenRes = parseUnitPrice('$5.40/doz');
+if (!dozenRes || dozenRes.unitType !== 'doz' || Math.abs(dozenRes.pricePerUnit - 5.40) > 0.0001) {
+  throw new Error('Dozen parsing failed');
+}
+if (convert(1, 'doz', 'ea') !== 12) {
+  throw new Error('Dozen conversion incorrect');
 }
 
 // Test pricePerHomeUnit with sheets
