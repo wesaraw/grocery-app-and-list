@@ -40,3 +40,17 @@ export function saveUserCategoryDays(arr) {
     chrome.storage.local.set({ userCategoryDays: arr }, () => resolve());
   });
 }
+
+export function loadUserPriceThresholds() {
+  return new Promise(resolve => {
+    chrome.storage.local.get('userPriceThresholds', data => {
+      resolve(data.userPriceThresholds || {});
+    });
+  });
+}
+
+export function saveUserPriceThresholds(obj) {
+  return new Promise(resolve => {
+    chrome.storage.local.set({ userPriceThresholds: obj }, () => resolve());
+  });
+}

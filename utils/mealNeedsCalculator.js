@@ -12,7 +12,11 @@ import { generateWhatToEatCalendar } from './whatToEatCalendar.js';
 import { loadJSON } from './dataLoader.js';
 import { initUomTable, convert } from './uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './unitNormalize.js';
-import { loadUsers, loadUserCategoryDays } from './userData.js';
+import {
+  loadUsers,
+  loadUserCategoryDays,
+  loadUserPriceThresholds
+} from './userData.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 
@@ -64,6 +68,7 @@ export async function calculateAndSaveMealNeeds() {
   const mealsPerDay = await loadMealsPerDay();
   const users = await loadUsers();
   const userDays = await loadUserCategoryDays();
+  const priceThresholds = await loadUserPriceThresholds();
 
   while (userDays.length < users.length) userDays.push({});
 
@@ -220,7 +225,9 @@ export async function calculateAndSaveMealNeeds() {
     subscriptions,
     eatingDays,
     mealsPerDay,
-    startDate
+    startDate,
+    4,
+    priceThresholds
   );
 
   await new Promise(resolve => {

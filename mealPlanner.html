@@ -14,6 +14,14 @@
   <button id="openUsers">Users</button>
   <button id="openCooking">Cooking Days</button>
   <button id="openCalendar">Calendar</button>
+  <div id="thresholdControls">
+    <label for="thresholdUser">User:</label>
+    <select id="thresholdUser" style="width:100%;"></select>
+    <label for="priceThreshold">Price Threshold $:</label>
+    <input id="priceThreshold" type="number" step="0.01" min="0" style="width:100%;" />
+    <button id="saveThresholdBtn">Save Threshold</button>
+    <button id="rebuildCalendarBtn">Rebuild Calendar</button>
+  </div>
   <script type="module" src="mealPlanner.js"></script>
 </body>
 </html>
