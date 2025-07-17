@@ -30,10 +30,13 @@ function loadFinalProduct(item) {
 
 export async function getItemAndProduct(ingredient) {
   if (!ingredient) return { item: null, product: null };
-  const key = ingredient.item || ingredient.name;
-  if (!key) return { item: null, product: null };
-  const item = needsMap.get(canonicalName(key));
-  const product = await loadFinalProduct(key);
+  const { item: itemKey, name } = ingredient;
+  const lookup = itemKey || name;
+  if (!lookup) return { item: null, product: null };
+  const item = needsMap.get(canonicalName(lookup));
+  let product = null;
+  if (name) product = await loadFinalProduct(name);
+  if (!product && itemKey) product = await loadFinalProduct(itemKey);
   return { item, product };
 }
 
