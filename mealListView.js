@@ -366,9 +366,14 @@ function createRows(meal, arr) {
     }
   });
 
-  Promise.all(costPromises).then(() => {
+  Promise.all(costPromises).then(async () => {
     if (firstTotalTd && mealCost.total > 0) {
-      firstTotalTd.textContent = `$${mealCost.total.toFixed(2)}`;
+      const total = parseFloat(mealCost.total.toFixed(2));
+      firstTotalTd.textContent = `$${total.toFixed(2)}`;
+      if (meal.totalCost !== total) {
+        meal.totalCost = total;
+        await saveMeals(arr);
+      }
     }
   });
 

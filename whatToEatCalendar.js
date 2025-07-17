@@ -252,28 +252,29 @@ function render() {
     row.appendChild(dateTd);
     const rec = calendar[user]?.[dStr] || {};
     const used = {};
-    slotOrder.forEach(cat => {
-      const td = document.createElement('td');
-      const idx = used[cat] || 0;
-      let val = rec[cat];
-      if (Array.isArray(val)) val = val[idx];
-      else if (idx > 0) val = '';
-      used[cat] = idx + 1;
-      if (val) {
-        const meal = mealMap[val];
-        const name = meal ? meal.name || val : val;
-        const nameDiv = document.createElement('div');
-        nameDiv.textContent = name;
-        td.appendChild(nameDiv);
-        if (meal) {
-          const img = document.createElement('img');
-          img.className = 'meal-img';
-          setMealImage(img, meal);
-          td.appendChild(img);
+      slotOrder.forEach(cat => {
+        const td = document.createElement('td');
+        const idx = used[cat] || 0;
+        let val = rec[cat];
+        if (Array.isArray(val)) val = val[idx];
+        else if (idx > 0) val = '';
+        used[cat] = idx + 1;
+        if (val) {
+          const meal = mealMap[val];
+          const name = meal ? meal.name || val : val;
+          const cost = meal && meal.totalCost != null ? ` - $${meal.totalCost.toFixed(2)}` : '';
+          const nameDiv = document.createElement('div');
+          nameDiv.textContent = name + cost;
+          td.appendChild(nameDiv);
+          if (meal) {
+            const img = document.createElement('img');
+            img.className = 'meal-img';
+            setMealImage(img, meal);
+            td.appendChild(img);
+          }
         }
-      }
-      row.appendChild(td);
-    });
+        row.appendChild(td);
+      });
     body.appendChild(row);
     date.setDate(date.getDate() + 1);
   }
