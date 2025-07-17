@@ -15,7 +15,6 @@ import { loadDensityMap, convertWithDensity } from './unitNormalize.js';
 import { loadUsers, loadUserCategoryDays } from './userData.js';
 import { computeMealCost } from './mealCost.js';
 import { loadMealPriceCap } from './mealPrice.js';
-import { canonicalName } from './nameUtils.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 
@@ -49,11 +48,6 @@ function loadMeals(type) {
       if (Array.isArray(arr)) {
         arr.forEach(m => {
           if (m.prepared === undefined) m.prepared = false;
-          if (Array.isArray(m.ingredients)) {
-            m.ingredients.forEach(ing => {
-              if (ing && !ing.item) ing.item = canonicalName(ing.name);
-            });
-          }
         });
       }
       resolve(arr || []);

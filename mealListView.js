@@ -69,11 +69,6 @@ function loadMeals() {
         arr.forEach(m => {
           if (m.prepared === undefined) m.prepared = false;
           if (m.prepAhead === undefined) m.prepAhead = false;
-          if (Array.isArray(m.ingredients)) {
-            m.ingredients.forEach(ing => {
-              if (ing && !ing.item) ing.item = canonicalName(ing.name);
-            });
-          }
         });
       }
       resolve(arr || []);
@@ -345,7 +340,7 @@ function createRows(meal, arr) {
 
     const actionTd = document.createElement('td');
     if (ing.name) actionTd.dataset.name = ing.name;
-    const key = ing.item || (ing.name ? canonicalName(ing.name) : '');
+    const key = ing.name ? canonicalName(ing.name) : '';
     if (ing.name && !inventorySet.has(key)) {
       ingTd.style.color = 'red';
       actionTd.appendChild(createAddButton(ing.name));
@@ -359,9 +354,8 @@ function createRows(meal, arr) {
     rows.push(tr);
 
     if (ing.name) {
-      const k = ing.item || canonicalName(ing.name);
-      if (!ingredientCells[k]) ingredientCells[k] = [];
-      ingredientCells[k].push({ ingTd, actionTd });
+      if (!ingredientCells[key]) ingredientCells[key] = [];
+      ingredientCells[key].push({ ingTd, actionTd });
       const promise = ingredientCost(ing.name, ing.amount || ing.serving_size).then(c => {
         if (c != null) {
           costTd.textContent = `$${c.toFixed(2)}`;
@@ -564,10 +558,7 @@ function createRows(meal, arr) {
       }
       ingVals.forEach((val, idx) => {
         if (val) {
-          if (meal.ingredients[idx]) {
-            meal.ingredients[idx].name = val;
-            meal.ingredients[idx].item = canonicalName(val);
-          }
+          if (meal.ingredients[idx]) meal.ingredients[idx].name = val;
           changed = true;
         }
       });
