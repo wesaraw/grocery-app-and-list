@@ -8,7 +8,6 @@ import { parseQuantity } from './utils/calendarUtils.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
-import { getItemAndProduct } from './utils/mealCost.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -180,17 +179,19 @@ function pricePerHomeUnit(itemName, product) {
   return null;
 }
 
-async function ingredientCost(ing) {
-  const { item, product: prod } = await getItemAndProduct(ing);
-  if (!prod || !item) return null;
+async function ingredientCost(name, amountStr) {
+  const prod = await loadFinalProduct(name);
+  if (!prod) return null;
   const { pricePerUnit: ppu, unitType } = getPriceUnitInfo(prod);
-  const pricePerUnit = pricePerHomeUnit(item.name, prod);
+  const pricePerUnit = pricePerHomeUnit(name, prod);
   if (pricePerUnit == null && !(unitType === 'fl oz' && ppu != null)) return null;
-  const { value, unit } = parseQuantity(ing.amount || ing.serving_size || '');
+  const item = needsMap.get(canonicalName(name));
+  if (!item) return null;
+  const { value, unit } = parseQuantity(amountStr);
   if (!value) return null;
   let qty = value;
   if (unit && item.home_unit && unit.toLowerCase() !== item.home_unit.toLowerCase()) {
-    const info = densityMap[item.name] || {};
+    const info = densityMap[name] || {};
     qty = convertWithDensity(value, unit, item.home_unit, {
       convert_volume_to_weight: info.convert,
       custom_density_ratio: info.ratio
@@ -361,7 +362,7 @@ function createRows(meal, arr) {
       const k = ing.item || canonicalName(ing.name);
       if (!ingredientCells[k]) ingredientCells[k] = [];
       ingredientCells[k].push({ ingTd, actionTd });
-      const promise = ingredientCost(ing).then(c => {
+      const promise = ingredientCost(ing.name, ing.amount || ing.serving_size).then(c => {
         if (c != null) {
           costTd.textContent = `$${c.toFixed(2)}`;
           mealCost.total += c;
