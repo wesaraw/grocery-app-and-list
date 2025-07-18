@@ -11,6 +11,7 @@ class StoreActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        RuntimeBridge.loadState(this)
         setContentView(R.layout.activity_store)
 
         val url = intent.getStringExtra("url") ?: ""
@@ -49,5 +50,10 @@ class StoreActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         RuntimeBridge.unregisterTab(tabId)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        RuntimeBridge.saveState(this)
     }
 }
