@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Item Details</title>
+  <style>
+    body { font-family: Arial, sans-serif; width: 300px; }
+    .store { border-bottom: 1px solid #ccc; margin-bottom: 10px; padding-bottom: 5px; }
+    .product-list { margin-top: 5px; }
+    .product img,
+    .selected-product-img {
+      width: 200px;
+      height: 200px;
+      object-fit: contain;
+      background: #ccc;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <button id="back">Back</button>
+  <h1 id="itemName"></h1>
+  <div id="stores"></div>
+  <script type="module" src="item.js"></script>
+</body>
+</html>
