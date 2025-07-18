@@ -158,9 +158,26 @@ entire recommendation.
 
 ## Building the Android app
 
-The Android source under `android/` can be compiled with Gradle. To sign the
-release build you must generate your own keystore and keep the credentials
-outside of version control.
+The Android source under `android/` can be compiled with Gradle. All of the
+extension files are copied into `android/app/src/main/assets`, so keep that
+folder in sync with the rest of the project whenever you update the extension.
+
+### Debug build
+
+1. From the `android` directory run:
+
+   ```bash
+   ./gradlew assembleDebug
+   ```
+
+   The APK will be written to
+   `android/app/build/outputs/apk/debug/app-debug.apk`. Install this file on a
+   device or emulator to test the app.
+
+### Release build
+
+To sign a release build you must generate your own keystore and keep the
+credentials outside of version control.
 
 1. Create a keystore on your machine:
 
@@ -180,4 +197,6 @@ outside of version control.
 
    This file is ignored by Git (see `.gitignore`).
 
-3. Run `./gradlew assembleRelease` from the `android` directory to build the APK.
+3. Run `./gradlew assembleRelease` from the `android` directory. The signed APK
+   will be located at
+   `android/app/build/outputs/apk/release/app-release.apk`.
