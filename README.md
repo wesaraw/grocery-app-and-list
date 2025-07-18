@@ -161,6 +161,8 @@ entire recommendation.
 The Android source under `android/` can be compiled with Gradle. All of the
 extension files are copied into `android/app/src/main/assets`, so keep that
 folder in sync with the rest of the project whenever you update the extension.
+Make sure the **Required for grocery app** directory is also copied there or the
+APK will not include the default data files.
 
 ### Debug build
 
