@@ -12,48 +12,70 @@ const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 
 async function loadPurchases() {
-  return new Promise(resolve => {
-    chrome.storage.local.get('purchases', data => {
-      resolve(data.purchases || {});
-    });
+  return new Promise(async resolve => {
+    try {
+      chrome.storage.local.get('purchases', data => {
+        resolve(data.purchases || {});
+      });
+    } catch (e) {
+      resolve({});
+    }
   });
 }
 
 function savePurchases(map) {
   return new Promise(resolve => {
-    chrome.storage.local.set({ purchases: map }, () => resolve());
+    try {
+      chrome.storage.local.set({ purchases: map }, () => resolve());
+    } catch (e) {
+      resolve();
+    }
   });
 }
 
 async function loadStock() {
   return new Promise(async resolve => {
-    chrome.storage.local.get('currentStock', async data => {
-      if (data.currentStock) {
-        resolve(data.currentStock);
-      } else {
-        const stock = await loadJSON(STOCK_PATH);
-        resolve(stock);
-      }
-    });
+    try {
+      chrome.storage.local.get('currentStock', async data => {
+        if (data.currentStock) {
+          resolve(data.currentStock);
+        } else {
+          const stock = await loadJSON(STOCK_PATH);
+          resolve(stock);
+        }
+      });
+    } catch (e) {
+      const stock = await loadJSON(STOCK_PATH);
+      resolve(stock);
+    }
   });
 }
 
 function loadArray(key, path) {
   return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      if (data[key]) {
-        resolve(data[key]);
-      } else {
-        const arr = await loadJSON(path);
-        resolve(arr);
-      }
-    });
+    try {
+      chrome.storage.local.get(key, async data => {
+        if (data[key]) {
+          resolve(data[key]);
+        } else {
+          const arr = await loadJSON(path);
+          resolve(arr);
+        }
+      });
+    } catch (e) {
+      const arr = await loadJSON(path);
+      resolve(arr);
+    }
   });
 }
 
 function loadStoredArray(key) {
   return new Promise(resolve => {
-    chrome.storage.local.get(key, data => resolve(data[key] || []));
+    try {
+      chrome.storage.local.get(key, data => resolve(data[key] || []));
+    } catch (e) {
+      resolve([]);
+    }
   });
 }
 
