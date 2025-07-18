@@ -5,6 +5,8 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.appcompat.app.AppCompatActivity
 
+import com.example.groceryapp.StorageBridge
+
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -14,6 +16,8 @@ class MainActivity : AppCompatActivity() {
         val settings: WebSettings = webView.settings
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
+
+        webView.addJavascriptInterface(StorageBridge(this), "StorageBridge")
 
         webView.loadUrl("file:///android_asset/launcher.html")
     }
