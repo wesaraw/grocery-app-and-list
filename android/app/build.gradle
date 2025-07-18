@@ -13,6 +13,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
+    namespace "com.example.groceryapp"
     compileSdkVersion 34
     defaultConfig {
         applicationId "com.example.groceryapp"
