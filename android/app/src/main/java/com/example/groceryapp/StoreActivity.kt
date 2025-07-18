@@ -5,12 +5,10 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.appcompat.app.AppCompatActivity
 
-import com.example.groceryapp.StorageBridge
-
-class MainActivity : AppCompatActivity() {
+class StoreActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        setContentView(R.layout.activity_store)
 
         val webView: WebView = findViewById(R.id.webview)
         val settings: WebSettings = webView.settings
@@ -20,6 +18,9 @@ class MainActivity : AppCompatActivity() {
         webView.addJavascriptInterface(StorageBridge(this), "StorageBridge")
         webView.addJavascriptInterface(RuntimeBridge(this, webView), "RuntimeBridge")
 
-        webView.loadUrl("file:///android_asset/launcher.html")
+        val url = intent.getStringExtra("url") ?: ""
+        if (url.isNotEmpty()) {
+            webView.loadUrl(url)
+        }
     }
 }
