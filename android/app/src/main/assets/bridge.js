@@ -24,6 +24,21 @@
     }
   };
 
+  const storageChangeListeners = [];
+
+  const emitChanges = changes => {
+    if (!changes || Object.keys(changes).length === 0) return;
+    storageChangeListeners.forEach(fn => {
+      try {
+        fn(changes, 'local');
+      } catch (_) {}
+    });
+  };
+
+  chrome.storage.onChanged = {
+    addListener: fn => storageChangeListeners.push(fn)
+  };
+
   chrome.storage.local = {
     get: function (key, callback) {
       const keys = Array.isArray(key) ? key : [key];
@@ -38,15 +53,26 @@
       callback(obj);
     },
     set: function (items, callback) {
+      const changes = {};
       for (const k in items) {
-        const val = JSON.stringify(items[k]);
+        const oldValue = callGet(k);
+        const newValue = items[k];
+        const val = JSON.stringify(newValue);
         StorageBridge.setItem(k, val);
+        changes[k] = { oldValue, newValue };
       }
+      emitChanges(changes);
       if (callback) callback();
     },
     remove: function (keys, callback) {
       if (!Array.isArray(keys)) keys = [keys];
-      keys.forEach(k => StorageBridge.setItem(k, null));
+      const changes = {};
+      keys.forEach(k => {
+        const oldValue = callGet(k);
+        StorageBridge.setItem(k, null);
+        changes[k] = { oldValue, newValue: undefined };
+      });
+      emitChanges(changes);
       if (callback) callback();
     }
   };
