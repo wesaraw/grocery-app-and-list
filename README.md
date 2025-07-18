@@ -155,3 +155,29 @@ If you already rely on this calendar you can ignore the yearly meal-plan totals
 by passing `false` for the `useMealPlanTotals` option when calling the purchase
 calculator. This avoids double-counting meals and lets the calendar drive the
 entire recommendation.
+
+## Building the Android app
+
+The Android source under `android/` can be compiled with Gradle. To sign the
+release build you must generate your own keystore and keep the credentials
+outside of version control.
+
+1. Create a keystore on your machine:
+
+   ```bash
+   keytool -genkeypair -v -keystore my-release-key.keystore \
+       -alias my-key-alias -keyalg RSA -keysize 2048 -validity 10000
+   ```
+
+2. Save the keystore path and passwords in `android/keystore.properties`:
+
+   ```
+   storeFile=/absolute/path/to/my-release-key.keystore
+   storePassword=YOUR_STORE_PASSWORD
+   keyAlias=my-key-alias
+   keyPassword=YOUR_KEY_PASSWORD
+   ```
+
+   This file is ignored by Git (see `.gitignore`).
+
+3. Run `./gradlew assembleRelease` from the `android` directory to build the APK.
