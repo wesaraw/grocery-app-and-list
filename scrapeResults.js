@@ -40,41 +40,49 @@ function baseGetPackInfo(product) {
   if (product && product.packCount && product.packCount > 1) {
     return { count: product.packCount, weightPerPack: false };
   }
-  let m = product?.name?.match(/(\d+)\s*-\s*\d+(?:\.\d+)?\s*(?:fl\s*oz|oz|lb|kg|g|ml|l|qt|pt|cup|tbsp|tsp|gal)/i);
-  if (!m) m = product?.name?.match(/(\d+)\s*(?:pk|pack|ct|count|rolls?)/i);
-  if (!m) {
-    m = product?.name?.match(/(\d+)(?:\s*\w+){0,3}\s*(?:rolls?|rl)/i);
-  }
-  if (!m && product?.size) {
-    m = product.size.match(/pack\s*of\s*(\d+)/i);
-    if (!m) {
-      m = product.size.match(/(\d+)\s*-\s*\d+(?:\.\d+)?\s*(?:fl\s*oz|oz|lb|kg|g|ml|l|qt|pt|cup|tbsp|tsp|gal)/i);
-      if (!m) {
-        m = product.size.match(/(\d+)\s*(?:pk|pack|ct|count|rolls?)/i);
-      }
-      if (!m) {
-        m = product.size.match(/(\d+)(?:\s*\w+){0,3}\s*(?:rolls?|rl)/i);
-      }
+  const sanitize = str =>
+    str?.replace(/<[^>]*>/g, ' ').replace(/&nbsp;|&#160;/gi, ' ').replace(/\s+/g, ' ').trim();
+
+  const matchPack = str => {
+    if (!str) return null;
+    const s = sanitize(str);
+    let m;
+    if ((m = s.match(/(\d+)\s*(?:doz|dozen)/i))) {
+      return { count: parseInt(m[1], 10) * 12, match: m[0] };
     }
-  }
-  if (!m && product?.unit) {
-    m = product.unit.match(/pack\s*of\s*(\d+)/i);
-    if (!m) {
-      m = product.unit.match(/(\d+)\s*-\s*\d+(?:\.\d+)?\s*(?:fl\s*oz|oz|lb|kg|g|ml|l|qt|pt|cup|tbsp|tsp|gal)/i);
-      if (!m) {
-        m = product.unit.match(/(\d+)\s*(?:pk|pack|ct|count|rolls?)/i);
-      }
-      if (!m) {
-        m = product.unit.match(/(\d+)(?:\s*\w+){0,3}\s*(?:rolls?|rl)/i);
-      }
+    if ((m = s.match(/(?:half|1\/2)\s*-?\s*doz(?:en)?/i))) {
+      return { count: 6, match: m[0] };
     }
-  }
+    if ((m = s.match(/\bdoz(?:en)?\b/i))) {
+      return { count: 12, match: m[0] };
+    }
+    if ((m = s.match(/(\d+)\s*[-\u2011\u2012\u2013\u2014]?\s*(?:pack|pk|ct|count|rolls?|rl)/i))) {
+      return { count: parseInt(m[1], 10), match: m[0] };
+    }
+    if ((m = s.match(/(\d+)(?:\s*\w+){0,3}\s*(?:rolls?|rl)/i))) {
+      return { count: parseInt(m[1], 10), match: m[0] };
+    }
+    if ((m = s.match(/pack\s*of\s*(\d+)/i))) {
+      return { count: parseInt(m[1], 10), match: m[0] };
+    }
+    if ((m = s.match(/(\d+)\s*[-x\u00d7]\s*\d+/i))) {
+      return { count: parseInt(m[1], 10), match: m[0] };
+    }
+    if ((m = s.match(/(\d+)\s*-\s*\d+(?:\.\d+)?\s*(?:fl\s*oz|oz|lb|kg|g|ml|l|qt|pt|cup|tbsp|tsp|gal)/i))) {
+      return { count: parseInt(m[1], 10), match: m[0] };
+    }
+    return null;
+  };
+
+  let m = matchPack(product?.name);
+  if (!m) m = matchPack(product?.size);
+  if (!m) m = matchPack(product?.unit);
 
   if (m) {
-    const count = parseInt(m[1], 10);
+    const { count, match } = m;
     const source = product.name + ' ' + (product.size || '') + ' ' + (product.unit || '');
     const hasWeight = /(\d+(?:\.\d+)?)\s*(?:fl\s*oz|oz|lb|kg|g|ml|l|qt|pt|cup|tbsp|tsp|gal)/i.test(source);
-    const isRange = /[-x\u00d7]/.test(m[0]);
+    const isRange = /[-x\u00d7]/.test(match);
     const weightPerPack = hasWeight && !isRange;
     return { count, weightPerPack };
   }
