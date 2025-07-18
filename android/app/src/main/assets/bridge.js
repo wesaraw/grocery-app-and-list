@@ -51,9 +51,7 @@
     }
   };
 
-  chrome.runtime.getURL = function (path) {
-    return 'file:///android_asset/' + path;
-  };
+  chrome.runtime.getURL = path => `file:///android_asset/${path}`;
 
   const runtimeListeners = [];
   chrome.runtime.onMessage = {

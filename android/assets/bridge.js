@@ -41,4 +41,7 @@
       if (callback) callback();
     }
   };
+
+  chrome.runtime = chrome.runtime || {};
+  chrome.runtime.getURL = path => `file:///android_asset/${path}`;
 })();
