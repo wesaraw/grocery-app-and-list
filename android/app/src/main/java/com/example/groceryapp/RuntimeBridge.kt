@@ -22,6 +22,22 @@ class RuntimeBridge(private val context: Context) {
 
         fun sendToTab(tabId: Int, message: String) {
             val webView = tabMap[tabId] ?: return
+            try {
+                val obj = JSONObject(message)
+                if (obj.optString("type") == "triggerScrape") {
+                    // Re-inject the content script whenever the UI explicitly
+                    // requests a scrape to ensure the page has the scraper
+                    // loaded. This mirrors the initial injection performed
+                    // after page load.
+                    webView.context.assets.open("contentScript.js").bufferedReader().use {
+                        val script = it.readText()
+                        webView.post { webView.evaluateJavascript(script, null) }
+                    }
+                }
+            } catch (_: Exception) {
+                // ignore malformed message
+            }
+
             val js = "window.__handleNativeMessage(" + JSONObject.quote(message) + ");"
             webView.post { webView.evaluateJavascript(js, null) }
         }
