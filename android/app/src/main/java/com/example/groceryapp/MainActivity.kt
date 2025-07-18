@@ -17,6 +17,8 @@ class MainActivity : AppCompatActivity() {
         val settings: WebSettings = webView.settings
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
+        settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+        settings.allowFileAccessFromFileURLs = true
 
         webView.addJavascriptInterface(StorageBridge(this), "StorageBridge")
         webView.addJavascriptInterface(RuntimeBridge(this), "RuntimeBridge")
