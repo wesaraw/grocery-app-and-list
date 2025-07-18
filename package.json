@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "js-beautify": "^1.15.4",
+    "jsdom": "^26.1.0"
+  },
+  "scripts": {
+    "test": "node test/unitPriceTest.js && node test/unitNormalizeTest.js"
+  },
+  "type": "module"
+}

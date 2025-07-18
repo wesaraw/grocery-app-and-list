@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Add Item</title>
+  <style>
+    body { font-family: Arial, sans-serif; width: 300px; }
+    .field { margin-bottom: 10px; }
+    label { display: block; }
+    .error {
+      animation: blink-bg 1s ease-in-out 0s 2;
+      background-color: #ffcdd2;
+    }
+    @keyframes blink-bg {
+      0%, 100% { background-color: #ffcdd2; }
+      50% { background-color: #fff; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Add Item</h1>
+  <div class="field">
+    <label>Item Name <input id="name" type="text"></label>
+  </div>
+  <div class="field">
+    <label>Yearly Need <input id="yearly" type="number" step="any" placeholder="12"></label>
+  </div>
+  <div class="field">
+    <label>Home Unit <input id="unit" type="text" placeholder="each"></label>
+  </div>
+  <div class="field">
+    <label>Volume:Weight Ratio <input id="ratio" type="text" placeholder="1:1" value="1:1"></label>
+  </div>
+  <div class="field">
+    <label><input id="whole" type="checkbox"> Treat as Whole Unit</label>
+  </div>
+  <div class="field">
+    <label>Monthly Consumption <input id="monthly" type="number" step="any" placeholder="1"></label>
+  </div>
+  <div class="field">
+    <label>Shelf Life (months) <input id="shelf" type="number" step="any" placeholder="6"></label>
+  </div>
+  <div class="field">
+    <label>Current Stock <input id="stock" type="number" step="any"></label>
+  </div>
+  <div class="field">
+    <label>Week <input id="week" type="number" min="1" max="52"></label>
+  </div>
+  <div class="field">
+    <label>Category <input id="category" type="text"></label>
+  </div>
+  <button id="commit">Commit</button>
+  <div id="warning" style="color: red; display: none;">Incomplete data</div>
+  <script src="bridge.js"></script>
+<script type="module" src="addItem.js"></script>
+</body>
+</html>

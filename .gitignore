@@ -1,0 +1,13 @@
+node_modules/
+package-lock.json
+
+# Android build outputs
+/android/.gradle/
+/android/app/build/
+
+# Local signing configuration
+android/keystore.properties
+*.keystore
+*.jks
+
+/android/build/
