@@ -6,6 +6,7 @@ import android.webkit.WebView
 import androidx.appcompat.app.AppCompatActivity
 
 import com.example.groceryapp.StorageBridge
+import com.example.groceryapp.RuntimeBridge
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -18,6 +19,7 @@ class MainActivity : AppCompatActivity() {
         settings.domStorageEnabled = true
 
         webView.addJavascriptInterface(StorageBridge(this), "StorageBridge")
+        webView.addJavascriptInterface(RuntimeBridge(this), "RuntimeBridge")
 
         webView.loadUrl("file:///android_asset/launcher.html")
     }
