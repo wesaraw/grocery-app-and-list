@@ -1,7 +1,11 @@
 import { openOrFocusWindow } from './utils/windowUtils.js';
 
 function openWindow(path) {
-  openOrFocusWindow(path);
+  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
+    openOrFocusWindow(path);
+  } else {
+    window.location.href = path;
+  }
 }
 
 document.getElementById('open-price-checker').addEventListener('click', () => {
