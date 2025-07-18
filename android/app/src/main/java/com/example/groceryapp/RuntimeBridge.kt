@@ -12,6 +12,39 @@ class RuntimeBridge(private val context: Context) {
         private val tabMap = mutableMapOf<Int, WebView>()
         private var nextId = 1
 
+        private val runtimeData = mutableMapOf<String, String?>()
+        private var loaded = false
+
+        fun getRuntimeItem(key: String): String? = runtimeData[key]
+
+        fun setRuntimeItem(key: String, value: String?) {
+            if (value == null) runtimeData.remove(key) else runtimeData[key] = value
+        }
+
+        fun loadState(context: Context) {
+            if (loaded) return
+            val prefs = context.getSharedPreferences("web_storage", Context.MODE_PRIVATE)
+            val json = prefs.getString("__runtimeState__", null)
+            if (json != null) {
+                try {
+                    val obj = JSONObject(json)
+                    for (key in obj.keys()) {
+                        runtimeData[key] = obj.getString(key)
+                    }
+                } catch (_: Exception) {}
+            }
+            loaded = true
+        }
+
+        fun saveState(context: Context) {
+            val prefs = context.getSharedPreferences("web_storage", Context.MODE_PRIVATE)
+            val obj = JSONObject()
+            for ((k, v) in runtimeData) {
+                obj.put(k, v)
+            }
+            prefs.edit().putString("__runtimeState__", obj.toString()).apply()
+        }
+
         fun registerTab(tabId: Int, webView: WebView) {
             tabMap[tabId] = webView
         }
@@ -43,8 +76,6 @@ class RuntimeBridge(private val context: Context) {
         }
     }
 
-    private val storage = StorageBridge(context)
-
     @JavascriptInterface
     fun sendMessage(json: String): String? {
         val obj = JSONObject(json)
@@ -55,7 +86,7 @@ class RuntimeBridge(private val context: Context) {
                 val store = obj.optString("store")
                 val id = nextId++
                 val info = JSONObject().put("item", item).put("store", store).put("tabId", id)
-                storage.setItem("currentItemInfo", info.toString())
+                setRuntimeItem("currentItemInfo", info.toString())
                 val intent = Intent(context, StoreActivity::class.java).apply {
                     putExtra("url", url)
                     putExtra("tabId", id)
@@ -72,7 +103,7 @@ class RuntimeBridge(private val context: Context) {
                 val key = "scraped_" +
                     URLEncoder.encode(item, "UTF-8") + "_" +
                     URLEncoder.encode(store, "UTF-8")
-                storage.setItem(key, obj.getJSONArray("products").toString())
+                setRuntimeItem(key, obj.getJSONArray("products").toString())
                 null
             }
             else -> null

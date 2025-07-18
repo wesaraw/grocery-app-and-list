@@ -11,6 +11,7 @@ import com.example.groceryapp.RuntimeBridge
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        RuntimeBridge.loadState(this)
         setContentView(R.layout.activity_main)
 
         val webView: WebView = findViewById(R.id.webview)
@@ -24,5 +25,10 @@ class MainActivity : AppCompatActivity() {
         webView.addJavascriptInterface(RuntimeBridge(this), "RuntimeBridge")
 
         webView.loadUrl("file:///android_asset/launcher.html")
+    }
+
+    override fun onStop() {
+        super.onStop()
+        RuntimeBridge.saveState(this)
     }
 }
