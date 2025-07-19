@@ -835,7 +835,26 @@ async function commitSelections() {
   const commitItems = [];
   const currentWeek = getCurrentWeek();
 
+  const hasCalendar = calendarData && Object.keys(calendarData).length > 0;
+  const purchaseInfo = calculatePurchaseNeeds(
+    needsData,
+    consumptionData,
+    stockData,
+    expirationData,
+    consumedYearData,
+    mealYearData,
+    purchasesData,
+    currentWeek,
+    calendarData,
+    mealsByCategoryData,
+    !hasCalendar,
+    densityMap
+  );
+  const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
+
   for (const item of needsData) {
+    const needRecord = purchaseMap.get(item.name);
+    if (!needRecord || needRecord.toBuy <= 0) continue;
     const { store, product } = await loadCommitData(item.name);
     if (!product) continue;
     const info = densityMap[item.name] || {};
