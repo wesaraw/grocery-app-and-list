@@ -212,6 +212,7 @@ function simulateItem(item, overrides) {
       active.shift();
     }
     const qtyBefore = active.reduce((s,b) => s + b.qty, 0);
+    let qty = qtyBefore;
     const closestExp = active.length ? Math.min(...active.map(b => b.exp)) : w;
     const weeksToExpiration = closestExp - w;
     let cls = 'green';
