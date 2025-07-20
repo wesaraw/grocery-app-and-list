@@ -78,7 +78,20 @@ function simulateItem(item, overrides) {
     while (active.length && w >= active[0].exp) {
       active.shift();
     }
-    let qty = active.reduce((sum,b)=>sum+b.qty,0);
+    const qtyBefore = active.reduce((s,b) => s + b.qty, 0);
+    const closestExp = active.length ? Math.min(...active.map(b => b.exp)) : w;
+    const weeksToExpiration = closestExp - w;
+    let cls = 'green';
+    if (qtyBefore <= 0 || weeksToExpiration <= 0) cls = 'red';
+    else if (qtyBefore < item.weekly_consumption * 2 ||
+             weeksToExpiration < item.expiration_weeks * 0.1) {
+      cls = 'yellow';
+    }
+    weeks.push({
+      qty: qtyBefore.toFixed(1),
+      weeksToExpiration: Math.floor(weeksToExpiration),
+      cls
+    });
     const cons = (overrides[w]!==undefined ? overrides[w] : 1) * item.weekly_consumption;
     let remaining = cons;
     while (active.length && remaining>0) {
@@ -91,17 +104,7 @@ function simulateItem(item, overrides) {
       }
     }
     qty = active.reduce((sum,b)=>sum+b.qty,0);
-    const closestExp = active.length ? Math.min(...active.map(b=>b.exp)) : w;
-    const weeksToExpiration = closestExp - w;
-    const weeksToRunout = qty > 0 ? qty / item.weekly_consumption : 0;
     if (qty <= 0 && runoutWeek===null) runoutWeek = w;
-    let cls = 'green';
-    if (qty <= 0 || weeksToExpiration <= 0) {
-      cls = 'red';
-    } else if (qty < item.weekly_consumption*2 || weeksToExpiration < item.expiration_weeks*0.1) {
-      cls = 'yellow';
-    }
-    weeks.push({ qty: qty.toFixed(1), weeksToExpiration: Math.floor(weeksToExpiration), cls });
   }
   return weeks;
 }
