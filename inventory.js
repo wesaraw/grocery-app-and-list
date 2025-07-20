@@ -184,7 +184,7 @@ function createItemRow(name, amount, unit, purchasesMap, week, product, dMap) {
 
   const input = document.createElement('input');
   input.type = 'number';
-  input.placeholder = 'New';
+  input.placeholder = 'Set total';
 
   const packInput = document.createElement('input');
   packInput.type = 'number';
@@ -192,10 +192,10 @@ function createItemRow(name, amount, unit, purchasesMap, week, product, dMap) {
   async function commitPack() {
     const val = parseFloat(packInput.value);
     if (!isNaN(val) && product) {
-      let add = val;
+      let newTotal = val;
       if (unit.toLowerCase() === 'each') {
         const { count } = getPackInfo(product, new Map(), name);
-        add = val * count;
+        newTotal = val * count;
       } else {
         const info = dMap[name] || {};
         let ozQty = null;
@@ -210,7 +210,7 @@ function createItemRow(name, amount, unit, purchasesMap, week, product, dMap) {
           );
         }
         if (ozQty != null) {
-          add = convertWithDensity(
+          newTotal = convertWithDensity(
             ozQty,
             'oz',
             unit,
@@ -218,21 +218,24 @@ function createItemRow(name, amount, unit, purchasesMap, week, product, dMap) {
           );
         }
       }
-      if (!isNaN(add) && add !== 0) {
-        amount += add;
-        if (!purchasesMap[name]) purchasesMap[name] = [];
-        purchasesMap[name].push({
-          purchase_week: week,
-          quantity_purchased: add,
-          date_added: new Date().toISOString()
-        });
-        await savePurchases(purchasesMap);
-        try {
-          chrome.runtime.sendMessage({ type: 'inventory-updated' });
-        } catch (_) {}
-        span.textContent = `${name} - ${amount.toFixed(2)} ${unit}`;
+      if (!isNaN(newTotal)) {
+        const diff = newTotal - amount;
+        if (diff !== 0) {
+          if (!purchasesMap[name]) purchasesMap[name] = [];
+          purchasesMap[name].push({
+            purchase_week: week,
+            quantity_purchased: diff,
+            date_added: new Date().toISOString()
+          });
+          await savePurchases(purchasesMap);
+          try {
+            chrome.runtime.sendMessage({ type: 'inventory-updated' });
+          } catch (_) {}
+          amount = newTotal;
+          span.textContent = `${name} - ${amount.toFixed(2)} ${unit}`;
+        }
+        packInput.value = '';
       }
-      packInput.value = '';
     }
   }
   async function commitChange() {
