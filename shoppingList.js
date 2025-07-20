@@ -6,6 +6,35 @@ function loadCommitItems() {
   });
 }
 
+async function loadPurchases() {
+  return new Promise(resolve => {
+    try {
+      chrome.storage.local.get('purchases', data => {
+        resolve(data.purchases || {});
+      });
+    } catch (e) {
+      resolve({});
+    }
+  });
+}
+
+function savePurchases(map) {
+  return new Promise(resolve => {
+    try {
+      chrome.storage.local.set({ purchases: map }, () => resolve());
+    } catch (e) {
+      resolve();
+    }
+  });
+}
+
+function getCurrentWeek() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 1);
+  const dayOfYear = Math.floor((now - start) / 86400000) + 1;
+  return Math.ceil((dayOfYear + start.getDay()) / 7);
+}
+
 const PLACEHOLDER_IMG =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='50' height='50'><rect width='100%' height='100%' fill='%23ccc'/></svg>";
 
@@ -102,6 +131,32 @@ document.addEventListener('DOMContentLoaded', async () => {
       itemsNodes.forEach(({ el, name }) => {
         el.style.display =
           !text || name.toLowerCase().includes(text) ? 'flex' : 'none';
+      });
+    });
+  }
+
+  const confirmBtn = document.getElementById('confirmAdd');
+  if (confirmBtn) {
+    confirmBtn.addEventListener('click', async () => {
+      const purchases = await loadPurchases();
+      const data = await new Promise(resolve =>
+        chrome.storage.local.get(['lastCommitItems', 'pendingCommitWeek'], resolve)
+      );
+      const { lastCommitItems = [], pendingCommitWeek } = data;
+      if (pendingCommitWeek == null) {
+        window.close();
+        return;
+      }
+      for (const it of lastCommitItems) {
+        if (!purchases[it.item]) purchases[it.item] = [];
+        purchases[it.item].push({
+          purchase_week: pendingCommitWeek,
+          quantity_purchased: it.amount
+        });
+      }
+      await savePurchases(purchases);
+      chrome.storage.local.remove('pendingCommitWeek', () => {
+        window.close();
       });
     });
   }

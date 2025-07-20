@@ -897,8 +897,10 @@ async function commitSelections() {
     commitItems.push({ item: item.name, store, product, amount, unit: item.home_unit });
   }
 
-  await savePurchases(purchases);
-  chrome.storage.local.set({ lastCommitItems: commitItems });
+  chrome.storage.local.set({
+    lastCommitItems: commitItems,
+    pendingCommitWeek: currentWeek
+  });
 
   openOrFocusWindow('shoppingList.html');
 }
