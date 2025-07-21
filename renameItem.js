@@ -2,6 +2,7 @@ import { loadJSON } from './utils/dataLoader.js';
 import { sortItemsByCategory, renderItemsWithCategoryHeaders } from './utils/sortByCategory.js';
 import { canonicalName } from './utils/nameUtils.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
+import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -53,6 +54,16 @@ const loadConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
 const loadStock = () => loadArray('currentStock', STOCK_PATH);
 const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
 const loadStoreSelections = () => loadArray(STORE_SELECTION_KEY, STORE_SELECTION_PATH);
+
+function loadMealsForType({ key, path }) {
+  return new Promise(async resolve => {
+    chrome.storage.local.get(key, async data => {
+      let arr = data[key];
+      if (!arr) arr = await loadJSON(path);
+      resolve(arr || []);
+    });
+  });
+}
 
 function loadConsumed() {
   return new Promise(resolve => {
@@ -128,6 +139,13 @@ function renameFinalKeys(oldName, newName) {
 }
 
 async function renameItem(oldName, newName) {
+  await initializeMealCategories();
+
+  const mealEntries = Object.entries(MEAL_TYPES);
+  const mealLists = await Promise.all(
+    mealEntries.map(([, info]) => loadMealsForType(info))
+  );
+
   const [needs, consumption, stock, expiration, consumed, selections, purchases, overrides, history] = await Promise.all([
     loadNeeds(),
     loadConsumption(),
@@ -139,6 +157,11 @@ async function renameItem(oldName, newName) {
     loadOverrides(),
     loadHistory()
   ]);
+
+  const mealsByType = {};
+  mealEntries.forEach(([type], idx) => {
+    mealsByType[type] = mealLists[idx];
+  });
 
   const canonOld = canonicalName(oldName);
 
@@ -172,6 +195,17 @@ async function renameItem(oldName, newName) {
   renameKeys(overrides);
   renameKeys(history);
 
+  // rename ingredient references across all meals
+  Object.values(mealsByType).forEach(meals => {
+    meals.forEach(meal => {
+      (meal.ingredients || []).forEach(ing => {
+        if (canonicalName(ing.name) === canonOld) {
+          ing.name = newName;
+        }
+      });
+    });
+  });
+
   await Promise.all([
     save('yearlyNeeds', needs),
     save('monthlyConsumption', consumption),
@@ -181,7 +215,8 @@ async function renameItem(oldName, newName) {
     save(STORE_SELECTION_KEY, selections),
     savePurchases(purchases),
     saveOverrides(overrides),
-    saveHistory(history)
+    saveHistory(history),
+    ...mealEntries.map(([type, info]) => save(info.key, mealsByType[type]))
   ]);
 
   await renameFinalKeys(oldName, newName);
