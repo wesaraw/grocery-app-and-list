@@ -1,24 +1,18 @@
 import { WEEKS_PER_MONTH } from './utils/constants.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 import { canonicalName } from './utils/nameUtils.js';
+import {
+  loadArray,
+  loadStoredArray,
+  loadStoredObj,
+  loadPurchases,
+  savePurchases
+} from './utils/storage.js';
 
 async function loadJSON(path) {
   const url = chrome.runtime.getURL(path);
   const res = await fetch(url);
   return res.json();
-}
-
-async function loadPurchases() {
-  return new Promise(resolve => {
-    try {
-      chrome.storage.local.get('purchases', data => {
-        resolve(data.purchases || {});
-      });
-    } catch (e) {
-      // fallback if chrome is not available
-      resolve({});
-    }
-  });
 }
 
 async function loadOverrides() {
@@ -50,34 +44,6 @@ async function loadFinalProducts(names) {
   });
 }
 
-async function savePurchases(map) {
-  return new Promise(resolve => {
-    try {
-      chrome.storage.local.set({ purchases: map }, () => resolve());
-    } catch (e) {
-      resolve();
-    }
-  });
-}
-
-function loadArray(key, path) {
-  return new Promise(async resolve => {
-    try {
-      chrome.storage.local.get(key, async data => {
-        if (data[key]) {
-          resolve(data[key]);
-        } else {
-          const arr = await loadJSON(path);
-          resolve(arr);
-        }
-      });
-    } catch (e) {
-      const arr = await loadJSON(path);
-      resolve(arr);
-    }
-  });
-}
-
 function sortItemsByCategory(arr) {
   return arr.slice().sort((a, b) => {
     const catA = (a.category || '').toLowerCase();
@@ -86,18 +52,6 @@ function sortItemsByCategory(arr) {
       return a.name.localeCompare(b.name);
     }
     return catA.localeCompare(catB);
-  });
-}
-
-function loadStoredArray(key) {
-  return new Promise(resolve => {
-    chrome.storage.local.get(key, data => resolve(data[key] || []));
-  });
-}
-
-function loadStoredObj(key) {
-  return new Promise(resolve => {
-    chrome.storage.local.get(key, data => resolve(data[key] || {}));
   });
 }
 

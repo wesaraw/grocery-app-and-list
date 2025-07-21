@@ -1,6 +1,7 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { sortItemsByCategory, renderItemsWithCategoryHeaders } from './utils/sortByCategory.js';
 import { loadMealPlanData } from './utils/mealNeedsCalculator.js';
+import { loadArray } from './utils/storage.js';
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONS_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -13,19 +14,6 @@ let consMap;
 let mealYearMap;
 let mealMonthMap;
 let container;
-
-function loadArray(key, path) {
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      if (data[key]) {
-        resolve(data[key]);
-      } else {
-        const arr = await loadJSON(path);
-        resolve(arr);
-      }
-    });
-  });
-}
 
 const loadNeeds = () => loadArray('yearlyNeeds', NEEDS_PATH);
 const loadConsumption = () => loadArray('monthlyConsumption', CONS_PATH);
