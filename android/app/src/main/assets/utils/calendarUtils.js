@@ -43,7 +43,13 @@ export function buildMealMap(mealsByCategory) {
   return map;
 }
 
-export function aggregateCalendar(calendar = {}, mealsByCategory = {}, needsMap = new Map(), densityMap = {}) {
+export function aggregateCalendar(
+  calendar = {},
+  mealsByCategory = {},
+  needsMap = new Map(),
+  densityMap = {},
+  perUser = false
+) {
   const mealMap = buildMealMap(mealsByCategory);
   const result = new Map();
   Object.values(calendar).forEach(days => {
@@ -54,7 +60,7 @@ export function aggregateCalendar(calendar = {}, mealsByCategory = {}, needsMap 
         meals.forEach(id => {
           const meal = mealMap.get(id);
           if (!meal) return;
-          const mult = meal.people ?? meal.multiplier ?? 1;
+          const mult = perUser ? meal.multiplier ?? 1 : meal.people ?? meal.multiplier ?? 1;
           (meal.ingredients || []).forEach(ing => {
             const { value, unit } = parseQuantity(ing.serving_size || ing.amount);
             if (!value) return;
