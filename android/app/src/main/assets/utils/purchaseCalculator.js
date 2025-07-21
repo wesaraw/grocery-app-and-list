@@ -86,7 +86,13 @@ export function calculatePurchaseNeeds(
   }));
 
   const needsMap = new Map(needs.map(n => [n.name, n.home_unit]));
-  const calendarNeeds = aggregateCalendar(calendar, mealsByCategory, needsMap, densityMap);
+  const calendarNeeds = aggregateCalendar(
+    calendar,
+    mealsByCategory,
+    needsMap,
+    densityMap,
+    true
+  );
 
   const weeklyNeedMap = new Map();
   mergedNeeds.forEach(item => {
