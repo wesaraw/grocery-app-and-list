@@ -3,6 +3,7 @@ import {
   sortItemsByCategory,
   renderItemsWithCategoryHeaders
 } from './utils/sortByCategory.js';
+import { loadArray, loadPurchases, savePurchases } from './utils/storage.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -15,19 +16,6 @@ let filterText = '';
 const headerState = {};
 let allItems = [];
 let ul;
-
-function loadArray(key, path) {
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      if (data[key]) {
-        resolve(data[key]);
-      } else {
-        const arr = await loadJSON(path);
-        resolve(arr);
-      }
-    });
-  });
-}
 
 const loadNeeds = () => loadArray('yearlyNeeds', YEARLY_NEEDS_PATH);
 const loadConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
@@ -59,23 +47,12 @@ function loadHistory() {
   });
 }
 
-function loadPurchases() {
-  return new Promise(resolve => {
-    chrome.storage.local.get('purchases', data => resolve(data.purchases || {}));
-  });
-}
-
 function save(key, value) {
   return new Promise(resolve => {
     chrome.storage.local.set({ [key]: value }, () => resolve());
   });
 }
 
-function savePurchases(map) {
-  return new Promise(resolve => {
-    chrome.storage.local.set({ purchases: map }, () => resolve());
-  });
-}
 
 function saveOverrides(overrides) {
   return new Promise(resolve => {
