@@ -70,7 +70,7 @@ async function sanitizeFile(file) {
   let { outputHtml, nodesFound } = sanitizeContent(html, selector);
 
   if (selector && !nodesFound && savedMatch) {
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
     const page = await browser.newPage();
     await page.goto(savedMatch[1], { waitUntil: 'networkidle0' });
     try {
