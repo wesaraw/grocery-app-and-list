@@ -9,11 +9,11 @@ console.log('✅ contentScript.js loaded on page:', window.location.href);
 
 const SCRAPERS = {
   'stopandshop.com': scrapeStopAndShop,
-  'www.walmart.com': scrapeWalmart,
-  'www.amazon.com': scrapeAmazon,
-  'www.shaws.com': scrapeShaws,
-  'onlineshopping.rochebros.com': scrapeRocheBros,
-  'www.hannaford.com': scrapeHannaford
+  'walmart.com': scrapeWalmart,
+  'amazon.com': scrapeAmazon,
+  'shaws.com': scrapeShaws,
+  'rochebros.com': scrapeRocheBros,
+  'hannaford.com': scrapeHannaford
 };
 
 function getScraper() {
