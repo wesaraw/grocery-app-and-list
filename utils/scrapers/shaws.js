@@ -7,81 +7,6 @@ import {
   getPackCount
 } from "./common.js";
 export function scrapeShaws() {
-  const UNIT_FACTORS = {
-    oz: 1,
-    floz: 1,
-    lb: 16,
-    g: 0.035274,
-    kg: 35.274,
-    ml: 0.033814,
-    l: 33.814,
-    gal: 128,
-    ga: 128,
-    qt: 32,
-    pt: 16,
-    cup: 8,
-    tbsp: 0.5,
-    tsp: 0.1667,
-    ea: 1,
-    ct: 1,
-    count: 1,
-    pkg: 1,
-    box: 1,
-    can: 1,
-    bag: 1,
-    bottle: 1,
-    stick: 1,
-    roll: 1,
-    bar: 1,
-    pouch: 1,
-    jar: 1,
-    packet: 1,
-    sleeve: 1,
-    slice: 1,
-    piece: 1,
-    tube: 1,
-    tray: 1,
-    unit: 1
-  };
-
-  const WEIGHT_UNITS = new Set([
-    'oz',
-    'floz',
-    'lb',
-    'kg',
-    'ml',
-    'l',
-    'gal',
-    'g',
-    'qt',
-    'pt',
-    'cup',
-    'tbsp',
-    'tsp'
-  ]);
-
-  const COUNT_UNITS = new Set([
-    'ea',
-    'ct',
-    'count',
-    'pkg',
-    'box',
-    'can',
-    'bag',
-    'bottle',
-    'stick',
-    'roll',
-    'bar',
-    'pouch',
-    'jar',
-    'packet',
-    'sleeve',
-    'slice',
-    'piece',
-    'tube',
-    'tray',
-    'unit'
-  ]);
 
   function extractSize(text) {
     if (!text) return [null, null];
@@ -120,23 +45,22 @@ export function scrapeShaws() {
   const tiles = document.querySelectorAll('product-item-al-v2');
   tiles.forEach(tile => {
     const titleEl = tile.querySelector('[data-qa="prd-itm-pttl"]');
-    const name = titleEl?.innerText?.trim();
-    const packMatch = name?.match(/(\d+)\s*(?:pk|pack|ct|count)/i);
-    const packCount = packMatch ? parseInt(packMatch[1], 10) : 1;
-    const linkRel = titleEl?.getAttribute('href');
-    const link = linkRel ? new URL(linkRel, 'https://www.shaws.com').href : '';
-    const priceText = tile.querySelector('[data-qa="prd-itm-prc"]')?.innerText?.trim();
-    const sizeText = tile.querySelector('[data-qa="prd-itm-sqty"]')?.innerText?.trim();
+    const name = titleEl?.textContent?.trim();
+    const sizeText = tile.querySelector('[data-qa="prd-itm-sqty"]')?.textContent?.trim();
     const unitText = (
       tile.querySelector('[data-qa="prd-itm-upr"]')?.textContent ||
       tile.querySelector('[data-qa="prd-itm-pprc-qty"]')?.textContent ||
       ''
     ).trim();
+    const packCount = getPackCount(name, sizeText, unitText);
+    const linkRel = titleEl?.getAttribute('href');
+    const link = linkRel ? new URL(linkRel, 'https://www.shaws.com').href : '';
+    const priceText = tile.querySelector('[data-qa="prd-itm-prc"]')?.textContent?.trim();
     const image = getImageSrc(tile.querySelector('img[data-qa="prd-itm-img"]'));
 
     let priceNumber = null;
     if (priceText) {
-      const p = parseFloat(priceText.replace(/[^0-9.]/g, ''));
+      const p = parsePriceNumber(priceText);
       if (!isNaN(p)) priceNumber = p;
     }
 
@@ -177,34 +101,58 @@ export function scrapeShaws() {
       }
     }
 
-    let convertedQty = null;
+  if (sizeUnit) {
+    const key = sizeUnit.toLowerCase();
+    sizeUnit = UNIT_ALIASES[key] || key;
+  }
+
     const parsedInfo = parseUnitPrice(unitText);
     let pricePerUnit = parsedInfo ? parsedInfo.pricePerUnit : null;
     let unitQty = parsedInfo ? parsedInfo.unitQty : null;
     let unitType = parsedInfo ? parsedInfo.unitType : null;
-    if (pricePerUnit != null && unitType && WEIGHT_UNITS.has(unitType) && UNIT_FACTORS[unitType]) {
-      pricePerUnit = pricePerUnit / UNIT_FACTORS[unitType];
-      unitQty = 1;
-      unitType = 'oz';
+    if (unitType) {
+      unitType = UNIT_ALIASES[unitType] || unitType;
+      if (pricePerUnit != null && WEIGHT_UNITS.has(unitType) && UNIT_FACTORS[unitType]) {
+        pricePerUnit = pricePerUnit / UNIT_FACTORS[unitType];
+        unitType = 'oz';
+      }
     }
+
+    let totalSizeQty = null;
+    if (sizeQty != null) {
+      totalSizeQty = sizeQty * packCount;
+    } else if (unitQty != null && unitType) {
+      totalSizeQty = unitQty * packCount;
+      sizeUnit = unitType;
+    }
+    sizeQty = totalSizeQty;
+
+    let convertedQty = null;
+
     if (sizeQty != null && sizeUnit) {
-      const factor = UNIT_FACTORS[sizeUnit.toLowerCase()];
+      const unit = sizeUnit.toLowerCase();
+      const factor = UNIT_FACTORS[unit];
       if (factor) {
-        convertedQty = sizeQty * factor;
+        if (!COUNT_UNITS.has(unit)) {
+          convertedQty = sizeQty * factor;
+          unitType = 'oz';
+        } else {
+          convertedQty = sizeQty;
+          if (!unitType) unitType = unit;
+        }
         if (priceNumber != null && pricePerUnit == null) {
           pricePerUnit = priceNumber / convertedQty;
-          unitQty = 1;
-          unitType = sizeUnit.toLowerCase();
         }
       }
     }
 
     if (name && priceText) {
+      const sizeStr = sizeQty != null && sizeUnit ? `${sizeQty} ${sizeUnit}` : sizeText || '';
       products.push({
         name,
         price: priceText,
         priceNumber,
-        size: sizeText || '',
+        size: sizeStr,
         sizeQty,
         sizeUnit,
         unit: unitText || '',
