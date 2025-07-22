@@ -70,17 +70,25 @@ async function sanitizeFile(file) {
   let { outputHtml, nodesFound } = sanitizeContent(html, selector);
 
   if (selector && !nodesFound && savedMatch) {
-    const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
-    const page = await browser.newPage();
-    await page.goto(savedMatch[1], { waitUntil: 'networkidle0' });
+    let browser;
     try {
-      await page.waitForSelector(selector, { timeout: 10000 });
-    } catch {
-      // ignore timeout and use whatever is rendered
+      browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+      const page = await browser.newPage();
+      await page.goto(savedMatch[1], { waitUntil: 'networkidle0' });
+      try {
+        await page.waitForSelector(selector, { timeout: 10000 });
+      } catch {
+        // ignore timeout and use whatever is rendered
+      }
+      const renderedHtml = await page.content();
+      ({ outputHtml } = sanitizeContent(renderedHtml, selector));
+    } catch (err) {
+      console.error(`Failed to render ${savedMatch[1]}:`, err.message);
+    } finally {
+      if (browser) {
+        await browser.close();
+      }
     }
-    const renderedHtml = await page.content();
-    await browser.close();
-    ({ outputHtml } = sanitizeContent(renderedHtml, selector));
   }
 
   const outPath = path.join(CLEAN_DIR, path.basename(file) + '.clean.html');
