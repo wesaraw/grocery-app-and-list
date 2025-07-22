@@ -3,21 +3,122 @@ import { parsePriceNumber, parseUnitPrice } from "../priceUtils.js";
 import { UNIT_FACTORS, COUNT_UNITS, getPackCount } from "./common.js";
 export function scrapeRocheBros() {
 
+  const UNIT_FACTORS = {
+    oz: 1,
+    floz: 1,
+    lb: 16,
+    g: 0.035274,
+    kg: 35.274,
+    ml: 0.033814,
+    l: 33.814,
+    gal: 128,
+    ga: 128,
+    qt: 32,
+    pt: 16,
+    cup: 8,
+    tbsp: 0.5,
+    tsp: 0.1667,
+    ea: 1,
+    ct: 1,
+    pkg: 1,
+    box: 1,
+    can: 1,
+    bag: 1,
+    bottle: 1,
+    stick: 1,
+    roll: 1,
+    bar: 1,
+    pouch: 1,
+    jar: 1,
+    packet: 1,
+    sleeve: 1,
+    slice: 1,
+    piece: 1,
+    tube: 1,
+    tray: 1,
+    unit: 1
+  };
+
+  const WEIGHT_UNITS = new Set([
+    'oz',
+    'floz',
+    'lb',
+    'kg',
+    'ml',
+    'l',
+    'gal',
+    'ga',
+    'g',
+    'qt',
+    'pt',
+    'cup',
+    'tbsp',
+    'tsp'
+  ]);
+
+  const COUNT_UNITS = new Set([
+    'ea',
+    'ct',
+    'pkg',
+    'box',
+    'can',
+    'bag',
+    'bottle',
+    'stick',
+    'roll',
+    'bar',
+    'pouch',
+    'jar',
+    'packet',
+    'sleeve',
+    'slice',
+    'piece',
+    'tube',
+    'tray',
+    'unit'
+  ]);
+
+  function sanitize(str) {
+    return str
+      ?.replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;|&#160;/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function matchPack(str) {
+    if (!str) return null;
+    const s = sanitize(str);
+    return (
+      s.match(/(\d+)\s*[-\u2011\u2012\u2013\u2014]?\s*(?:pack|pk|ct|count|rolls?|rl)/i) ||
+      s.match(/(\d+)(?:\s*\w+){0,3}\s*(?:rolls?|rl)/i) ||
+      s.match(/pack\s*of\s*(\d+)/i) ||
+      s.match(/(\d+)\s*[-x\u00d7]\s*\d+/i)
+    );
+  }
+
+  function localGetPackCount(name, size, unit) {
+    let m = matchPack(name);
+    if (!m) m = matchPack(size);
+    if (!m) m = matchPack(unit);
+    return m ? parseInt(m[1], 10) : 1;
+  }
+
   const products = [];
   const tiles = document.querySelectorAll(
     '[data-test-id="product-card"], [data-test="product-cell"]'
   );
   tiles.forEach(tile => {
     const name =
-      tile.querySelector('.c-card__content__title')?.textContent?.trim() ||
-      tile.querySelector('.cell-title-text')?.textContent?.trim();
+      tile.querySelector('.c-card__content__title')?.innerText?.trim() ||
+      tile.querySelector('.cell-title-text')?.innerText?.trim();
     const sizeText =
-      tile.querySelector('.package-info__package-size')?.textContent?.trim() ||
-      tile.querySelector('.cell-product-size')?.textContent?.trim();
+      tile.querySelector('.package-info__package-size')?.innerText?.trim() ||
+      tile.querySelector('.cell-product-size')?.innerText?.trim();
     let unitText =
-      tile.querySelector('.package-info__price-per-uom')?.textContent?.trim() ||
-      tile.querySelector('[data-test="per-unit-price"]')?.textContent?.trim();
-    const packCount = getPackCount(name, sizeText, unitText);
+      tile.querySelector('.package-info__price-per-uom')?.innerText?.trim() ||
+      tile.querySelector('[data-test="per-unit-price"]')?.innerText?.trim();
+    const packCount = localGetPackCount(name, sizeText, unitText);
     const link =
       tile.querySelector('a.c-card__link[href]')?.href ||
       tile.querySelector('a[href]')?.href ||
@@ -28,8 +129,8 @@ export function scrapeRocheBros() {
       tile.querySelector('button[data-test-id^="add-to-cart-button"]');
     const addToCartId = addBtn?.id || addBtn?.getAttribute('data-test-id') || '';
     let priceText =
-      tile.querySelector('.price-label__row-two.price-label__price')?.textContent ||
-      tile.querySelector('[data-test="amount"] span')?.textContent ||
+      tile.querySelector('.price-label__row-two.price-label__price')?.innerText ||
+      tile.querySelector('[data-test="amount"] span')?.innerText ||
       '';
     priceText = priceText
       .replace(/for/, ' for ')
