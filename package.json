@@ -1,7 +1,8 @@
 {
   "dependencies": {
     "js-beautify": "^1.15.4",
-    "jsdom": "^26.1.0"
+    "jsdom": "^26.1.0",
+    "puppeteer": "^22.0.0"
   },
   "scripts": {
     "test": "node test/unitPriceTest.js && node test/unitNormalizeTest.js && node test/canOfSoupTest.js",
