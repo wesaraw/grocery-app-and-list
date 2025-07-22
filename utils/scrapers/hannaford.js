@@ -50,6 +50,17 @@ export function scrapeHannaford() {
       }
     }
 
+    let totalSizeQty = null;
+    if (sizeQty != null) {
+      totalSizeQty = sizeQty * packCount;
+    } else if (unitQty != null && unitType) {
+      totalSizeQty = unitQty * packCount;
+      sizeUnit = unitType;
+    }
+    sizeQty = totalSizeQty;
+
+    let convertedQty = null;
+
     if (perUnitText) {
       const parsed = parseUnitPrice(perUnitText);
       if (parsed) {
@@ -63,17 +74,6 @@ export function scrapeHannaford() {
         }
       }
     }
-
-    let totalSizeQty = null;
-    if (sizeQty != null) {
-      totalSizeQty = sizeQty * packCount;
-    } else if (unitQty != null && unitType) {
-      totalSizeQty = unitQty * packCount;
-      sizeUnit = unitType;
-    }
-    sizeQty = totalSizeQty;
-
-    let convertedQty = null;
 
     if (sizeQty != null && sizeUnit) {
       const factor = UNIT_FACTORS[sizeUnit.toLowerCase()];
