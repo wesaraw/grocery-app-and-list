@@ -1,7 +1,56 @@
-import { getImageSrc } from "../imageUtils.js";
-import { parsePriceNumber, parseUnitPrice } from "../priceUtils.js";
-import { UNIT_FACTORS, WEIGHT_UNITS } from "./common.js";
+import { getImageSrc } from "../utils/imageUtils.js";
+import { parsePriceNumber, parseUnitPrice } from "../utils/priceUtils.js";
 export function scrapeAmazon() {
+  const UNIT_FACTORS = {
+    oz: 1,
+    lb: 16,
+    g: 0.035274,
+    kg: 35.274,
+    ml: 0.033814,
+    l: 33.814,
+    gal: 128,
+    ga: 128,
+    qt: 32,
+    pt: 16,
+    cup: 8,
+    tbsp: 0.5,
+    tsp: 0.1667,
+    ea: 1,
+    ct: 1,
+    pkg: 1,
+    box: 1,
+    can: 1,
+    bag: 1,
+    bottle: 1,
+    stick: 1,
+    roll: 1,
+    bar: 1,
+    pouch: 1,
+    jar: 1,
+    packet: 1,
+    sleeve: 1,
+    slice: 1,
+    piece: 1,
+    tube: 1,
+    tray: 1,
+    unit: 1
+  };
+
+  const WEIGHT_UNITS = new Set([
+    'oz',
+    'lb',
+    'g',
+    'kg',
+    'ml',
+    'l',
+    'gal',
+    'ga',
+    'qt',
+    'pt',
+    'cup',
+    'tbsp',
+    'tsp'
+  ]);
 
 
   function parseUnitInfo(name, unitText, sizeText) {
