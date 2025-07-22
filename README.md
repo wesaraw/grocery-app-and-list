@@ -217,7 +217,3 @@ The script cleans every `.html` file in that directory and writes the cleaned
 pages to `test/clean-pages/<name>.clean.html`. These trimmed samples are used by
 the unit tests.
 
-If the raw page lacks the expected elements, the script now launches
-Puppeteer, loads the URL found in the `saved from url` comment and sanitizes the
-rendered HTML. Ensure `puppeteer` is installed before running the script.
-
