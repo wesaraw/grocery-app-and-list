@@ -213,7 +213,7 @@ When capturing reference pages for scraping tests, place the raw HTML pages in
 npm run sanitize
 ```
 
-The script cleans every `.html` file in that directory and writes a
-`<name>.clean.html` file alongside each one. These trimmed samples are used by
+The script cleans every `.html` file in that directory and writes the cleaned
+pages to `test/clean-pages/<name>.clean.html`. These trimmed samples are used by
 the unit tests.
 

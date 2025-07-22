@@ -5,6 +5,8 @@ import beautifyPkg from 'js-beautify';
 const { html: beautify } = beautifyPkg;
 
 const RAW_DIR = path.join('test', 'raw-pages');
+const CLEAN_DIR = path.join('test', 'clean-pages');
+fs.mkdirSync(CLEAN_DIR, { recursive: true });
 
 /**
  * Sanitize a single HTML file.
@@ -52,7 +54,7 @@ function sanitizeFile(file) {
     outputHtml = beautify(dom.serialize(), { indent_size: 2 });
   }
 
-  const outPath = `${file}.clean.html`;
+  const outPath = path.join(CLEAN_DIR, path.basename(file) + '.clean.html');
   fs.writeFileSync(outPath, outputHtml);
   console.log(`Wrote ${outPath}`);
 }

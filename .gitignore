@@ -5,6 +5,9 @@ package-lock.json
 /android/.gradle/
 /android/app/build/
 
+# Temporary sanitized HTML output
+test/clean-pages/
+
 # Local signing configuration
 android/keystore.properties
 *.keystore
