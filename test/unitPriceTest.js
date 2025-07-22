@@ -91,7 +91,7 @@ Object.defineProperty(walmartDom.window.HTMLElement.prototype, 'innerText', {
 });
 global.document = walmartDom.window.document;
 global.window = walmartDom.window;
-const { scrapeWalmart } = await import('../scrapers/walmart.js');
+const { scrapeWalmart } = await import('../utils/scrapers/walmart.js');
 const walmartProducts = scrapeWalmart();
 const walmartItem = walmartProducts.find(p => /12\s*Double\s*Rolls/i.test(p.name));
 if (!walmartItem) throw new Error('Failed to find Walmart Bounty item');
@@ -126,7 +126,7 @@ Object.defineProperty(snippetDom.window.HTMLElement.prototype, 'innerText', {
 });
 global.document = snippetDom.window.document;
 global.window = snippetDom.window;
-const { scrapeWalmart: scrapeWalmartSnippet } = await import('../scrapers/walmart.js');
+const { scrapeWalmart: scrapeWalmartSnippet } = await import('../utils/scrapers/walmart.js');
 const snippetProducts = scrapeWalmartSnippet();
 const snippetItem = snippetProducts[0];
 if (!snippetItem || snippetItem.unitType !== 'oz' || Math.abs(snippetItem.pricePerUnit - 0.1) > 0.0001) {
@@ -209,7 +209,7 @@ Object.defineProperty(dentDom.window.HTMLElement.prototype, 'innerText', {
 });
 global.document = dentDom.window.document;
 global.window = dentDom.window;
-const { scrapeShaws } = await import('../scrapers/shaws.js');
+const { scrapeShaws } = await import('../utils/scrapers/shaws.js');
 const dentProducts = scrapeShaws();
 const dentItem = dentProducts.find(p => /Dentastix/i.test(p.name));
 if (!dentItem) throw new Error('Failed to find Dentastix item');
@@ -333,7 +333,7 @@ Object.defineProperty(hannDom.window.HTMLElement.prototype, 'innerText', {
 });
 global.document = hannDom.window.document;
 global.window = hannDom.window;
-const { scrapeHannaford } = await import('../scrapers/hannaford.js');
+const { scrapeHannaford } = await import('../utils/scrapers/hannaford.js');
 const hannProducts = scrapeHannaford();
 const quartItem = hannProducts.find(
   p => /Pepsi Zero Sugar/i.test(p.name) && p.sizeUnit === 'l' && Math.abs(p.sizeQty - 2) < 0.01
@@ -392,7 +392,7 @@ Object.defineProperty(amazonDom.window.HTMLElement.prototype, 'innerText', {
 });
 global.document = amazonDom.window.document;
 global.window = amazonDom.window;
-const { scrapeAmazon } = await import('../scrapers/amazon.js');
+const { scrapeAmazon } = await import('../utils/scrapers/amazon.js');
 const amazonProducts = scrapeAmazon();
 const amazonItem = amazonProducts[0];
 if (
