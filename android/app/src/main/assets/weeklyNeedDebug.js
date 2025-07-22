@@ -1,4 +1,6 @@
-import { canonicalName } from './utils/nameUtils.js';
+function canonicalName(name) {
+  return (name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
 
 function loadBreakdown(key) {
   return new Promise(resolve => {
