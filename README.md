@@ -203,3 +203,17 @@ credentials outside of version control.
 3. Run `./gradlew assembleRelease` from the `android` directory. The signed APK
    will be located at
    `android/app/build/outputs/apk/release/app-release.apk`.
+
+## Sanitizing HTML samples
+
+When capturing reference pages for scraping tests, place the raw HTML pages in
+`test/raw-pages`. Run:
+
+```bash
+npm run sanitize
+```
+
+The script cleans every `.html` file in that directory and writes a
+`<name>.clean.html` file alongside each one. These trimmed samples are used by
+the unit tests.
+
