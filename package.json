@@ -4,7 +4,8 @@
     "jsdom": "^26.1.0"
   },
   "scripts": {
-    "test": "node test/unitPriceTest.js && node test/unitNormalizeTest.js && node test/canOfSoupTest.js"
+    "test": "node test/unitPriceTest.js && node test/unitNormalizeTest.js && node test/canOfSoupTest.js",
+    "sanitize": "node scripts/sanitizeHtml.js"
   },
   "type": "module"
 }
