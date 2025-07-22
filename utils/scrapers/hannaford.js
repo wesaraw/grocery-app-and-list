@@ -16,99 +16,66 @@ export function scrapeHannaford() {
     const link = linkRel
       ? new URL(linkRel, 'https://www.hannaford.com').href
       : '';
-    const name = tile.querySelector('.productName .real-product-name')?.textContent?.trim();
-    const sizeText = tile.querySelector('.overline.text-truncate')?.textContent?.trim();
-    const perUnitText = tile.querySelector('.unitPriceDisplay')?.textContent?.trim();
-    const packCount = getPackCount(name, sizeText, perUnitText);
-    const priceText = tile.querySelector('.priceCell .item-unit-price')?.textContent?.trim();
+    const name = tile.querySelector('.productName .real-product-name')?.innerText?.trim();
+    const packMatch = name?.match(/(\d+)\s*(?:pk|pack|ct|count)/i);
+    const packCount = packMatch ? parseInt(packMatch[1], 10) : 1;
+    const priceText = tile.querySelector('.priceCell .item-unit-price')?.innerText?.trim();
+    const priceHidden = tile.querySelector('.priceCell .item-price')?.value;
+    const sizeText = tile.querySelector('.overline.text-truncate')?.innerText?.trim();
+    const unitText = tile.querySelector('.unitPriceDisplay')?.innerText?.trim();
     const image = getImageSrc(tile.querySelector('img'));
 
     let priceNumber = null;
-    if (priceText) {
-      const p = parsePriceNumber(priceText);
+    if (priceHidden) {
+      const p = parseFloat(priceHidden);
       if (!isNaN(p)) priceNumber = p;
+    } else if (priceText) {
+      const m = priceText.match(/\$?([0-9.]+)/);
+      if (m) priceNumber = parseFloat(m[1]);
     }
 
     let unitQty = null;
     let unitType = null;
-    let pricePerUnit = null;
+    if (unitText) {
+      const clean = unitText.replace(/[^0-9./a-zA-Z]/g, '');
+      const match = clean.match(/([\d./]+)\/([a-zA-Z]+)/);
+      if (match) {
+        unitQty = parseNumber(match[1]);
+        unitType = match[2];
+      }
+    }
 
     let sizeQty = null;
     let sizeUnit = null;
     if (sizeText) {
-      let normalized = sizeText.toLowerCase();
-      normalized = normalized.replace(/-/g, ' ');
-      for (const [word, abbr] of Object.entries(UNIT_ALIASES)) {
-        const r = new RegExp(`\\b${word}\\b`, 'g');
-        normalized = normalized.replace(r, abbr);
-      }
-      const m = normalized.match(/([\d.]+)\s*(fl\s*oz|oz|lb|kg|ml|l|gal|g|qt|pt|cup|tbsp|tsp|ea|ct|pkg|box|can|bag|bottle|stick|roll|bar|pouch|jar|packet|sleeve|slice|piece|tube|tray|unit)/i);
+      const m = sizeText.match(/([\d./]+)\s*([a-zA-Z]+)/);
       if (m) {
-        sizeQty = parseFloat(m[1]);
-        sizeUnit = m[2].toLowerCase().replace(/\s+/g, '');
-        if (sizeUnit === 'floz') sizeUnit = 'oz';
+        sizeQty = parseNumber(m[1]);
+        sizeUnit = m[2];
       }
     }
-
-    if (perUnitText) {
-      const parsed = parseUnitPrice(perUnitText);
-      if (parsed) {
-        pricePerUnit = parsed.pricePerUnit;
-        unitType = parsed.unitType;
-        unitQty = parsed.unitQty;
-        const factor = UNIT_FACTORS[unitType];
-        if (factor && !COUNT_UNITS.has(unitType)) {
-          pricePerUnit = pricePerUnit / factor;
-          unitType = VOLUME_UNITS.has(unitType) ? 'fl oz' : 'oz';
-        }
-      }
-    }
-
-    let totalSizeQty = null;
-    if (sizeQty != null) {
-      totalSizeQty = sizeQty * packCount;
-    } else if (unitQty != null && unitType) {
-      totalSizeQty = unitQty * packCount;
-      sizeUnit = unitType;
-    }
-    sizeQty = totalSizeQty;
 
     let convertedQty = null;
-
+    let pricePerUnit = null;
     if (sizeQty != null && sizeUnit) {
       const factor = UNIT_FACTORS[sizeUnit.toLowerCase()];
       if (factor) {
-        if (!COUNT_UNITS.has(sizeUnit.toLowerCase())) {
-          convertedQty = sizeQty * factor;
-          unitType = VOLUME_UNITS.has(sizeUnit.toLowerCase()) ? 'fl oz' : 'oz';
-          if (priceNumber != null && pricePerUnit == null) {
-            pricePerUnit = priceNumber / convertedQty;
-          }
-        } else {
-          convertedQty = sizeQty;
-          if (!unitType) unitType = sizeUnit.toLowerCase();
-          if (priceNumber != null && pricePerUnit == null) {
-            pricePerUnit = priceNumber / convertedQty;
-          }
+        convertedQty = sizeQty * factor;
+        if (priceNumber != null) {
+          pricePerUnit = priceNumber / convertedQty;
         }
       }
     }
 
-    const normalizedUnit =
-      pricePerUnit != null && unitType
-        ? `$${pricePerUnit.toFixed(2)}/${unitType}`
-        : perUnitText || '';
-
     if (name && (priceText || priceNumber != null)) {
-      const sizeStr = sizeQty != null && sizeUnit ? `${sizeQty} ${sizeUnit}` : sizeText || '';
       products.push({
         name,
         price: priceText || (priceNumber != null ? `$${priceNumber.toFixed(2)}` : ''),
         priceNumber,
-        size: sizeStr,
+        size: sizeText || '',
         sizeQty,
         sizeUnit,
-        unit: normalizedUnit,
+        unit: unitText || '',
         unitQty,
         unitType,
         convertedQty,
@@ -120,4 +87,24 @@ export function scrapeHannaford() {
     }
   });
   return products;
+}
+
+function parseNumber(str) {
+  if (typeof str !== "string") return NaN;
+  let s = str.trim();
+  if (!s) return NaN;
+  const FRACTIONS = {"½":0.5,"¼":0.25,"¾":0.75,"⅓":1/3,"⅔":2/3,"⅛":1/8,"⅜":3/8,"⅝":5/8,"⅞":7/8};
+  if (FRACTIONS[s] !== undefined) return FRACTIONS[s];
+  for (const [u,v] of Object.entries(FRACTIONS)) {
+    if (s.includes(u)) s = s.replace(new RegExp(u,"g"), ` ${v} `);
+  }
+  s = s.trim();
+  let m = s.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+  if (m) return parseInt(m[1],10) + parseInt(m[2],10)/parseInt(m[3],10);
+  m = s.match(/^(\d+)\/(\d+)$/);
+  if (m) return parseInt(m[1],10) / parseInt(m[2],10);
+  m = s.match(/^(\d+)-(?:(\d+)\/(\d+))$/);
+  if (m) return parseInt(m[1],10) + parseInt(m[2],10)/parseInt(m[3],10);
+  const n = parseFloat(s);
+  return isNaN(n) ? NaN : n;
 }
