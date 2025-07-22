@@ -106,16 +106,6 @@ export function scrapeShaws() {
     sizeUnit = UNIT_ALIASES[key] || key;
   }
 
-    let totalSizeQty = null;
-    if (sizeQty != null) {
-      totalSizeQty = sizeQty * packCount;
-    } else if (unitQty != null && unitType) {
-      totalSizeQty = unitQty * packCount;
-      sizeUnit = unitType;
-    }
-    sizeQty = totalSizeQty;
-
-    let convertedQty = null;
     const parsedInfo = parseUnitPrice(unitText);
     let pricePerUnit = parsedInfo ? parsedInfo.pricePerUnit : null;
     let unitQty = parsedInfo ? parsedInfo.unitQty : null;
@@ -127,6 +117,17 @@ export function scrapeShaws() {
         unitType = 'oz';
       }
     }
+
+    let totalSizeQty = null;
+    if (sizeQty != null) {
+      totalSizeQty = sizeQty * packCount;
+    } else if (unitQty != null && unitType) {
+      totalSizeQty = unitQty * packCount;
+      sizeUnit = unitType;
+    }
+    sizeQty = totalSizeQty;
+
+    let convertedQty = null;
 
     if (sizeQty != null && sizeUnit) {
       const unit = sizeUnit.toLowerCase();
