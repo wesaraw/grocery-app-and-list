@@ -1,13 +1,125 @@
-import { getImageSrc } from "../imageUtils.js";
-import { parsePriceNumber, parseUnitPrice, UNIT_ALIASES } from "../priceUtils.js";
-import {
-  UNIT_FACTORS,
-  WEIGHT_UNITS,
-  VOLUME_UNITS,
-  COUNT_UNITS,
-  getPackCount
-} from "./common.js";
+import { getImageSrc } from "../utils/imageUtils.js";
+import { parsePriceNumber, parseUnitPrice } from "../utils/priceUtils.js";
 export function scrapeHannaford() {
+  const UNIT_FACTORS = {
+    oz: 1,
+    floz: 1,
+    lb: 16,
+    g: 0.035274,
+    kg: 35.274,
+    ml: 0.033814,
+    l: 33.814,
+    gal: 128,
+    ga: 128,
+    qt: 32,
+    pt: 16,
+    cup: 8,
+    tbsp: 0.5,
+    tsp: 0.1667,
+    ea: 1,
+    ct: 1,
+    pkg: 1,
+    box: 1,
+    can: 1,
+    bag: 1,
+    bottle: 1,
+    stick: 1,
+    roll: 1,
+    bar: 1,
+    pouch: 1,
+    jar: 1,
+    packet: 1,
+    sleeve: 1,
+    slice: 1,
+    piece: 1,
+    tube: 1,
+    tray: 1,
+    unit: 1
+  };
+
+  const WEIGHT_UNITS = new Set(['oz', 'lb', 'g', 'kg']);
+  const VOLUME_UNITS = new Set([
+    'floz',
+    'ml',
+    'l',
+    'gal',
+    'ga',
+    'qt',
+    'pt',
+    'cup',
+    'tbsp',
+    'tsp'
+  ]);
+
+  const UNIT_ALIASES = {
+    quart: 'qt',
+    quarts: 'qt',
+    perquart: 'qt',
+    pint: 'pt',
+    pints: 'pt',
+    perpint: 'pt',
+    liter: 'l',
+    liters: 'l',
+    litre: 'l',
+    litres: 'l',
+    pound: 'lb',
+    pounds: 'lb',
+    perlb: 'lb',
+    perpound: 'lb',
+    ounce: 'oz',
+    ounces: 'oz',
+    peroz: 'oz',
+    perounce: 'oz'
+  };
+
+
+  const COUNT_UNITS = new Set([
+    'ea',
+    'ct',
+    'pkg',
+    'box',
+    'can',
+    'bag',
+    'bottle',
+    'stick',
+    'roll',
+    'bar',
+    'pouch',
+    'jar',
+    'packet',
+    'sleeve',
+    'slice',
+    'piece',
+    'tube',
+    'tray',
+    'unit'
+  ]);
+
+  function sanitize(str) {
+    return str
+      ?.replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;|&#160;/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function matchPack(str) {
+    if (!str) return null;
+    const s = sanitize(str);
+    return (
+      s.match(/(\d+)\s*[-\u2011\u2012\u2013\u2014]?\s*(?:pack|pk|ct|count|rolls?|rl)/i) ||
+      s.match(/(\d+)(?:\s*\w+){0,3}\s*(?:rolls?|rl)/i) ||
+      s.match(/pack\s*of\s*(\d+)/i) ||
+      s.match(/(\d+)\s*[-x\u00d7]\s*\d+/i)
+    );
+  }
+
+  function getPackCount(name, size, unit) {
+    let m = matchPack(name);
+    if (!m) m = matchPack(size);
+    if (!m) m = matchPack(unit);
+    return m ? parseInt(m[1], 10) : 1;
+  }
 
   const products = [];
   const tiles = document.querySelectorAll('div.catalog-product');
