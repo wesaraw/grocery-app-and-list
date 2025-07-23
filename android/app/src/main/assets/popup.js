@@ -292,6 +292,50 @@ function getPackCount(product, map = weightPackMap, itemName = null) {
   return getPackInfo(product, map, itemName).count;
 }
 
+function packsForNeed(itemName, needAmt, product, map = weightPackMap) {
+  if (!product || needAmt == null || isNaN(needAmt)) return null;
+  const item = needsData.find(n => n.name === itemName);
+  if (!item) return null;
+  const info = densityMap[itemName] || {};
+  const { count: pack, weightPerPack } = getPackInfo(product, map, itemName);
+  if (!pack || pack <= 0) return null;
+
+  let qtyPerPack = pack;
+  if (item.home_unit.toLowerCase() !== 'each') {
+    const mult = weightPerPack ? 1 : pack;
+    let ozQty = null;
+    if (product.convertedQty != null) {
+      ozQty = product.convertedQty * mult;
+    } else if (product.sizeQty != null && product.sizeUnit) {
+      ozQty = convertWithDensity(
+        product.sizeQty * mult,
+        product.sizeUnit,
+        'oz',
+        { convert_volume_to_weight: info.convert, custom_density_ratio: info.ratio }
+      );
+    }
+    if (ozQty != null) {
+      qtyPerPack = convertWithDensity(
+        ozQty,
+        'oz',
+        item.home_unit,
+        { convert_volume_to_weight: info.convert, custom_density_ratio: info.ratio }
+      );
+    }
+  }
+  if (qtyPerPack == null || qtyPerPack <= 0) return null;
+  return Math.ceil(needAmt / qtyPerPack);
+}
+
+function needText(itemName, needAmt, product = null, map = weightPackMap) {
+  const item = needsData.find(n => n.name === itemName);
+  if (!item || needAmt == null || isNaN(needAmt)) return '';
+  const packs = product ? packsForNeed(itemName, needAmt, product, map) : null;
+  const packStr =
+    packs != null ? ` \u2026 ${packs} pack${packs > 1 ? 's' : ''}` : '';
+  return ` (Need: ${needAmt} ${item.home_unit}${packStr})`;
+}
+
 async function buildWeightPackMap(item, stores) {
   const map = new Map();
   for (const s of stores) {
@@ -524,10 +568,10 @@ async function init() {
 
   renderItemsWithCategoryHeaders(sortedNeeds, itemsContainer, item => {
     const li = document.createElement('li');
-    const info = purchaseMap.get(item.name);
-    const needAmt = info ? Math.round(info.toBuy) : null;
+    const needInfo = purchaseMap.get(item.name);
+    const needAmt = needInfo ? Math.round(needInfo.toBuy) : null;
     const amountText =
-      info && !isNaN(needAmt) ? ` (Need: ${needAmt} ${info.home_unit})` : '';
+      needInfo && !isNaN(needAmt) ? needText(item.name, needAmt) : '';
     const btn = document.createElement('button');
     btn.textContent = item.name + amountText;
     btn.addEventListener('click', () => {
@@ -546,6 +590,8 @@ async function init() {
     const showByNeed =
       !hideZeroItems || (needAmt != null && needAmt > 0);
     li.style.display = showByStock && showByNeed ? 'list-item' : 'none';
+    const rec = { li, btn, span: finalSpan, img: finalImg, needAmt, product: null, weightMap: null };
+    finalMap.set(item.name, rec);
     getFinal(item.name).then(async store => {
       const product = await getFinalProduct(item.name);
       const stores = selections
@@ -553,22 +599,29 @@ async function init() {
         .map(s => s.store);
       const weightMap = await buildWeightPackMap(item.name, stores);
       if (product) {
-        const info = getPackInfo(product, weightMap, item.name);
-        if (info.count > 1) {
+        const pInfo = getPackInfo(product, weightMap, item.name);
+        if (pInfo.count > 1) {
           const wKey = weightKey(product, item.name);
           if (
             wKey &&
-            (!weightMap.has(wKey) || weightMap.get(wKey).count < info.count)
+            (!weightMap.has(wKey) || weightMap.get(wKey).count < pInfo.count)
           ) {
-            weightMap.set(wKey, info);
+            weightMap.set(wKey, pInfo);
           }
         }
       }
+      rec.product = product;
+      rec.weightMap = weightMap;
+      const amountText =
+        rec.needAmt != null && !isNaN(rec.needAmt)
+          ? needText(item.name, rec.needAmt, rec.product, rec.weightMap)
+          : '';
+      btn.textContent = item.name + amountText;
       updateFinalInfo(item.name, finalSpan, finalImg, store, product, weightMap);
     });
     li.appendChild(finalSpan);
     li.appendChild(finalImg);
-    finalMap.set(item.name, { li, btn, span: finalSpan, img: finalImg });
+    // rec already stored in finalMap
     return li;
   }, headerState);
 
@@ -586,7 +639,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     await initReady;
     const rec = finalMap.get(message.item);
     if (rec) {
-      const { span, img } = rec;
+      const { span, img, btn } = rec;
       const prod = message.product;
       const stores = selectionsData
         .filter(s => s.name === message.item)
@@ -601,6 +654,13 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
           }
         }
       }
+      rec.product = prod;
+      rec.weightMap = weightMap;
+      const amountText =
+        rec.needAmt != null && !isNaN(rec.needAmt)
+          ? needText(message.item, rec.needAmt, rec.product, rec.weightMap)
+          : '';
+      btn.textContent = message.item + amountText;
       updateFinalInfo(message.item, span, img, message.store, prod, weightMap);
     }
   }
@@ -629,10 +689,13 @@ async function refreshNeeds(stock = stockData, consumed = consumedYearData) {
   needsData.forEach(item => {
     const rec = finalMap.get(item.name);
     if (rec && rec.btn) {
-      const info = purchaseMap.get(item.name);
-      const needAmt = info ? Math.round(info.toBuy) : null;
+      const needInfo = purchaseMap.get(item.name);
+      const needAmt = needInfo ? Math.round(needInfo.toBuy) : null;
+      rec.needAmt = needAmt;
       const amountText =
-        info && !isNaN(needAmt) ? ` (Need: ${needAmt} ${info.home_unit})` : '';
+        needInfo && !isNaN(needAmt)
+          ? needText(item.name, needAmt, rec.product, rec.weightMap)
+          : '';
       rec.btn.textContent = item.name + amountText;
       const qty = stockMap.get(item.name)?.amount || 0;
       const weekly = item.total_needed_year ? item.total_needed_year / 52 : 0;
@@ -713,10 +776,10 @@ async function rerenderAll() {
   finalMap.clear();
   renderItemsWithCategoryHeaders(sortedNeeds, itemsContainer, item => {
     const li = document.createElement('li');
-    const info = purchaseMap.get(item.name);
-    const needAmt = info ? Math.round(info.toBuy) : null;
+    const needInfo = purchaseMap.get(item.name);
+    const needAmt = needInfo ? Math.round(needInfo.toBuy) : null;
     const amountText =
-      info && !isNaN(needAmt) ? ` (Need: ${needAmt} ${info.home_unit})` : '';
+      needInfo && !isNaN(needAmt) ? needText(item.name, needAmt) : '';
     const btn = document.createElement('button');
     btn.textContent = item.name + amountText;
     btn.addEventListener('click', () => {
@@ -734,6 +797,8 @@ async function rerenderAll() {
     const showByStock = currentQty < weeklyNeed;
     const showByNeed = !hideZeroItems || (needAmt != null && needAmt > 0);
     li.style.display = showByStock && showByNeed ? 'list-item' : 'none';
+    const rec = { li, btn, span: finalSpan, img: finalImg, needAmt, product: null, weightMap: null };
+    finalMap.set(item.name, rec);
     getFinal(item.name).then(async store => {
       const product = await getFinalProduct(item.name);
       const stores = selectionsData
@@ -741,22 +806,29 @@ async function rerenderAll() {
         .map(s => s.store);
       const weightMap = await buildWeightPackMap(item.name, stores);
       if (product) {
-        const info = getPackInfo(product, weightMap, item.name);
-        if (info.count > 1) {
+        const pInfo = getPackInfo(product, weightMap, item.name);
+        if (pInfo.count > 1) {
           const wKey = weightKey(product, item.name);
           if (
             wKey &&
-            (!weightMap.has(wKey) || weightMap.get(wKey).count < info.count)
+            (!weightMap.has(wKey) || weightMap.get(wKey).count < pInfo.count)
           ) {
-            weightMap.set(wKey, info);
+            weightMap.set(wKey, pInfo);
           }
         }
       }
+      rec.product = product;
+      rec.weightMap = weightMap;
+      const amountText =
+        rec.needAmt != null && !isNaN(rec.needAmt)
+          ? needText(item.name, rec.needAmt, rec.product, rec.weightMap)
+          : '';
+      btn.textContent = item.name + amountText;
       updateFinalInfo(item.name, finalSpan, finalImg, store, product, weightMap);
     });
     li.appendChild(finalSpan);
     li.appendChild(finalImg);
-    finalMap.set(item.name, { li, btn, span: finalSpan, img: finalImg });
+    // rec already stored in finalMap
     return li;
   }, headerState);
   window.scrollTo(0, scrollTop);
@@ -786,11 +858,18 @@ chrome.storage.onChanged.addListener((changes, area) => {
             getFinal(item),
             getFinalProduct(item)
           ]).then(async ([store, product]) => {
-            const { span, img } = rec;
+            const { span, img, btn } = rec;
             const stores = selectionsData
               .filter(s => s.name === item)
               .map(s => s.store);
             const weightMap = await buildWeightPackMap(item, stores);
+            rec.product = product;
+            rec.weightMap = weightMap;
+            const amountText =
+              rec.needAmt != null && !isNaN(rec.needAmt)
+                ? needText(item, rec.needAmt, rec.product, rec.weightMap)
+                : '';
+            btn.textContent = item + amountText;
             updateFinalInfo(item, span, img, store, product, weightMap);
           })
         );
