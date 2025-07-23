@@ -1,5 +1,6 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { loadDensityMap, saveDensityMap } from './utils/unitNormalize.js';
+import { WEEKS_PER_MONTH } from './utils/constants.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -9,11 +10,15 @@ const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandsh
 const STORE_SELECTION_KEY = 'storeSelections';
 
 const DEFAULTS = {
-  yearly: 12,
-  unit: 'each',
-  monthly: 1,
-  shelf: 6
+  yearly: 0,
+  unit: 'oz',
+  monthly: 0,
+  shelf: 26 // weeks
 };
+
+function monthsFromWeeks(weeks) {
+  return weeks / WEEKS_PER_MONTH;
+}
 
 const DENSITY_KEY = "densityRatios";
 const STORE_LINKS = {
@@ -149,7 +154,8 @@ async function commit() {
   const whole = document.getElementById('whole').checked;
   const ratioText = document.getElementById('ratio').value.trim() || '1:1';
   const monthly = parseFloat(document.getElementById('monthly').value) || DEFAULTS.monthly;
-  const shelf = parseFloat(document.getElementById('shelf').value) || DEFAULTS.shelf;
+  const shelfWeeks = parseFloat(document.getElementById('shelf').value) || DEFAULTS.shelf;
+  const shelf = monthsFromWeeks(shelfWeeks);
   const stockAmt = parseFloat(stockVal);
   const week = parseInt(document.getElementById('week').value, 10) || getCurrentWeek();
 
