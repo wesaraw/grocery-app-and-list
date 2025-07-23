@@ -977,14 +977,7 @@ async function commitSelections() {
       quantity_purchased: amount
     });
 
-    commitItems.push({
-      item: item.name,
-      store,
-      product,
-      amount,
-      unit: item.home_unit,
-      packs: packsToBuy
-    });
+    commitItems.push({ item: item.name, store, product, amount, unit: item.home_unit });
   }
 
   chrome.storage.local.set({
