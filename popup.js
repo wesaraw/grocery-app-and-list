@@ -943,7 +943,7 @@ async function commitSelections() {
       item.name
     );
 
-    let amount = pack;
+    let perPackHomeQty = pack;
     if (item.home_unit.toLowerCase() !== 'each') {
       const mult = weightPerPack ? 1 : pack;
       let ozQty = null;
@@ -958,7 +958,7 @@ async function commitSelections() {
         );
       }
       if (ozQty != null) {
-        amount = convertWithDensity(
+        perPackHomeQty = convertWithDensity(
           ozQty,
           'oz',
           item.home_unit,
@@ -966,6 +966,10 @@ async function commitSelections() {
         );
       }
     }
+
+    if (!perPackHomeQty || perPackHomeQty <= 0) perPackHomeQty = pack || 1;
+    const packsToBuy = Math.ceil(needRecord.toBuy / perPackHomeQty);
+    const amount = perPackHomeQty * packsToBuy;
 
     if (!purchases[item.name]) purchases[item.name] = [];
     purchases[item.name].push({
