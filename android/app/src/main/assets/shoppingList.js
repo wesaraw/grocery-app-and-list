@@ -80,8 +80,10 @@ document.addEventListener('DOMContentLoaded', async () => {
           it.product?.pricePerUnit != null
             ? `$${it.product.pricePerUnit.toFixed(2)}/${it.product.unitType || 'oz'}`
             : it.product?.unit || '';
+        const packStr =
+          it.packs != null ? `${it.packs} pack${it.packs > 1 ? 's' : ''}` : '';
         const amt = it.amount != null ? `${it.amount.toFixed(2)} ${it.unit}` : '';
-        span.textContent = `${it.item} - ${it.product?.name || ''} - ${pStr} - ${qStr} - ${uStr} - ${amt}`;
+        span.textContent = `${it.item} - ${it.product?.name || ''} - ${pStr} - ${qStr} - ${uStr} - ${packStr} - ${amt}`;
         li.appendChild(span);
         const storeName = (it.store || '').toLowerCase().replace(/\./g, '').trim();
         if (
