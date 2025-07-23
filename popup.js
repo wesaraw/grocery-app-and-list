@@ -12,6 +12,7 @@ import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from "./utils/priceUti
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
+const STORE_SELECTION_KEY = 'storeSelections';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
@@ -45,6 +46,8 @@ function loadArray(key, path) {
 const loadNeeds = () => loadArray('yearlyNeeds', YEARLY_NEEDS_PATH);
 const loadMonthlyConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
 const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
+const loadStoreSelections = () =>
+  loadArray(STORE_SELECTION_KEY, STORE_SELECTION_PATH);
 
 async function loadStock() {
   return new Promise(async resolve => {
@@ -126,7 +129,7 @@ async function getData() {
   const [needs, selections, consumption, stock, expiration, consumed, purchases, mealYear, mealMonth, calendar, meals, dMap] =
     await Promise.all([
       loadNeeds(),
-      loadJSON(STORE_SELECTION_PATH),
+      loadStoreSelections(),
       loadMonthlyConsumption(),
       loadStock(),
       loadExpiration(),
