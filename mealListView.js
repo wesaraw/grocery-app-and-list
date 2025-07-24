@@ -643,7 +643,8 @@ function createRows(meal, arr) {
 
     weightInput = document.createElement('input');
     weightInput.type = 'number';
-    weightInput.min = '1';
+    weightInput.min = '0.1';
+    weightInput.step = '0.1';
     weightInput.style.width = '40px';
     weightInput.style.marginTop = '2px';
     weightInput.style.display = 'block';
