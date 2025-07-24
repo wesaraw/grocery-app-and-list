@@ -1,3 +1,5 @@
+import { isItemInSeason } from './seasonData.js';
+
 export function generateWhatToEatCalendar(
   users,
   preparedCal,
@@ -6,7 +8,8 @@ export function generateWhatToEatCalendar(
   mealsPerDay,
   startDate,
   weeks = 4,
-  priceThresholds = {}
+  priceThresholds = {},
+  itemSeasons = {}
 ) {
   const calendar = {};
   const nonPrepIndex = {};
@@ -24,23 +27,28 @@ export function generateWhatToEatCalendar(
         const validDays = dayPrefs[cat] || [];
         if (!validDays.includes(dayName)) return;
         const meals = prefs[cat] || [];
-        if (!meals.length) return;
+        const availMeals = meals.filter(m =>
+          (m.ingredients || []).every(ing =>
+            isItemInSeason(itemSeasons, ing.name, date)
+          )
+        );
+        if (!availMeals.length) return;
         const numSlots = mealsPerDay[cat] || 1;
         const prepMealId = preparedCal[dateStr]?.[cat];
         const idxRec = nonPrepIndex[user] || (nonPrepIndex[user] = {});
         const maxPrice =
           priceThresholds[user] !== undefined ? priceThresholds[user] : Infinity;
-        const nonPrepMeals = meals.filter(
+        const nonPrepMeals = availMeals.filter(
           m => !m.prepared && (m.totalCost == null || m.totalCost <= maxPrice)
         );
-        const affordableAll = meals.filter(
+        const affordableAll = availMeals.filter(
           m => m.totalCost == null || m.totalCost <= maxPrice
         );
-        const nonPrepFallback = meals.filter(m => !m.prepared);
+        const nonPrepFallback = availMeals.filter(m => !m.prepared);
         const choices = [];
         for (let s = 0; s < numSlots; s++) {
           let chosen;
-          const prepMeal = meals.find(m => (m.id || m.name) === prepMealId);
+          const prepMeal = availMeals.find(m => (m.id || m.name) === prepMealId);
           const prepOk =
             prepMeal && (prepMeal.totalCost == null || prepMeal.totalCost <= maxPrice);
           if (s === 0 && prepOk) {
@@ -51,7 +59,7 @@ export function generateWhatToEatCalendar(
               : affordableAll.length
               ? affordableAll.filter(m => !m.prepared)
               : [];
-            if (!list.length) list = nonPrepFallback.length ? nonPrepFallback : meals;
+            if (!list.length) list = nonPrepFallback.length ? nonPrepFallback : availMeals;
             const idx = idxRec[cat] || 0;
             const meal = list[idx % list.length];
             chosen = meal.id || meal.name || String(idx);
