@@ -14,12 +14,21 @@ export function generateWhatToEatCalendar(
   for (const u of users) calendar[u] = {};
 
   function weightMeals(list) {
-    const out = [];
-    list.forEach(m => {
-      const w = m && m.weight != null ? m.weight : 1;
-      for (let i = 0; i < w; i++) out.push(m);
-    });
-    return out;
+    return list
+      .map(m => ({ meal: m, weight: m && m.weight != null ? m.weight : 1 }))
+      .filter(w => w.weight > 0);
+  }
+
+  function pickWeighted(list, idx) {
+    const total = list.reduce((s, i) => s + i.weight, 0);
+    if (!total) return null;
+    const pos = idx % total;
+    let acc = 0;
+    for (const it of list) {
+      acc += it.weight;
+      if (pos < acc) return it.meal;
+    }
+    return list[list.length - 1].meal;
   }
 
   for (let i = 0; i < weeks * 7; i++) {
@@ -66,7 +75,7 @@ export function generateWhatToEatCalendar(
               : [];
             if (!list.length) list = weightedFallback.length ? weightedFallback : weightedAvail;
             const idx = idxRec[cat] || 0;
-            const meal = list[idx % list.length];
+            const meal = pickWeighted(list, idx);
             chosen = meal.id || meal.name || String(idx);
             idxRec[cat] = idx + 1;
           }
