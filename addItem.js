@@ -53,11 +53,15 @@ function addSeasonRow(start = '', end = '') {
   const row = document.createElement('div');
   row.className = 'season-row';
   const s = document.createElement('input');
-  s.type = 'date';
+  s.type = 'number';
+  s.min = '1';
+  s.max = '12';
   s.className = 'season-start';
   if (start) s.value = start;
   const e = document.createElement('input');
-  e.type = 'date';
+  e.type = 'number';
+  e.min = '1';
+  e.max = '12';
   e.className = 'season-end';
   if (end) e.value = end;
   const del = document.createElement('button');
@@ -292,9 +296,9 @@ async function commit() {
   const seasonRows = Array.from(document.querySelectorAll('.season-row'));
   const seasons = seasonRows
     .map(r => {
-      const start = r.querySelector('.season-start').value;
-      const end = r.querySelector('.season-end').value;
-      if (start && end) return { start, end };
+      const start = parseInt(r.querySelector('.season-start').value, 10);
+      const end = parseInt(r.querySelector('.season-end').value, 10);
+      if (!isNaN(start) && !isNaN(end)) return { start, end };
       return null;
     })
     .filter(Boolean);
