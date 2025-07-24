@@ -16,6 +16,7 @@ function loadMeals() {
         arr.forEach(m => {
           if (m.prepared === undefined) m.prepared = false;
           if (m.prepAhead === undefined) m.prepAhead = false;
+          if (m.weight === undefined) m.weight = 1;
         });
       }
       resolve(arr || []);
@@ -96,6 +97,7 @@ async function init() {
   const preparedBox = document.getElementById('preparedChk');
   const prepAheadBox = document.getElementById('prepAheadChk');
   const prepAheadLabel = document.getElementById('prepAheadLbl');
+  const weightInput = document.getElementById('weightInput');
   function togglePrepAhead() {
     prepAheadLabel.style.display = preparedBox.checked ? '' : 'none';
     if (!preparedBox.checked) prepAheadBox.checked = false;
@@ -171,6 +173,9 @@ async function init() {
       serving_size: `${r.amt} ${r.unit}`
     }));
 
+    const weight = parseFloat(weightInput.value);
+    const mealWeight = !isNaN(weight) && weight > 0 ? weight : 1;
+
     const meals = await loadMeals();
     meals.push({
       name: mealName,
@@ -178,7 +183,8 @@ async function init() {
       people: 1,
       prepared: preparedBox.checked,
       prepAhead: preparedBox.checked && prepAheadBox.checked,
-      image: null
+      image: null,
+      weight: mealWeight
     });
     await saveMeals(meals);
     await calculateAndSaveMealNeeds();

@@ -16,6 +16,15 @@ export function generateWhatToEatCalendar(
   const date = new Date(startDate);
   for (const u of users) calendar[u] = {};
 
+  function weightMeals(list) {
+    const out = [];
+    list.forEach(m => {
+      const w = m && m.weight != null ? m.weight : 1;
+      for (let i = 0; i < w; i++) out.push(m);
+    });
+    return out;
+  }
+
   for (let i = 0; i < weeks * 7; i++) {
     const dateStr = date.toISOString().split('T')[0];
     const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
@@ -45,6 +54,10 @@ export function generateWhatToEatCalendar(
           m => m.totalCost == null || m.totalCost <= maxPrice
         );
         const nonPrepFallback = availMeals.filter(m => !m.prepared);
+        const weightedNonPrep = weightMeals(nonPrepMeals);
+        const weightedAffordable = weightMeals(affordableAll.filter(m => !m.prepared));
+        const weightedFallback = weightMeals(nonPrepFallback);
+        const weightedAvail = weightMeals(availMeals);
         const choices = [];
         for (let s = 0; s < numSlots; s++) {
           let chosen;
@@ -54,12 +67,12 @@ export function generateWhatToEatCalendar(
           if (s === 0 && prepOk) {
             chosen = prepMealId;
           } else {
-            let list = nonPrepMeals.length
-              ? nonPrepMeals
-              : affordableAll.length
-              ? affordableAll.filter(m => !m.prepared)
+            let list = weightedNonPrep.length
+              ? weightedNonPrep
+              : weightedAffordable.length
+              ? weightedAffordable
               : [];
-            if (!list.length) list = nonPrepFallback.length ? nonPrepFallback : availMeals;
+            if (!list.length) list = weightedFallback.length ? weightedFallback : weightedAvail;
             const idx = idxRec[cat] || 0;
             const meal = list[idx % list.length];
             chosen = meal.id || meal.name || String(idx);

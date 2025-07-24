@@ -71,6 +71,7 @@ function loadMeals() {
         arr.forEach(m => {
           if (m.prepared === undefined) m.prepared = false;
           if (m.prepAhead === undefined) m.prepAhead = false;
+          if (m.weight === undefined) m.weight = 1;
         });
       }
       resolve(arr || []);
@@ -217,6 +218,7 @@ function createRows(meal, arr) {
   const spanCells = [];
   let imageTd;
   let nameTd;
+  let weightTd;
   let editBtn;
   if (!Array.isArray(meal.users)) {
     const def = meal.people === undefined ? (meal.active === false ? 0 : 1) : meal.people;
@@ -292,6 +294,12 @@ function createRows(meal, arr) {
       if (ingredients.length > 1) prepTd.rowSpan = ingredients.length;
       spanCells.push(prepTd);
 
+      weightTd = document.createElement('td');
+      weightTd.style.textAlign = 'center';
+      weightTd.textContent = meal.weight ?? 1;
+      if (ingredients.length > 1) weightTd.rowSpan = ingredients.length;
+      spanCells.push(weightTd);
+
       imageTd = document.createElement('td');
       const img = document.createElement('img');
       img.className = 'meal-img';
@@ -332,6 +340,7 @@ function createRows(meal, arr) {
       tr.appendChild(imageTd);
       tr.appendChild(nameTd);
       tr.appendChild(prepTd);
+      tr.appendChild(weightTd);
     }
 
     const ingTd = document.createElement('td');
@@ -477,6 +486,11 @@ function createRows(meal, arr) {
     prepTd.appendChild(prepAheadLabel);
     spanCells.push(prepTd);
 
+    weightTd = document.createElement('td');
+    weightTd.style.textAlign = 'center';
+    weightTd.textContent = meal.weight ?? 1;
+    spanCells.push(weightTd);
+
     const ingTd = document.createElement('td');
     const amtTd = document.createElement('td');
     ingCells.push({ ingTd, amtTd, tr });
@@ -488,6 +502,7 @@ function createRows(meal, arr) {
     tr.appendChild(imageTd);
     tr.appendChild(nameTd);
     tr.appendChild(prepTd);
+    tr.appendChild(weightTd);
     tr.appendChild(ingTd);
     tr.appendChild(amtTd);
     tr.appendChild(costTd);
@@ -516,6 +531,7 @@ function createRows(meal, arr) {
     let fileInput;
     let newImage = null;
     let newIngBtn;
+    let weightInput;
 
     function updateRowSpans() {
       const val = baseSpan + addedRows.length;
@@ -528,6 +544,7 @@ function createRows(meal, arr) {
     function checkSave() {
       const any =
         (mealInput && mealInput.value.trim()) ||
+        (weightInput && weightInput.value.trim()) ||
         rowsInfo.some(r => r.nameInput.value.trim() || r.qtyInput.value.trim()) ||
         newImage;
       if (saveBtn) saveBtn.style.display = any ? '' : 'none';
@@ -624,10 +641,20 @@ function createRows(meal, arr) {
       updateRowSpans();
     });
 
+    weightInput = document.createElement('input');
+    weightInput.type = 'number';
+    weightInput.min = '1';
+    weightInput.style.width = '40px';
+    weightInput.style.marginTop = '2px';
+    weightInput.style.display = 'block';
+    weightInput.value = meal.weight ?? 1;
+    weightInput.addEventListener('input', checkSave);
+
     imageTd.appendChild(changeBtn);
     imageTd.appendChild(fileInput);
     nameTd.appendChild(mealInput);
     nameTd.appendChild(newIngBtn);
+    weightTd.appendChild(weightInput);
     nameTd.appendChild(saveBtn);
     mealInput.addEventListener('input', checkSave);
     mealInput.addEventListener('keydown', e => {
@@ -644,6 +671,14 @@ function createRows(meal, arr) {
       if (nameVal) {
         meal.name = nameVal;
         changed = true;
+      }
+      if (weightInput) {
+        const w = parseFloat(weightInput.value);
+        const wt = !isNaN(w) && w > 0 ? w : 1;
+        if (wt !== meal.weight) {
+          meal.weight = wt;
+          changed = true;
+        }
       }
       const newIngs = [];
       rowsInfo.forEach(r => {
@@ -685,6 +720,7 @@ function createRows(meal, arr) {
       if (saveBtn) saveBtn.remove();
       if (changeBtn) changeBtn.remove();
       if (fileInput) fileInput.remove();
+      if (weightInput) weightInput.remove();
       newImage = null;
       setMealImage(imageTd.querySelector('img.meal-img'), meal);
       editBtn.classList.remove('editing');
