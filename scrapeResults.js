@@ -2,7 +2,6 @@ import { loadJSON } from './utils/dataLoader.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from "./utils/priceUtils.js";
-import { nameMatchesProduct } from './utils/nameUtils.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -346,7 +345,7 @@ async function init() {
 
   const week = getCurrentWeek();
   const adjusted = products.map(p => applyCoupon(p, coupons[item], week, store));
-  const filtered = adjusted.filter(p => nameMatchesProduct(p.name, item));
+  const filtered = adjusted; // include all scraped products
   buildWeightPackMap(filtered);
   if (filtered.length === 0) {
     container.textContent = 'No products found.';
