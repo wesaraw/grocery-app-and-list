@@ -23,6 +23,8 @@ let deleteMode = false;
 const deleteButtons = [];
 let needsMap = new Map();
 let densityMap = {};
+const UOM_PATH = 'Required for grocery app/uom_conversion_table.json';
+let units = [];
 
 function loadFinalProduct(item) {
   return new Promise(resolve => {
@@ -100,6 +102,11 @@ function loadNeeds() {
       }
     });
   });
+}
+
+async function loadUnits() {
+  const data = await loadJSON(UOM_PATH);
+  return Object.keys(data);
 }
 
 function saveMeals(arr) {
@@ -206,7 +213,8 @@ async function ingredientCost(name, amountStr) {
 function createRows(meal, arr) {
   const rows = [];
   const ingredients = meal.ingredients || [];
-  const ingTds = [];
+  const ingCells = [];
+  const spanCells = [];
   let imageTd;
   let nameTd;
   let editBtn;
@@ -249,6 +257,7 @@ function createRows(meal, arr) {
         useTd.appendChild(lbl);
       });
       if (ingredients.length > 1) useTd.rowSpan = ingredients.length;
+      spanCells.push(useTd);
 
       const prepTd = document.createElement('td');
       const prepChk = document.createElement('input');
@@ -281,6 +290,7 @@ function createRows(meal, arr) {
       prepTd.appendChild(prepChk);
       prepTd.appendChild(prepAheadLabel);
       if (ingredients.length > 1) prepTd.rowSpan = ingredients.length;
+      spanCells.push(prepTd);
 
       imageTd = document.createElement('td');
       const img = document.createElement('img');
@@ -288,12 +298,14 @@ function createRows(meal, arr) {
       img.style.display = 'none';
       imageTd.appendChild(img);
       if (ingredients.length > 1) imageTd.rowSpan = ingredients.length;
+      spanCells.push(imageTd);
 
       nameTd = document.createElement('td');
       const nameSpan = document.createElement('span');
       nameSpan.textContent = meal.name || '';
       nameTd.appendChild(nameSpan);
       if (ingredients.length > 1) nameTd.rowSpan = ingredients.length;
+      spanCells.push(nameTd);
 
       setMealImage(img, meal);
 
@@ -325,16 +337,18 @@ function createRows(meal, arr) {
     const ingTd = document.createElement('td');
     ingTd.textContent = ing.name || '';
     if (ing.name) ingTd.dataset.name = ing.name;
-    ingTds.push(ingTd);
 
     const amtTd = document.createElement('td');
     amtTd.textContent = ing.amount || ing.serving_size || '';
+
+    ingCells.push({ ingTd, amtTd, tr });
 
     const costTd = document.createElement('td');
     let totalTd;
     if (idx === 0) {
       totalTd = document.createElement('td');
       if (ingredients.length > 1) totalTd.rowSpan = ingredients.length;
+      spanCells.push(totalTd);
       firstTotalTd = totalTd;
     }
 
@@ -404,12 +418,15 @@ function createRows(meal, arr) {
     img.className = 'meal-img';
     img.style.display = 'none';
     imageTd.appendChild(img);
+    spanCells.push(useTd);
+    spanCells.push(imageTd);
 
     nameTd = document.createElement('td');
     const nameSpan = document.createElement('span');
     nameSpan.textContent = meal.name || '';
     nameTd.appendChild(nameSpan);
     setMealImage(img, meal);
+    spanCells.push(nameTd);
     editBtn = document.createElement('button');
     editBtn.textContent = 'Edit';
     const delBtn = document.createElement('button');
@@ -458,12 +475,14 @@ function createRows(meal, arr) {
     });
     prepTd.appendChild(prepChk);
     prepTd.appendChild(prepAheadLabel);
+    spanCells.push(prepTd);
 
     const ingTd = document.createElement('td');
-    ingTds.push(ingTd);
     const amtTd = document.createElement('td');
+    ingCells.push({ ingTd, amtTd, tr });
     const costTd = document.createElement('td');
     const totalTd = document.createElement('td');
+    spanCells.push(totalTd);
     const actionTd = document.createElement('td');
     tr.appendChild(useTd);
     tr.appendChild(imageTd);
@@ -487,19 +506,71 @@ function createRows(meal, arr) {
 
   function showEdit() {
     editBtn.classList.add('editing');
-    const ingredientInputs = [];
+    const rowsInfo = [];
+    const addedRows = [];
+    const baseSpan = Math.max(ingCells.length, 1);
+    const spanElems = spanCells;
     let mealInput;
     let saveBtn;
     let changeBtn;
     let fileInput;
     let newImage = null;
+    let newIngBtn;
+
+    function updateRowSpans() {
+      const val = baseSpan + addedRows.length;
+      spanElems.forEach(td => {
+        if (!td) return;
+        if (val > 1) td.rowSpan = val; else td.removeAttribute('rowspan');
+      });
+    }
 
     function checkSave() {
       const any =
         (mealInput && mealInput.value.trim()) ||
-        ingredientInputs.some(i => i.value.trim()) ||
+        rowsInfo.some(r => r.nameInput.value.trim() || r.qtyInput.value.trim()) ||
         newImage;
       if (saveBtn) saveBtn.style.display = any ? '' : 'none';
+    }
+
+    function addInputs(cell, ing = {}) {
+      const { ingTd, amtTd } = cell;
+      const nameInput = document.createElement('input');
+      nameInput.style.display = 'block';
+      nameInput.style.marginTop = '2px';
+      nameInput.style.width = '95%';
+      nameInput.value = ing.name || '';
+      ingTd.innerHTML = '';
+      ingTd.appendChild(nameInput);
+
+      const qtyInput = document.createElement('input');
+      qtyInput.type = 'text';
+      qtyInput.style.width = '40px';
+      qtyInput.style.marginRight = '2px';
+      const select = document.createElement('select');
+      units.forEach(u => {
+        const opt = document.createElement('option');
+        opt.value = u;
+        opt.textContent = u;
+        select.appendChild(opt);
+      });
+      const { value, unit } = parseQuantity(ing.amount || ing.serving_size);
+      if (value) qtyInput.value = value;
+      if (unit) select.value = unit;
+      amtTd.innerHTML = '';
+      amtTd.appendChild(qtyInput);
+      amtTd.appendChild(select);
+
+      nameInput.addEventListener('input', checkSave);
+      qtyInput.addEventListener('input', checkSave);
+      select.addEventListener('change', checkSave);
+      [nameInput, qtyInput, select].forEach(el =>
+        el.addEventListener('keydown', e => {
+          if (e.key === 'Enter') commit();
+        })
+      );
+
+      rowsInfo.push({ nameInput, qtyInput, select });
     }
 
     mealInput = document.createElement('input');
@@ -530,9 +601,33 @@ function createRows(meal, arr) {
       reader.readAsDataURL(file);
     });
 
+    newIngBtn = document.createElement('button');
+    newIngBtn.textContent = 'New Ingredient';
+    newIngBtn.style.display = 'block';
+    newIngBtn.style.marginTop = '2px';
+    newIngBtn.addEventListener('click', () => {
+      const tr = document.createElement('tr');
+      const ingTd = document.createElement('td');
+      const amtTd = document.createElement('td');
+      const costTd = document.createElement('td');
+      const actionTd = document.createElement('td');
+      tr.appendChild(ingTd);
+      tr.appendChild(amtTd);
+      tr.appendChild(costTd);
+      tr.appendChild(actionTd);
+      rows[rows.length - 1].after(tr);
+      rows.push(tr);
+      const cell = { ingTd, amtTd, tr };
+      ingCells.push(cell);
+      addedRows.push(tr);
+      addInputs(cell, {});
+      updateRowSpans();
+    });
+
     imageTd.appendChild(changeBtn);
     imageTd.appendChild(fileInput);
     nameTd.appendChild(mealInput);
+    nameTd.appendChild(newIngBtn);
     nameTd.appendChild(saveBtn);
     mealInput.addEventListener('input', checkSave);
     mealInput.addEventListener('keydown', e => {
@@ -540,33 +635,29 @@ function createRows(meal, arr) {
     });
     saveBtn.addEventListener('click', commit);
 
-    ingTds.forEach(td => {
-      const input = document.createElement('input');
-      input.style.display = 'block';
-      input.style.marginTop = '2px';
-      input.style.width = '95%';
-      td.appendChild(input);
-      input.addEventListener('input', checkSave);
-      input.addEventListener('keydown', e => {
-        if (e.key === 'Enter') commit();
-      });
-      ingredientInputs.push(input);
-    });
+    ingCells.forEach((cell, idx) => addInputs(cell, ingredients[idx]));
+    updateRowSpans();
 
     async function commit() {
       const nameVal = mealInput ? mealInput.value.trim() : '';
-      const ingVals = ingredientInputs.map(i => i.value.trim());
       let changed = false;
       if (nameVal) {
         meal.name = nameVal;
         changed = true;
       }
-      ingVals.forEach((val, idx) => {
-        if (val) {
-          if (meal.ingredients[idx]) meal.ingredients[idx].name = val;
-          changed = true;
-        }
+      const newIngs = [];
+      rowsInfo.forEach(r => {
+        const n = r.nameInput.value.trim();
+        const q = r.qtyInput.value.trim();
+        const u = r.select.value;
+        if (!n && !q) return;
+        const amt = q ? `${q} ${u}` : '';
+        newIngs.push({ name: n, amount: amt, serving_size: amt });
       });
+      if (JSON.stringify(newIngs) !== JSON.stringify(meal.ingredients)) {
+        meal.ingredients = newIngs;
+        changed = true;
+      }
       if (newImage) {
         meal.image = newImage;
         changed = true;
@@ -580,9 +671,17 @@ function createRows(meal, arr) {
     }
 
     function hideEdit() {
-      ingredientInputs.forEach(i => i.remove());
-      ingredientInputs.length = 0;
+      rowsInfo.forEach(r => {
+        r.nameInput.remove();
+        r.qtyInput.remove();
+        r.select.remove();
+      });
+      rowsInfo.length = 0;
+      addedRows.forEach(tr => tr.remove());
+      addedRows.length = 0;
+      updateRowSpans();
       if (mealInput) mealInput.remove();
+      if (newIngBtn) newIngBtn.remove();
       if (saveBtn) saveBtn.remove();
       if (changeBtn) changeBtn.remove();
       if (fileInput) fileInput.remove();
@@ -640,9 +739,14 @@ async function loadAndRender() {
 async function init() {
   await initializeMealCategories();
   await initUomTable();
-  const [needs, dMap] = await Promise.all([loadNeeds(), loadDensityMap()]);
+  const [needs, dMap, u] = await Promise.all([
+    loadNeeds(),
+    loadDensityMap(),
+    loadUnits()
+  ]);
   needsMap = new Map(needs.map(n => [canonicalName(n.name), n]));
   densityMap = dMap;
+  units = u;
   const info = MEAL_TYPES[type] || MEAL_TYPES.breakfast;
   key = info.key;
   path = info.path;
