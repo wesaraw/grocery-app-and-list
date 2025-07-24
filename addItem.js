@@ -1,5 +1,6 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { loadDensityMap, saveDensityMap } from './utils/unitNormalize.js';
+import { loadItemSeasons, saveItemSeasons } from './utils/seasonData.js';
 import { WEEKS_PER_MONTH } from './utils/constants.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -48,6 +49,29 @@ function getCurrentWeek() {
   return Math.ceil(((today - start) / 86400000 + start.getDay() + 1) / 7);
 }
 
+function addSeasonRow(start = '', end = '') {
+  const row = document.createElement('div');
+  row.className = 'season-row';
+  const s = document.createElement('input');
+  s.type = 'date';
+  s.className = 'season-start';
+  if (start) s.value = start;
+  const e = document.createElement('input');
+  e.type = 'date';
+  e.className = 'season-end';
+  if (end) e.value = end;
+  const del = document.createElement('button');
+  del.type = 'button';
+  del.textContent = 'Remove';
+  del.addEventListener('click', () => row.remove());
+  row.appendChild(s);
+  row.appendChild(document.createTextNode(' '));
+  row.appendChild(e);
+  row.appendChild(document.createTextNode(' '));
+  row.appendChild(del);
+  document.getElementById('seasonContainer').appendChild(row);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('yearly').placeholder = DEFAULTS.yearly;
   document.getElementById('unit').placeholder = DEFAULTS.unit;
@@ -62,6 +86,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const nameEl = document.getElementById('name');
     nameEl.focus();
   }
+
+  addSeasonRow();
+  document
+    .getElementById('addSeasonBtn')
+    .addEventListener('click', () => addSeasonRow());
 });
 
 function loadArray(key, path) {
@@ -168,7 +197,7 @@ async function commit() {
   }
   const densityRatio = parseRatio(ratioText);
 
-  const [needs, consumption, stock, expiration, consumed, storeSelections, purchases, densityMap] = await Promise.all([
+  const [needs, consumption, stock, expiration, consumed, storeSelections, purchases, densityMap, itemSeasons] = await Promise.all([
     loadNeeds(),
     loadConsumption(),
     loadStock(),
@@ -176,7 +205,8 @@ async function commit() {
     loadConsumed(),
     loadStoreSelections(),
     loadPurchases(),
-    loadDensityMap()
+    loadDensityMap(),
+    loadItemSeasons()
   ]);
 
   needs.push({
@@ -259,6 +289,17 @@ async function commit() {
     date_added: new Date().toISOString()
   });
 
+  const seasonRows = Array.from(document.querySelectorAll('.season-row'));
+  const seasons = seasonRows
+    .map(r => {
+      const start = r.querySelector('.season-start').value;
+      const end = r.querySelector('.season-end').value;
+      if (start && end) return { start, end };
+      return null;
+    })
+    .filter(Boolean);
+  itemSeasons[name] = seasons;
+
   await Promise.all([
     save('yearlyNeeds', needs),
     save('monthlyConsumption', consumption),
@@ -267,7 +308,8 @@ async function commit() {
     save('consumedThisYear', consumed),
     save(STORE_SELECTION_KEY, storeSelections),
     savePurchases(purchases),
-    saveDensityMap(densityMap)
+    saveDensityMap(densityMap),
+    saveItemSeasons(itemSeasons)
   ]);
 
   window.close();
