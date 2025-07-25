@@ -10,6 +10,18 @@ export function generateWhatToEatCalendar(
 ) {
   const calendar = {};
   const nonPrepState = {};
+  const sharedNonPrepState = {};
+  const sharedDailyPick = {};
+  const subCount = {};
+  Object.values(subscriptions).forEach(prefs => {
+    Object.entries(prefs || {}).forEach(([cat, meals]) => {
+      subCount[cat] = subCount[cat] || {};
+      (meals || []).forEach(m => {
+        const id = m.id || m.name;
+        subCount[cat][id] = (subCount[cat][id] || 0) + 1;
+      });
+    });
+  });
   const date = new Date(startDate);
   for (const u of users) calendar[u] = {};
 
@@ -44,6 +56,7 @@ export function generateWhatToEatCalendar(
   for (let i = 0; i < weeks * 7; i++) {
     const dateStr = date.toISOString().split('T')[0];
     const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+    sharedDailyPick[dateStr] = sharedDailyPick[dateStr] || {};
     users.forEach(user => {
       calendar[user][dateStr] = calendar[user][dateStr] || {};
       const prefs = subscriptions[user] || {};
@@ -61,11 +74,15 @@ export function generateWhatToEatCalendar(
         const nonPrepMeals = meals.filter(
           m => !m.prepared && (m.totalCost == null || m.totalCost <= maxPrice)
         );
+        const sharedMeals = nonPrepMeals.filter(
+          m => (subCount[cat]?.[m.id || m.name] || 0) > 1
+        );
         const affordableAll = meals.filter(
           m => m.totalCost == null || m.totalCost <= maxPrice
         );
         const nonPrepFallback = meals.filter(m => !m.prepared);
         const weightedNonPrep = weightMeals(nonPrepMeals);
+        const weightedShared = weightMeals(sharedMeals);
         const weightedAffordable = weightMeals(affordableAll.filter(m => !m.prepared));
         const weightedFallback = weightMeals(nonPrepFallback);
         const weightedAvail = weightMeals(meals);
@@ -85,6 +102,13 @@ export function generateWhatToEatCalendar(
             prepMeal && (prepMeal.totalCost == null || prepMeal.totalCost <= maxPrice);
           if (s === 0 && prepOk) {
             chosen = prepMealId;
+          } else if (weightedShared.length) {
+            if (!sharedDailyPick[dateStr][cat]) {
+              const state = sharedNonPrepState[cat] || (sharedNonPrepState[cat] = {});
+              const meal = pickWeighted(weightedShared, state);
+              sharedDailyPick[dateStr][cat] = meal.id || meal.name;
+            }
+            chosen = sharedDailyPick[dateStr][cat];
           } else {
             const list = chooseList;
             const state = stateRec[cat] || (stateRec[cat] = {});
@@ -93,8 +117,16 @@ export function generateWhatToEatCalendar(
           }
           // advance index even for prepared meals to keep rotation
           if (s === 0 && prepOk) {
-            const state = stateRec[cat] || (stateRec[cat] = {});
-            pickWeighted(chooseList, state);
+            if (weightedShared.length) {
+              if (!sharedDailyPick[dateStr][cat]) {
+                const state = sharedNonPrepState[cat] || (sharedNonPrepState[cat] = {});
+                const meal = pickWeighted(weightedShared, state);
+                sharedDailyPick[dateStr][cat] = meal.id || meal.name;
+              }
+            } else {
+              const state = stateRec[cat] || (stateRec[cat] = {});
+              pickWeighted(chooseList, state);
+            }
           }
           choices.push(chosen);
         }

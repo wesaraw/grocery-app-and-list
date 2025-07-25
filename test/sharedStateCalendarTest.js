@@ -1,0 +1,31 @@
+import { generateWhatToEatCalendar } from '../utils/whatToEatCalendar.js';
+
+const users = ['u1', 'u2'];
+const meals = [
+  { id: 'D1', weight: 1 },
+  { id: 'D2', weight: 1 }
+];
+const prepared = {}; // no prepared meals
+const subscriptions = { u1: { dinner: meals }, u2: { dinner: meals } };
+const eatingDays = { u1: { dinner: ['Monday'] }, u2: { dinner: ['Monday'] } };
+const mealsPerDay = { dinner: 1 };
+const startDate = new Date('2024-01-01'); // Monday
+const cal = generateWhatToEatCalendar(
+  users,
+  prepared,
+  subscriptions,
+  eatingDays,
+  mealsPerDay,
+  startDate,
+  3
+);
+const picks1 = Object.values(cal.u1)
+  .map(d => d.dinner)
+  .filter(Boolean);
+const picks2 = Object.values(cal.u2)
+  .map(d => d.dinner)
+  .filter(Boolean);
+if (picks1.join(',') !== picks2.join(',')) {
+  throw new Error(`Users received different meals: ${picks1.join(',')} vs ${picks2.join(',')}`);
+}
+console.log('shared state calendar test passed');
