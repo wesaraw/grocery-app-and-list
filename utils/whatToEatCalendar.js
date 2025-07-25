@@ -12,7 +12,7 @@ export function generateWhatToEatCalendar(
   itemSeasons = {}
 ) {
   const calendar = {};
-  const nonPrepState = {};
+  const nonPrepIndex = {};
   const date = new Date(startDate);
   for (const u of users) calendar[u] = {};
 
@@ -22,26 +22,16 @@ export function generateWhatToEatCalendar(
       .filter(w => w.weight > 0);
   }
 
-  function pickWeighted(list, state) {
+  function pickWeighted(list, idx) {
     const total = list.reduce((s, i) => s + i.weight, 0);
     if (!total) return null;
+    const pos = idx % total;
+    let acc = 0;
     for (const it of list) {
-      const id = it.meal.id || it.meal.name;
-      state[id] = (state[id] || 0) + it.weight;
+      acc += it.weight;
+      if (pos < acc) return it.meal;
     }
-    let chosen = list[0].meal;
-    let chosenId = list[0].meal.id || list[0].meal.name;
-    let max = state[chosenId];
-    for (const it of list) {
-      const id = it.meal.id || it.meal.name;
-      if (state[id] > max) {
-        max = state[id];
-        chosen = it.meal;
-        chosenId = id;
-      }
-    }
-    state[chosenId] -= total;
-    return chosen;
+    return list[list.length - 1].meal;
   }
 
   for (let i = 0; i < weeks * 7; i++) {
@@ -63,7 +53,7 @@ export function generateWhatToEatCalendar(
         if (!availMeals.length) return;
         const numSlots = mealsPerDay[cat] || 1;
         const prepMealId = preparedCal[dateStr]?.[cat];
-        const stateRec = nonPrepState[user] || (nonPrepState[user] = {});
+        const idxRec = nonPrepIndex[user] || (nonPrepIndex[user] = {});
         const maxPrice =
           priceThresholds[user] !== undefined ? priceThresholds[user] : Infinity;
         const nonPrepMeals = availMeals.filter(
@@ -77,14 +67,6 @@ export function generateWhatToEatCalendar(
         const weightedAffordable = weightMeals(affordableAll.filter(m => !m.prepared));
         const weightedFallback = weightMeals(nonPrepFallback);
         const weightedAvail = weightMeals(availMeals);
-        const chooseList =
-          weightedNonPrep.length
-            ? weightedNonPrep
-            : weightedAffordable.length
-            ? weightedAffordable
-            : weightedFallback.length
-            ? weightedFallback
-            : weightedAvail;
         const choices = [];
         for (let s = 0; s < numSlots; s++) {
           let chosen;
@@ -94,16 +76,20 @@ export function generateWhatToEatCalendar(
           if (s === 0 && prepOk) {
             chosen = prepMealId;
           } else {
-            const list = chooseList;
-            const state = stateRec[cat] || (stateRec[cat] = {});
-            const meal = pickWeighted(list, state);
-            chosen = meal.id || meal.name;
+            let list = weightedNonPrep.length
+              ? weightedNonPrep
+              : weightedAffordable.length
+              ? weightedAffordable
+              : [];
+            if (!list.length) list = weightedFallback.length ? weightedFallback : weightedAvail;
+            const idx = idxRec[cat] || 0;
+            const meal = pickWeighted(list, idx);
+            chosen = meal.id || meal.name || String(idx);
+            idxRec[cat] = idx + 1;
           }
           // advance index even for prepared meals to keep rotation
           if (s === 0 && prepOk) {
-            // still advance rotation by simulating a pick
-            const state = stateRec[cat] || (stateRec[cat] = {});
-            pickWeighted(chooseList, state);
+            idxRec[cat] = (idxRec[cat] || 0) + 1;
           }
           choices.push(chosen);
         }

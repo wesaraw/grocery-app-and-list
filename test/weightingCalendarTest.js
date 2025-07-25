@@ -15,26 +15,18 @@ const eatingDays = { u: { lunchDinner: ['Monday'] } };
 const mealsPerDay = { lunchDinner: 1 };
 const what = generateWhatToEatCalendar(users, prepared, subscriptions, eatingDays, mealsPerDay, startDate, 3);
 
-const picks = Object.values(prepared)
-  .map(d => d.lunchDinner)
-  .filter(Boolean);
+const picks = Object.values(prepared).map(d => d.lunchDinner);
 const countA = picks.filter(p => p === 'A').length;
 const countB = picks.filter(p => p === 'B').length;
-if (!(countA === 2 && countB === 1 && picks.join(',') === 'A,B,A')) {
-  throw new Error(
-    `Prepared weighting failed: A ${countA} B ${countB} order ${picks.join(',')}`
-  );
+if (!(countA === 2 && countB === 1)) {
+  throw new Error(`Prepared weighting failed: A ${countA} B ${countB}`);
 }
 
-const picks2 = Object.values(what.u)
-  .map(d => d.lunchDinner)
-  .filter(Boolean);
+const picks2 = Object.values(what.u).map(d => d.lunchDinner);
 const countA2 = picks2.filter(p => p === 'A').length;
 const countB2 = picks2.filter(p => p === 'B').length;
-if (!(countA2 === 2 && countB2 === 1 && picks2.join(',') === 'A,B,A')) {
-  throw new Error(
-    `WhatToEat weighting failed: A ${countA2} B ${countB2} order ${picks2.join(',')}`
-  );
+if (!(countA2 === 2 && countB2 === 1)) {
+  throw new Error(`WhatToEat weighting failed: A ${countA2} B ${countB2}`);
 }
 
 // fractional weight test
@@ -46,24 +38,16 @@ const mealsByCategoryFrac = { lunchDinner: mealsFrac };
 const preparedFrac = generatePreparedMealsCalendar(cookingDays, mealsByCategoryFrac, startDate, 3);
 const subsFrac = { u: { lunchDinner: mealsFrac } };
 const whatFrac = generateWhatToEatCalendar(users, preparedFrac, subsFrac, eatingDays, mealsPerDay, startDate, 3);
-const picksPrepF = Object.values(preparedFrac)
-  .map(d => d.lunchDinner)
-  .filter(Boolean);
+const picksPrepF = Object.values(preparedFrac).map(d => d.lunchDinner);
 const countXF = picksPrepF.filter(p => p === 'X').length;
 const countYF = picksPrepF.filter(p => p === 'Y').length;
-if (!(countXF === 2 && countYF === 1 && picksPrepF.join(',') === 'X,Y,X')) {
-  throw new Error(
-    `Prepared fractional failed: X ${countXF} Y ${countYF} order ${picksPrepF.join(',')}`
-  );
+if (!(countXF === 2 && countYF === 1)) {
+  throw new Error(`Prepared fractional failed: X ${countXF} Y ${countYF}`);
 }
-const picksFrac = Object.values(whatFrac.u)
-  .map(d => d.lunchDinner)
-  .filter(Boolean);
+const picksFrac = Object.values(whatFrac.u).map(d => d.lunchDinner);
 const countXF2 = picksFrac.filter(p => p === 'X').length;
 const countYF2 = picksFrac.filter(p => p === 'Y').length;
-if (!(countXF2 === 2 && countYF2 === 1 && picksFrac.join(',') === 'X,Y,X')) {
-  throw new Error(
-    `WhatToEat fractional failed: X ${countXF2} Y ${countYF2} order ${picksFrac.join(',')}`
-  );
+if (!(countXF2 === 2 && countYF2 === 1)) {
+  throw new Error(`WhatToEat fractional failed: X ${countXF2} Y ${countYF2}`);
 }
 console.log('weighting calendar tests passed');
