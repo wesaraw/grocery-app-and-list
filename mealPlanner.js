@@ -5,6 +5,7 @@ import {
   saveUserPriceThresholds
 } from './utils/userData.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
+import { importMealsFromFile } from './mealImport.js';
 
 document.getElementById('openLists').addEventListener('click', () => {
   openOrFocusWindow('mealListSelect.html');
@@ -20,6 +21,16 @@ document.getElementById('openCooking').addEventListener('click', () => {
 
 document.getElementById('openCalendar').addEventListener('click', () => {
   openOrFocusWindow('whatToEatCalendar.html');
+});
+
+document.getElementById('importMeals').addEventListener('click', () => {
+  document.getElementById('mealFile').click();
+});
+
+document.getElementById('mealFile').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (file) importMealsFromFile(file);
+  e.target.value = '';
 });
 
 async function initThresholdControls() {

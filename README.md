@@ -185,6 +185,38 @@ Use **Edit Seasons** from the extension menu to modify these ranges. Meal
 calendars skip ingredients when the selected date falls outside all of their
 season ranges.
 
+### XML Meal Import
+
+The Meal Planner window includes an **Import Meals** button. This lets you load
+multiple meals from a single XML file. Each meal follows this structure:
+
+```xml
+<meals>
+  <meal>
+    <category>lunchDinner</category>
+    <name>Meal Name</name>
+    <users>11011</users>
+    <prepared>false</prepared>
+    <group>false</group>
+    <weight>1</weight>
+    <ingredients>
+      <item>
+        <name>Ingredient</name>
+        <amount>1</amount>
+        <unit>oz</unit>
+      </item>
+    </ingredients>
+  </meal>
+  <!-- more meals -->
+</meals>
+```
+
+`users` is a series of 1s and 0s matching the user order on the **Users** page.
+Each `<meal>` element is imported one at a time. Every ingredient is added to
+the inventory with default values (zero stock and the category `mass import`).
+A blank template named `meal_import_blank.xml` is included in the repository for
+convenience.
+
 ## Building the Android app
 
 The Android source under `android/` can be compiled with Gradle. All of the

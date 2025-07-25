@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<meals>
+  <meal>
+    <category>lunchDinner</category>
+    <name>Meal Name</name>
+    <users>11111</users>
+    <prepared>false</prepared>
+    <group>false</group>
+    <weight>1</weight>
+    <ingredients>
+      <item>
+        <name>Ingredient</name>
+        <amount>1</amount>
+        <unit>oz</unit>
+      </item>
+    </ingredients>
+  </meal>
+</meals>
