@@ -4,7 +4,7 @@
     "jsdom": "^26.1.0"
   },
   "scripts": {
-    "test": "node test/unitPriceTest.js && node test/unitNormalizeTest.js && node test/canOfSoupTest.js && node test/individualRotationCalendarTest.js && node test/lunchDinnerSharedIndexTest.js"
+    "test": "node test/unitPriceTest.js && node test/unitNormalizeTest.js && node test/canOfSoupTest.js && node test/weightingCalendarTest.js && node test/sharedStateCalendarTest.js && node test/multiSnackSlotTest.js"
   },
   "type": "module"
 }

@@ -8,8 +8,36 @@ export function generatePreparedMealsCalendar(
   itemSeasons = {}
 ) {
   const calendar = {};
-  const mealIndices = {};
+  const mealState = {};
   const date = new Date(startDate);
+
+  function weightMeals(list) {
+    return list
+      .map(m => ({ meal: m, weight: m && m.weight != null ? m.weight : 1 }))
+      .filter(w => w.weight > 0);
+  }
+
+  function pickWeighted(list, state) {
+    const total = list.reduce((s, i) => s + i.weight, 0);
+    if (!total) return null;
+    for (const it of list) {
+      const id = it.meal.id || it.meal.name;
+      state[id] = (state[id] || 0) + it.weight;
+    }
+    let chosen = list[0].meal;
+    let chosenId = list[0].meal.id || list[0].meal.name;
+    let max = state[chosenId];
+    for (const it of list) {
+      const id = it.meal.id || it.meal.name;
+      if (state[id] > max) {
+        max = state[id];
+        chosen = it.meal;
+        chosenId = id;
+      }
+    }
+    state[chosenId] -= total;
+    return chosen;
+  }
   for (let i = 0; i < weeks * 7; i++) {
     const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
     const dateStr = date.toISOString().split('T')[0];
@@ -23,11 +51,12 @@ export function generatePreparedMealsCalendar(
             isItemInSeason(itemSeasons, ing.name, date)
           );
         });
-        if (meals.length) {
-          const idx = mealIndices[category] || 0;
-          const meal = meals[idx % meals.length];
-          calendar[dateStr][category] = meal.id || meal.name || String(idx);
-          mealIndices[category] = idx + 1;
+        const weighted = weightMeals(meals);
+        if (weighted.length) {
+          const state = mealState[category] || (mealState[category] = {});
+          const meal = pickWeighted(weighted, state);
+          const id = meal.id || meal.name;
+          calendar[dateStr][category] = id || String(Object.keys(state).length);
         }
       }
     });
