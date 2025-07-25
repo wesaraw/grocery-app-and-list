@@ -103,13 +103,12 @@ export function generateWhatToEatCalendar(
           if (s === 0 && prepOk) {
             chosen = prepMealId;
           } else if (weightedShared.length) {
-            if (!sharedDailyPick[dateStr][cat]) sharedDailyPick[dateStr][cat] = {};
-            if (!sharedDailyPick[dateStr][cat][s]) {
+            if (!sharedDailyPick[dateStr][cat]) {
               const state = sharedNonPrepState[cat] || (sharedNonPrepState[cat] = {});
               const meal = pickWeighted(weightedShared, state);
-              sharedDailyPick[dateStr][cat][s] = meal.id || meal.name;
+              sharedDailyPick[dateStr][cat] = meal.id || meal.name;
             }
-            chosen = sharedDailyPick[dateStr][cat][s];
+            chosen = sharedDailyPick[dateStr][cat];
           } else {
             const list = chooseList;
             const state = stateRec[cat] || (stateRec[cat] = {});
@@ -119,11 +118,10 @@ export function generateWhatToEatCalendar(
           // advance index even for prepared meals to keep rotation
           if (s === 0 && prepOk) {
             if (weightedShared.length) {
-              if (!sharedDailyPick[dateStr][cat]) sharedDailyPick[dateStr][cat] = {};
-              if (!sharedDailyPick[dateStr][cat][s]) {
+              if (!sharedDailyPick[dateStr][cat]) {
                 const state = sharedNonPrepState[cat] || (sharedNonPrepState[cat] = {});
                 const meal = pickWeighted(weightedShared, state);
-                sharedDailyPick[dateStr][cat][s] = meal.id || meal.name;
+                sharedDailyPick[dateStr][cat] = meal.id || meal.name;
               }
             } else {
               const state = stateRec[cat] || (stateRec[cat] = {});
