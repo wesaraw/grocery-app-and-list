@@ -299,6 +299,19 @@ function createRows(meal, arr) {
       if (ingredients.length > 1) weightTd.rowSpan = ingredients.length;
       spanCells.push(weightTd);
 
+      const groupTd = document.createElement('td');
+      const groupChk = document.createElement('input');
+      groupChk.type = 'checkbox';
+      groupChk.checked = meal.groupMeal || false;
+      groupChk.addEventListener('change', async () => {
+        meal.groupMeal = groupChk.checked;
+        await saveMeals(arr);
+      });
+      groupTd.style.textAlign = 'center';
+      groupTd.appendChild(groupChk);
+      if (ingredients.length > 1) groupTd.rowSpan = ingredients.length;
+      spanCells.push(groupTd);
+
       imageTd = document.createElement('td');
       const img = document.createElement('img');
       img.className = 'meal-img';
@@ -340,6 +353,7 @@ function createRows(meal, arr) {
       tr.appendChild(nameTd);
       tr.appendChild(prepTd);
       tr.appendChild(weightTd);
+      tr.appendChild(groupTd);
     }
 
     const ingTd = document.createElement('td');
@@ -483,12 +497,24 @@ function createRows(meal, arr) {
     });
     prepTd.appendChild(prepChk);
     prepTd.appendChild(prepAheadLabel);
-    spanCells.push(prepTd);
+   spanCells.push(prepTd);
 
-    weightTd = document.createElement('td');
-    weightTd.style.textAlign = 'center';
-    weightTd.textContent = meal.weight ?? 1;
-    spanCells.push(weightTd);
+   weightTd = document.createElement('td');
+   weightTd.style.textAlign = 'center';
+   weightTd.textContent = meal.weight ?? 1;
+   spanCells.push(weightTd);
+
+    const groupTd = document.createElement('td');
+    const groupChk = document.createElement('input');
+    groupChk.type = 'checkbox';
+    groupChk.checked = meal.groupMeal || false;
+    groupChk.addEventListener('change', async () => {
+      meal.groupMeal = groupChk.checked;
+      await saveMeals(arr);
+    });
+    groupTd.style.textAlign = 'center';
+    groupTd.appendChild(groupChk);
+    spanCells.push(groupTd);
 
     const ingTd = document.createElement('td');
     const amtTd = document.createElement('td');
@@ -502,6 +528,7 @@ function createRows(meal, arr) {
     tr.appendChild(nameTd);
     tr.appendChild(prepTd);
     tr.appendChild(weightTd);
+    tr.appendChild(groupTd);
     tr.appendChild(ingTd);
     tr.appendChild(amtTd);
     tr.appendChild(costTd);

@@ -282,6 +282,17 @@ function createRows(meal, arr) {
       prepTd.appendChild(prepAheadLabel);
       if (ingredients.length > 1) prepTd.rowSpan = ingredients.length;
 
+      const groupTd = document.createElement('td');
+      const groupChk = document.createElement('input');
+      groupChk.type = 'checkbox';
+      groupChk.checked = meal.groupMeal || false;
+      groupChk.addEventListener('change', async () => {
+        meal.groupMeal = groupChk.checked;
+        await saveMeals(arr);
+      });
+      groupTd.appendChild(groupChk);
+      if (ingredients.length > 1) groupTd.rowSpan = ingredients.length;
+
       imageTd = document.createElement('td');
       const img = document.createElement('img');
       img.className = 'meal-img';
@@ -320,6 +331,7 @@ function createRows(meal, arr) {
       tr.appendChild(imageTd);
       tr.appendChild(nameTd);
       tr.appendChild(prepTd);
+      tr.appendChild(groupTd);
     }
 
     const ingTd = document.createElement('td');
@@ -469,6 +481,7 @@ function createRows(meal, arr) {
     tr.appendChild(imageTd);
     tr.appendChild(nameTd);
     tr.appendChild(prepTd);
+    tr.appendChild(groupTd);
     tr.appendChild(ingTd);
     tr.appendChild(amtTd);
     tr.appendChild(costTd);

@@ -3,8 +3,14 @@ import { generateWhatToEatCalendar } from '../utils/whatToEatCalendar.js';
 const users = ['Alice', 'Bob'];
 const preparedCal = {};
 const subscriptions = {
-  Alice: { lunchDinner: [{ name: 'Chicken' }, { name: 'Beef' }] },
-  Bob: { lunchDinner: [{ name: 'Chicken' }, { name: 'Pork' }] }
+  Alice: { lunchDinner: [
+    { name: 'Chicken', groupMeal: true },
+    { name: 'Beef', groupMeal: true }
+  ] },
+  Bob: { lunchDinner: [
+    { name: 'Chicken', groupMeal: true },
+    { name: 'Pork', groupMeal: true }
+  ] }
 };
 const eatingDays = {
   Alice: { lunchDinner: ['Monday', 'Tuesday', 'Wednesday', 'Thursday'] },

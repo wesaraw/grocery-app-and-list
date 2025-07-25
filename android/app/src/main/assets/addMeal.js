@@ -96,6 +96,7 @@ async function init() {
   const preparedBox = document.getElementById('preparedChk');
   const prepAheadBox = document.getElementById('prepAheadChk');
   const prepAheadLabel = document.getElementById('prepAheadLbl');
+  const groupChk = document.getElementById('groupChk');
   function togglePrepAhead() {
     prepAheadLabel.style.display = preparedBox.checked ? '' : 'none';
     if (!preparedBox.checked) prepAheadBox.checked = false;
@@ -178,7 +179,8 @@ async function init() {
       people: 1,
       prepared: preparedBox.checked,
       prepAhead: preparedBox.checked && prepAheadBox.checked,
-      image: null
+      image: null,
+      groupMeal: groupChk.checked
     });
     await saveMeals(meals);
     await calculateAndSaveMealNeeds();

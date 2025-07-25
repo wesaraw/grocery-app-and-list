@@ -84,7 +84,7 @@ export function generateWhatToEatCalendar(
           m => !m.prepared && (m.totalCost == null || m.totalCost <= maxPrice)
         );
         const sharedMeals = nonPrepMeals.filter(
-          m => (subCount[cat]?.[m.id || m.name] || 0) > 1
+          m => m.groupMeal && (subCount[cat]?.[m.id || m.name] || 0) > 1
         );
         const affordableAll = availMeals.filter(
           m => m.totalCost == null || m.totalCost <= maxPrice

@@ -97,6 +97,7 @@ async function init() {
   const prepAheadBox = document.getElementById('prepAheadChk');
   const prepAheadLabel = document.getElementById('prepAheadLbl');
   const weightInput = document.getElementById('weightInput');
+  const groupChk = document.getElementById('groupChk');
   function togglePrepAhead() {
     prepAheadLabel.style.display = preparedBox.checked ? '' : 'none';
     if (!preparedBox.checked) prepAheadBox.checked = false;
@@ -183,7 +184,8 @@ async function init() {
       prepared: preparedBox.checked,
       prepAhead: preparedBox.checked && prepAheadBox.checked,
       image: null,
-      weight: mealWeight
+      weight: mealWeight,
+      groupMeal: groupChk.checked
     });
     await saveMeals(meals);
     await calculateAndSaveMealNeeds();
