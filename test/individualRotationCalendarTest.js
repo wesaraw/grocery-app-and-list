@@ -33,10 +33,10 @@ function expectEqual(a, b, msg) {
 expectEqual(cal.Alice[days[0]].breakfast, 'Eggs', 'day1 Alice');
 expectEqual(cal.Bob[days[0]].breakfast, 'Eggs', 'day1 Bob');
 expectEqual(cal.Alice[days[1]].breakfast, 'Bacon', 'day2 Alice');
-expectEqual(cal.Bob[days[1]].breakfast, 'Eggs', 'day2 Bob fallback 1');
+expectEqual(cal.Bob[days[1]].breakfast, 'Cereal', 'day2 Bob');
 expectEqual(cal.Alice[days[2]].breakfast, 'Eggs', 'day3 Alice');
-expectEqual(cal.Bob[days[2]].breakfast, 'Eggs', 'day3 Bob resync');
+expectEqual(cal.Bob[days[2]].breakfast, 'Eggs', 'day3 Bob');
 expectEqual(cal.Alice[days[3]].breakfast, 'Bacon', 'day4 Alice');
-expectEqual(cal.Bob[days[3]].breakfast, 'Cereal', 'day4 Bob fallback 2');
+expectEqual(cal.Bob[days[3]].breakfast, 'Cereal', 'day4 Bob');
 
-console.log('shared index calendar test passed');
+console.log('individual rotation calendar test passed');
