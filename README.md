@@ -162,13 +162,13 @@ entire recommendation.
 ### Item Seasons
 
 Item season data is stored in an `itemSeasons` object. Each key is the exact
-item name and maps to an array of objects with `start` and `end` properties
-representing the beginning and ending month (1–12):
+item name and maps to an array of objects with `start` and `end` properties in
+`MM-DD` format:
 
 ```json
 {
   "Tomatoes": [
-    { "start": 6, "end": 9 }
+    { "start": "06-01", "end": "09-30" }
   ]
 }
 ```

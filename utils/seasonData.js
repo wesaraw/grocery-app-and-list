@@ -12,25 +12,23 @@ export function saveItemSeasons(map) {
   });
 }
 
-function parseMonth(str) {
+function parseMD(str) {
   if (!str) return null;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-    const d = new Date(str);
-    if (!isNaN(d)) return d.getMonth() + 1;
-    return null;
-  }
-  const m = parseInt(str, 10);
-  if (isNaN(m) || m < 1 || m > 12) return null;
-  return m;
+  const parts = str.split('-');
+  if (parts.length !== 2) return null;
+  const m = parseInt(parts[0], 10);
+  const d = parseInt(parts[1], 10);
+  if (isNaN(m) || isNaN(d)) return null;
+  return m * 100 + d;
 }
 
 export function isItemInSeason(seasons, name, date = new Date()) {
   const ranges = seasons?.[name];
   if (!Array.isArray(ranges) || !ranges.length) return true;
-  const val = date.getMonth() + 1;
+  const val = (date.getMonth() + 1) * 100 + date.getDate();
   return ranges.some(r => {
-    const s = parseMonth(r.start);
-    const e = parseMonth(r.end);
+    const s = parseMD(r.start);
+    const e = parseMD(r.end);
     if (s == null || e == null) return false;
     if (s <= e) return val >= s && val <= e;
     return val >= s || val <= e;
