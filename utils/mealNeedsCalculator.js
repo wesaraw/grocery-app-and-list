@@ -57,6 +57,7 @@ function loadMeals(type) {
         arr.forEach(m => {
           if (m.prepared === undefined) m.prepared = false;
           if (m.weight === undefined) m.weight = 1;
+          if (m.groupMeal === undefined) m.groupMeal = false;
         });
       }
       resolve(arr || []);

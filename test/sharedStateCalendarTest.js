@@ -2,8 +2,8 @@ import { generateWhatToEatCalendar } from '../utils/whatToEatCalendar.js';
 
 const users = ['u1', 'u2'];
 const meals = [
-  { id: 'D1', weight: 1 },
-  { id: 'D2', weight: 1 }
+  { id: 'D1', weight: 1, groupMeal: true },
+  { id: 'D2', weight: 1, groupMeal: true }
 ];
 const prepared = {};
 const subscriptions = { u1: { dinner: meals }, u2: { dinner: meals } };
