@@ -1,4 +1,12 @@
-export function generatePreparedMealsCalendar(cookingDays, mealsByCategory, startDate, weeks = 4) {
+import { isItemInSeason } from './seasonData.js';
+
+export function generatePreparedMealsCalendar(
+  cookingDays,
+  mealsByCategory,
+  startDate,
+  weeks = 4,
+  itemSeasons = {}
+) {
   const calendar = {};
   const mealIndices = {};
   const date = new Date(startDate);
@@ -9,7 +17,12 @@ export function generatePreparedMealsCalendar(cookingDays, mealsByCategory, star
     Object.entries(cookingDays).forEach(([category, days]) => {
       if (!mealsByCategory[category]) return;
       if (days.includes(dayName)) {
-        const meals = (mealsByCategory[category] || []).filter(m => m.prepared);
+        const meals = (mealsByCategory[category] || []).filter(m => {
+          if (!m.prepared) return false;
+          return (m.ingredients || []).every(ing =>
+            isItemInSeason(itemSeasons, ing.name, date)
+          );
+        });
         if (meals.length) {
           const idx = mealIndices[category] || 0;
           const meal = meals[idx % meals.length];
