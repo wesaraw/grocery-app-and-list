@@ -1,3 +1,5 @@
+import { isItemInSeason } from './seasonData.js';
+
 export function generateWhatToEatCalendar(
   users,
   preparedCal,
@@ -6,7 +8,8 @@ export function generateWhatToEatCalendar(
   mealsPerDay,
   startDate,
   weeks = 4,
-  priceThresholds = {}
+  priceThresholds = {},
+  itemSeasons = {}
 ) {
   const calendar = {};
   const sharedIndex = {};
@@ -43,17 +46,30 @@ export function generateWhatToEatCalendar(
           const refList = (subscriptions[refUser] || {})[cat] || [];
           const refNonPrep = refList.filter(m => !m.prepared);
           const useList = refNonPrep.length ? refNonPrep : refList;
+          const availRefList = useList.filter(m =>
+            (m.ingredients || []).every(ing =>
+              isItemInSeason(itemSeasons, ing.name, date)
+            )
+          );
           const idx = sharedIndex[cat] || 0;
-          const refMeal = useList.length ? useList[idx % useList.length] : null;
+          const refMeal = availRefList.length
+            ? availRefList[idx % availRefList.length]
+            : null;
           const refId = refMeal ? refMeal.id || refMeal.name || String(idx) : null;
 
           activeUsers.forEach(user => {
             const prefs = subscriptions[user] || {};
             const meals = prefs[cat] || [];
+            const availMeals = meals.filter(m =>
+              (m.ingredients || []).every(ing =>
+                isItemInSeason(itemSeasons, ing.name, date)
+              )
+            );
+            if (!availMeals.length) return;
             const prepMealId = preparedCal[dateStr]?.[cat];
             const maxPrice =
               priceThresholds[user] !== undefined ? priceThresholds[user] : Infinity;
-            const prepMeal = meals.find(m => (m.id || m.name) === prepMealId);
+            const prepMeal = availMeals.find(m => (m.id || m.name) === prepMealId);
             const prepOk =
               s === 0 &&
               prepMeal &&
@@ -63,7 +79,7 @@ export function generateWhatToEatCalendar(
             if (prepOk) {
               chosen = prepMealId;
             } else {
-              const hasShared = meals.some(
+              const hasShared = availMeals.some(
                 m =>
                   (m.id || m.name) === refId &&
                   !m.prepared &&
@@ -72,19 +88,19 @@ export function generateWhatToEatCalendar(
               if (refMeal && hasShared) {
                 chosen = refId;
               } else {
-                const nonPrepMeals = meals.filter(
+                const nonPrepMeals = availMeals.filter(
                   m => !m.prepared && (m.totalCost == null || m.totalCost <= maxPrice)
                 );
-                const affordableAll = meals.filter(
+                const affordableAll = availMeals.filter(
                   m => m.totalCost == null || m.totalCost <= maxPrice
                 );
-                const nonPrepFallback = meals.filter(m => !m.prepared);
+                const nonPrepFallback = availMeals.filter(m => !m.prepared);
                 let list = nonPrepMeals.length
                   ? nonPrepMeals
                   : affordableAll.length
                   ? affordableAll.filter(m => !m.prepared)
                   : [];
-                if (!list.length) list = nonPrepFallback.length ? nonPrepFallback : meals;
+                if (!list.length) list = nonPrepFallback.length ? nonPrepFallback : availMeals;
                 const rec = backupIndex[user];
                 const bIdx = rec[cat] || 0;
                 const meal = list[bIdx % list.length];
@@ -100,28 +116,34 @@ export function generateWhatToEatCalendar(
           activeUsers.forEach(user => {
             const prefs = subscriptions[user] || {};
             const meals = prefs[cat] || [];
+            const availMeals = meals.filter(m =>
+              (m.ingredients || []).every(ing =>
+                isItemInSeason(itemSeasons, ing.name, date)
+              )
+            );
+            if (!availMeals.length) return;
             const prepMealId = preparedCal[dateStr]?.[cat];
             const maxPrice =
               priceThresholds[user] !== undefined ? priceThresholds[user] : Infinity;
-            const prepMeal = meals.find(m => (m.id || m.name) === prepMealId);
+            const prepMeal = availMeals.find(m => (m.id || m.name) === prepMealId);
             const prepOk =
               s === 0 &&
               prepMeal &&
               (prepMeal.totalCost == null || prepMeal.totalCost <= maxPrice);
 
-            const nonPrepMeals = meals.filter(
+            const nonPrepMeals = availMeals.filter(
               m => !m.prepared && (m.totalCost == null || m.totalCost <= maxPrice)
             );
-            const affordableAll = meals.filter(
+            const affordableAll = availMeals.filter(
               m => m.totalCost == null || m.totalCost <= maxPrice
             );
-            const nonPrepFallback = meals.filter(m => !m.prepared);
+            const nonPrepFallback = availMeals.filter(m => !m.prepared);
             let list = nonPrepMeals.length
               ? nonPrepMeals
               : affordableAll.length
               ? affordableAll.filter(m => !m.prepared)
               : [];
-            if (!list.length) list = nonPrepFallback.length ? nonPrepFallback : meals;
+            if (!list.length) list = nonPrepFallback.length ? nonPrepFallback : availMeals;
 
             let chosen;
             if (prepOk) {
