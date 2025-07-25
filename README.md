@@ -137,6 +137,13 @@ non‑prepped meal from their subscriptions is rotated in. On non‑cooking days
 non‑prepared meal is chosen. These calendars drive the meal math so ingredient
 needs reflect the actual days users plan to eat.
 
+Non‑prepared meals now rotate using a **shared index** per category. The first
+subscriber's list defines the ordering. Each day the meal at this shared index
+is attempted for all users and the index advances. Users missing that meal (or
+priced out by their personal limit) fall back to their own rotation without
+changing the shared index. This keeps everyone aligned even when some people
+regularly eat alternates.
+
 You can view this schedule by opening the **Meal Planner** (from the popup or
 the inventory timeline) and clicking **Calendar**. A new window lets you pick a
 user and date range to see what meals they will eat each day.
