@@ -17,6 +17,8 @@ step‑by‑step.
   press **Confirm Add** to update your pantry.
 * Allows you to edit your pantry and how much you have used.
 * Lets you add new grocery items to track.
+* Lets you set seasons for each item so meal plans only use ingredients when
+  they are available.
 
 ## Installing the add-on
 
@@ -164,6 +166,24 @@ If you already rely on this calendar you can ignore the yearly meal-plan totals
 by passing `false` for the `useMealPlanTotals` option when calling the purchase
 calculator. This avoids double-counting meals and lets the calendar drive the
 entire recommendation.
+
+### Item Seasons
+
+Item season data is stored in an `itemSeasons` object. Each key is the exact
+item name and maps to an array of objects with `start` and `end` properties
+representing the beginning and ending month (1–12):
+
+```json
+{
+  "Tomatoes": [
+    { "start": 6, "end": 9 }
+  ]
+}
+```
+
+Use **Edit Seasons** from the extension menu to modify these ranges. Meal
+calendars skip ingredients when the selected date falls outside all of their
+season ranges.
 
 ## Building the Android app
 

@@ -644,6 +644,9 @@ async function init() {
   document.getElementById('editExpirations').addEventListener('click', () => {
     openOrFocusWindow('expiration.html');
   });
+  document.getElementById('editSeasons').addEventListener('click', () => {
+    openOrFocusWindow('editSeason.html');
+  });
   document.getElementById('couponBtn').addEventListener('click', () => {
     openOrFocusWindow('coupon.html');
   });

@@ -1050,9 +1050,16 @@ function openExpirationEditor() {
   openOrFocusWindow('expiration.html');
 }
 
+function openSeasonsEditor() {
+  openOrFocusWindow('editSeason.html');
+}
+
 document
   .getElementById('editExpirations')
   .addEventListener('click', openExpirationEditor);
+document
+  .getElementById('editSeasons')
+  .addEventListener('click', openSeasonsEditor);
 
 function openCouponManager() {
   openOrFocusWindow('coupon.html');
