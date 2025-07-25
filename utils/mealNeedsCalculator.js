@@ -17,7 +17,6 @@ import {
   loadUserCategoryDays,
   loadUserPriceThresholds
 } from './userData.js';
-import { loadItemSeasons } from './seasonData.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 
@@ -75,7 +74,6 @@ export async function calculateAndSaveMealNeeds() {
   const users = await loadUsers();
   const userDays = await loadUserCategoryDays();
   const priceThresholds = await loadUserPriceThresholds();
-  const itemSeasons = await loadItemSeasons();
 
   while (userDays.length < users.length) userDays.push({});
 
@@ -197,9 +195,7 @@ export async function calculateAndSaveMealNeeds() {
   const preparedCal = generatePreparedMealsCalendar(
     dayCats,
     mealsByCategory,
-    startDate,
-    4,
-    itemSeasons
+    startDate
   );
 
   const subscriptions = {};
@@ -236,8 +232,7 @@ export async function calculateAndSaveMealNeeds() {
     mealsPerDay,
     startDate,
     4,
-    priceThresholds,
-    itemSeasons
+    priceThresholds
   );
 
   await new Promise(resolve => {
