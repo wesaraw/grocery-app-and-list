@@ -3,7 +3,6 @@ import { sortItemsByCategory, renderItemsWithCategoryHeaders } from './utils/sor
 import { canonicalName } from './utils/nameUtils.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
-import { loadItemSeasons, saveItemSeasons } from './utils/seasonData.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -147,7 +146,7 @@ async function renameItem(oldName, newName) {
     mealEntries.map(([, info]) => loadMealsForType(info))
   );
 
-  const [needs, consumption, stock, expiration, consumed, selections, purchases, overrides, history, itemSeasons] = await Promise.all([
+  const [needs, consumption, stock, expiration, consumed, selections, purchases, overrides, history] = await Promise.all([
     loadNeeds(),
     loadConsumption(),
     loadStock(),
@@ -156,8 +155,7 @@ async function renameItem(oldName, newName) {
     loadStoreSelections(),
     loadPurchases(),
     loadOverrides(),
-    loadHistory(),
-    loadItemSeasons()
+    loadHistory()
   ]);
 
   const mealsByType = {};
@@ -196,7 +194,6 @@ async function renameItem(oldName, newName) {
   renameKeys(purchases);
   renameKeys(overrides);
   renameKeys(history);
-  renameKeys(itemSeasons);
 
   // rename ingredient references across all meals
   Object.values(mealsByType).forEach(meals => {
@@ -219,7 +216,6 @@ async function renameItem(oldName, newName) {
     savePurchases(purchases),
     saveOverrides(overrides),
     saveHistory(history),
-    saveItemSeasons(itemSeasons),
     ...mealEntries.map(([type, info]) => save(info.key, mealsByType[type]))
   ]);
 
