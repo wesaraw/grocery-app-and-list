@@ -15,7 +15,6 @@ export function generateWhatToEatCalendar(
   const nonPrepState = {};
   const sharedNonPrepState = {};
   const sharedDailyPick = {};
-  const usedToday = {};
 
   const subCount = {};
   Object.values(subscriptions).forEach(prefs => {
@@ -62,7 +61,6 @@ export function generateWhatToEatCalendar(
     const dateStr = date.toISOString().split('T')[0];
     const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
     sharedDailyPick[dateStr] = sharedDailyPick[dateStr] || {};
-    usedToday[dateStr] = {};
     users.forEach(user => {
       calendar[user][dateStr] = calendar[user][dateStr] || {};
       const prefs = subscriptions[user] || {};
@@ -105,35 +103,28 @@ export function generateWhatToEatCalendar(
             : weightedFallback.length
             ? weightedFallback
             : weightedAvail;
-        const usedCat = usedToday[dateStr][cat] || (usedToday[dateStr][cat] = new Set());
         const choices = [];
         for (let s = 0; s < numSlots; s++) {
           let chosen;
           const prepMeal = availMeals.find(m => (m.id || m.name) === prepMealId);
           const prepOk =
             prepMeal && (prepMeal.totalCost == null || prepMeal.totalCost <= maxPrice);
-            if (s === 0 && prepOk) {
-              chosen = prepMealId;
-              usedCat.add(chosen);
-            } else if (weightedShared.length) {
-              if (!sharedDailyPick[dateStr][cat]) sharedDailyPick[dateStr][cat] = {};
-              if (!sharedDailyPick[dateStr][cat][s]) {
-                const state = sharedNonPrepState[cat] || (sharedNonPrepState[cat] = {});
-                let list = weightedShared.filter(w => !usedCat.has(w.meal.id || w.meal.name));
-                if (!list.length) list = weightedShared;
-                const meal = pickWeighted(list, state);
-                sharedDailyPick[dateStr][cat][s] = meal.id || meal.name;
-                usedCat.add(meal.id || meal.name);
-              }
-              chosen = sharedDailyPick[dateStr][cat][s];
-            } else {
-              let list = chooseList.filter(w => !usedCat.has(w.meal.id || w.meal.name));
-              if (!list.length) list = chooseList;
-              const state = stateRec[cat] || (stateRec[cat] = {});
-              const meal = pickWeighted(list, state);
-              chosen = meal.id || meal.name;
-              usedCat.add(chosen);
+          if (s === 0 && prepOk) {
+            chosen = prepMealId;
+          } else if (weightedShared.length) {
+            if (!sharedDailyPick[dateStr][cat]) sharedDailyPick[dateStr][cat] = {};
+            if (!sharedDailyPick[dateStr][cat][s]) {
+              const state = sharedNonPrepState[cat] || (sharedNonPrepState[cat] = {});
+              const meal = pickWeighted(weightedShared, state);
+              sharedDailyPick[dateStr][cat][s] = meal.id || meal.name;
             }
+            chosen = sharedDailyPick[dateStr][cat][s];
+          } else {
+            const list = chooseList;
+            const state = stateRec[cat] || (stateRec[cat] = {});
+            const meal = pickWeighted(list, state);
+            chosen = meal.id || meal.name;
+          }
           // advance index even for prepared meals to keep rotation
           if (s === 0 && prepOk) {
             if (weightedShared.length) {
