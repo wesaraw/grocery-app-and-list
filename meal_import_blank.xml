@@ -4,6 +4,7 @@
     <category>lunchDinner</category>
     <name>Meal Name</name>
     <recipeBook>Book Name</recipeBook>
+    <image>image_name.jpg</image>
     <users>11111</users>
     <prepared>false</prepared>
     <group>false</group>

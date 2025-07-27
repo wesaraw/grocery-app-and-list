@@ -5,7 +5,7 @@ import {
   saveUserPriceThresholds
 } from './utils/userData.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
-import { importMealsFromFile } from './mealImport.js';
+import { importMealsFromFiles } from './mealImport.js';
 
 document.getElementById('openLists').addEventListener('click', () => {
   openOrFocusWindow('mealListSelect.html');
@@ -24,12 +24,12 @@ document.getElementById('openCalendar').addEventListener('click', () => {
 });
 
 document.getElementById('importMeals').addEventListener('click', () => {
-  document.getElementById('mealFile').click();
+  document.getElementById('mealFiles').click();
 });
 
-document.getElementById('mealFile').addEventListener('change', e => {
-  const file = e.target.files[0];
-  if (file) importMealsFromFile(file);
+document.getElementById('mealFiles').addEventListener('change', e => {
+  const files = e.target.files;
+  if (files && files.length) importMealsFromFiles(files);
   e.target.value = '';
 });
 
