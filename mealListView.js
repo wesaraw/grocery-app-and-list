@@ -322,6 +322,7 @@ function createRows(meal, arr) {
       spanCells.push(imageTd);
 
       nameTd = document.createElement('td');
+      nameTd.style.minWidth = '200px';
       const nameSpan = document.createElement('span');
       nameSpan.textContent = meal.name || '';
       nameTd.appendChild(nameSpan);
@@ -445,6 +446,7 @@ function createRows(meal, arr) {
     spanCells.push(imageTd);
 
     nameTd = document.createElement('td');
+    nameTd.style.minWidth = '200px';
     const nameSpan = document.createElement('span');
     nameSpan.textContent = meal.name || '';
     nameTd.appendChild(nameSpan);
@@ -554,6 +556,8 @@ function createRows(meal, arr) {
     const spanElems = spanCells;
     let mealInput;
     let bookInput;
+    let mealLabel;
+    let bookLabel;
     let saveBtn;
     let changeBtn;
     let fileInput;
@@ -686,10 +690,22 @@ function createRows(meal, arr) {
     bookInput.style.width = '95%';
     bookInput.value = meal.recipeBook || '';
 
+    mealLabel = document.createElement('label');
+    mealLabel.textContent = 'Meal Name:';
+    mealLabel.style.display = 'block';
+    mealLabel.style.marginTop = '2px';
+    mealLabel.appendChild(mealInput);
+
+    bookLabel = document.createElement('label');
+    bookLabel.textContent = 'Recipe Book:';
+    bookLabel.style.display = 'block';
+    bookLabel.style.marginTop = '2px';
+    bookLabel.appendChild(bookInput);
+
     imageTd.appendChild(changeBtn);
     imageTd.appendChild(fileInput);
-    nameTd.appendChild(mealInput);
-    nameTd.appendChild(bookInput);
+    nameTd.appendChild(mealLabel);
+    nameTd.appendChild(bookLabel);
     nameTd.appendChild(newIngBtn);
     weightTd.appendChild(weightInput);
     nameTd.appendChild(saveBtn);
@@ -761,8 +777,8 @@ function createRows(meal, arr) {
       addedRows.forEach(tr => tr.remove());
       addedRows.length = 0;
       updateRowSpans();
-      if (mealInput) mealInput.remove();
-      if (bookInput) bookInput.remove();
+      if (mealLabel) mealLabel.remove();
+      if (bookLabel) bookLabel.remove();
       if (newIngBtn) newIngBtn.remove();
       if (saveBtn) saveBtn.remove();
       if (changeBtn) changeBtn.remove();
