@@ -157,6 +157,7 @@ function loadMeals(category) {
         arr.forEach(m => {
           if (m.prepared === undefined) m.prepared = false;
           if (m.prepAhead === undefined) m.prepAhead = false;
+          if (m.recipeBook === undefined) m.recipeBook = '';
         });
       }
       resolve(arr || []);
@@ -179,6 +180,7 @@ function parseMealsFromXml(text) {
     const meal = {};
     meal.category = mEl.querySelector('category')?.textContent.trim() || 'lunchDinner';
     meal.name = mEl.querySelector('name')?.textContent.trim() || '';
+    meal.recipeBook = mEl.querySelector('recipeBook')?.textContent.trim() || '';
     const userStr = mEl.querySelector('users')?.textContent.trim() || '';
     meal.users = userStr.split('').map(c => c === '1');
     meal.prepared = (mEl.querySelector('prepared')?.textContent.trim() || '').toLowerCase() === 'true';
@@ -214,6 +216,7 @@ async function addMeal(meal, userCount) {
   const arr = await loadMeals(meal.category);
   arr.push({
     name: meal.name,
+    recipeBook: meal.recipeBook || '',
     ingredients: meal.ingredients,
     users: usersArr,
     people: usersArr.filter(Boolean).length,

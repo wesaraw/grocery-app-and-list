@@ -113,6 +113,7 @@ function loadMeals(type) {
       arr.forEach(m => {
         if (!m.category) m.category = info.label;
         if (m.prepared === undefined) m.prepared = false;
+        if (m.recipeBook === undefined) m.recipeBook = '';
       });
       resolve(arr);
     });

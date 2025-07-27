@@ -16,6 +16,7 @@ function loadMeals() {
         arr.forEach(m => {
           if (m.prepared === undefined) m.prepared = false;
           if (m.prepAhead === undefined) m.prepAhead = false;
+          if (m.recipeBook === undefined) m.recipeBook = '';
         });
       }
       resolve(arr || []);
@@ -98,6 +99,7 @@ async function init() {
   const prepAheadLabel = document.getElementById('prepAheadLbl');
   const weightInput = document.getElementById('weightInput');
   const groupChk = document.getElementById('groupChk');
+  const recipeBookInput = document.getElementById('recipeBookInput');
   function togglePrepAhead() {
     prepAheadLabel.style.display = preparedBox.checked ? '' : 'none';
     if (!preparedBox.checked) prepAheadBox.checked = false;
@@ -179,6 +181,7 @@ async function init() {
     const meals = await loadMeals();
     meals.push({
       name: mealName,
+      recipeBook: recipeBookInput.value.trim() || '',
       ingredients,
       people: 1,
       prepared: preparedBox.checked,
