@@ -181,6 +181,7 @@ function parseMealsFromXml(text) {
     meal.category = mEl.querySelector('category')?.textContent.trim() || 'lunchDinner';
     meal.name = mEl.querySelector('name')?.textContent.trim() || '';
     meal.recipeBook = mEl.querySelector('recipeBook')?.textContent.trim() || '';
+    meal.image = mEl.querySelector('image')?.textContent.trim() || null;
     const userStr = mEl.querySelector('users')?.textContent.trim() || '';
     meal.users = userStr.split('').map(c => c === '1');
     meal.prepared = (mEl.querySelector('prepared')?.textContent.trim() || '').toLowerCase() === 'true';
@@ -222,7 +223,7 @@ async function addMeal(meal, userCount) {
     people: usersArr.filter(Boolean).length,
     prepared: meal.prepared,
     prepAhead: false,
-    image: null,
+    image: meal.image || null,
     weight: meal.weight,
     groupMeal: meal.group
   });
@@ -230,11 +231,16 @@ async function addMeal(meal, userCount) {
   await calculateAndSaveMealNeeds();
 }
 
-export async function importMealsFromText(text) {
+export async function importMealsFromText(text, images = {}) {
   await initializeMealCategories();
   const users = await loadUsers();
   const meals = parseMealsFromXml(text);
   for (const meal of meals) {
+    if (meal.image && images[meal.image]) {
+      meal.image = images[meal.image];
+    } else if (meal.image && !images[meal.image]) {
+      meal.image = null;
+    }
     try {
       await addMeal(meal, users.length);
       alert(`Imported meal: ${meal.name}`);
@@ -244,10 +250,33 @@ export async function importMealsFromText(text) {
   }
 }
 
-export function importMealsFromFile(file) {
-  const reader = new FileReader();
-  reader.onload = () => {
-    importMealsFromText(reader.result);
-  };
-  reader.readAsText(file);
+export function importMealsFromFiles(fileList) {
+  const files = Array.from(fileList);
+  const xmlFile = files.find(f => f.name.toLowerCase().endsWith('.xml'));
+  if (!xmlFile) {
+    alert('XML file not found');
+    return;
+  }
+  const imageFiles = files.filter(f => f !== xmlFile);
+  const images = {};
+
+  Promise.all(
+    imageFiles.map(
+      f =>
+        new Promise(resolve => {
+          const r = new FileReader();
+          r.onload = () => {
+            images[f.name] = r.result;
+            resolve();
+          };
+          r.readAsDataURL(f);
+        })
+    )
+  ).then(() => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      importMealsFromText(reader.result, images);
+    };
+    reader.readAsText(xmlFile);
+  });
 }
