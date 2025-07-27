@@ -503,6 +503,7 @@ function createRows(meal, arr) {
     editBtn.classList.add('editing');
     const ingredientInputs = [];
     let mealInput;
+    let bookInput;
     let saveBtn;
     let changeBtn;
     let fileInput;
@@ -511,6 +512,7 @@ function createRows(meal, arr) {
     function checkSave() {
       const any =
         (mealInput && mealInput.value.trim()) ||
+        (bookInput && bookInput.value.trim()) ||
         ingredientInputs.some(i => i.value.trim()) ||
         newImage;
       if (saveBtn) saveBtn.style.display = any ? '' : 'none';
@@ -544,11 +546,22 @@ function createRows(meal, arr) {
       reader.readAsDataURL(file);
     });
 
+    bookInput = document.createElement('input');
+    bookInput.style.display = 'block';
+    bookInput.style.marginTop = '2px';
+    bookInput.style.width = '95%';
+    bookInput.value = meal.recipeBook || '';
+
     imageTd.appendChild(changeBtn);
     imageTd.appendChild(fileInput);
     nameTd.appendChild(mealInput);
+    nameTd.appendChild(bookInput);
     nameTd.appendChild(saveBtn);
     mealInput.addEventListener('input', checkSave);
+    bookInput.addEventListener('input', checkSave);
+    bookInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') commit();
+    });
     mealInput.addEventListener('keydown', e => {
       if (e.key === 'Enter') commit();
     });
@@ -569,10 +582,15 @@ function createRows(meal, arr) {
 
     async function commit() {
       const nameVal = mealInput ? mealInput.value.trim() : '';
+      const bookVal = bookInput ? bookInput.value.trim() : '';
       const ingVals = ingredientInputs.map(i => i.value.trim());
       let changed = false;
       if (nameVal) {
         meal.name = nameVal;
+        changed = true;
+      }
+      if (bookInput && bookVal !== meal.recipeBook) {
+        meal.recipeBook = bookVal;
         changed = true;
       }
       ingVals.forEach((val, idx) => {
@@ -597,6 +615,7 @@ function createRows(meal, arr) {
       ingredientInputs.forEach(i => i.remove());
       ingredientInputs.length = 0;
       if (mealInput) mealInput.remove();
+      if (bookInput) bookInput.remove();
       if (saveBtn) saveBtn.remove();
       if (changeBtn) changeBtn.remove();
       if (fileInput) fileInput.remove();
@@ -653,13 +672,11 @@ async function loadAndRender() {
     .sort((a, b) => a.localeCompare(b))
     .forEach(book => {
       const headerTr = document.createElement('tr');
-      headerTr.className = 'book-header';
-      const td = document.createElement('td');
-      td.colSpan = headerColspan;
-      const btn = document.createElement('button');
-      btn.textContent = book || 'Uncategorized';
-      td.appendChild(btn);
-      headerTr.appendChild(td);
+      const th = document.createElement('th');
+      th.className = 'book-header';
+      th.colSpan = headerColspan;
+      th.textContent = book || 'Uncategorized';
+      headerTr.appendChild(th);
       tbody.appendChild(headerTr);
       const rows = [];
       bookMap[book].forEach(meal => {
@@ -671,7 +688,7 @@ async function loadAndRender() {
           tbody.appendChild(row);
         });
       });
-      btn.addEventListener('click', () => {
+      th.addEventListener('click', () => {
         const hidden = rows[0] && rows[0].style.display === 'none';
         rows.forEach(r => (r.style.display = hidden ? '' : 'none'));
       });

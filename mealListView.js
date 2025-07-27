@@ -553,6 +553,7 @@ function createRows(meal, arr) {
     const baseSpan = Math.max(ingCells.length, 1);
     const spanElems = spanCells;
     let mealInput;
+    let bookInput;
     let saveBtn;
     let changeBtn;
     let fileInput;
@@ -571,6 +572,7 @@ function createRows(meal, arr) {
     function checkSave() {
       const any =
         (mealInput && mealInput.value.trim()) ||
+        (bookInput && bookInput.value.trim()) ||
         (weightInput && weightInput.value.trim()) ||
         rowsInfo.some(r => r.nameInput.value.trim() || r.qtyInput.value.trim()) ||
         newImage;
@@ -678,13 +680,24 @@ function createRows(meal, arr) {
     weightInput.value = meal.weight ?? 1;
     weightInput.addEventListener('input', checkSave);
 
+    bookInput = document.createElement('input');
+    bookInput.style.display = 'block';
+    bookInput.style.marginTop = '2px';
+    bookInput.style.width = '95%';
+    bookInput.value = meal.recipeBook || '';
+
     imageTd.appendChild(changeBtn);
     imageTd.appendChild(fileInput);
     nameTd.appendChild(mealInput);
+    nameTd.appendChild(bookInput);
     nameTd.appendChild(newIngBtn);
     weightTd.appendChild(weightInput);
     nameTd.appendChild(saveBtn);
     mealInput.addEventListener('input', checkSave);
+    bookInput.addEventListener('input', checkSave);
+    bookInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') commit();
+    });
     mealInput.addEventListener('keydown', e => {
       if (e.key === 'Enter') commit();
     });
@@ -695,9 +708,14 @@ function createRows(meal, arr) {
 
     async function commit() {
       const nameVal = mealInput ? mealInput.value.trim() : '';
+      const bookVal = bookInput ? bookInput.value.trim() : '';
       let changed = false;
       if (nameVal) {
         meal.name = nameVal;
+        changed = true;
+      }
+      if (bookInput && bookVal !== meal.recipeBook) {
+        meal.recipeBook = bookVal;
         changed = true;
       }
       if (weightInput) {
@@ -744,6 +762,7 @@ function createRows(meal, arr) {
       addedRows.length = 0;
       updateRowSpans();
       if (mealInput) mealInput.remove();
+      if (bookInput) bookInput.remove();
       if (newIngBtn) newIngBtn.remove();
       if (saveBtn) saveBtn.remove();
       if (changeBtn) changeBtn.remove();
@@ -802,13 +821,11 @@ async function loadAndRender() {
     .sort((a, b) => a.localeCompare(b))
     .forEach(book => {
       const headerTr = document.createElement('tr');
-      headerTr.className = 'book-header';
-      const td = document.createElement('td');
-      td.colSpan = headerColspan;
-      const btn = document.createElement('button');
-      btn.textContent = book || 'Uncategorized';
-      td.appendChild(btn);
-      headerTr.appendChild(td);
+      const th = document.createElement('th');
+      th.className = 'book-header';
+      th.colSpan = headerColspan;
+      th.textContent = book || 'Uncategorized';
+      headerTr.appendChild(th);
       tbody.appendChild(headerTr);
       const rows = [];
       bookMap[book].forEach(meal => {
@@ -820,7 +837,7 @@ async function loadAndRender() {
           tbody.appendChild(row);
         });
       });
-      btn.addEventListener('click', () => {
+      th.addEventListener('click', () => {
         const hidden = rows[0] && rows[0].style.display === 'none';
         rows.forEach(r => (r.style.display = hidden ? '' : 'none'));
       });
