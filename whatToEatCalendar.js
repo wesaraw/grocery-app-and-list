@@ -58,6 +58,7 @@ function loadFinalProduct(item) {
 
 async function getMealImage(meal) {
   if (meal.image) return meal.image;
+  if (Array.isArray(meal.images) && meal.images.length) return meal.images[0];
   const first = meal.ingredients?.[0]?.name;
   if (!first) return null;
   const prod = await loadFinalProduct(first);
@@ -86,6 +87,9 @@ function loadMeals(type) {
         arr.forEach(m => {
           if (m.prepared === undefined) m.prepared = false;
           if (m.recipeBook === undefined) m.recipeBook = '';
+          if (!Array.isArray(m.images)) {
+            m.images = m.image ? [m.image] : [];
+          }
         });
       }
       resolve(arr || []);

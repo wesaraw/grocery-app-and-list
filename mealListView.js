@@ -35,6 +35,7 @@ function loadFinalProduct(item) {
 
 async function getMealImage(meal) {
   if (meal.image) return meal.image;
+  if (Array.isArray(meal.images) && meal.images.length) return meal.images[0];
   const first = meal.ingredients?.[0]?.name;
   if (!first) return null;
   const prod = await loadFinalProduct(first);
@@ -72,6 +73,9 @@ function loadMeals() {
           if (m.prepared === undefined) m.prepared = false;
           if (m.prepAhead === undefined) m.prepAhead = false;
           if (m.recipeBook === undefined) m.recipeBook = '';
+          if (!Array.isArray(m.images)) {
+            m.images = m.image ? [m.image] : [];
+          }
         });
       }
       resolve(arr || []);
@@ -128,6 +132,9 @@ function loadMealsForType(cat) {
           if (m.prepared === undefined) m.prepared = false;
           if (m.prepAhead === undefined) m.prepAhead = false;
           if (m.recipeBook === undefined) m.recipeBook = '';
+          if (!Array.isArray(m.images)) {
+            m.images = m.image ? [m.image] : [];
+          }
         });
       }
       resolve(arr || []);
@@ -357,6 +364,15 @@ function createRows(meal, arr) {
       spanCells.push(nameTd);
 
       setMealImage(img, meal);
+      img.addEventListener('click', () => {
+        if (!editBtn.classList.contains('editing')) {
+          openOrFocusWindow(
+            `mealImages.html?cat=${type}&name=${encodeURIComponent(meal.name)}`,
+            600,
+            600
+          );
+        }
+      });
 
       editBtn = document.createElement('button');
       editBtn.textContent = 'Edit';
@@ -478,6 +494,15 @@ function createRows(meal, arr) {
     nameSpan.textContent = meal.name || '';
     nameTd.appendChild(nameSpan);
     setMealImage(img, meal);
+    img.addEventListener('click', () => {
+      if (!editBtn.classList.contains('editing')) {
+        openOrFocusWindow(
+          `mealImages.html?cat=${type}&name=${encodeURIComponent(meal.name)}`,
+          600,
+          600
+        );
+      }
+    });
     spanCells.push(nameTd);
     editBtn = document.createElement('button');
     editBtn.textContent = 'Edit';
@@ -591,6 +616,9 @@ function createRows(meal, arr) {
     let changeBtn;
     let fileInput;
     let newImage = null;
+    let newImages = [];
+    let addImagesBtn;
+    let multiFileInput;
     let newIngBtn;
     let weightInput;
 
@@ -609,7 +637,8 @@ function createRows(meal, arr) {
         (categorySelect && categorySelect.value !== type) ||
         (weightInput && weightInput.value.trim()) ||
         rowsInfo.some(r => r.nameInput.value.trim() || r.qtyInput.value.trim()) ||
-        newImage;
+        newImage ||
+        newImages.length;
       if (saveBtn) saveBtn.style.display = any ? '' : 'none';
     }
 
@@ -679,6 +708,27 @@ function createRows(meal, arr) {
         checkSave();
       };
       reader.readAsDataURL(file);
+    });
+
+    addImagesBtn = document.createElement('button');
+    addImagesBtn.textContent = 'Add Images';
+    addImagesBtn.style.display = 'block';
+    multiFileInput = document.createElement('input');
+    multiFileInput.type = 'file';
+    multiFileInput.accept = 'image/*';
+    multiFileInput.multiple = true;
+    multiFileInput.style.display = 'none';
+    addImagesBtn.addEventListener('click', () => multiFileInput.click());
+    multiFileInput.addEventListener('change', () => {
+      const files = Array.from(multiFileInput.files || []);
+      files.forEach(f => {
+        const r = new FileReader();
+        r.onload = () => {
+          newImages.push(r.result);
+          checkSave();
+        };
+        r.readAsDataURL(f);
+      });
     });
 
     newIngBtn = document.createElement('button');
@@ -753,6 +803,8 @@ function createRows(meal, arr) {
 
     imageTd.appendChild(changeBtn);
     imageTd.appendChild(fileInput);
+    imageTd.appendChild(addImagesBtn);
+    imageTd.appendChild(multiFileInput);
     nameTd.appendChild(mealLabel);
     nameTd.appendChild(categoryLabel);
     nameTd.appendChild(bookLabel);
@@ -816,6 +868,14 @@ function createRows(meal, arr) {
       }
       if (newImage) {
         meal.image = newImage;
+        if (!Array.isArray(meal.images)) meal.images = [];
+        if (!meal.images.includes(newImage)) meal.images.unshift(newImage);
+        changed = true;
+      }
+      if (newImages.length) {
+        if (!Array.isArray(meal.images)) meal.images = [];
+        meal.images.push(...newImages);
+        if (!meal.image && meal.images.length) meal.image = meal.images[0];
         changed = true;
       }
       if (changed) {
@@ -843,8 +903,11 @@ function createRows(meal, arr) {
       if (saveBtn) saveBtn.remove();
       if (changeBtn) changeBtn.remove();
       if (fileInput) fileInput.remove();
+      if (addImagesBtn) addImagesBtn.remove();
+      if (multiFileInput) multiFileInput.remove();
       if (weightInput) weightInput.remove();
       newImage = null;
+      newImages = [];
       setMealImage(imageTd.querySelector('img.meal-img'), meal);
       editBtn.classList.remove('editing');
     }

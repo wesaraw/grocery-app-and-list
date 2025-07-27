@@ -158,6 +158,9 @@ function loadMeals(category) {
           if (m.prepared === undefined) m.prepared = false;
           if (m.prepAhead === undefined) m.prepAhead = false;
           if (m.recipeBook === undefined) m.recipeBook = '';
+          if (!Array.isArray(m.images)) {
+            m.images = m.image ? [m.image] : [];
+          }
         });
       }
       resolve(arr || []);
@@ -181,7 +184,11 @@ function parseMealsFromXml(text) {
     meal.category = mEl.querySelector('category')?.textContent.trim() || 'lunchDinner';
     meal.name = mEl.querySelector('name')?.textContent.trim() || '';
     meal.recipeBook = mEl.querySelector('recipeBook')?.textContent.trim() || '';
-    meal.image = mEl.querySelector('image')?.textContent.trim() || null;
+    const imageEls = Array.from(mEl.querySelectorAll('image'));
+    meal.images = imageEls
+      .map(el => el.textContent.trim())
+      .filter(Boolean);
+    meal.image = meal.images[0] || null;
     const userStr = mEl.querySelector('users')?.textContent.trim() || '';
     meal.users = userStr.split('').map(c => c === '1');
     meal.prepared = (mEl.querySelector('prepared')?.textContent.trim() || '').toLowerCase() === 'true';
@@ -224,6 +231,7 @@ async function addMeal(meal, userCount) {
     prepared: meal.prepared,
     prepAhead: false,
     image: meal.image || null,
+    images: meal.images || (meal.image ? [meal.image] : []),
     weight: meal.weight,
     groupMeal: meal.group
   });
@@ -236,10 +244,19 @@ export async function importMealsFromText(text, images = {}) {
   const users = await loadUsers();
   const meals = parseMealsFromXml(text);
   for (const meal of meals) {
-    if (meal.image && images[meal.image]) {
+    if (Array.isArray(meal.images) && meal.images.length) {
+      meal.images = meal.images
+        .map(img => images[img])
+        .filter(Boolean);
+      if (!meal.image && meal.images.length) meal.image = meal.images[0];
+    } else if (meal.image && images[meal.image]) {
       meal.image = images[meal.image];
+      meal.images = [meal.image];
     } else if (meal.image && !images[meal.image]) {
       meal.image = null;
+      meal.images = [];
+    } else {
+      meal.images = meal.image ? [meal.image] : [];
     }
     try {
       await addMeal(meal, users.length);
