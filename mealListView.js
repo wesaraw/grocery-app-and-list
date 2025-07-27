@@ -116,6 +116,33 @@ function saveMeals(arr) {
   });
 }
 
+function loadMealsForType(cat) {
+  const info = MEAL_TYPES[cat];
+  if (!info) return Promise.resolve([]);
+  return new Promise(async resolve => {
+    chrome.storage.local.get(info.key, async data => {
+      let arr = data[info.key];
+      if (!arr) arr = await loadJSON(info.path);
+      if (Array.isArray(arr)) {
+        arr.forEach(m => {
+          if (m.prepared === undefined) m.prepared = false;
+          if (m.prepAhead === undefined) m.prepAhead = false;
+          if (m.recipeBook === undefined) m.recipeBook = '';
+        });
+      }
+      resolve(arr || []);
+    });
+  });
+}
+
+function saveMealsForType(cat, arr) {
+  const info = MEAL_TYPES[cat];
+  if (!info) return Promise.resolve();
+  return new Promise(resolve => {
+    chrome.storage.local.set({ [info.key]: arr }, () => resolve());
+  });
+}
+
 function pricePerHomeUnit(itemName, product) {
   const item = needsMap.get(canonicalName(itemName));
   if (!item || !product || product.priceNumber == null) return null;
@@ -556,7 +583,9 @@ function createRows(meal, arr) {
     const spanElems = spanCells;
     let mealInput;
     let bookInput;
+    let categorySelect;
     let mealLabel;
+    let categoryLabel;
     let bookLabel;
     let saveBtn;
     let changeBtn;
@@ -577,6 +606,7 @@ function createRows(meal, arr) {
       const any =
         (mealInput && mealInput.value.trim()) ||
         (bookInput && bookInput.value.trim()) ||
+        (categorySelect && categorySelect.value !== type) ||
         (weightInput && weightInput.value.trim()) ||
         rowsInfo.some(r => r.nameInput.value.trim() || r.qtyInput.value.trim()) ||
         newImage;
@@ -690,11 +720,30 @@ function createRows(meal, arr) {
     bookInput.style.width = '95%';
     bookInput.value = meal.recipeBook || '';
 
+    categorySelect = document.createElement('select');
+    Object.keys(MEAL_TYPES).forEach(cat => {
+      const opt = document.createElement('option');
+      opt.value = cat;
+      opt.textContent = MEAL_TYPES[cat].label;
+      categorySelect.appendChild(opt);
+    });
+    categorySelect.value = type;
+    categorySelect.style.display = 'block';
+    categorySelect.style.marginTop = '2px';
+    categorySelect.style.width = '95%';
+    categorySelect.addEventListener('change', checkSave);
+
     mealLabel = document.createElement('label');
     mealLabel.textContent = 'Meal Name:';
     mealLabel.style.display = 'block';
     mealLabel.style.marginTop = '2px';
     mealLabel.appendChild(mealInput);
+
+    categoryLabel = document.createElement('label');
+    categoryLabel.textContent = 'Meal Category:';
+    categoryLabel.style.display = 'block';
+    categoryLabel.style.marginTop = '2px';
+    categoryLabel.appendChild(categorySelect);
 
     bookLabel = document.createElement('label');
     bookLabel.textContent = 'Recipe Book:';
@@ -705,6 +754,7 @@ function createRows(meal, arr) {
     imageTd.appendChild(changeBtn);
     imageTd.appendChild(fileInput);
     nameTd.appendChild(mealLabel);
+    nameTd.appendChild(categoryLabel);
     nameTd.appendChild(bookLabel);
     nameTd.appendChild(newIngBtn);
     weightTd.appendChild(weightInput);
@@ -725,6 +775,7 @@ function createRows(meal, arr) {
     async function commit() {
       const nameVal = mealInput ? mealInput.value.trim() : '';
       const bookVal = bookInput ? bookInput.value.trim() : '';
+      const catVal = categorySelect ? categorySelect.value : type;
       let changed = false;
       if (nameVal) {
         meal.name = nameVal;
@@ -732,6 +783,14 @@ function createRows(meal, arr) {
       }
       if (bookInput && bookVal !== meal.recipeBook) {
         meal.recipeBook = bookVal;
+        changed = true;
+      }
+      if (categorySelect && catVal !== type) {
+        const idx = arr.indexOf(meal);
+        if (idx !== -1) arr.splice(idx, 1);
+        const destArr = await loadMealsForType(catVal);
+        destArr.push(meal);
+        await saveMealsForType(catVal, destArr);
         changed = true;
       }
       if (weightInput) {
@@ -778,6 +837,7 @@ function createRows(meal, arr) {
       addedRows.length = 0;
       updateRowSpans();
       if (mealLabel) mealLabel.remove();
+      if (categoryLabel) categoryLabel.remove();
       if (bookLabel) bookLabel.remove();
       if (newIngBtn) newIngBtn.remove();
       if (saveBtn) saveBtn.remove();
