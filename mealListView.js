@@ -71,6 +71,7 @@ function loadMeals() {
         arr.forEach(m => {
           if (m.prepared === undefined) m.prepared = false;
           if (m.prepAhead === undefined) m.prepAhead = false;
+          if (m.recipeBook === undefined) m.recipeBook = '';
         });
       }
       resolve(arr || []);
@@ -790,10 +791,40 @@ async function loadAndRender() {
   ]);
   userNames = users;
   inventorySet = new Set(stock.map(s => canonicalName(s.name)));
-  meals.forEach(meal => {
-    const rows = createRows(meal, meals);
-    rows.forEach(row => tbody.appendChild(row));
+  const bookMap = {};
+  meals.forEach(m => {
+    const book = m.recipeBook || '';
+    if (!bookMap[book]) bookMap[book] = [];
+    bookMap[book].push(m);
   });
+  const headerColspan = 11;
+  Object.keys(bookMap)
+    .sort((a, b) => a.localeCompare(b))
+    .forEach(book => {
+      const headerTr = document.createElement('tr');
+      headerTr.className = 'book-header';
+      const td = document.createElement('td');
+      td.colSpan = headerColspan;
+      const btn = document.createElement('button');
+      btn.textContent = book || 'Uncategorized';
+      td.appendChild(btn);
+      headerTr.appendChild(td);
+      tbody.appendChild(headerTr);
+      const rows = [];
+      bookMap[book].forEach(meal => {
+        const r = createRows(meal, meals);
+        r.forEach(row => {
+          row.dataset.book = book;
+          row.style.display = 'none';
+          rows.push(row);
+          tbody.appendChild(row);
+        });
+      });
+      btn.addEventListener('click', () => {
+        const hidden = rows[0] && rows[0].style.display === 'none';
+        rows.forEach(r => (r.style.display = hidden ? '' : 'none'));
+      });
+    });
   updateInventoryDisplay();
   await calculateAndSaveMealNeeds();
   window.scrollTo(0, scrollTop);
