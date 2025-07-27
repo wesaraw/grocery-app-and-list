@@ -196,6 +196,7 @@ multiple meals from a single XML file. Each meal follows this structure:
     <category>lunchDinner</category>
     <name>Meal Name</name>
     <recipeBook>Book Name</recipeBook>
+    <image>image_name.jpg</image>
     <users>11011</users>
     <prepared>false</prepared>
     <group>false</group>
@@ -217,7 +218,11 @@ multiple meals from a single XML file. Each meal follows this structure:
 Each `<meal>` element is imported one at a time. Every ingredient is added to
 the inventory with default values (zero stock and the category `mass import`).
 A blank template named `meal_import_blank.xml` is included in the repository for
-convenience.
+convenience. The `<image>` tag is optional and should match the name of an image
+file selected during import. When using the **Import Meals** button, choose the
+XML file **and** any image files at the same time. Images referenced by the
+`<image>` tag will be attached to the meal if a file with that name is
+selected. If no matching file is found the meal will import without an image.
 
 ## Building the Android app
 
