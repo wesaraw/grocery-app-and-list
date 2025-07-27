@@ -195,6 +195,7 @@ multiple meals from a single XML file. Each meal follows this structure:
   <meal>
     <category>lunchDinner</category>
     <name>Meal Name</name>
+    <recipeBook>Book Name</recipeBook>
     <users>11011</users>
     <prepared>false</prepared>
     <group>false</group>
@@ -211,6 +212,7 @@ multiple meals from a single XML file. Each meal follows this structure:
 </meals>
 ```
 
+`recipeBook` is optional and stores the cookbook or other source for the meal.
 `users` is a series of 1s and 0s matching the user order on the **Users** page.
 Each `<meal>` element is imported one at a time. Every ingredient is added to
 the inventory with default values (zero stock and the category `mass import`).
