@@ -119,7 +119,7 @@ function scrapeStopAndShop() {
     if (perUnitText) {
       const isCent = perUnitText.includes('¢');
       const clean = perUnitText.replace(/[^0-9./a-zA-Z]/g, '');
-      const match = clean.match(/([\d.]+)\s*\/?\s*([\d.]*)\s*([a-zA-Z]+)/);
+      const match = clean.match(/([\d.]+)\/([\d.]*)\s*([a-zA-Z]+)/);
       if (match) {
         const priceVal = parseNumber(match[1]) / (isCent ? 100 : 1);
         const qtyVal = parseNumber(match[2]);
