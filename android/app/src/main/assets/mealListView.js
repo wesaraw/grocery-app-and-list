@@ -15,6 +15,7 @@ import { parseQuantity } from './utils/calendarUtils.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
+import { getItemName } from './utils/items.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -76,13 +77,31 @@ function createAddButton(name) {
 
 function loadMeals() {
   return new Promise(async resolve => {
-    chrome.storage.local.get([key, 'meals', 'recipeBooks'], async data => {
+    chrome.storage.local.get([key, 'meals', 'recipeBooks', 'items'], async data => {
       mealsDict = data.meals || {};
+      Object.entries(mealsDict).forEach(([id, val]) => {
+        if (typeof val === 'string') {
+          mealsDict[id] = { name: val };
+        }
+      });
       recipeBooks = data.recipeBooks || {};
+      const itemsMap = data.items || {};
+      Object.entries(itemsMap).forEach(([id, val]) => {
+        if (typeof val === 'string') {
+          itemsMap[id] = { name: val };
+        }
+      });
       let arr = data[key];
       if (!arr) arr = await loadJSON(path);
       if (Array.isArray(arr)) {
         arr.forEach(m => {
+          if (Array.isArray(m.ingredients)) {
+            m.ingredients.forEach(ing => {
+              const id = String(ing.name);
+              ing.itemId = id;
+              ing.name = getItemName(itemsMap, id);
+            });
+          }
           if (m.prepared === undefined) m.prepared = false;
           if (m.prepAhead === undefined) m.prepAhead = false;
           if (m.recipeBook === undefined) m.recipeBook = '';
@@ -129,13 +148,31 @@ function loadMealsForType(cat) {
   const info = MEAL_TYPES[cat];
   if (!info) return Promise.resolve([]);
   return new Promise(async resolve => {
-    chrome.storage.local.get([info.key, 'meals', 'recipeBooks'], async data => {
+    chrome.storage.local.get([info.key, 'meals', 'recipeBooks', 'items'], async data => {
       mealsDict = data.meals || mealsDict;
+      Object.entries(mealsDict).forEach(([id, val]) => {
+        if (typeof val === 'string') {
+          mealsDict[id] = { name: val };
+        }
+      });
       recipeBooks = data.recipeBooks || recipeBooks;
+      const itemsMap = data.items || {};
+      Object.entries(itemsMap).forEach(([id, val]) => {
+        if (typeof val === 'string') {
+          itemsMap[id] = { name: val };
+        }
+      });
       let arr = data[info.key];
       if (!arr) arr = await loadJSON(info.path);
       if (Array.isArray(arr)) {
         arr.forEach(m => {
+          if (Array.isArray(m.ingredients)) {
+            m.ingredients.forEach(ing => {
+              const id = String(ing.name);
+              ing.itemId = id;
+              ing.name = getItemName(itemsMap, id);
+            });
+          }
           if (m.prepared === undefined) m.prepared = false;
           if (m.prepAhead === undefined) m.prepAhead = false;
           if (m.recipeBook === undefined) m.recipeBook = '';
