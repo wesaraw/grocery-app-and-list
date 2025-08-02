@@ -98,3 +98,31 @@ export function saveCookingDays(obj) {
     chrome.storage.local.set({ cookingDays: obj }, () => resolve());
   });
 }
+
+export function loadMealsDict() {
+  return new Promise(resolve => {
+    chrome.storage.local.get('meals', data => {
+      resolve(data.meals || {});
+    });
+  });
+}
+
+export function saveMealsDict(map) {
+  return new Promise(resolve => {
+    chrome.storage.local.set({ meals: map }, () => resolve());
+  });
+}
+
+export function loadRecipeBooks() {
+  return new Promise(resolve => {
+    chrome.storage.local.get('recipeBooks', data => {
+      resolve(data.recipeBooks || {});
+    });
+  });
+}
+
+export function saveRecipeBooks(map) {
+  return new Promise(resolve => {
+    chrome.storage.local.set({ recipeBooks: map }, () => resolve());
+  });
+}

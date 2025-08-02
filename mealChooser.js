@@ -1,5 +1,11 @@
 import { loadUsers } from './utils/userData.js';
-import { MEAL_TYPES, DEFAULT_MEALS_PER_DAY, loadMealsPerDay, initializeMealCategories } from './utils/mealData.js';
+import {
+  MEAL_TYPES,
+  DEFAULT_MEALS_PER_DAY,
+  loadMealsPerDay,
+  initializeMealCategories,
+  loadMealsDict
+} from './utils/mealData.js';
 import { loadJSON } from './utils/dataLoader.js';
 
 function getCurrentWeek() {
@@ -78,6 +84,7 @@ async function init() {
   const resetBtn = document.getElementById('resetBtn');
 
   let users = await loadUsers();
+  let mealsDict = await loadMealsDict();
   let slots = await loadMealSlots();
   const mealsPerDay = await loadMealsPerDay();
   let currentUser = 0;
@@ -129,7 +136,7 @@ async function init() {
         if (consumedMeal >= perMealLimit) return;
 
         const btn = document.createElement('button');
-        btn.textContent = meal.name || '';
+        btn.textContent = mealsDict[meal.name]?.name || meal.name || '';
         btn.addEventListener('click', async () => {
           slots = await loadMealSlots();
           const rec = (slots.users[userName] = slots.users[userName] || {});
