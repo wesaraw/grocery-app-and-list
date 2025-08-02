@@ -2,6 +2,7 @@ import { loadJSON } from './utils/dataLoader.js';
 import { loadDensityMap, saveDensityMap } from './utils/unitNormalize.js';
 import { loadItemSeasons, saveItemSeasons } from './utils/seasonData.js';
 import { WEEKS_PER_MONTH } from './utils/constants.js';
+import { loadItems, saveItems, generateItemId } from './utils/items.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -201,7 +202,18 @@ async function commit() {
   }
   const densityRatio = parseRatio(ratioText);
 
-  const [needs, consumption, stock, expiration, consumed, storeSelections, purchases, densityMap, itemSeasons] = await Promise.all([
+  const [
+    needs,
+    consumption,
+    stock,
+    expiration,
+    consumed,
+    storeSelections,
+    purchases,
+    densityMap,
+    itemSeasons,
+    items
+  ] = await Promise.all([
     loadNeeds(),
     loadConsumption(),
     loadStock(),
@@ -210,22 +222,27 @@ async function commit() {
     loadStoreSelections(),
     loadPurchases(),
     loadDensityMap(),
-    loadItemSeasons()
+    loadItemSeasons(),
+    loadItems()
   ]);
 
+  const id = generateItemId();
+
+  items[id] = { name, unit };
+
   needs.push({
-    name,
+    itemId: id,
     total_needed_year: yearly,
     home_unit: unit,
     treat_as_whole_unit: whole,
     category
   });
-  consumption.push({ name, monthly_consumption: monthly, unit });
+  consumption.push({ itemId: id, monthly_consumption: monthly, unit });
   // keep item in currentStock list without treating the initial quantity
   // as starting stock (which would create a week 1 purchase)
-  stock.push({ name, amount: 0, unit });
-  expiration.push({ name, shelf_life_months: shelf });
-  consumed.push({ name, amount: 0, unit });
+  stock.push({ itemId: id, amount: 0, unit });
+  expiration.push({ itemId: id, shelf_life_months: shelf });
+  consumed.push({ itemId: id, amount: 0, unit });
 
   storeSelections.push(
     {
@@ -302,7 +319,7 @@ async function commit() {
       return null;
     })
     .filter(Boolean);
-  itemSeasons[name] = seasons;
+  itemSeasons[id] = seasons;
 
   await Promise.all([
     save('yearlyNeeds', needs),
@@ -313,7 +330,8 @@ async function commit() {
     save(STORE_SELECTION_KEY, storeSelections),
     savePurchases(purchases),
     saveDensityMap(densityMap),
-    saveItemSeasons(itemSeasons)
+    saveItemSeasons(itemSeasons),
+    saveItems(items)
   ]);
 
   window.close();
