@@ -74,6 +74,29 @@ function scrapeStopAndShop() {
     unit: 1
   };
 
+  const COUNT_UNITS = new Set([
+    'ea',
+    'ct',
+    'count',
+    'pkg',
+    'box',
+    'can',
+    'bag',
+    'bottle',
+    'stick',
+    'roll',
+    'bar',
+    'pouch',
+    'jar',
+    'packet',
+    'sleeve',
+    'slice',
+    'piece',
+    'tube',
+    'tray',
+    'unit'
+  ]);
+
   const sanitize = str =>
     str?.replace(/<[^>]*>/g, ' ').replace(/&nbsp;|&#160;/gi, ' ').replace(/\s+/g, ' ').trim();
 
