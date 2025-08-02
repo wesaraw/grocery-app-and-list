@@ -1,4 +1,13 @@
 console.log("✅ contentScript.js loaded on page:", window.location.href);
+
+const STORE_NAMES = {
+  ss: 'Stop & Shop',
+  wm: 'Walmart',
+  am: 'Amazon',
+  sh: 'Shaws',
+  rb: 'Roche Bros',
+  ha: 'Hannaford'
+};
 function getImageSrc(el) {
   if (!el) return "";
   const attrs = ["src", "data-src", "data-original", "data-image-src", "data-lazy", "data-lazy-src"];
@@ -1103,28 +1112,29 @@ function scrapeHannaford() {
 
 function runScrape(attempt = 0) {
   chrome.storage.local.get(['currentItemInfo', 'items'], info => {
-    const { itemId, item = '', store = 'Stop & Shop' } = info.currentItemInfo || {};
+    const { itemId, item = '', store = 'Stop & Shop', storeId } = info.currentItemInfo || {};
     const id = itemId || item;
+    const sName = storeId ? STORE_NAMES[storeId] || store : store;
     const name = (info.items && id && info.items[id] && info.items[id].name) || item || '';
     let data = [];
-    if (store === 'Stop & Shop') {
+    if (sName === 'Stop & Shop') {
       data = scrapeStopAndShop();
-    } else if (store === 'Walmart') {
+    } else if (sName === 'Walmart') {
       data = scrapeWalmart();
-    } else if (store === 'Amazon') {
+    } else if (sName === 'Amazon') {
       data = scrapeAmazon();
-    } else if (store === 'Shaws') {
+    } else if (sName === 'Shaws') {
       data = scrapeShaws();
-    } else if (store === 'Roche Bros') {
+    } else if (sName === 'Roche Bros') {
       data = scrapeRocheBros();
-    } else if (store === 'Hannaford') {
+    } else if (sName === 'Hannaford') {
       data = scrapeHannaford();
     }
     if (!data.length && attempt < 5) {
       setTimeout(() => runScrape(attempt + 1), 1000);
       return;
     }
-    chrome.runtime.sendMessage({ type: 'scrapedData', itemId: id, item: name, store, products: data });
+    chrome.runtime.sendMessage({ type: 'scrapedData', itemId: id, item: name, store: sName, products: data });
   });
 }
 

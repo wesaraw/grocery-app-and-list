@@ -3,6 +3,7 @@ import { initUomTable, convert } from './utils/uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
+import { getStoreId } from './utils/stores.js';
 
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
 const STORE_SELECTION_KEY = 'storeSelections';
@@ -274,9 +275,10 @@ async function getStoreEntries(itemName) {
 }
 
 async function loadSelected(item, store) {
-  const k = key('selected', item, store);
-  const data = await getStorage([k]);
-  return data[k] || null;
+  const sId = getStoreId(store);
+  const data = await getStorage(['selectedStore']);
+  const map = data.selectedStore || {};
+  return (map[item] && map[item][sId]) || null;
 }
 
 async function loadScraped(item, store) {
@@ -312,21 +314,17 @@ async function buildWeightPackMap(item, stores) {
 
 
 async function loadFinal(item) {
-  const k = `final_${encodeURIComponent(item)}`;
-  const data = await getStorage([k]);
-  return data[k] || null;
+  const data = await getStorage(['finalStore']);
+  return data.finalStore ? data.finalStore[item] : null;
 }
 
 async function saveFinal(item, store, product) {
-  const storeKey = `final_${encodeURIComponent(item)}`;
-  const productKey = `final_product_${encodeURIComponent(item)}`;
-  const existingData = await getStorage([productKey]);
-  const existingProd = existingData[productKey] || null;
+  const sId = getStoreId(store);
+  const data = await getStorage(['selectedStore', 'finalStore']);
+  const selectedMap = data.selectedStore || {};
+  const itemMap = selectedMap[item] || {};
 
   let image = product?.image || '';
-  if (!image && existingProd && existingProd.image) {
-    image = existingProd.image;
-  }
   if (!image) {
     for (const s of storeOrder) {
       if (s === store) continue;
@@ -351,9 +349,13 @@ async function saveFinal(item, store, product) {
       updated.packCount = packInfo.count;
     }
     product = updated;
+    itemMap[sId] = product;
   }
 
-  await setStorage({ [storeKey]: store, [productKey]: product });
+  selectedMap[item] = itemMap;
+  const finalMap = data.finalStore || {};
+  finalMap[item] = sId;
+  await setStorage({ selectedStore: selectedMap, finalStore: finalMap });
   return product;
 }
 

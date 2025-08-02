@@ -1,7 +1,8 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
-import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from "./utils/priceUtils.js";
+import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
+import { getStoreId } from './utils/stores.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -302,8 +303,14 @@ function buildWeightPackMap(products) {
 
 function saveSelected(item, store, product) {
   return new Promise(resolve => {
-    const key = storageKey('selected', item, store);
-    chrome.storage.local.set({ [key]: product }, () => resolve());
+    const sId = getStoreId(store);
+    chrome.storage.local.get('selectedStore', data => {
+      const map = data.selectedStore || {};
+      const itemMap = map[item] || {};
+      itemMap[sId] = product;
+      map[item] = itemMap;
+      chrome.storage.local.set({ selectedStore: map }, () => resolve());
+    });
   });
 }
 
