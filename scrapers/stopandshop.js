@@ -160,14 +160,7 @@ export function scrapeStopAndShop() {
     let pricePerUnit = null;
 
     if (perUnitText) {
-      // Allow spaces before or after the slash when parsing unit price.
-      // Some Stop & Shop listings format the unit as "$7.32 /LB" with a
-      // space before the slash. The previous regex expected the slash to
-      // immediately follow the price which caused malformed matches like
-      // "$7.32 /LB" -> price "7.3" and unit "2". This resulted in
-      // inflated per‑ounce prices. The updated regex tolerates optional
-      // whitespace around the optional slash.
-      let m = perUnitText.match(/\$([\d.]+)\s*\/?\s*([\d.]*)\s*(\w+)/);
+      let m = perUnitText.match(/\$([\d.]+)\/?\s*([\d.]*)\s*(\w+)/);
       let priceVal = null;
       let qtyVal = null;
       if (m) {
