@@ -3,6 +3,7 @@ import {
   sortItemsByCategory,
   renderItemsWithCategoryHeaders
 } from './utils/sortByCategory.js';
+import { loadItems, saveItems, getItemName } from './utils/items.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -89,8 +90,19 @@ function saveHistory(history) {
   });
 }
 
-async function removeItem(name) {
-  const [needs, consumption, stock, expiration, consumed, selections, purchases, overrides, history] = await Promise.all([
+async function removeItem(id) {
+  const [
+    needs,
+    consumption,
+    stock,
+    expiration,
+    consumed,
+    selections,
+    purchases,
+    overrides,
+    history,
+    items
+  ] = await Promise.all([
     loadNeeds(),
     loadConsumption(),
     loadStock(),
@@ -99,10 +111,12 @@ async function removeItem(name) {
     loadStoreSelections(),
     loadPurchases(),
     loadOverrides(),
-    loadHistory()
+    loadHistory(),
+    loadItems()
   ]);
 
-  const filter = arr => arr.filter(i => i.name !== name);
+  const name = getItemName(items, id);
+  const filter = arr => arr.filter(i => i.itemId !== id);
   const newNeeds = filter(needs);
   const newConsumption = filter(consumption);
   const newStock = filter(stock);
@@ -112,6 +126,7 @@ async function removeItem(name) {
   delete purchases[name];
   delete overrides[name];
   delete history[name];
+  delete items[id];
 
   await Promise.all([
     save('yearlyNeeds', newNeeds),
@@ -122,7 +137,8 @@ async function removeItem(name) {
     save(STORE_SELECTION_KEY, newSelections),
     savePurchases(purchases),
     saveOverrides(overrides),
-    saveHistory(history)
+    saveHistory(history),
+    saveItems(items)
   ]);
 
   try {
@@ -135,7 +151,8 @@ async function removeItem(name) {
   ]);
 }
 
-function createListItem(name) {
+function createListItem(item) {
+  const { id, name } = item;
   const li = document.createElement('li');
   const btn = document.createElement('button');
   btn.textContent = name;
@@ -157,7 +174,7 @@ function createListItem(name) {
       li.removeChild(div);
     });
     del.addEventListener('click', async () => {
-      await removeItem(name);
+      await removeItem(id);
       li.remove();
     });
   });
@@ -167,15 +184,21 @@ function createListItem(name) {
 
 async function init() {
   ul = document.getElementById('items');
-  const items = await loadNeeds();
-  allItems = sortItemsByCategory(items);
+  const [needs, itemsMap] = await Promise.all([loadNeeds(), loadItems()]);
+  allItems = sortItemsByCategory(
+    needs.map(it => ({
+      ...it,
+      id: it.itemId,
+      name: getItemName(itemsMap, it.itemId)
+    }))
+  );
 
   function render() {
     ul.innerHTML = '';
     const arr = filterText
       ? allItems.filter(it => it.name.toLowerCase().includes(filterText))
       : allItems;
-    renderItemsWithCategoryHeaders(arr, ul, it => createListItem(it.name), headerState);
+    renderItemsWithCategoryHeaders(arr, ul, it => createListItem(it), headerState);
   }
 
   render();
