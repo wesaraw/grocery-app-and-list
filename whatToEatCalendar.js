@@ -1,7 +1,8 @@
 import {
   MEAL_TYPES,
   initializeMealCategories,
-  loadMealsPerDay
+  loadMealsPerDay,
+  loadMealsDict
 } from './utils/mealData.js';
 import { loadUsers } from './utils/userData.js';
 import { loadJSON } from './utils/dataLoader.js';
@@ -48,6 +49,7 @@ let slotOrderIds = [];
 let columnOrder = {};
 let editMode = false;
 const mealMap = {};
+let mealsDict = {};
 
 function loadFinalProduct(item) {
   return new Promise(resolve => {
@@ -99,6 +101,7 @@ function loadMeals(type) {
 }
 
 async function loadAllMeals() {
+  mealsDict = await loadMealsDict();
   const types = Object.keys(MEAL_TYPES);
   for (const type of types) {
     const meals = await loadMeals(type);
@@ -267,7 +270,7 @@ function render() {
         used[cat] = idx + 1;
         if (val) {
           const meal = mealMap[val];
-          const name = meal ? meal.name || val : val;
+          const name = meal ? mealsDict[meal.name]?.name || meal.name || val : val;
           const cost = meal && meal.totalCost != null ? ` - $${meal.totalCost.toFixed(2)}` : '';
           const nameDiv = document.createElement('div');
           nameDiv.textContent = name + cost;

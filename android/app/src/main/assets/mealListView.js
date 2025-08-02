@@ -1,4 +1,11 @@
-import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
+import {
+  MEAL_TYPES,
+  initializeMealCategories,
+  loadMealsDict,
+  saveMealsDict,
+  loadRecipeBooks,
+  saveRecipeBooks
+} from './utils/mealData.js';
 import { loadJSON } from './utils/dataLoader.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
@@ -23,6 +30,8 @@ let deleteMode = false;
 const deleteButtons = [];
 let needsMap = new Map();
 let densityMap = {};
+let mealsDict = {};
+let recipeBooks = {};
 
 function loadFinalProduct(item) {
   return new Promise(resolve => {
@@ -67,7 +76,9 @@ function createAddButton(name) {
 
 function loadMeals() {
   return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
+    chrome.storage.local.get([key, 'meals', 'recipeBooks'], async data => {
+      mealsDict = data.meals || {};
+      recipeBooks = data.recipeBooks || {};
       let arr = data[key];
       if (!arr) arr = await loadJSON(path);
       if (Array.isArray(arr)) {
@@ -118,7 +129,9 @@ function loadMealsForType(cat) {
   const info = MEAL_TYPES[cat];
   if (!info) return Promise.resolve([]);
   return new Promise(async resolve => {
-    chrome.storage.local.get(info.key, async data => {
+    chrome.storage.local.get([info.key, 'meals', 'recipeBooks'], async data => {
+      mealsDict = data.meals || mealsDict;
+      recipeBooks = data.recipeBooks || recipeBooks;
       let arr = data[info.key];
       if (!arr) arr = await loadJSON(info.path);
       if (Array.isArray(arr)) {
@@ -336,7 +349,7 @@ function createRows(meal, arr) {
       nameTd = document.createElement('td');
       nameTd.style.minWidth = '200px';
       const nameSpan = document.createElement('span');
-      nameSpan.textContent = meal.name || '';
+      nameSpan.textContent = mealsDict[meal.name]?.name || meal.name || '';
       nameTd.appendChild(nameSpan);
       if (ingredients.length > 1) nameTd.rowSpan = ingredients.length;
 
@@ -454,7 +467,7 @@ function createRows(meal, arr) {
     nameTd = document.createElement('td');
     nameTd.style.minWidth = '200px';
     const nameSpan = document.createElement('span');
-    nameSpan.textContent = meal.name || '';
+    nameSpan.textContent = mealsDict[meal.name]?.name || meal.name || '';
     nameTd.appendChild(nameSpan);
     setMealImage(img, meal);
     editBtn = document.createElement('button');
@@ -561,6 +574,7 @@ function createRows(meal, arr) {
     mealInput.style.display = 'block';
     mealInput.style.marginTop = '2px';
     mealInput.style.width = '95%';
+    mealInput.value = mealsDict[meal.name]?.name || meal.name || '';
     saveBtn = document.createElement('button');
     saveBtn.textContent = 'Save';
     saveBtn.style.display = 'none';
@@ -589,7 +603,7 @@ function createRows(meal, arr) {
     bookInput.style.display = 'block';
     bookInput.style.marginTop = '2px';
     bookInput.style.width = '95%';
-    bookInput.value = meal.recipeBook || '';
+    bookInput.value = recipeBooks[meal.recipeBook] || '';
 
     categorySelect = document.createElement('select');
     Object.keys(MEAL_TYPES).forEach(cat => {
@@ -657,12 +671,20 @@ function createRows(meal, arr) {
       const catVal = categorySelect ? categorySelect.value : type;
       const ingVals = ingredientInputs.map(i => i.value.trim());
       let changed = false;
-      if (nameVal) {
-        meal.name = nameVal;
+      if (nameVal && nameVal !== (mealsDict[meal.name]?.name || meal.name)) {
+        mealsDict[meal.name] = mealsDict[meal.name] || {};
+        mealsDict[meal.name].name = nameVal;
         changed = true;
       }
-      if (bookInput && bookVal !== meal.recipeBook) {
-        meal.recipeBook = bookVal;
+      if (bookInput && bookVal !== (recipeBooks[meal.recipeBook] || '')) {
+        let bookId = '';
+        if (bookVal) {
+          bookId = canonicalName(bookVal).replace(/\s+/g, '_');
+          recipeBooks[bookId] = bookVal;
+        }
+        meal.recipeBook = bookId;
+        mealsDict[meal.name] = mealsDict[meal.name] || {};
+        mealsDict[meal.name].recipeBook = bookId;
         changed = true;
       }
       if (categorySelect && catVal !== type) {
@@ -685,6 +707,8 @@ function createRows(meal, arr) {
       }
       if (changed) {
         await saveMeals(arr);
+        await saveMealsDict(mealsDict);
+        await saveRecipeBooks(recipeBooks);
         await calculateAndSaveMealNeeds();
       }
       hideEdit();
@@ -744,7 +768,7 @@ async function loadAndRender() {
   inventorySet = new Set(stock.map(s => canonicalName(s.name)));
   const bookMap = {};
   meals.forEach(m => {
-    const book = m.recipeBook || '';
+    const book = recipeBooks[m.recipeBook] || '';
     if (!bookMap[book]) bookMap[book] = [];
     bookMap[book].push(m);
   });

@@ -1,11 +1,21 @@
 import { loadJSON } from './utils/dataLoader.js';
-import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
+import {
+  MEAL_TYPES,
+  initializeMealCategories,
+  loadMealsDict,
+  saveMealsDict,
+  loadRecipeBooks,
+  saveRecipeBooks
+} from './utils/mealData.js';
+import { canonicalName } from './utils/nameUtils.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 
 const params = new URLSearchParams(location.search);
 const mealType = params.get('type') || 'lunchDinner';
 let MEAL_KEY, MEAL_PATH, label;
 const UOM_PATH = 'Required for grocery app/uom_conversion_table.json';
+let mealsDict = {};
+let recipeBooks = {};
 
 function loadMeals() {
   return new Promise(async resolve => {
@@ -85,6 +95,8 @@ function anyFilled(row) {
 
 async function init() {
   await initializeMealCategories();
+  mealsDict = await loadMealsDict();
+  recipeBooks = await loadRecipeBooks();
   const info = MEAL_TYPES[mealType] || MEAL_TYPES.lunchDinner;
   MEAL_KEY = info.key;
   MEAL_PATH = info.path;
@@ -178,10 +190,18 @@ async function init() {
     const weight = parseFloat(weightInput.value);
     const mealWeight = !isNaN(weight) && weight > 0 ? weight : 1;
 
+    const mealId = canonicalName(mealName).replace(/\s+/g, '_');
+    const bookName = recipeBookInput.value.trim();
+    let bookId = '';
+    if (bookName) {
+      bookId = canonicalName(bookName).replace(/\s+/g, '_');
+      if (!recipeBooks[bookId]) recipeBooks[bookId] = bookName;
+    }
+    mealsDict[mealId] = { name: mealName, recipeBook: bookId };
     const meals = await loadMeals();
     meals.push({
-      name: mealName,
-      recipeBook: recipeBookInput.value.trim() || '',
+      name: mealId,
+      recipeBook: bookId,
       ingredients,
       people: 1,
       prepared: preparedBox.checked,
@@ -191,6 +211,8 @@ async function init() {
       groupMeal: groupChk.checked
     });
     await saveMeals(meals);
+    await saveMealsDict(mealsDict);
+    await saveRecipeBooks(recipeBooks);
     await calculateAndSaveMealNeeds();
     window.close();
   });
