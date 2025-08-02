@@ -76,6 +76,16 @@ chrome.storage.local.get('purchases', data => {
 
 Chrome stores this data in a database under your profile directory. **It is tied to the extension ID**, so the ID must remain the same across updates. This repository includes a `key` field in `manifest.json` that keeps the ID constant even if you reload the extension from a fresh checkout. If you remove or change this key, Chrome will treat it as a brand new extension and any saved data will not be loaded.
 
+### Converting backups
+
+A helper script can shrink exported backups by replacing item, store, meal, and recipe book names with numeric IDs. To create a compact file, run:
+
+```bash
+node scripts/convertBackup.js
+```
+
+The script loads the most recent `grocery_backup*.txt` in the repository and writes `grocery_backup_compact.json` with the new structure. Entries with `amount: 0` are preserved.
+
 ### Weeks per Month
 
 Several calculations convert monthly amounts to weekly values. The extension uses `4.33` weeks per month (stored in `utils/constants.js` as `WEEKS_PER_MONTH`) as a simple average.
