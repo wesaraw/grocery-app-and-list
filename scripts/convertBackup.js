@@ -40,7 +40,19 @@ function replaceNames(obj, maps) {
   if (obj && typeof obj === 'object') {
     const out = {};
     for (const [k, v] of Object.entries(obj)) {
-      out[k] = replaceNames(v, maps);
+      if (k === 'name' && typeof v === 'string') {
+        out[k] = obj.ingredients
+          ? maps.meals[v] || v
+          : maps.items[v] || v;
+      } else if (k === 'item' && typeof v === 'string') {
+        out[k] = maps.items[v] || v;
+      } else if (k === 'store' && typeof v === 'string') {
+        out[k] = maps.stores[v] || v;
+      } else if (k === 'recipeBook' && typeof v === 'string') {
+        out[k] = maps.books[v] || v;
+      } else {
+        out[k] = replaceNames(v, maps);
+      }
     }
     return out;
   }
