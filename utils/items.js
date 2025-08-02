@@ -2,7 +2,13 @@ export function loadItems() {
   return new Promise(resolve => {
     try {
       chrome.storage.local.get('items', data => {
-        resolve(data.items || {});
+        const map = data.items || {};
+        Object.entries(map).forEach(([id, val]) => {
+          if (typeof val === 'string') {
+            map[id] = { name: val };
+          }
+        });
+        resolve(map);
       });
     } catch (e) {
       resolve({});
