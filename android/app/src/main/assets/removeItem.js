@@ -145,10 +145,13 @@ async function removeItem(id) {
     chrome.runtime.sendMessage({ type: 'inventory-updated' });
   } catch (_) {}
 
-  chrome.storage.local.remove([
-    `final_${encodeURIComponent(name)}`,
-    `final_product_${encodeURIComponent(name)}`
-  ]);
+  chrome.storage.local.get(['finalStore', 'selectedStore'], data => {
+    const f = data.finalStore || {};
+    const s = data.selectedStore || {};
+    delete f[name];
+    delete s[name];
+    chrome.storage.local.set({ finalStore: f, selectedStore: s });
+  });
 }
 
 function createListItem(item) {

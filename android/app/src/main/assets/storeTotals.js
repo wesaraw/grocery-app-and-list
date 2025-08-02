@@ -4,6 +4,7 @@ import { initUomTable } from './utils/uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
+import { getStoreId } from './utils/stores.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -78,10 +79,6 @@ function loadStoredArray(key) {
 
 const loadMealPlanMonth = () => loadStoredArray('mealPlanMonthly');
 
-function key(type, item, store) {
-  return `${type}_${encodeURIComponent(item)}_${encodeURIComponent(store)}`;
-}
-
 async function loadStoreSelections() {
   return new Promise(async resolve => {
     chrome.storage.local.get(STORE_SELECTION_KEY, async data => {
@@ -97,8 +94,11 @@ async function loadStoreSelections() {
 
 function loadSelected(item, store) {
   return new Promise(resolve => {
-    const k = key('selected', item, store);
-    chrome.storage.local.get([k], data => resolve(data[k] || null));
+    const sId = getStoreId(store);
+    chrome.storage.local.get('selectedStore', data => {
+      const map = data.selectedStore || {};
+      resolve((map[item] && map[item][sId]) || null);
+    });
   });
 }
 
