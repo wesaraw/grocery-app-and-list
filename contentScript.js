@@ -124,14 +124,9 @@ function scrapeStopAndShop() {
         const priceVal = parseNumber(match[1]) / (isCent ? 100 : 1);
         const qtyVal = parseNumber(match[2]);
         unitQty = !isNaN(qtyVal) && qtyVal !== 0 ? qtyVal : 1;
-        unitType = match[3].replace(/[\s.]+/g, '').toLowerCase();
+        unitType = match[3].replace(/[\s.]+/g, '');
         if (!isNaN(priceVal)) {
           pricePerUnit = priceVal / unitQty;
-          const factor = UNIT_FACTORS[unitType];
-          if (factor && !COUNT_UNITS.has(unitType)) {
-            pricePerUnit = pricePerUnit / factor;
-            unitType = 'oz';
-          }
         }
       }
     }
