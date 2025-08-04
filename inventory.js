@@ -100,16 +100,18 @@ const loadNeeds = () => loadArray('yearlyNeeds', NEEDS_PATH);
 
 async function loadFinalProducts(names) {
   return new Promise(resolve => {
-    chrome.storage.local.get(['finalStore', 'selectedStore'], data => {
-      const finalMap = data.finalStore || {};
-      const selected = data.selectedStore || {};
-      const map = {};
-      names.forEach(n => {
-        const sId = finalMap[n];
-        map[n] = sId && selected[n] ? selected[n][sId] || null : null;
+    try {
+      const keys = names.map(n => `final_product_${encodeURIComponent(n)}`);
+      chrome.storage.local.get(keys, data => {
+        const map = {};
+        names.forEach((n, idx) => {
+          map[n] = data[keys[idx]] || null;
+        });
+        resolve(map);
       });
-      resolve(map);
-    });
+    } catch (e) {
+      resolve({});
+    }
   });
 }
 

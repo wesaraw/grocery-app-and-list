@@ -35,16 +35,18 @@ async function loadOverrides() {
 
 async function loadFinalProducts(names) {
   return new Promise(resolve => {
-    chrome.storage.local.get(['finalStore', 'selectedStore'], data => {
-      const finalMap = data.finalStore || {};
-      const selected = data.selectedStore || {};
-      const map = {};
-      names.forEach(n => {
-        const sId = finalMap[n];
-        map[n] = sId && selected[n] ? selected[n][sId] || null : null;
+    try {
+      const keys = names.map(n => `final_product_${encodeURIComponent(n)}`);
+      chrome.storage.local.get(keys, data => {
+        const map = {};
+        names.forEach((n, idx) => {
+          map[n] = data[keys[idx]] || null;
+        });
+        resolve(map);
       });
-      resolve(map);
-    });
+    } catch (e) {
+      resolve({});
+    }
   });
 }
 
@@ -564,18 +566,16 @@ async function init() {
       });
       updated = true;
     }
-    if (changes.finalStore || changes.selectedStore) {
-      const f = (changes.finalStore && changes.finalStore.newValue) || {};
-      const s = (changes.selectedStore && changes.selectedStore.newValue) || {};
-      Object.keys(f).forEach(name => {
+    Object.keys(changes).forEach(k => {
+      if (k.startsWith('final_product_')) {
+        const name = decodeURIComponent(k.slice('final_product_'.length));
         const item = globalItems.find(i => i.name === name);
         if (item) {
-          const sId = f[name];
-          item.finalProduct = sId && s[name] ? s[name][sId] || null : null;
+          item.finalProduct = changes[k].newValue || null;
           updated = true;
         }
-      });
-    }
+      }
+    });
     if (updated) {
       if (showingHistory) {
         showPurchaseHistory();

@@ -26,13 +26,8 @@ let densityMap = {};
 
 function loadFinalProduct(item) {
   return new Promise(resolve => {
-    chrome.storage.local.get(['finalStore', 'selectedStore'], data => {
-      const sId = (data.finalStore || {})[item];
-      const prod = sId && data.selectedStore && data.selectedStore[item]
-        ? data.selectedStore[item][sId]
-        : null;
-      resolve(prod);
-    });
+    const key = `final_product_${encodeURIComponent(item)}`;
+    chrome.storage.local.get([key], data => resolve(data[key] || null));
   });
 }
 

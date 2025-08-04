@@ -122,18 +122,19 @@ function saveHistory(history) {
 
 function renameFinalKeys(oldName, newName) {
   return new Promise(resolve => {
-    chrome.storage.local.get(['finalStore', 'selectedStore'], data => {
-      const f = data.finalStore || {};
-      const s = data.selectedStore || {};
-      if (f[oldName] !== undefined) {
-        f[newName] = f[oldName];
-        delete f[oldName];
+    const oldFinal = `final_${encodeURIComponent(oldName)}`;
+    const oldProd = `final_product_${encodeURIComponent(oldName)}`;
+    chrome.storage.local.get([oldFinal, oldProd], data => {
+      const setObj = {};
+      if (data[oldFinal] !== undefined) {
+        setObj[`final_${encodeURIComponent(newName)}`] = data[oldFinal];
       }
-      if (s[oldName] !== undefined) {
-        s[newName] = s[oldName];
-        delete s[oldName];
+      if (data[oldProd] !== undefined) {
+        setObj[`final_product_${encodeURIComponent(newName)}`] = data[oldProd];
       }
-      chrome.storage.local.set({ finalStore: f, selectedStore: s }, resolve);
+      chrome.storage.local.set(setObj, () => {
+        chrome.storage.local.remove([oldFinal, oldProd], resolve);
+      });
     });
   });
 }
