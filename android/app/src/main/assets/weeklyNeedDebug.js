@@ -1,17 +1,13 @@
+import { loadObject } from './utils/itemRegistry.js';
+
 function canonicalName(name) {
   return (name || '').trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
-function loadBreakdown(key) {
-  return new Promise(resolve => {
-    try {
-      chrome.storage.local.get('mealPlanMonthlyBreakdown', data => {
-        resolve((data.mealPlanMonthlyBreakdown || {})[key] || {});
-      });
-    } catch (e) {
-      resolve({});
-    }
-  });
+async function loadBreakdown(key) {
+  const obj = await loadObject('mealPlanMonthlyBreakdown');
+  const match = Object.keys(obj).find(k => canonicalName(k) === key);
+  return match ? obj[match] : {};
 }
 
 document.addEventListener('DOMContentLoaded', async () => {

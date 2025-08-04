@@ -12,6 +12,7 @@ import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from "./utils/priceUti
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
 import {
   loadArray as loadItemArray,
+  saveArray,
   convertArrayToNames,
   convertObjectKeysToNames,
   getItemId,
@@ -972,10 +973,12 @@ async function commitSelections() {
   }
   await savePurchases(purchases);
 
-  chrome.storage.local.set({
-    lastCommitItems: commitItems,
-    pendingCommitWeek: currentWeek
-  });
+  const commitItemsForSave = commitItems.map(({ item, ...rest }) => ({
+    name: item,
+    ...rest
+  }));
+  await saveArray('lastCommitItems', commitItemsForSave);
+  chrome.storage.local.set({ pendingCommitWeek: currentWeek });
 
   openOrFocusWindow('shoppingList.html');
 }
