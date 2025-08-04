@@ -3,6 +3,12 @@ import { sortItemsByCategory, renderItemsWithCategoryHeaders } from './utils/sor
 import { canonicalName } from './utils/nameUtils.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
+import {
+  loadArrayWithFallback,
+  saveArray,
+  loadObjectWithFallback,
+  saveObject
+} from './utils/itemRegistry.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -36,66 +42,26 @@ const headerState = {};
 let allItems = [];
 let container;
 
-function loadArray(key, path) {
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      if (data[key]) {
-        resolve(data[key]);
-      } else {
-        const arr = await loadJSON(path);
-        resolve(arr);
-      }
-    });
-  });
-}
+const loadNeeds = () =>
+  loadArrayWithFallback('yearlyNeeds', YEARLY_NEEDS_PATH);
+const loadConsumption = () =>
+  loadArrayWithFallback('monthlyConsumption', CONSUMPTION_PATH);
+const loadStock = () =>
+  loadArrayWithFallback('currentStock', STOCK_PATH);
+const loadExpiration = () =>
+  loadArrayWithFallback('expirationData', EXPIRATION_PATH);
+const loadStoreSelections = () =>
+  loadArrayWithFallback(STORE_SELECTION_KEY, STORE_SELECTION_PATH);
 
-const loadNeeds = () => loadArray('yearlyNeeds', YEARLY_NEEDS_PATH);
-const loadConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
-const loadStock = () => loadArray('currentStock', STOCK_PATH);
-const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
-const loadStoreSelections = () => loadArray(STORE_SELECTION_KEY, STORE_SELECTION_PATH);
+const loadConsumed = () => loadArrayWithFallback('consumedThisYear');
+const loadOverrides = () =>
+  loadObjectWithFallback('consumptionOverrides');
+const loadHistory = () => loadObjectWithFallback('consumedHistory');
 
-function loadConsumed() {
-  return new Promise(resolve => {
-    chrome.storage.local.get('consumedThisYear', data => {
-      resolve(data.consumedThisYear || []);
-    });
-  });
-}
-
-function loadOverrides() {
-  return new Promise(resolve => {
-    chrome.storage.local.get('consumptionOverrides', data => {
-      resolve(data.consumptionOverrides || {});
-    });
-  });
-}
-
-function loadHistory() {
-  return new Promise(resolve => {
-    chrome.storage.local.get('consumedHistory', data => {
-      resolve(data.consumedHistory || {});
-    });
-  });
-}
-
-function save(key, value) {
-  return new Promise(resolve => {
-    chrome.storage.local.set({ [key]: value }, () => resolve());
-  });
-}
-
-function saveOverrides(overrides) {
-  return new Promise(resolve => {
-    chrome.storage.local.set({ consumptionOverrides: overrides }, () => resolve());
-  });
-}
-
-function saveHistory(history) {
-  return new Promise(resolve => {
-    chrome.storage.local.set({ consumedHistory: history }, () => resolve());
-  });
-}
+const save = (key, value) => saveArray(key, value);
+const saveOverrides = overrides =>
+  saveObject('consumptionOverrides', overrides);
+const saveHistory = history => saveObject('consumedHistory', history);
 
 function renameFinalKeys(oldName, newName) {
   return new Promise(resolve => {

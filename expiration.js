@@ -4,6 +4,7 @@ import {
   renderItemsWithCategoryHeaders
 } from './utils/sortByCategory.js';
 import { WEEKS_PER_MONTH } from './utils/constants.js';
+import { loadArray as loadItemArray, saveArray as saveItemArray } from './utils/itemRegistry.js';
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
@@ -15,14 +16,9 @@ let container;
 
 function loadArray(key, path) {
   return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      if (data[key]) {
-        resolve(data[key]);
-      } else {
-        const arr = await loadJSON(path);
-        resolve(arr);
-      }
-    });
+    const arr = await loadItemArray(key);
+    if (arr.length > 0) resolve(arr);
+    else resolve(await loadJSON(path));
   });
 }
 
@@ -30,9 +26,7 @@ const loadNeeds = () => loadArray('yearlyNeeds', NEEDS_PATH);
 const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
 
 function saveExpiration(arr) {
-  return new Promise(resolve => {
-    chrome.storage.local.set({ expirationData: arr }, () => resolve());
-  });
+  return saveItemArray('expirationData', arr);
 }
 
 function weeksFromMonths(months) {

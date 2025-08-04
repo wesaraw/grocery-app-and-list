@@ -1,5 +1,6 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { sortItemsByCategory, renderItemsWithCategoryHeaders } from './utils/sortByCategory.js';
+import { loadArray as loadItemArray, saveArray as saveItemArray } from './utils/itemRegistry.js';
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const NEEDS_KEY = 'yearlyNeeds';
@@ -9,23 +10,14 @@ const headerState = {};
 let allNeeds = [];
 let container;
 
-function loadNeeds() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get(NEEDS_KEY, async data => {
-      if (data[NEEDS_KEY]) {
-        resolve(data[NEEDS_KEY]);
-      } else {
-        const arr = await loadJSON(NEEDS_PATH);
-        resolve(arr);
-      }
-    });
-  });
+async function loadNeeds() {
+  const arr = await loadItemArray(NEEDS_KEY);
+  if (arr.length > 0) return arr;
+  return await loadJSON(NEEDS_PATH);
 }
 
 function saveNeeds(arr) {
-  return new Promise(resolve => {
-    chrome.storage.local.set({ [NEEDS_KEY]: arr }, () => resolve());
-  });
+  return saveItemArray(NEEDS_KEY, arr);
 }
 
 function createRow(item, needs) {

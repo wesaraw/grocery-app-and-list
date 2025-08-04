@@ -1,6 +1,7 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { loadDensityMap, saveDensityMap } from './utils/unitNormalize.js';
 import { sortItemsByCategory } from './utils/sortByCategory.js';
+import { loadArray as loadItemArray } from './utils/itemRegistry.js';
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 
@@ -69,9 +70,15 @@ function buildRow(item) {
   return tr;
 }
 
+async function loadNeeds() {
+  const arr = await loadItemArray('yearlyNeeds');
+  if (arr.length > 0) return arr;
+  return await loadJSON(NEEDS_PATH);
+}
+
 async function init() {
   [allNeeds, densityMap] = await Promise.all([
-    loadJSON(NEEDS_PATH),
+    loadNeeds(),
     loadDensityMap()
   ]);
   allNeeds = sortItemsByCategory(allNeeds);

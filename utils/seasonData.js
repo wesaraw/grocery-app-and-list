@@ -1,14 +1,24 @@
+import { convertObjectKeysToNames, convertObjectKeysToIds } from './itemRegistry.js';
+
 export function loadItemSeasons() {
   return new Promise(resolve => {
-    chrome.storage.local.get('itemSeasons', data => {
-      resolve(data.itemSeasons || {});
+    chrome.storage.local.get('itemSeasons', async data => {
+      const raw = data.itemSeasons || {};
+      const withNames = await convertObjectKeysToNames(raw);
+      if (Object.keys(raw).some(k => isNaN(parseInt(k, 10)))) {
+        const stored = await convertObjectKeysToIds(withNames);
+        chrome.storage.local.set({ itemSeasons: stored });
+      }
+      resolve(withNames);
     });
   });
 }
 
 export function saveItemSeasons(map) {
   return new Promise(resolve => {
-    chrome.storage.local.set({ itemSeasons: map }, () => resolve());
+    convertObjectKeysToIds(map).then(stored => {
+      chrome.storage.local.set({ itemSeasons: stored }, () => resolve());
+    });
   });
 }
 

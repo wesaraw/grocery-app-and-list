@@ -2,6 +2,7 @@ import { WEEKS_PER_MONTH } from './utils/constants.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 import { canonicalName } from './utils/nameUtils.js';
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
+import { loadArray as loadItemArray, loadObject as loadItemObject, getItemId } from './utils/itemRegistry.js';
 
 async function loadJSON(path) {
   const url = chrome.runtime.getURL(path);
@@ -22,13 +23,16 @@ async function loadOverrides() {
 }
 
 async function loadFinalProducts(names) {
-  return new Promise(resolve => {
+  return new Promise(async resolve => {
     try {
-      const keys = names.map(n => `final_product_${encodeURIComponent(n)}`);
-      chrome.storage.local.get(keys, data => {
+      const ids = await Promise.all(names.map(n => getItemId(n)));
+      const idKeys = ids.map(id => `final_product_${id}`);
+      const nameKeys = names.map(n => `final_product_${encodeURIComponent(n)}`);
+      const allKeys = [...idKeys, ...nameKeys];
+      chrome.storage.local.get(allKeys, data => {
         const map = {};
         names.forEach((n, idx) => {
-          map[n] = data[keys[idx]] || null;
+          map[n] = data[idKeys[idx]] || data[nameKeys[idx]] || null;
         });
         resolve(map);
       });
@@ -40,19 +44,9 @@ async function loadFinalProducts(names) {
 
 function loadArray(key, path) {
   return new Promise(async resolve => {
-    try {
-      chrome.storage.local.get(key, async data => {
-        if (data[key]) {
-          resolve(data[key]);
-        } else {
-          const arr = await loadJSON(path);
-          resolve(arr);
-        }
-      });
-    } catch (e) {
-      const arr = await loadJSON(path);
-      resolve(arr);
-    }
+    const arr = await loadItemArray(key);
+    if (arr.length > 0) resolve(arr);
+    else resolve(await loadJSON(path));
   });
 }
 
@@ -61,22 +55,20 @@ function sortItemsByCategory(arr) {
     const catA = (a.category || '').toLowerCase();
     const catB = (b.category || '').toLowerCase();
     if (catA === catB) {
-      return a.name.localeCompare(b.name);
+      const nameA = (a.name || '').toLowerCase();
+      const nameB = (b.name || '').toLowerCase();
+      return nameA.localeCompare(nameB);
     }
     return catA.localeCompare(catB);
   });
 }
 
 function loadStoredArray(key) {
-  return new Promise(resolve => {
-    chrome.storage.local.get(key, data => resolve(data[key] || []));
-  });
+  return loadItemArray(key);
 }
 
 function loadStoredObj(key) {
-  return new Promise(resolve => {
-    chrome.storage.local.get(key, data => resolve(data[key] || {}));
-  });
+  return loadItemObject(key);
 }
 
 function getCurrentWeek() {
@@ -523,7 +515,7 @@ async function init() {
 
     let updated = false;
     if (changes.purchases) {
-      const map = changes.purchases.newValue || {};
+      const map = await convertObjectKeysToNames(changes.purchases.newValue || {});
       globalItems.forEach(it => {
         it.purchases = map[it.name] || [];
       });

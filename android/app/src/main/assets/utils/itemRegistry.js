@@ -1,3 +1,5 @@
+import { loadJSON } from './dataLoader.js';
+
 const NAME_ID_KEY = 'itemNameMap';
 
 function buildReverseMap(map) {
@@ -135,5 +137,65 @@ export async function saveObject(key, obj) {
   const stored = await convertObjectKeysToIds(obj);
   return new Promise(resolve => {
     chrome.storage.local.set({ [key]: stored }, () => resolve());
+  });
+}
+
+export async function loadArrayWithFallback(key, path) {
+  return new Promise(resolve => {
+    chrome.storage.local.get(key, async data => {
+      let arr = data[key];
+      if (!arr && path) arr = await loadJSON(path);
+      const stored = arr || [];
+      let toStore = stored;
+      if (stored.some(it => it && it.name != null && it.id == null)) {
+        toStore = await convertArrayToIds(stored);
+        chrome.storage.local.set({ [key]: toStore });
+      }
+      const withNames = await convertArrayToNames(toStore);
+      resolve(withNames);
+    });
+  });
+}
+
+export async function loadObjectWithFallback(key, path) {
+  return new Promise(resolve => {
+    chrome.storage.local.get(key, async data => {
+      let obj = data[key];
+      if (!obj && path) obj = await loadJSON(path);
+      const stored = obj || {};
+      let toStore = stored;
+      const hasNameKeys = Object.keys(stored).some(k => isNaN(parseInt(k, 10)));
+      if (hasNameKeys) {
+        toStore = await convertObjectKeysToIds(stored);
+        chrome.storage.local.set({ [key]: toStore });
+      }
+      const withNames = await convertObjectKeysToNames(toStore);
+      resolve(withNames);
+    });
+  });
+}
+
+export async function migrateItemRegistry() {
+  return new Promise(resolve => {
+    chrome.storage.local.get(null, async data => {
+      const updates = {};
+      for (const [key, value] of Object.entries(data)) {
+        if (Array.isArray(value)) {
+          if (value.some(it => it && it.name != null && it.id == null)) {
+            updates[key] = await convertArrayToIds(value);
+          }
+        } else if (value && typeof value === 'object') {
+          const hasNameKeys = Object.keys(value).some(k => isNaN(parseInt(k, 10)));
+          if (hasNameKeys) {
+            updates[key] = await convertObjectKeysToIds(value);
+          }
+        }
+      }
+      if (Object.keys(updates).length > 0) {
+        chrome.storage.local.set(updates, () => resolve());
+      } else {
+        resolve();
+      }
+    });
   });
 }

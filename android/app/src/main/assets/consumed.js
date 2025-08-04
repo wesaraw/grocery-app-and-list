@@ -3,6 +3,12 @@ import {
   sortItemsByCategory,
   renderItemsWithCategoryHeaders
 } from './utils/sortByCategory.js';
+import {
+  loadArray as loadItemArray,
+  saveArray as saveItemArray,
+  loadObject as loadItemObject,
+  saveObject as saveItemObject
+} from './utils/itemRegistry.js';
 
 const NEEDS_KEY = 'yearlyNeeds';
 
@@ -16,64 +22,37 @@ let globalHistory;
 let globalOverrides;
 let container;
 
-function loadNeeds() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get(NEEDS_KEY, async data => {
-      if (data[NEEDS_KEY]) {
-        resolve(data[NEEDS_KEY]);
-      } else {
-        const needs = await loadJSON(NEEDS_PATH);
-        resolve(needs);
-      }
-    });
-  });
+async function loadNeeds() {
+  const arr = await loadItemArray(NEEDS_KEY);
+  if (arr.length > 0) return arr;
+  return await loadJSON(NEEDS_PATH);
 }
 
 async function loadConsumption() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get('consumedThisYear', async data => {
-      if (data.consumedThisYear) {
-        resolve(data.consumedThisYear);
-      } else {
-        const needs = await loadNeeds();
-        resolve(needs.map(n => ({ name: n.name, amount: 0, unit: n.home_unit })));
-      }
-    });
-  });
+  const arr = await loadItemArray('consumedThisYear');
+  if (arr.length > 0) return arr;
+  const needs = await loadNeeds();
+  return needs.map(n => ({ name: n.name, amount: 0, unit: n.home_unit }));
 }
 
 function saveConsumption(cons) {
-  return new Promise(resolve => {
-    chrome.storage.local.set({ consumedThisYear: cons }, () => resolve());
-  });
+  return saveItemArray('consumedThisYear', cons);
 }
 
 async function loadHistory() {
-  return new Promise(resolve => {
-    chrome.storage.local.get('consumedHistory', data => {
-      resolve(data.consumedHistory || {});
-    });
-  });
+  return loadItemObject('consumedHistory');
 }
 
 async function loadOverrides() {
-  return new Promise(resolve => {
-    chrome.storage.local.get('consumptionOverrides', data => {
-      resolve(data.consumptionOverrides || {});
-    });
-  });
+  return loadItemObject('consumptionOverrides');
 }
 
 function saveOverrides(overrides) {
-  return new Promise(resolve => {
-    chrome.storage.local.set({ consumptionOverrides: overrides }, () => resolve());
-  });
+  return saveItemObject('consumptionOverrides', overrides);
 }
 
 function saveHistory(hist) {
-  return new Promise(resolve => {
-    chrome.storage.local.set({ consumedHistory: hist }, () => resolve());
-  });
+  return saveItemObject('consumedHistory', hist);
 }
 
 function updateHistoryList(name, ul, span, map, history, overrides, weekly) {

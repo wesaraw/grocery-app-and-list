@@ -1,7 +1,7 @@
 // Utility functions for normalizing units and handling volume to weight ratios
 import { convert } from './uomConverter.js';
 import { UNIT_ALIASES } from './priceUtils.js';
-import { convertObjectKeysToNames, convertObjectKeysToIds } from './itemStorage.js';
+import { convertObjectKeysToNames, convertObjectKeysToIds } from './itemRegistry.js';
 
 const VOLUME_UNITS = new Set(['floz', 'fl oz', 'ml', 'l', 'gal', 'qt', 'pt', 'cup', 'tbsp', 'tsp']);
 const WEIGHT_UNITS = new Set(['oz', 'lb', 'g', 'kg']);

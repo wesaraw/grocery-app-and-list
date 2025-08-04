@@ -24,7 +24,7 @@ function buildMealsByCategory(d) {
 }
 
 const mealsByCategory = buildMealsByCategory(data);
-const res = calculatePurchaseNeeds(
+const res = await calculatePurchaseNeeds(
   data.yearlyNeeds,
   data.monthlyConsumption,
   data.currentStock,

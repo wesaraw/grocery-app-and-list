@@ -6,8 +6,9 @@ import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
 import {
   getItemId,
   convertArrayToIds,
-  convertObjectKeysToIds
-} from './utils/itemStorage.js';
+  convertObjectKeysToIds,
+  loadArray as loadItemArray
+} from './utils/itemRegistry.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -103,17 +104,11 @@ document.addEventListener('DOMContentLoaded', () => {
     .addEventListener('click', () => addSeasonRow());
 });
 
-function loadArray(key, path) {
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      if (data[key]) {
-        resolve(data[key]);
-      } else {
-        const arr = await loadJSON(path);
-        resolve(arr);
-      }
-    });
-  });
+async function loadArray(key, path) {
+  const arr = await loadItemArray(key);
+  if (arr.length > 0) return arr;
+  const fromJson = await loadJSON(path);
+  return fromJson;
 }
 
 const loadNeeds = () => loadArray('yearlyNeeds', YEARLY_NEEDS_PATH);
@@ -123,17 +118,11 @@ const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
 const loadStoreSelections = () => loadArray(STORE_SELECTION_KEY, STORE_SELECTION_PATH);
 
 
-function loadConsumed() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get('consumedThisYear', async data => {
-      if (data.consumedThisYear) {
-        resolve(data.consumedThisYear);
-      } else {
-        const needs = await loadNeeds();
-        resolve(needs.map(n => ({ name: n.name, amount: 0, unit: n.home_unit })));
-      }
-    });
-  });
+async function loadConsumed() {
+  const arr = await loadItemArray('consumedThisYear');
+  if (arr.length > 0) return arr;
+  const needs = await loadNeeds();
+  return needs.map(n => ({ name: n.name, amount: 0, unit: n.home_unit }));
 }
 
 function save(key, value) {

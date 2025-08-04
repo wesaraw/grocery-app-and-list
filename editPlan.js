@@ -1,6 +1,7 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { sortItemsByCategory, renderItemsWithCategoryHeaders } from './utils/sortByCategory.js';
 import { loadMealPlanData } from './utils/mealNeedsCalculator.js';
+import { loadArray as loadItemArray, saveArray as saveItemArray } from './utils/itemRegistry.js';
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONS_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -16,14 +17,9 @@ let container;
 
 function loadArray(key, path) {
   return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      if (data[key]) {
-        resolve(data[key]);
-      } else {
-        const arr = await loadJSON(path);
-        resolve(arr);
-      }
-    });
+    const arr = await loadItemArray(key);
+    if (arr.length > 0) resolve(arr);
+    else resolve(await loadJSON(path));
   });
 }
 
@@ -31,15 +27,11 @@ const loadNeeds = () => loadArray('yearlyNeeds', NEEDS_PATH);
 const loadConsumption = () => loadArray('monthlyConsumption', CONS_PATH);
 
 function saveNeeds(arr) {
-  return new Promise(resolve => {
-    chrome.storage.local.set({ yearlyNeeds: arr }, () => resolve());
-  });
+  return saveItemArray('yearlyNeeds', arr);
 }
 
 function saveConsumption(arr) {
-  return new Promise(resolve => {
-    chrome.storage.local.set({ monthlyConsumption: arr }, () => resolve());
-  });
+  return saveItemArray('monthlyConsumption', arr);
 }
 
 function createRow(

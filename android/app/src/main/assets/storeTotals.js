@@ -5,6 +5,7 @@ import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
 import { loadPurchases } from './utils/purchaseStorage.js';
+import { loadArray as loadItemArray, getItemId } from './utils/itemRegistry.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -16,14 +17,9 @@ const STORE_SELECTION_KEY = 'storeSelections';
 
 function loadArray(key, path) {
   return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      if (data[key]) {
-        resolve(data[key]);
-      } else {
-        const arr = await loadJSON(path);
-        resolve(arr);
-      }
-    });
+    const arr = await loadItemArray(key);
+    if (arr.length > 0) resolve(arr);
+    else resolve(await loadJSON(path));
   });
 }
 
@@ -32,16 +28,9 @@ const loadMonthlyConsumption = () => loadArray('monthlyConsumption', CONSUMPTION
 const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
 
 async function loadStock() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get('currentStock', async data => {
-      if (data.currentStock) {
-        resolve(data.currentStock);
-      } else {
-        const stock = await loadJSON(STOCK_PATH);
-        resolve(stock);
-      }
-    });
-  });
+  const arr = await loadItemArray('currentStock');
+  if (arr.length > 0) return arr;
+  return await loadJSON(STOCK_PATH);
 }
 
 function getCurrentWeek() {
@@ -51,22 +40,14 @@ function getCurrentWeek() {
 }
 
 async function loadConsumed() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get(CONSUMED_PATH, async data => {
-      if (data[CONSUMED_PATH]) {
-        resolve(data[CONSUMED_PATH]);
-      } else {
-        const needs = await loadNeeds();
-        resolve(needs.map(n => ({ name: n.name, amount: 0, unit: n.home_unit })));
-      }
-    });
-  });
+  const arr = await loadItemArray(CONSUMED_PATH);
+  if (arr.length > 0) return arr;
+  const needs = await loadNeeds();
+  return needs.map(n => ({ name: n.name, amount: 0, unit: n.home_unit }));
 }
 
 function loadStoredArray(key) {
-  return new Promise(resolve => {
-    chrome.storage.local.get(key, data => resolve(data[key] || []));
-  });
+  return loadItemArray(key);
 }
 
 const loadMealPlanMonth = () => loadStoredArray('mealPlanMonthly');
@@ -76,22 +57,19 @@ function key(type, item, store) {
 }
 
 async function loadStoreSelections() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get(STORE_SELECTION_KEY, async data => {
-      if (data[STORE_SELECTION_KEY]) {
-        resolve(data[STORE_SELECTION_KEY]);
-      } else {
-        const arr = await loadJSON(STORE_SELECTION_PATH);
-        resolve(arr);
-      }
-    });
-  });
+  const arr = await loadItemArray(STORE_SELECTION_KEY);
+  if (arr.length > 0) return arr;
+  return await loadJSON(STORE_SELECTION_PATH);
 }
 
-function loadSelected(item, store) {
+async function loadSelected(item, store) {
+  const id = await getItemId(item);
+  const kId = key('selected', id, store);
+  const kName = key('selected', item, store);
   return new Promise(resolve => {
-    const k = key('selected', item, store);
-    chrome.storage.local.get([k], data => resolve(data[k] || null));
+    chrome.storage.local.get([kId, kName], data => {
+      resolve(data[kId] || data[kName] || null);
+    });
   });
 }
 
@@ -328,7 +306,7 @@ async function renderTotals() {
   consumptionMap = consMap;
 
   const week = getCurrentWeek();
-  const purchaseInfo = calculatePurchaseNeeds(
+  const purchaseInfo = await calculatePurchaseNeeds(
     needs,
     Array.from(consMap.values()),
     stock,

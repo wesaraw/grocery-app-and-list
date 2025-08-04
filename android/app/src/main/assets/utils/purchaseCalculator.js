@@ -6,6 +6,7 @@ import {
   aggregateCalendar
 } from './calendarUtils.js';
 import { loadDensityMap } from './unitNormalize.js';
+import { convertObjectKeysToNames } from './itemRegistry.js';
 
 
 function sumRange(arr, start, end) {
@@ -60,7 +61,7 @@ function simulateBeforeWeekVar(item, weeklyArr, week) {
   return active.reduce((sum, b) => sum + b.qty, 0);
 }
 
-export function calculatePurchaseNeeds(
+export async function calculatePurchaseNeeds(
   needs,
   consumption,
   stock,
@@ -74,6 +75,7 @@ export function calculatePurchaseNeeds(
   useMealPlanTotals = true,
   densityMap = {}
 ) {
+  purchases = await convertObjectKeysToNames(purchases);
   const consMap = new Map(consumption.map(i => [i.name, i]));
   const expMap = new Map(expiration.map(i => [i.name, i]));
 

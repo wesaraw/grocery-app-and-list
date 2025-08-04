@@ -3,7 +3,9 @@ export function sortItemsByCategory(arr) {
     const catA = (a.category || '').toLowerCase();
     const catB = (b.category || '').toLowerCase();
     if (catA === catB) {
-      return a.name.localeCompare(b.name);
+      const nameA = (a.name || '').toLowerCase();
+      const nameB = (b.name || '').toLowerCase();
+      return nameA.localeCompare(nameB);
     }
     return catA.localeCompare(catB);
   });

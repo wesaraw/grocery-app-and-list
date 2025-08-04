@@ -10,6 +10,13 @@ import {
 } from './utils/sortByCategory.js';
 import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from "./utils/priceUtils.js";
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
+import {
+  loadArray as loadItemArray,
+  convertArrayToNames,
+  convertObjectKeysToNames,
+  getItemId,
+  getItemName
+} from './utils/itemRegistry.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
@@ -20,14 +27,9 @@ const CONSUMED_PATH = 'consumedThisYear';
 
 function loadArray(key, path) {
   return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      if (data[key]) {
-        resolve(data[key]);
-      } else {
-        const arr = await loadJSON(path);
-        resolve(arr);
-      }
-    });
+    const arr = await loadItemArray(key);
+    if (arr.length > 0) resolve(arr);
+    else resolve(await loadJSON(path));
   });
 }
 
@@ -36,16 +38,9 @@ const loadMonthlyConsumption = () => loadArray('monthlyConsumption', CONSUMPTION
 const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
 
 async function loadStock() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get('currentStock', async data => {
-      if (data.currentStock) {
-        resolve(data.currentStock);
-      } else {
-        const stock = await loadJSON(STOCK_PATH);
-        resolve(stock);
-      }
-    });
-  });
+  const arr = await loadItemArray('currentStock');
+  if (arr.length > 0) return arr;
+  return await loadJSON(STOCK_PATH);
 }
 
 function getCurrentWeek() {
@@ -56,24 +51,14 @@ function getCurrentWeek() {
 
 
 async function loadConsumed() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get(CONSUMED_PATH, async data => {
-      if (data[CONSUMED_PATH]) {
-        resolve(data[CONSUMED_PATH]);
-      } else {
-        const needs = await loadNeeds();
-        resolve(
-          needs.map(n => ({ name: n.name, amount: 0, unit: n.home_unit }))
-        );
-      }
-    });
-  });
+  const arr = await loadItemArray(CONSUMED_PATH);
+  if (arr.length > 0) return arr;
+  const needs = await loadNeeds();
+  return needs.map(n => ({ name: n.name, amount: 0, unit: n.home_unit }));
 }
 
 function loadStoredArray(key) {
-  return new Promise(resolve => {
-    chrome.storage.local.get(key, data => resolve(data[key] || []));
-  });
+  return loadItemArray(key);
 }
 
 const loadMealPlanMonth = () => loadStoredArray('mealPlanMonthly');
@@ -168,27 +153,36 @@ const initReady = new Promise(resolve => {
   resolveInit = resolve;
 });
 
-function getFinal(itemName) {
-  const key = `final_${encodeURIComponent(itemName)}`;
+async function getFinal(itemName) {
+  const id = await getItemId(itemName);
+  const keyId = `final_${id}`;
+  const keyName = `final_${encodeURIComponent(itemName)}`;
   return new Promise(resolve => {
-    chrome.storage.local.get([key], data => resolve(data[key]));
+    chrome.storage.local.get([keyId, keyName], data => {
+      resolve(data[keyId] ?? data[keyName]);
+    });
   });
 }
 
-function getFinalProduct(itemName) {
-  const key = `final_product_${encodeURIComponent(itemName)}`;
+async function getFinalProduct(itemName) {
+  const id = await getItemId(itemName);
+  const keyId = `final_product_${id}`;
+  const keyName = `final_product_${encodeURIComponent(itemName)}`;
   return new Promise(resolve => {
-    chrome.storage.local.get([key], data => resolve(data[key]));
+    chrome.storage.local.get([keyId, keyName], data => {
+      resolve(data[keyId] ?? data[keyName]);
+    });
   });
 }
 
-function storageKey(type, item, store) {
-  return `${type}_${encodeURIComponent(item)}_${encodeURIComponent(store)}`;
+async function storageKey(type, item, store) {
+  const id = await getItemId(item);
+  return `${type}_${id}_${encodeURIComponent(store)}`;
 }
 
 function loadScraped(item, store) {
-  return new Promise(resolve => {
-    const key = storageKey('scraped', item, store);
+  return new Promise(async resolve => {
+    const key = await storageKey('scraped', item, store);
     chrome.storage.local.get([key], data => resolve(data[key] || []));
   });
 }
@@ -537,7 +531,7 @@ async function init() {
   calendarData = calendar;
   mealsByCategoryData = mealsByCategory;
   const week = getCurrentWeek();
-  const purchaseInfo = calculatePurchaseNeeds(
+  const purchaseInfo = await calculatePurchaseNeeds(
     needs,
     consumption,
     stock,
@@ -658,7 +652,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 async function refreshNeeds(stock = stockData, consumed = consumedYearData) {
   stockData = stock;
   const hasCalendar = calendarData && Object.keys(calendarData).length > 0;
-  const purchaseInfo = calculatePurchaseNeeds(
+  const purchaseInfo = await calculatePurchaseNeeds(
     needsData,
     consumptionData,
     stock,
@@ -744,7 +738,7 @@ async function rerenderAll() {
   calendarData = calendar;
   mealsByCategoryData = mealsByCategory;
   const week = getCurrentWeek();
-  const purchaseInfo = calculatePurchaseNeeds(
+  const purchaseInfo = await calculatePurchaseNeeds(
     needs,
     consumption,
     stock,
@@ -825,44 +819,50 @@ async function rerenderAll() {
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && changes.currentStock) {
-    const newStock = changes.currentStock.newValue || [];
-    refreshNeeds(newStock, consumedYearData);
+    convertArrayToNames(changes.currentStock.newValue || []).then(newStock => {
+      refreshNeeds(newStock, consumedYearData);
+    });
   }
   if (area === 'local' && changes[CONSUMED_PATH]) {
-    const newConsumed = changes[CONSUMED_PATH].newValue || [];
-    consumedYearData = newConsumed;
-    refreshNeeds(stockData, newConsumed);
+    convertArrayToNames(changes[CONSUMED_PATH].newValue || []).then(newConsumed => {
+      consumedYearData = newConsumed;
+      refreshNeeds(stockData, newConsumed);
+    });
   }
   if (area === 'local' && changes.purchases) {
-    purchasesData = changes.purchases.newValue || {};
-    refreshNeeds(stockData, consumedYearData);
+    convertObjectKeysToNames(changes.purchases.newValue || {}).then(p => {
+      purchasesData = p;
+      refreshNeeds(stockData, consumedYearData);
+    });
   }
   Object.keys(changes).forEach(key => {
     if (key.startsWith('final_') || key.startsWith('final_product_')) {
-      const item = decodeURIComponent(key.replace(/^final(_product)?_/, ''));
-      const rec = finalMap.get(item);
-      if (rec) {
-        initReady.then(() =>
-          Promise.all([
-            getFinal(item),
-            getFinalProduct(item)
-          ]).then(async ([store, product]) => {
-            const { span, img, btn } = rec;
-            const stores = selectionsData
-              .filter(s => s.name === item)
-              .map(s => s.store);
-            const weightMap = await buildWeightPackMap(item, stores);
-            rec.product = product;
-            rec.weightMap = weightMap;
-            const amountText =
-              rec.needAmt != null && !isNaN(rec.needAmt)
-                ? needText(item, rec.needAmt, rec.product, rec.weightMap)
-                : '';
-            btn.textContent = item + amountText;
-            updateFinalInfo(item, span, img, store, product, weightMap);
-          })
-        );
-      }
+      (async () => {
+        const idPart = key.replace(/^final(_product)?_/, '');
+        const item = await getItemName(decodeURIComponent(idPart));
+        const rec = finalMap.get(item);
+        if (rec) {
+          initReady.then(() =>
+            Promise.all([getFinal(item), getFinalProduct(item)]).then(
+              async ([store, product]) => {
+                const { span, img, btn } = rec;
+                const stores = selectionsData
+                  .filter(s => s.name === item)
+                  .map(s => s.store);
+                const weightMap = await buildWeightPackMap(item, stores);
+                rec.product = product;
+                rec.weightMap = weightMap;
+                const amountText =
+                  rec.needAmt != null && !isNaN(rec.needAmt)
+                    ? needText(item, rec.needAmt, rec.product, rec.weightMap)
+                    : '';
+                btn.textContent = item + amountText;
+                updateFinalInfo(item, span, img, store, product, weightMap);
+              }
+            )
+          );
+        }
+      })();
     }
   });
   if (
@@ -899,7 +899,7 @@ async function commitSelections() {
   const currentWeek = getCurrentWeek();
 
   const hasCalendar = calendarData && Object.keys(calendarData).length > 0;
-  const purchaseInfo = calculatePurchaseNeeds(
+  const purchaseInfo = await calculatePurchaseNeeds(
     needsData,
     consumptionData,
     stockData,

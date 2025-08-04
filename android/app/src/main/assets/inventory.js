@@ -7,6 +7,7 @@ import {
   renderItemsWithCategoryHeaders
 } from './utils/sortByCategory.js';
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
+import { loadArray as loadItemArray, getItemId } from './utils/itemRegistry.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -15,35 +16,21 @@ const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json
 
 
 async function loadStock() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get('currentStock', async data => {
-      if (data.currentStock) {
-        resolve(data.currentStock);
-      } else {
-        const stock = await loadJSON(STOCK_PATH);
-        resolve(stock);
-      }
-    });
-  });
+  const arr = await loadItemArray('currentStock');
+  if (arr.length > 0) return arr;
+  return await loadJSON(STOCK_PATH);
 }
 
 function loadArray(key, path) {
   return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      if (data[key]) {
-        resolve(data[key]);
-      } else {
-        const arr = await loadJSON(path);
-        resolve(arr);
-      }
-    });
+    const arr = await loadItemArray(key);
+    if (arr.length > 0) resolve(arr);
+    else resolve(await loadJSON(path));
   });
 }
 
 function loadStoredArray(key) {
-  return new Promise(resolve => {
-    chrome.storage.local.get(key, data => resolve(data[key] || []));
-  });
+  return loadItemArray(key);
 }
 
 const loadConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
@@ -52,12 +39,15 @@ const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
 const loadNeeds = () => loadArray('yearlyNeeds', NEEDS_PATH);
 
 async function loadFinalProducts(names) {
-  return new Promise(resolve => {
-    const keys = names.map(n => `final_product_${encodeURIComponent(n)}`);
-    chrome.storage.local.get(keys, data => {
+  return new Promise(async resolve => {
+    const ids = await Promise.all(names.map(n => getItemId(n)));
+    const idKeys = ids.map(id => `final_product_${id}`);
+    const nameKeys = names.map(n => `final_product_${encodeURIComponent(n)}`);
+    const allKeys = [...idKeys, ...nameKeys];
+    chrome.storage.local.get(allKeys, data => {
       const map = {};
       names.forEach((n, idx) => {
-        map[n] = data[keys[idx]] || null;
+        map[n] = data[idKeys[idx]] || data[nameKeys[idx]] || null;
       });
       resolve(map);
     });
@@ -247,7 +237,7 @@ let densityMap = {};
 let filterText = '';
 const headerState = {};
 
-function renderWeek(week) {
+async function renderWeek(week) {
   const container = document.getElementById('inventory');
   container.innerHTML = '';
   const timelineItems = buildTimelineItems(
@@ -256,7 +246,7 @@ function renderWeek(week) {
     expirationData,
     mealMonthData
   );
-  const stockArr = getStockBeforeWeek(timelineItems, purchasesMap, week);
+  const stockArr = await getStockBeforeWeek(timelineItems, purchasesMap, week);
   const stockForWeek = new Map(stockArr.map(i => [i.name, i.amount]));
   const sortedStock = sortItemsByCategory(
     baseStock.map(it => ({ ...it, category: categoryMap.get(it.name) || '' }))
@@ -308,16 +298,16 @@ async function init() {
   finalProductMap = await loadFinalProducts(baseStock.map(s => s.name));
   categoryMap = new Map(needsData.map(n => [n.name, n.category || '']));
 
-  renderWeek(parseInt(weekInput.value, 10) || 1);
+  await renderWeek(parseInt(weekInput.value, 10) || 1);
 
-  document.getElementById('searchBox').addEventListener('input', () => {
+  document.getElementById('searchBox').addEventListener('input', async () => {
     filterText = document.getElementById('searchBox').value.trim().toLowerCase();
-    renderWeek(parseInt(weekInput.value, 10) || 1);
+    await renderWeek(parseInt(weekInput.value, 10) || 1);
   });
 
-  weekInput.addEventListener('change', () => {
+  weekInput.addEventListener('change', async () => {
     const w = parseInt(weekInput.value, 10) || 1;
-    renderWeek(w);
+    await renderWeek(w);
   });
 }
 

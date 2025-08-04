@@ -1,19 +1,23 @@
-export function getStockForWeek(items, purchases = {}, week = 1) {
+import { convertObjectKeysToNames } from './itemRegistry.js';
+
+export async function getStockForWeek(items, purchases = {}, week = 1) {
+  const mapped = await convertObjectKeysToNames(purchases);
   return items.map(item => {
     const simItem = {
       ...item,
-      purchases: purchases[item.name] || []
+      purchases: mapped[item.name] || []
     };
     const qty = simulateForWeek(simItem, week);
     return { name: item.name, amount: qty };
   });
 }
 
-export function getStockBeforeWeek(items, purchases = {}, week = 1) {
+export async function getStockBeforeWeek(items, purchases = {}, week = 1) {
+  const mapped = await convertObjectKeysToNames(purchases);
   return items.map(item => {
     const simItem = {
       ...item,
-      purchases: purchases[item.name] || []
+      purchases: mapped[item.name] || []
     };
     const qty = simulateBeforeWeek(simItem, week);
     return { name: item.name, amount: qty };
