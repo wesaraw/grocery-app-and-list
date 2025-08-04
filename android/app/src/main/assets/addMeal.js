@@ -1,21 +1,11 @@
 import { loadJSON } from './utils/dataLoader.js';
-import {
-  MEAL_TYPES,
-  initializeMealCategories,
-  loadMealsDict,
-  saveMealsDict,
-  loadRecipeBooks,
-  saveRecipeBooks
-} from './utils/mealData.js';
+import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
-import { canonicalName } from './utils/nameUtils.js';
 
 const params = new URLSearchParams(location.search);
 const mealType = params.get('type') || 'lunchDinner';
 let MEAL_KEY, MEAL_PATH, label;
 const UOM_PATH = 'Required for grocery app/uom_conversion_table.json';
-let mealsDict = {};
-let recipeBooks = {};
 
 function loadMeals() {
   return new Promise(async resolve => {
@@ -95,8 +85,6 @@ function anyFilled(row) {
 
 async function init() {
   await initializeMealCategories();
-  mealsDict = await loadMealsDict();
-  recipeBooks = await loadRecipeBooks();
   const info = MEAL_TYPES[mealType] || MEAL_TYPES.lunchDinner;
   MEAL_KEY = info.key;
   MEAL_PATH = info.path;
@@ -186,18 +174,10 @@ async function init() {
       serving_size: `${r.amt} ${r.unit}`
     }));
 
-    const mealId = canonicalName(mealName).replace(/\s+/g, '_');
-    const bookName = recipeBookInput.value.trim();
-    let bookId = '';
-    if (bookName) {
-      bookId = canonicalName(bookName).replace(/\s+/g, '_');
-      if (!recipeBooks[bookId]) recipeBooks[bookId] = bookName;
-    }
-    mealsDict[mealId] = { name: mealName, recipeBook: bookId };
     const meals = await loadMeals();
     meals.push({
-      name: mealId,
-      recipeBook: bookId,
+      name: mealName,
+      recipeBook: recipeBookInput.value.trim() || '',
       ingredients,
       people: 1,
       prepared: preparedBox.checked,
@@ -206,8 +186,6 @@ async function init() {
       groupMeal: groupChk.checked
     });
     await saveMeals(meals);
-    await saveMealsDict(mealsDict);
-    await saveRecipeBooks(recipeBooks);
     await calculateAndSaveMealNeeds();
     window.close();
   });

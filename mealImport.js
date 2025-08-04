@@ -1,18 +1,10 @@
-import {
-  MEAL_TYPES,
-  initializeMealCategories,
-  loadMealsDict,
-  saveMealsDict,
-  loadRecipeBooks,
-  saveRecipeBooks
-} from './utils/mealData.js';
+import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { loadJSON } from './utils/dataLoader.js';
 import { loadUsers } from './utils/userData.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 import { loadDensityMap, saveDensityMap } from './utils/unitNormalize.js';
 import { loadItemSeasons, saveItemSeasons } from './utils/seasonData.js';
 import { WEEKS_PER_MONTH } from './utils/constants.js';
-import { canonicalName } from './utils/nameUtils.js';
 
 // Paths for inventory data used when adding new items
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -21,8 +13,6 @@ const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
 const STORE_SELECTION_KEY = 'storeSelections';
-let mealsDict = {};
-let recipeBooks = {};
 
 const DEFAULT_ITEM = {
   yearly: 0,
@@ -224,17 +214,10 @@ async function addMeal(meal, userCount) {
   } else if (usersArr.length > userCount) {
     usersArr = usersArr.slice(0, userCount);
   }
-  const mealId = canonicalName(meal.name).replace(/\s+/g, '_');
-  let bookId = '';
-  if (meal.recipeBook) {
-    bookId = canonicalName(meal.recipeBook).replace(/\s+/g, '_');
-    recipeBooks[bookId] = meal.recipeBook;
-  }
-  mealsDict[mealId] = { name: meal.name, recipeBook: bookId };
   const arr = await loadMeals(meal.category);
   arr.push({
-    name: mealId,
-    recipeBook: bookId,
+    name: meal.name,
+    recipeBook: meal.recipeBook || '',
     ingredients: meal.ingredients,
     users: usersArr,
     people: usersArr.filter(Boolean).length,
@@ -250,8 +233,6 @@ async function addMeal(meal, userCount) {
 
 export async function importMealsFromText(text, images = {}) {
   await initializeMealCategories();
-  mealsDict = await loadMealsDict();
-  recipeBooks = await loadRecipeBooks();
   const users = await loadUsers();
   const meals = parseMealsFromXml(text);
   for (const meal of meals) {
@@ -267,8 +248,6 @@ export async function importMealsFromText(text, images = {}) {
       alert(`Error importing ${meal.name}: ${e.message}`);
     }
   }
-  await saveMealsDict(mealsDict);
-  await saveRecipeBooks(recipeBooks);
 }
 
 export function importMealsFromFiles(fileList) {
