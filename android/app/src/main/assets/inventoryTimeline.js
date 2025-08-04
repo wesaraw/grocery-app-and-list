@@ -1,24 +1,12 @@
 import { WEEKS_PER_MONTH } from './utils/constants.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 import { canonicalName } from './utils/nameUtils.js';
+import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
 
 async function loadJSON(path) {
   const url = chrome.runtime.getURL(path);
   const res = await fetch(url);
   return res.json();
-}
-
-async function loadPurchases() {
-  return new Promise(resolve => {
-    try {
-      chrome.storage.local.get('purchases', data => {
-        resolve(data.purchases || {});
-      });
-    } catch (e) {
-      // fallback if chrome is not available
-      resolve({});
-    }
-  });
 }
 
 async function loadOverrides() {
@@ -46,16 +34,6 @@ async function loadFinalProducts(names) {
       });
     } catch (e) {
       resolve({});
-    }
-  });
-}
-
-async function savePurchases(map) {
-  return new Promise(resolve => {
-    try {
-      chrome.storage.local.set({ purchases: map }, () => resolve());
-    } catch (e) {
-      resolve();
     }
   });
 }
