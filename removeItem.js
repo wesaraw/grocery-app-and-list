@@ -3,7 +3,6 @@ import {
   sortItemsByCategory,
   renderItemsWithCategoryHeaders
 } from './utils/sortByCategory.js';
-import { loadItems, saveItems, getItemName } from './utils/items.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -90,19 +89,8 @@ function saveHistory(history) {
   });
 }
 
-async function removeItem(id) {
-  const [
-    needs,
-    consumption,
-    stock,
-    expiration,
-    consumed,
-    selections,
-    purchases,
-    overrides,
-    history,
-    items
-  ] = await Promise.all([
+async function removeItem(name) {
+  const [needs, consumption, stock, expiration, consumed, selections, purchases, overrides, history] = await Promise.all([
     loadNeeds(),
     loadConsumption(),
     loadStock(),
@@ -111,12 +99,10 @@ async function removeItem(id) {
     loadStoreSelections(),
     loadPurchases(),
     loadOverrides(),
-    loadHistory(),
-    loadItems()
+    loadHistory()
   ]);
 
-  const name = getItemName(items, id);
-  const filter = arr => arr.filter(i => i.itemId !== id);
+  const filter = arr => arr.filter(i => i.name !== name);
   const newNeeds = filter(needs);
   const newConsumption = filter(consumption);
   const newStock = filter(stock);
@@ -126,7 +112,6 @@ async function removeItem(id) {
   delete purchases[name];
   delete overrides[name];
   delete history[name];
-  delete items[id];
 
   await Promise.all([
     save('yearlyNeeds', newNeeds),
@@ -137,8 +122,7 @@ async function removeItem(id) {
     save(STORE_SELECTION_KEY, newSelections),
     savePurchases(purchases),
     saveOverrides(overrides),
-    saveHistory(history),
-    saveItems(items)
+    saveHistory(history)
   ]);
 
   try {
@@ -151,8 +135,7 @@ async function removeItem(id) {
   ]);
 }
 
-function createListItem(item) {
-  const { id, name } = item;
+function createListItem(name) {
   const li = document.createElement('li');
   const btn = document.createElement('button');
   btn.textContent = name;
@@ -174,7 +157,7 @@ function createListItem(item) {
       li.removeChild(div);
     });
     del.addEventListener('click', async () => {
-      await removeItem(id);
+      await removeItem(name);
       li.remove();
     });
   });
@@ -184,21 +167,15 @@ function createListItem(item) {
 
 async function init() {
   ul = document.getElementById('items');
-  const [needs, itemsMap] = await Promise.all([loadNeeds(), loadItems()]);
-  allItems = sortItemsByCategory(
-    needs.map(it => ({
-      ...it,
-      id: it.itemId,
-      name: getItemName(itemsMap, it.itemId)
-    }))
-  );
+  const items = await loadNeeds();
+  allItems = sortItemsByCategory(items);
 
   function render() {
     ul.innerHTML = '';
     const arr = filterText
       ? allItems.filter(it => it.name.toLowerCase().includes(filterText))
       : allItems;
-    renderItemsWithCategoryHeaders(arr, ul, it => createListItem(it), headerState);
+    renderItemsWithCategoryHeaders(arr, ul, it => createListItem(it.name), headerState);
   }
 
   render();
