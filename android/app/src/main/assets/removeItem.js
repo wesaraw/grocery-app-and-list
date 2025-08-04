@@ -3,6 +3,7 @@ import {
   sortItemsByCategory,
   renderItemsWithCategoryHeaders
 } from './utils/sortByCategory.js';
+import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -59,21 +60,9 @@ function loadHistory() {
   });
 }
 
-function loadPurchases() {
-  return new Promise(resolve => {
-    chrome.storage.local.get('purchases', data => resolve(data.purchases || {}));
-  });
-}
-
 function save(key, value) {
   return new Promise(resolve => {
     chrome.storage.local.set({ [key]: value }, () => resolve());
-  });
-}
-
-function savePurchases(map) {
-  return new Promise(resolve => {
-    chrome.storage.local.set({ purchases: map }, () => resolve());
   });
 }
 
