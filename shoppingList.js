@@ -1,3 +1,5 @@
+import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
+
 function loadCommitItems() {
   return new Promise(resolve => {
     chrome.storage.local.get('lastCommitItems', data => {
@@ -6,27 +8,6 @@ function loadCommitItems() {
   });
 }
 
-async function loadPurchases() {
-  return new Promise(resolve => {
-    try {
-      chrome.storage.local.get('purchases', data => {
-        resolve(data.purchases || {});
-      });
-    } catch (e) {
-      resolve({});
-    }
-  });
-}
-
-function savePurchases(map) {
-  return new Promise(resolve => {
-    try {
-      chrome.storage.local.set({ purchases: map }, () => resolve());
-    } catch (e) {
-      resolve();
-    }
-  });
-}
 
 function getCurrentWeek() {
   const now = new Date();

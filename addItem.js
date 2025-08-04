@@ -2,6 +2,7 @@ import { loadJSON } from './utils/dataLoader.js';
 import { loadDensityMap, saveDensityMap } from './utils/unitNormalize.js';
 import { loadItemSeasons, saveItemSeasons } from './utils/seasonData.js';
 import { WEEKS_PER_MONTH } from './utils/constants.js';
+import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -116,19 +117,6 @@ const loadStock = () => loadArray('currentStock', STOCK_PATH);
 const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
 const loadStoreSelections = () => loadArray(STORE_SELECTION_KEY, STORE_SELECTION_PATH);
 
-function loadPurchases() {
-  return new Promise(resolve => {
-    chrome.storage.local.get('purchases', data => {
-      resolve(data.purchases || {});
-    });
-  });
-}
-
-function savePurchases(map) {
-  return new Promise(resolve => {
-    chrome.storage.local.set({ purchases: map }, () => resolve());
-  });
-}
 
 function loadConsumed() {
   return new Promise(async resolve => {

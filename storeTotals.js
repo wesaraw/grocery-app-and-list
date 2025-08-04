@@ -4,6 +4,7 @@ import { initUomTable } from './utils/uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
+import { loadPurchases } from './utils/purchaseStorage.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -13,13 +14,6 @@ const CONSUMED_PATH = 'consumedThisYear';
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
 const STORE_SELECTION_KEY = 'storeSelections';
 
-async function loadPurchases() {
-  return new Promise(resolve => {
-    chrome.storage.local.get('purchases', data => {
-      resolve(data.purchases || {});
-    });
-  });
-}
 
 function loadArray(key, path) {
   return new Promise(async resolve => {
