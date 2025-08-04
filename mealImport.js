@@ -6,6 +6,7 @@ import { loadDensityMap, saveDensityMap } from './utils/unitNormalize.js';
 import { loadItemSeasons, saveItemSeasons } from './utils/seasonData.js';
 import { WEEKS_PER_MONTH } from './utils/constants.js';
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
+import { loadArrayWithFallback, loadArray, saveArray } from './utils/itemRegistry.js';
 
 // Paths for inventory data used when adding new items
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -23,43 +24,18 @@ const DEFAULT_ITEM = {
   category: 'mass import'
 };
 
-function loadArray(key, path) {
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      if (data[key]) {
-        resolve(data[key]);
-      } else {
-        const arr = await loadJSON(path);
-        resolve(arr);
-      }
-    });
-  });
-}
-
-const loadNeeds = () => loadArray('yearlyNeeds', YEARLY_NEEDS_PATH);
-const loadConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
-const loadStock = () => loadArray('currentStock', STOCK_PATH);
-const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
-const loadStoreSelections = () => loadArray(STORE_SELECTION_KEY, STORE_SELECTION_PATH);
+const loadNeeds = () => loadArrayWithFallback('yearlyNeeds', YEARLY_NEEDS_PATH);
+const loadConsumption = () => loadArrayWithFallback('monthlyConsumption', CONSUMPTION_PATH);
+const loadStock = () => loadArrayWithFallback('currentStock', STOCK_PATH);
+const loadExpiration = () => loadArrayWithFallback('expirationData', EXPIRATION_PATH);
+const loadStoreSelections = () => loadArrayWithFallback(STORE_SELECTION_KEY, STORE_SELECTION_PATH);
 
 
-function loadConsumed() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get('consumedThisYear', async data => {
-      if (data.consumedThisYear) {
-        resolve(data.consumedThisYear);
-      } else {
-        const needs = await loadNeeds();
-        resolve(needs.map(n => ({ name: n.name, amount: 0, unit: n.home_unit })));
-      }
-    });
-  });
-}
-
-function save(key, value) {
-  return new Promise(resolve => {
-    chrome.storage.local.set({ [key]: value }, () => resolve());
-  });
+async function loadConsumed() {
+  const arr = await loadArray('consumedThisYear');
+  if (arr.length > 0) return arr;
+  const needs = await loadNeeds();
+  return needs.map(n => ({ name: n.name, amount: 0, unit: n.home_unit }));
 }
 
 function getCurrentWeek() {
@@ -123,12 +99,12 @@ async function ensureItemExists(name) {
   itemSeasons[name] = [];
 
   await Promise.all([
-    save('yearlyNeeds', needs),
-    save('monthlyConsumption', consumption),
-    save('currentStock', stock),
-    save('expirationData', expiration),
-    save('consumedThisYear', consumed),
-    save(STORE_SELECTION_KEY, storeSelections),
+    saveArray('yearlyNeeds', needs),
+    saveArray('monthlyConsumption', consumption),
+    saveArray('currentStock', stock),
+    saveArray('expirationData', expiration),
+    saveArray('consumedThisYear', consumed),
+    saveArray(STORE_SELECTION_KEY, storeSelections),
     savePurchases(purchases),
     saveDensityMap(densityMap),
     saveItemSeasons(itemSeasons)

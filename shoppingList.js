@@ -1,11 +1,9 @@
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
+import { loadArray } from './utils/itemRegistry.js';
 
-function loadCommitItems() {
-  return new Promise(resolve => {
-    chrome.storage.local.get('lastCommitItems', data => {
-      resolve(data.lastCommitItems || []);
-    });
-  });
+async function loadCommitItems() {
+  const arr = await loadArray('lastCommitItems');
+  return arr.map(({ name, ...rest }) => ({ ...rest, item: name }));
 }
 
 
@@ -122,10 +120,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (confirmBtn) {
     confirmBtn.addEventListener('click', async () => {
       const purchases = await loadPurchases();
-      const data = await new Promise(resolve =>
-        chrome.storage.local.get(['lastCommitItems', 'pendingCommitWeek'], resolve)
-      );
-      const { lastCommitItems = [], pendingCommitWeek } = data;
+      const [lastCommitItems, pendingCommitWeek] = await Promise.all([
+        loadCommitItems(),
+        new Promise(resolve =>
+          chrome.storage.local.get('pendingCommitWeek', d => resolve(d.pendingCommitWeek))
+        )
+      ]);
       if (pendingCommitWeek == null) {
         window.close();
         return;

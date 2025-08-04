@@ -17,6 +17,7 @@ import {
   loadUserCategoryDays,
   loadUserPriceThresholds
 } from './userData.js';
+import { saveArray, saveObject, loadArray, loadObject } from './itemRegistry.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 
@@ -171,16 +172,11 @@ export async function calculateAndSaveMealNeeds() {
     name,
     total_needed_year
   }));
-  await new Promise(resolve => {
-    chrome.storage.local.set(
-      {
-        mealPlanMonthly: monthlyArr,
-        mealPlanYearly: yearlyArr,
-        mealPlanMonthlyBreakdown: monthlyBreakdown
-      },
-      () => resolve()
-    );
-  });
+  await Promise.all([
+    saveArray('mealPlanMonthly', monthlyArr),
+    saveArray('mealPlanYearly', yearlyArr),
+    saveObject('mealPlanMonthlyBreakdown', monthlyBreakdown)
+  ]);
 
   // build prepared and What To Eat calendars
   const cookingDays = await loadCookingDays();
@@ -249,16 +245,9 @@ export async function calculateAndSaveMealNeeds() {
 }
 
 export function loadMealPlanData() {
-  return new Promise(resolve => {
-    chrome.storage.local.get(
-      ['mealPlanMonthly', 'mealPlanYearly', 'mealPlanMonthlyBreakdown'],
-      data => {
-        resolve({
-          monthly: data.mealPlanMonthly || [],
-          yearly: data.mealPlanYearly || [],
-          breakdown: data.mealPlanMonthlyBreakdown || {}
-        });
-      }
-    );
-  });
+  return Promise.all([
+    loadArray('mealPlanMonthly'),
+    loadArray('mealPlanYearly'),
+    loadObject('mealPlanMonthlyBreakdown')
+  ]).then(([monthly, yearly, breakdown]) => ({ monthly, yearly, breakdown }));
 }
