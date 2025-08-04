@@ -3,6 +3,11 @@ import { loadDensityMap, saveDensityMap } from './utils/unitNormalize.js';
 import { loadItemSeasons, saveItemSeasons } from './utils/seasonData.js';
 import { WEEKS_PER_MONTH } from './utils/constants.js';
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
+import {
+  getItemId,
+  convertArrayToIds,
+  convertObjectKeysToIds
+} from './utils/itemStorage.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -189,7 +194,17 @@ async function commit() {
   }
   const densityRatio = parseRatio(ratioText);
 
-  const [needs, consumption, stock, expiration, consumed, storeSelections, purchases, densityMap, itemSeasons] = await Promise.all([
+  const [
+    needsRaw,
+    consumptionRaw,
+    stockRaw,
+    expirationRaw,
+    consumedRaw,
+    storeSelectionsRaw,
+    purchasesRaw,
+    densityMapRaw,
+    itemSeasonsRaw
+  ] = await Promise.all([
     loadNeeds(),
     loadConsumption(),
     loadStock(),
@@ -201,23 +216,45 @@ async function commit() {
     loadItemSeasons()
   ]);
 
+  const [
+    needs,
+    consumption,
+    stock,
+    expiration,
+    consumed,
+    storeSelections
+  ] = await Promise.all([
+    convertArrayToIds(needsRaw),
+    convertArrayToIds(consumptionRaw),
+    convertArrayToIds(stockRaw),
+    convertArrayToIds(expirationRaw),
+    convertArrayToIds(consumedRaw),
+    convertArrayToIds(storeSelectionsRaw)
+  ]);
+
+  const purchases = await convertObjectKeysToIds(purchasesRaw);
+  const densityMap = await convertObjectKeysToIds(densityMapRaw);
+  const itemSeasons = await convertObjectKeysToIds(itemSeasonsRaw);
+
+  const id = await getItemId(name);
+
   needs.push({
-    name,
+    id,
     total_needed_year: yearly,
     home_unit: unit,
     treat_as_whole_unit: whole,
     category
   });
-  consumption.push({ name, monthly_consumption: monthly, unit });
+  consumption.push({ id, monthly_consumption: monthly, unit });
   // keep item in currentStock list without treating the initial quantity
   // as starting stock (which would create a week 1 purchase)
-  stock.push({ name, amount: 0, unit });
-  expiration.push({ name, shelf_life_months: shelf });
-  consumed.push({ name, amount: 0, unit });
+  stock.push({ id, amount: 0, unit });
+  expiration.push({ id, shelf_life_months: shelf });
+  consumed.push({ id, amount: 0, unit });
 
   storeSelections.push(
     {
-      name,
+      id,
       store: 'Stop & Shop',
       price: null,
       convertedQty: null,
@@ -226,7 +263,7 @@ async function commit() {
       image: null
     },
     {
-      name,
+      id,
       store: 'Walmart',
       price: null,
       convertedQty: null,
@@ -235,7 +272,7 @@ async function commit() {
       image: null
     },
     {
-      name,
+      id,
       store: 'Amazon',
       price: null,
       convertedQty: null,
@@ -244,7 +281,7 @@ async function commit() {
       image: null
     },
     {
-      name,
+      id,
       store: 'Shaws',
       price: null,
       convertedQty: null,
@@ -253,7 +290,7 @@ async function commit() {
       image: null
     },
     {
-      name,
+      id,
       store: 'Roche Bros',
       price: null,
       convertedQty: null,
@@ -262,7 +299,7 @@ async function commit() {
       image: null
     },
     {
-      name,
+      id,
       store: 'Hannaford',
       price: null,
       convertedQty: null,
@@ -272,10 +309,10 @@ async function commit() {
     }
   );
 
-  densityMap[name] = { convert: false, ratio: densityRatio };
+  densityMap[id] = { convert: false, ratio: densityRatio };
 
-  if (!purchases[name]) purchases[name] = [];
-  purchases[name].push({
+  if (!purchases[id]) purchases[id] = [];
+  purchases[id].push({
     purchase_week: week,
     quantity_purchased: stockAmt,
     date_added: new Date().toISOString()
@@ -290,7 +327,7 @@ async function commit() {
       return null;
     })
     .filter(Boolean);
-  itemSeasons[name] = seasons;
+  itemSeasons[id] = seasons;
 
   await Promise.all([
     save('yearlyNeeds', needs),
