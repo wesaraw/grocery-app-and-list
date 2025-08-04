@@ -102,13 +102,7 @@ export function saveCookingDays(obj) {
 export function loadMealsDict() {
   return new Promise(resolve => {
     chrome.storage.local.get('meals', data => {
-      const map = data.meals || {};
-      Object.entries(map).forEach(([id, val]) => {
-        if (typeof val === 'string') {
-          map[id] = { name: val };
-        }
-      });
-      resolve(map);
+      resolve(data.meals || {});
     });
   });
 }
