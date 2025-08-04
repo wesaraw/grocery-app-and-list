@@ -9,6 +9,7 @@ import {
   renderItemsWithCategoryHeaders
 } from './utils/sortByCategory.js';
 import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from "./utils/priceUtils.js";
+import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
@@ -18,17 +19,6 @@ const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
 const CONSUMED_PATH = 'consumedThisYear';
 
-async function loadPurchases() {
-  return new Promise(resolve => {
-    try {
-      chrome.storage.local.get('purchases', data => {
-        resolve(data.purchases || {});
-      });
-    } catch (e) {
-      resolve({});
-    }
-  });
-}
 
 function loadArray(key, path) {
   return new Promise(async resolve => {
@@ -906,11 +896,6 @@ async function loadCommitData(itemName) {
 
 
 
-async function savePurchases(map) {
-  return new Promise(resolve => {
-    chrome.storage.local.set({ purchases: map }, () => resolve());
-  });
-}
 
 async function commitSelections() {
   const purchases = await loadPurchases();
@@ -989,6 +974,7 @@ async function commitSelections() {
       packs: packsToBuy
     });
   }
+  await savePurchases(purchases);
 
   chrome.storage.local.set({
     lastCommitItems: commitItems,
