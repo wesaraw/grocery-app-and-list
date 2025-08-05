@@ -954,9 +954,11 @@ async function init() {
   }
   await loadAndRender();
 
-  chrome.storage.onChanged.addListener((changes, area) => {
+  chrome.storage.onChanged.addListener(async (changes, area) => {
     if (area === 'local' && changes.currentStock) {
-      const newStock = changes.currentStock.newValue || [];
+      const newStock = await convertArrayToNames(
+        changes.currentStock.newValue || []
+      );
       inventorySet = new Set(newStock.map(s => canonicalName(s.name)));
       updateInventoryDisplay();
     }
