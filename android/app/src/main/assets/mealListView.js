@@ -8,6 +8,7 @@ import { parseQuantity } from './utils/calendarUtils.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
+import { getItemId } from './utils/itemRegistry.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -24,10 +25,14 @@ const deleteButtons = [];
 let needsMap = new Map();
 let densityMap = {};
 
-function loadFinalProduct(item) {
+async function loadFinalProduct(item) {
+  const id = await getItemId(item);
   return new Promise(resolve => {
-    const key = `final_product_${encodeURIComponent(item)}`;
-    chrome.storage.local.get([key], data => resolve(data[key] || null));
+    const idKey = `final_product_${id}`;
+    const nameKey = `final_product_${encodeURIComponent(item)}`;
+    chrome.storage.local.get([idKey, nameKey], data => {
+      resolve(data[idKey] || data[nameKey] || null);
+    });
   });
 }
 

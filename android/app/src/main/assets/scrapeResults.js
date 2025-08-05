@@ -2,7 +2,12 @@ import { loadJSON } from './utils/dataLoader.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from "./utils/priceUtils.js";
-import { loadArray, loadArrayWithFallback, getItemId } from './utils/itemRegistry.js';
+import {
+  loadArray,
+  loadArrayWithFallback,
+  getItemId,
+  loadObject
+} from './utils/itemRegistry.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -198,13 +203,7 @@ async function storageKey(type, item, store) {
   return `${type}_${id}_${encodeURIComponent(store)}`;
 }
 
-function loadCoupons() {
-  return new Promise(resolve => {
-    chrome.storage.local.get('coupons', data => {
-      resolve(data.coupons || {});
-    });
-  });
-}
+const loadCoupons = () => loadObject('coupons');
 
 function getCurrentWeek() {
   const start = new Date(new Date().getFullYear(), 0, 1);
