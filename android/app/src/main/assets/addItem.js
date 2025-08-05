@@ -2,6 +2,7 @@ import { loadJSON } from './utils/dataLoader.js';
 import { loadDensityMap, saveDensityMap } from './utils/unitNormalize.js';
 import { WEEKS_PER_MONTH } from './utils/constants.js';
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
+import { loadArray, loadArrayWithFallback, saveArray } from './utils/itemRegistry.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -21,7 +22,6 @@ function monthsFromWeeks(weeks) {
   return weeks / WEEKS_PER_MONTH;
 }
 
-const DENSITY_KEY = "densityRatios";
 const STORE_LINKS = {
   'Stop & Shop': name =>
     `https://stopandshop.com/product-search/${name
@@ -65,43 +65,18 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-function loadArray(key, path) {
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      if (data[key]) {
-        resolve(data[key]);
-      } else {
-        const arr = await loadJSON(path);
-        resolve(arr);
-      }
-    });
-  });
-}
-
-const loadNeeds = () => loadArray('yearlyNeeds', YEARLY_NEEDS_PATH);
-const loadConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
-const loadStock = () => loadArray('currentStock', STOCK_PATH);
-const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
-const loadStoreSelections = () => loadArray(STORE_SELECTION_KEY, STORE_SELECTION_PATH);
+const loadNeeds = () => loadArrayWithFallback('yearlyNeeds', YEARLY_NEEDS_PATH);
+const loadConsumption = () => loadArrayWithFallback('monthlyConsumption', CONSUMPTION_PATH);
+const loadStock = () => loadArrayWithFallback('currentStock', STOCK_PATH);
+const loadExpiration = () => loadArrayWithFallback('expirationData', EXPIRATION_PATH);
+const loadStoreSelections = () => loadArrayWithFallback(STORE_SELECTION_KEY, STORE_SELECTION_PATH);
 
 
-function loadConsumed() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get('consumedThisYear', async data => {
-      if (data.consumedThisYear) {
-        resolve(data.consumedThisYear);
-      } else {
-        const needs = await loadNeeds();
-        resolve(needs.map(n => ({ name: n.name, amount: 0, unit: n.home_unit })));
-      }
-    });
-  });
-}
-
-function save(key, value) {
-  return new Promise(resolve => {
-    chrome.storage.local.set({ [key]: value }, () => resolve());
-  });
+async function loadConsumed() {
+  const existing = await loadArray('consumedThisYear');
+  if (existing.length > 0) return existing;
+  const needs = await loadNeeds();
+  return needs.map(n => ({ name: n.name, amount: 0, unit: n.home_unit }));
 }
 
 function highlightError(el) {
@@ -248,12 +223,12 @@ async function commit() {
   });
 
   await Promise.all([
-    save('yearlyNeeds', needs),
-    save('monthlyConsumption', consumption),
-    save('currentStock', stock),
-    save('expirationData', expiration),
-    save('consumedThisYear', consumed),
-    save(STORE_SELECTION_KEY, storeSelections),
+    saveArray('yearlyNeeds', needs),
+    saveArray('monthlyConsumption', consumption),
+    saveArray('currentStock', stock),
+    saveArray('expirationData', expiration),
+    saveArray('consumedThisYear', consumed),
+    saveArray(STORE_SELECTION_KEY, storeSelections),
     savePurchases(purchases),
     saveDensityMap(densityMap)
   ]);

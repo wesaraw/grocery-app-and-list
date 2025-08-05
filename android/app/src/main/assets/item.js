@@ -1,8 +1,8 @@
-import { loadJSON } from './utils/dataLoader.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
+import { getItemId, loadArray, loadArrayWithFallback } from './utils/itemRegistry.js';
 
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
 const STORE_SELECTION_KEY = 'storeSelections';
@@ -14,8 +14,9 @@ const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.jso
 const PLACEHOLDER_IMG =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><rect width='100%' height='100%' fill='%23ccc'/></svg>";
 
-function key(type, item, store) {
-  return `${type}_${encodeURIComponent(item)}_${encodeURIComponent(store)}`;
+async function key(type, item, store) {
+  const id = await getItemId(item);
+  return `${type}_${id}_${encodeURIComponent(store)}`;
 }
 
 function getStorage(keys) {
@@ -30,42 +31,12 @@ function setStorage(obj) {
   });
 }
 
-async function loadStoreSelections() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get(STORE_SELECTION_KEY, async data => {
-      if (data[STORE_SELECTION_KEY]) {
-        resolve(data[STORE_SELECTION_KEY]);
-      } else {
-        const arr = await loadJSON(STORE_SELECTION_PATH);
-        resolve(arr);
-      }
-    });
-  });
-}
+const loadStoreSelections = () => loadArrayWithFallback(STORE_SELECTION_KEY, STORE_SELECTION_PATH);
 
-function loadArray(key, path) {
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      if (data[key]) {
-        resolve(data[key]);
-      } else {
-        const arr = await loadJSON(path);
-        resolve(arr);
-      }
-    });
-  });
-}
+const loadMealPlanMonth = () => loadArray('mealPlanMonthly');
 
-function loadStoredArray(key) {
-  return new Promise(resolve => {
-    chrome.storage.local.get(key, data => resolve(data[key] || []));
-  });
-}
-
-const loadMealPlanMonth = () => loadStoredArray('mealPlanMonthly');
-
-const loadNeeds = () => loadArray('yearlyNeeds', YEARLY_NEEDS_PATH);
-const loadConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
+const loadNeeds = () => loadArrayWithFallback('yearlyNeeds', YEARLY_NEEDS_PATH);
+const loadConsumption = () => loadArrayWithFallback('monthlyConsumption', CONSUMPTION_PATH);
 
 let needsData = [];
 let consumptionMap = new Map();
@@ -274,13 +245,13 @@ async function getStoreEntries(itemName) {
 }
 
 async function loadSelected(item, store) {
-  const k = key('selected', item, store);
+  const k = await key('selected', item, store);
   const data = await getStorage([k]);
   return data[k] || null;
 }
 
 async function loadScraped(item, store) {
-  const k = key('scraped', item, store);
+  const k = await key('scraped', item, store);
   const data = await getStorage([k]);
   return data[k] || [];
 }
@@ -312,14 +283,16 @@ async function buildWeightPackMap(item, stores) {
 
 
 async function loadFinal(item) {
-  const k = `final_${encodeURIComponent(item)}`;
+  const id = await getItemId(item);
+  const k = `final_${id}`;
   const data = await getStorage([k]);
   return data[k] || null;
 }
 
 async function saveFinal(item, store, product) {
-  const storeKey = `final_${encodeURIComponent(item)}`;
-  const productKey = `final_product_${encodeURIComponent(item)}`;
+  const id = await getItemId(item);
+  const storeKey = `final_${id}`;
+  const productKey = `final_product_${id}`;
   const existingData = await getStorage([productKey]);
   const existingProd = existingData[productKey] || null;
 
