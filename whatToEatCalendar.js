@@ -8,19 +8,12 @@ import { openOrFocusWindow } from './utils/windowUtils.js';
 import {
   getItemId,
   convertArrayToNames,
-  loadArrayWithFallback
+  loadArrayWithFallback,
+  loadObject
 } from './utils/itemRegistry.js';
 
 function loadCalendar() {
-  return new Promise(resolve => {
-    try {
-      chrome.storage.local.get('whatToEatCalendar', data => {
-        resolve(data.whatToEatCalendar || {});
-      });
-    } catch (e) {
-      resolve({});
-    }
-  });
+  return loadObject('whatToEatCalendar');
 }
 
 function loadColumnOrder() {
@@ -101,10 +94,11 @@ async function loadAllMeals() {
   const types = Object.keys(MEAL_TYPES);
   for (const type of types) {
     const meals = await loadMeals(type);
-    meals.forEach(m => {
-      const id = m.id || m.name;
-      mealMap[id] = m;
-    });
+    for (const m of meals) {
+      const id = m.id || (m.name ? await getItemId(m.name) : null);
+      if (id) m.id = id;
+      mealMap[id || m.name] = m;
+    }
   }
 }
 

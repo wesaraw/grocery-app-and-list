@@ -1,6 +1,6 @@
 import { loadUsers } from './utils/userData.js';
 import { MEAL_TYPES, DEFAULT_MEALS_PER_DAY, loadMealsPerDay, initializeMealCategories } from './utils/mealData.js';
-import { loadJSON } from './utils/dataLoader.js';
+import { getItemId, loadArrayWithFallback } from './utils/itemRegistry.js';
 
 function getCurrentWeek() {
   const start = new Date(new Date().getFullYear(), 0, 1);
@@ -8,40 +8,70 @@ function getCurrentWeek() {
   return Math.ceil(((today - start) / 86400000 + start.getDay() + 1) / 7);
 }
 
-function loadMeals(type) {
+async function loadMeals(type) {
   const { key, path } = MEAL_TYPES[type];
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      let arr = data[key];
-      if (!arr) arr = await loadJSON(path);
-      if (Array.isArray(arr)) {
-        arr.forEach(m => {
-          if (m.prepared === undefined) m.prepared = false;
-          if (m.prepAhead === undefined) m.prepAhead = false;
-          if (m.recipeBook === undefined) m.recipeBook = '';
-        });
-      }
-      resolve(arr || []);
-    });
-  });
+  let arr = await loadArrayWithFallback(key, path);
+  if (Array.isArray(arr)) {
+    for (const m of arr) {
+      if (m.prepared === undefined) m.prepared = false;
+      if (m.prepAhead === undefined) m.prepAhead = false;
+      if (m.recipeBook === undefined) m.recipeBook = '';
+      if (!m.id && m.name) m.id = await getItemId(m.name);
+    }
+  }
+  return arr || [];
 }
 
 function loadMealSlots() {
   return new Promise(resolve => {
-    chrome.storage.local.get('mealSlots', data => {
+    chrome.storage.local.get('mealSlots', async data => {
       const week = getCurrentWeek();
       let slots = data.mealSlots || { week, users: {} };
+      let changed = false;
       if (slots.week !== week) {
         slots = { week, users: {} };
+      } else {
+        for (const rec of Object.values(slots.users)) {
+          for (const cat of Object.keys(rec)) {
+            const obj = rec[cat] || {};
+            const converted = {};
+            for (const [name, val] of Object.entries(obj)) {
+              if (isNaN(parseInt(name, 10))) {
+                const id = await getItemId(name);
+                converted[id] = val;
+                changed = true;
+              } else {
+                converted[name] = val;
+              }
+            }
+            rec[cat] = converted;
+          }
+        }
       }
+      if (changed) await saveMealSlots(slots);
       resolve(slots);
     });
   });
 }
 
-function saveMealSlots(slots) {
+async function saveMealSlots(slots) {
+  const stored = { week: slots.week, users: {} };
+  for (const [user, rec] of Object.entries(slots.users || {})) {
+    stored.users[user] = {};
+    for (const [cat, obj] of Object.entries(rec || {})) {
+      const converted = {};
+      for (const [name, val] of Object.entries(obj || {})) {
+        let id = name;
+        if (isNaN(parseInt(name, 10))) {
+          id = await getItemId(name);
+        }
+        converted[id] = val;
+      }
+      stored.users[user][cat] = converted;
+    }
+  }
   return new Promise(resolve => {
-    chrome.storage.local.set({ mealSlots: slots }, () => resolve());
+    chrome.storage.local.set({ mealSlots: stored }, () => resolve());
   });
 }
 
@@ -125,7 +155,7 @@ async function init() {
 
     meals.forEach(meal => {
       if (usesMeal(meal, currentUser, users)) {
-        const consumedMeal = catSlots[meal.name] || 0;
+        const consumedMeal = catSlots[meal.id] || 0;
         if (consumedMeal >= perMealLimit) return;
 
         const btn = document.createElement('button');
@@ -134,7 +164,7 @@ async function init() {
           slots = await loadMealSlots();
           const rec = (slots.users[userName] = slots.users[userName] || {});
           const sub = (rec[type] = rec[type] || {});
-          sub[meal.name] = (sub[meal.name] || 0) + 1;
+          sub[meal.id] = (sub[meal.id] || 0) + 1;
           await saveMealSlots(slots);
           renderMeals();
         });

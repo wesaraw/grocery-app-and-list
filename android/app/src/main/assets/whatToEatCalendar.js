@@ -4,20 +4,16 @@ import {
   loadMealsPerDay
 } from './utils/mealData.js';
 import { loadUsers } from './utils/userData.js';
-import { loadJSON } from './utils/dataLoader.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
-import { getItemId } from './utils/itemRegistry.js';
+import {
+  getItemId,
+  convertArrayToNames,
+  loadArrayWithFallback,
+  loadObject
+} from './utils/itemRegistry.js';
 
 function loadCalendar() {
-  return new Promise(resolve => {
-    try {
-      chrome.storage.local.get('whatToEatCalendar', data => {
-        resolve(data.whatToEatCalendar || {});
-      });
-    } catch (e) {
-      resolve({});
-    }
-  });
+  return loadObject('whatToEatCalendar');
 }
 
 function loadColumnOrder() {
@@ -81,30 +77,28 @@ function setMealImage(imgEl, meal) {
   });
 }
 
-function loadMeals(type) {
+async function loadMeals(type) {
   const { key, path } = MEAL_TYPES[type];
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      let arr = data[key];
-      if (!arr) arr = await loadJSON(path);
-      if (Array.isArray(arr)) {
-        arr.forEach(m => {
-          if (m.prepared === undefined) m.prepared = false;
-        });
-      }
-      resolve(arr || []);
-    });
-  });
+  let arr = await loadArrayWithFallback(key, path);
+  if (Array.isArray(arr)) {
+    for (const m of arr) {
+      if (m.prepared === undefined) m.prepared = false;
+      if (m.recipeBook === undefined) m.recipeBook = '';
+      m.ingredients = await convertArrayToNames(m.ingredients || []);
+    }
+  }
+  return arr || [];
 }
 
 async function loadAllMeals() {
   const types = Object.keys(MEAL_TYPES);
   for (const type of types) {
     const meals = await loadMeals(type);
-    meals.forEach(m => {
-      const id = m.id || m.name;
-      mealMap[id] = m;
-    });
+    for (const m of meals) {
+      const id = m.id || (m.name ? await getItemId(m.name) : null);
+      if (id) m.id = id;
+      mealMap[id || m.name] = m;
+    }
   }
 }
 
