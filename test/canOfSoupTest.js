@@ -2,16 +2,67 @@ import fs from 'fs';
 import { pathToFileURL } from 'url';
 import { calculatePurchaseNeeds } from '../utils/purchaseCalculator.js';
 import { initUomTable } from '../utils/uomConverter.js';
+import {
+  convertArrayToIds,
+  convertArrayToNames,
+  convertObjectKeysToIds
+} from '../utils/itemRegistry.js';
 
+const storage = {};
 global.chrome = {
   runtime: { getURL: p => pathToFileURL(process.cwd() + '/' + p).href },
-  storage: { local: { get: (_k, cb) => cb({}), set: (_o, cb) => cb() } }
+  storage: {
+    local: {
+      get: (key, cb) => {
+        if (key == null) return cb({});
+        if (typeof key === 'string') return cb({ [key]: storage[key] });
+        cb({});
+      },
+      set: (obj, cb) => {
+        Object.assign(storage, obj);
+        cb();
+      }
+    }
+  }
 };
 
 global.fetch = async url => ({ json: async () => JSON.parse(fs.readFileSync(new URL(url), 'utf8')) });
 
 await initUomTable();
 const data = JSON.parse(fs.readFileSync('grocery_backup (44).txt', 'utf8'));
+
+async function convertItems(d) {
+  d.yearlyNeeds = await convertArrayToNames(await convertArrayToIds(d.yearlyNeeds));
+  d.monthlyConsumption = await convertArrayToNames(
+    await convertArrayToIds(d.monthlyConsumption)
+  );
+  d.currentStock = await convertArrayToNames(await convertArrayToIds(d.currentStock));
+  d.expirationData = await convertArrayToNames(
+    await convertArrayToIds(d.expirationData)
+  );
+  d.consumedThisYear = await convertArrayToNames(
+    await convertArrayToIds(d.consumedThisYear)
+  );
+  d.mealPlanYearly = await convertArrayToNames(
+    await convertArrayToIds(d.mealPlanYearly)
+  );
+  d.purchases = await convertObjectKeysToIds(d.purchases || {});
+  const mealKeys = ['breakfastMeals', 'lunchDinnerMeals', 'snackMeals', 'dessertMeals'];
+  for (const key of mealKeys) {
+    if (Array.isArray(d[key])) {
+      for (const m of d[key]) {
+        if (Array.isArray(m.ingredients)) {
+          m.ingredients = await convertArrayToNames(
+            await convertArrayToIds(m.ingredients)
+          );
+        }
+      }
+    }
+  }
+  return d;
+}
+
+await convertItems(data);
 
 function buildMealsByCategory(d) {
   const result = {};

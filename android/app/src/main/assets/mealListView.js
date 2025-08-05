@@ -8,7 +8,12 @@ import { parseQuantity } from './utils/calendarUtils.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
-import { getItemId } from './utils/itemRegistry.js';
+import {
+  getItemId,
+  loadArrayWithFallback,
+  convertArrayToNames,
+  convertArrayToIds
+} from './utils/itemRegistry.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -78,11 +83,14 @@ function loadMeals() {
       let arr = data[key];
       if (!arr) arr = await loadJSON(path);
       if (Array.isArray(arr)) {
-        arr.forEach(m => {
+        for (const m of arr) {
+          if (Array.isArray(m.ingredients)) {
+            m.ingredients = await convertArrayToNames(m.ingredients);
+          }
           if (m.prepared === undefined) m.prepared = false;
           if (m.prepAhead === undefined) m.prepAhead = false;
           if (m.recipeBook === undefined) m.recipeBook = '';
-        });
+        }
       }
       resolve(arr || []);
     });
@@ -90,34 +98,24 @@ function loadMeals() {
 }
 
 function loadStock() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get('currentStock', async data => {
-      if (data.currentStock) {
-        resolve(data.currentStock);
-      } else {
-        const stock = await loadJSON(STOCK_PATH);
-        resolve(stock);
-      }
-    });
-  });
+  return loadArrayWithFallback('currentStock', STOCK_PATH);
 }
 
 function loadNeeds() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get('yearlyNeeds', async data => {
-      if (data.yearlyNeeds) {
-        resolve(data.yearlyNeeds);
-      } else {
-        const arr = await loadJSON(NEEDS_PATH);
-        resolve(arr);
-      }
-    });
-  });
+  return loadArrayWithFallback('yearlyNeeds', NEEDS_PATH);
 }
 
-function saveMeals(arr) {
+async function saveMeals(arr) {
+  const toStore = [];
+  for (const m of arr) {
+    const copy = { ...m };
+    if (Array.isArray(copy.ingredients)) {
+      copy.ingredients = await convertArrayToIds(copy.ingredients);
+    }
+    toStore.push(copy);
+  }
   return new Promise(resolve => {
-    chrome.storage.local.set({ [key]: arr }, () => resolve());
+    chrome.storage.local.set({ [key]: toStore }, () => resolve());
   });
 }
 
@@ -129,22 +127,33 @@ function loadMealsForType(cat) {
       let arr = data[info.key];
       if (!arr) arr = await loadJSON(info.path);
       if (Array.isArray(arr)) {
-        arr.forEach(m => {
+        for (const m of arr) {
+          if (Array.isArray(m.ingredients)) {
+            m.ingredients = await convertArrayToNames(m.ingredients);
+          }
           if (m.prepared === undefined) m.prepared = false;
           if (m.prepAhead === undefined) m.prepAhead = false;
           if (m.recipeBook === undefined) m.recipeBook = '';
-        });
+        }
       }
       resolve(arr || []);
     });
   });
 }
 
-function saveMealsForType(cat, arr) {
+async function saveMealsForType(cat, arr) {
   const info = MEAL_TYPES[cat];
   if (!info) return Promise.resolve();
+  const toStore = [];
+  for (const m of arr) {
+    const copy = { ...m };
+    if (Array.isArray(copy.ingredients)) {
+      copy.ingredients = await convertArrayToIds(copy.ingredients);
+    }
+    toStore.push(copy);
+  }
   return new Promise(resolve => {
-    chrome.storage.local.set({ [info.key]: arr }, () => resolve());
+    chrome.storage.local.set({ [info.key]: toStore }, () => resolve());
   });
 }
 
