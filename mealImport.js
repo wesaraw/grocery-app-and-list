@@ -6,7 +6,14 @@ import { loadDensityMap, saveDensityMap } from './utils/unitNormalize.js';
 import { loadItemSeasons, saveItemSeasons } from './utils/seasonData.js';
 import { WEEKS_PER_MONTH } from './utils/constants.js';
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
-import { loadArrayWithFallback, loadArray, saveArray } from './utils/itemRegistry.js';
+import {
+  loadArrayWithFallback,
+  loadArray,
+  saveArray,
+  getItemId,
+  convertArrayToNames,
+  convertArrayToIds
+} from './utils/itemRegistry.js';
 
 // Paths for inventory data used when adding new items
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -118,11 +125,12 @@ function loadMeals(category) {
       let arr = data[info.key];
       if (!arr) arr = await loadJSON(info.path);
       if (Array.isArray(arr)) {
-        arr.forEach(m => {
+        for (const m of arr) {
+          m.ingredients = await convertArrayToNames(m.ingredients || []);
           if (m.prepared === undefined) m.prepared = false;
           if (m.prepAhead === undefined) m.prepAhead = false;
           if (m.recipeBook === undefined) m.recipeBook = '';
-        });
+        }
       }
       resolve(arr || []);
     });
@@ -131,8 +139,13 @@ function loadMeals(category) {
 
 function saveMeals(category, arr) {
   const info = MEAL_TYPES[category] || MEAL_TYPES.lunchDinner;
-  return new Promise(resolve => {
-    chrome.storage.local.set({ [info.key]: arr }, () => resolve());
+  return new Promise(async resolve => {
+    const stored = [];
+    for (const m of arr) {
+      const ingredients = await convertArrayToIds(m.ingredients || []);
+      stored.push({ ...m, ingredients });
+    }
+    chrome.storage.local.set({ [info.key]: stored }, () => resolve());
   });
 }
 
@@ -172,6 +185,11 @@ async function addMeal(meal, userCount) {
   for (const ing of meal.ingredients) {
     await ensureItemExists(ing.name);
   }
+  const converted = [];
+  for (const ing of meal.ingredients) {
+    const id = await getItemId(ing.name);
+    converted.push({ id, amount: ing.amount, serving_size: ing.serving_size });
+  }
   let usersArr = meal.users || [];
   if (usersArr.length < userCount) {
     for (let i = usersArr.length; i < userCount; i++) usersArr.push(false);
@@ -182,7 +200,7 @@ async function addMeal(meal, userCount) {
   arr.push({
     name: meal.name,
     recipeBook: meal.recipeBook || '',
-    ingredients: meal.ingredients,
+    ingredients: converted,
     users: usersArr,
     people: usersArr.filter(Boolean).length,
     prepared: meal.prepared,

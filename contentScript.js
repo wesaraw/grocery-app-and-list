@@ -1102,8 +1102,10 @@ function scrapeHannaford() {
 }
 
 function runScrape(attempt = 0) {
-  chrome.storage.local.get('currentItemInfo', info => {
-    const { item = '', store = 'Stop & Shop' } = info.currentItemInfo || {};
+  chrome.storage.local.get('currentItemInfo', async info => {
+    const { itemId = '', store = 'Stop & Shop' } = info.currentItemInfo || {};
+    const { getItemName } = await import(chrome.runtime.getURL('utils/itemRegistry.js'));
+    const item = await getItemName(itemId);
     let data = [];
     if (store === 'Stop & Shop') {
       data = scrapeStopAndShop();
@@ -1122,7 +1124,7 @@ function runScrape(attempt = 0) {
       setTimeout(() => runScrape(attempt + 1), 1000);
       return;
     }
-    chrome.runtime.sendMessage({ type: 'scrapedData', item, store, products: data });
+    chrome.runtime.sendMessage({ type: 'scrapedData', itemId, store, products: data });
   });
 }
 
