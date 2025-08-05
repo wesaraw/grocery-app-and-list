@@ -1,40 +1,26 @@
 import { MEAL_TYPES, initializeMealCategories, loadCookingDays } from './utils/mealData.js';
 import { loadUsers } from './utils/userData.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
+import { loadObject, loadArrayWithFallback, getItemId } from './utils/itemRegistry.js';
 
 function loadCalendar() {
-  return new Promise(resolve => {
-    try {
-      chrome.storage.local.get('whatToEatCalendar', data => {
-        resolve(data.whatToEatCalendar || {});
-      });
-    } catch (e) {
-      resolve({});
-    }
-  });
+  return loadObject('whatToEatCalendar');
 }
 
 async function loadAllMeals() {
   const map = {};
   for (const type of Object.keys(MEAL_TYPES)) {
     const { key, path } = MEAL_TYPES[type];
-    await new Promise(res => {
-      chrome.storage.local.get(key, async data => {
-        let arr = data[key];
-        if (!arr) {
-          const resp = await fetch(path).catch(() => null);
-          arr = resp ? await resp.json().catch(() => []) : [];
-        }
-        if (Array.isArray(arr)) {
-          arr.forEach(m => {
-            if (m.prepared === undefined) m.prepared = false;
-            if (m.prepAhead === undefined) m.prepAhead = false;
-            map[m.id || m.name] = m;
-          });
-        }
-        res();
-      });
-    });
+    const arr = await loadArrayWithFallback(key, path);
+    if (Array.isArray(arr)) {
+      for (const m of arr) {
+        if (m.prepared === undefined) m.prepared = false;
+        if (m.prepAhead === undefined) m.prepAhead = false;
+        const id = m.id || (m.name ? await getItemId(m.name) : null);
+        if (id) m.id = id;
+        map[id || m.name] = m;
+      }
+    }
   }
   return map;
 }
