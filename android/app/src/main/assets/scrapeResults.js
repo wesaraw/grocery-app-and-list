@@ -257,9 +257,19 @@ function applyCoupon(prod, coupons, week, store) {
 }
 
 async function loadProducts(item, store) {
-  const key = await storageKey('scraped', item, store);
+  const idKey = await storageKey('scraped', item, store);
+  const legacyKey = `scraped_${encodeURIComponent(item)}_${encodeURIComponent(store)}`;
   return new Promise(resolve => {
-    chrome.storage.local.get([key], data => resolve(data[key] || []));
+    chrome.storage.local.get([idKey, legacyKey], data => {
+      if (data[legacyKey] && !data[idKey]) {
+        chrome.storage.local.set({ [idKey]: data[legacyKey] }, () => {
+          chrome.storage.local.remove(legacyKey, () => resolve(data[legacyKey] || []));
+        });
+      } else {
+        if (data[legacyKey]) chrome.storage.local.remove(legacyKey);
+        resolve(data[idKey] || []);
+      }
+    });
   });
 }
 

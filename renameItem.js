@@ -91,21 +91,15 @@ const save = (key, value) => saveArray(key, value);
 const saveOverrides = overrides => saveObject('consumptionOverrides', overrides);
 const saveHistory = history => saveObject('consumedHistory', history);
 
-function renameFinalKeys(oldName, id) {
+function renameFinalKeys(_oldName, id) {
   return new Promise(resolve => {
-    const oldFinal = `final_${encodeURIComponent(oldName)}`;
-    const oldProd = `final_product_${encodeURIComponent(oldName)}`;
     const idFinal = `final_${id}`;
     const idProd = `final_product_${id}`;
-    chrome.storage.local.get([oldFinal, oldProd, idFinal, idProd], data => {
+    chrome.storage.local.get([idFinal, idProd], data => {
       const setObj = {};
-      const storeVal = data[idFinal] ?? data[oldFinal];
-      const prodVal = data[idProd] ?? data[oldProd];
-      if (storeVal !== undefined) setObj[idFinal] = storeVal;
-      if (prodVal !== undefined) setObj[idProd] = prodVal;
-      chrome.storage.local.set(setObj, () => {
-        chrome.storage.local.remove([oldFinal, oldProd], resolve);
-      });
+      if (data[idFinal] !== undefined) setObj[idFinal] = data[idFinal];
+      if (data[idProd] !== undefined) setObj[idProd] = data[idProd];
+      chrome.storage.local.set(setObj, resolve);
     });
   });
 }

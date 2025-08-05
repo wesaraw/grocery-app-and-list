@@ -53,8 +53,8 @@ function loadStoredArray(key) {
 
 const loadMealPlanMonth = () => loadStoredArray('mealPlanMonthly');
 
-function key(type, item, store) {
-  return `${type}_${encodeURIComponent(item)}_${encodeURIComponent(store)}`;
+function key(type, itemId, store) {
+  return `${type}_${itemId}_${encodeURIComponent(store)}`;
 }
 
 async function loadStoreSelections() {
@@ -65,11 +65,18 @@ async function loadStoreSelections() {
 
 async function loadSelected(item, store) {
   const id = await getItemId(item);
-  const kId = key('selected', id, store);
-  const kName = key('selected', item, store);
+  const k = key('selected', id, store);
+  const legacy = `selected_${encodeURIComponent(item)}_${encodeURIComponent(store)}`;
   return new Promise(resolve => {
-    chrome.storage.local.get([kId, kName], data => {
-      resolve(data[kId] || data[kName] || null);
+    chrome.storage.local.get([k, legacy], data => {
+      if (data[legacy] && !data[k]) {
+        chrome.storage.local.set({ [k]: data[legacy] }, () => {
+          chrome.storage.local.remove(legacy, () => resolve(data[legacy]));
+        });
+      } else {
+        if (data[legacy]) chrome.storage.local.remove(legacy);
+        resolve(data[k] || null);
+      }
     });
   });
 }
