@@ -7,7 +7,8 @@ import {
   loadArrayWithFallback,
   saveArray,
   loadObjectWithFallback,
-  saveObject
+  saveObject,
+  getItemId
 } from './utils/itemRegistry.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -83,9 +84,12 @@ async function removeItem(name) {
     chrome.runtime.sendMessage({ type: 'inventory-updated' });
   } catch (_) {}
 
+  const id = await getItemId(name);
   chrome.storage.local.remove([
     `final_${encodeURIComponent(name)}`,
-    `final_product_${encodeURIComponent(name)}`
+    `final_product_${encodeURIComponent(name)}`,
+    `final_${id}`,
+    `final_product_${id}`
   ]);
 }
 

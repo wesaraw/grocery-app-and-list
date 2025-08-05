@@ -6,6 +6,7 @@ import {
 import { loadUsers } from './utils/userData.js';
 import { loadJSON } from './utils/dataLoader.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
+import { getItemId } from './utils/itemRegistry.js';
 
 function loadCalendar() {
   return new Promise(resolve => {
@@ -49,10 +50,14 @@ let columnOrder = {};
 let editMode = false;
 const mealMap = {};
 
-function loadFinalProduct(item) {
+async function loadFinalProduct(item) {
+  const id = await getItemId(item);
   return new Promise(resolve => {
-    const key = `final_product_${encodeURIComponent(item)}`;
-    chrome.storage.local.get([key], data => resolve(data[key] || null));
+    const idKey = `final_product_${id}`;
+    const nameKey = `final_product_${encodeURIComponent(item)}`;
+    chrome.storage.local.get([idKey, nameKey], data => {
+      resolve(data[idKey] || data[nameKey] || null);
+    });
   });
 }
 
