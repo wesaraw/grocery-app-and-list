@@ -5,7 +5,12 @@ import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
 import { loadPurchases } from './utils/purchaseStorage.js';
-import { loadArray as loadItemArray, getItemId } from './utils/itemRegistry.js';
+import {
+  loadArray as loadItemArray,
+  getItemId,
+  loadArrayWithFallback,
+  convertArrayToNames
+} from './utils/itemRegistry.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -88,20 +93,14 @@ function loadCalendar() {
   });
 }
 
-function loadMeals(type) {
+async function loadMeals(type) {
   const { key, path } = MEAL_TYPES[type];
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      let arr = data[key];
-      if (!arr) arr = await loadJSON(path);
-      if (Array.isArray(arr)) {
-        arr.forEach(m => {
-          if (m.prepared === undefined) m.prepared = false;
-        });
-      }
-      resolve(arr || []);
-    });
-  });
+  const meals = await loadArrayWithFallback(key, path);
+  for (const meal of meals) {
+    meal.ingredients = await convertArrayToNames(meal.ingredients || []);
+    if (meal.prepared === undefined) meal.prepared = false;
+  }
+  return meals;
 }
 
 async function loadMealsByCategory() {

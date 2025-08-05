@@ -17,7 +17,12 @@ import {
   loadUserCategoryDays,
   loadUserPriceThresholds
 } from './userData.js';
-import { saveArray, saveObject, loadArray, loadObject } from './itemRegistry.js';
+import {
+  saveArray,
+  saveObject,
+  loadArrayWithFallback,
+  convertArrayToNames
+} from './itemRegistry.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 
@@ -45,23 +50,16 @@ function parseQuantity(str) {
   return { value, unit };
 }
 
-function loadMeals(type) {
+async function loadMeals(type) {
   const { key, path } = MEAL_TYPES[type];
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      let arr = data[key];
-      if (!arr) {
-        arr = await loadJSON(path);
-      }
-      if (Array.isArray(arr)) {
-        arr.forEach(m => {
-          if (m.prepared === undefined) m.prepared = false;
-          if (m.weight === undefined) m.weight = 1;
-        });
-      }
-      resolve(arr || []);
-    });
-  });
+  const meals = await loadArrayWithFallback(key, path);
+  for (const meal of meals) {
+    meal.ingredients = await convertArrayToNames(meal.ingredients || []);
+    if (meal.prepared === undefined) meal.prepared = false;
+    if (meal.weight === undefined) meal.weight = 1;
+    if (meal.groupMeal === undefined) meal.groupMeal = false;
+  }
+  return meals;
 }
 
 export async function calculateAndSaveMealNeeds() {
