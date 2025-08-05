@@ -1,6 +1,11 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
+import {
+  convertArrayToNames,
+  convertArrayToIds,
+  getItemId
+} from './utils/itemRegistry.js';
 
 const params = new URLSearchParams(location.search);
 const mealType = params.get('type') || 'lunchDinner';
@@ -13,20 +18,30 @@ function loadMeals() {
       let arr = data[MEAL_KEY];
       if (!arr) arr = await loadJSON(MEAL_PATH);
       if (Array.isArray(arr)) {
-        arr.forEach(m => {
+        for (const m of arr) {
+          if (Array.isArray(m.ingredients)) {
+            m.ingredients = await convertArrayToNames(m.ingredients);
+          }
           if (m.prepared === undefined) m.prepared = false;
           if (m.prepAhead === undefined) m.prepAhead = false;
           if (m.recipeBook === undefined) m.recipeBook = '';
-        });
+        }
       }
       resolve(arr || []);
     });
   });
 }
 
-function saveMeals(arr) {
+async function saveMeals(arr) {
+  const stored = [];
+  for (const m of arr) {
+    const ing = Array.isArray(m.ingredients)
+      ? await convertArrayToIds(m.ingredients)
+      : m.ingredients;
+    stored.push({ ...m, ingredients: ing });
+  }
   return new Promise(resolve => {
-    chrome.storage.local.set({ [MEAL_KEY]: arr }, () => resolve());
+    chrome.storage.local.set({ [MEAL_KEY]: stored }, () => resolve());
   });
 }
 
@@ -168,11 +183,12 @@ async function init() {
     }
     document.getElementById('warning').style.display = 'none';
 
-    const ingredients = validRows.map(r => ({
-      name: r.ing,
-      amount: `${r.amt} ${r.unit}`,
-      serving_size: `${r.amt} ${r.unit}`
-    }));
+    const ingredients = [];
+    for (const r of validRows) {
+      const amount = `${r.amt} ${r.unit}`;
+      const id = await getItemId(r.ing);
+      ingredients.push({ id, amount, serving_size: amount });
+    }
 
     const meals = await loadMeals();
     meals.push({
