@@ -1,3 +1,5 @@
+import { loadArray, saveArray } from './itemRegistry.js';
+
 export const MEAL_TYPES = {
   breakfast: {
     key: 'breakfastMeals',
@@ -22,14 +24,9 @@ export const MEAL_TYPES = {
 };
 
 export async function initializeMealCategories() {
-  return new Promise(resolve => {
-    chrome.storage.local.get('mealCategories', data => {
-      const cats = data.mealCategories || [];
-      cats.forEach(cat => {
-        MEAL_TYPES[cat.id] = cat;
-      });
-      resolve();
-    });
+  const cats = await loadArray('mealCategories');
+  cats.forEach(cat => {
+    MEAL_TYPES[cat.id] = cat;
   });
 }
 
@@ -38,12 +35,10 @@ export async function addMealCategory(label) {
   if (!id) return null;
   const key = `${id}Meals`;
   const cat = { id, key, path: '', label };
-  const cats = await new Promise(resolve => {
-    chrome.storage.local.get('mealCategories', d => resolve(d.mealCategories || []));
-  });
+  const cats = await loadArray('mealCategories');
   if (!cats.find(c => c.id === id)) {
     cats.push(cat);
-    await new Promise(res => chrome.storage.local.set({ mealCategories: cats }, () => res()));
+    await saveArray('mealCategories', cats);
   }
   MEAL_TYPES[id] = cat;
   const mealsPerDay = await loadMealsPerDay();
@@ -51,11 +46,10 @@ export async function addMealCategory(label) {
     mealsPerDay[id] = 1;
     await saveMealsPerDay(mealsPerDay);
   }
-  await new Promise(res => chrome.storage.local.get(key, data => {
-    if (!data[key]) {
-      chrome.storage.local.set({ [key]: [] }, () => res());
-    } else res();
-  }));
+  const existing = await loadArray(key);
+  if (existing.length === 0) {
+    await saveArray(key, []);
+  }
   return cat;
 }
 
