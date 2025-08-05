@@ -1,3 +1,5 @@
+import { migrateItemRegistry } from './utils/itemRegistry.js';
+
 function exportData() {
   chrome.storage.local.get(null, data => {
     const json = JSON.stringify(data, null, 2);
@@ -14,7 +16,8 @@ function exportData() {
 function importFromText(text) {
   try {
     const data = JSON.parse(text);
-    chrome.storage.local.set(data, () => {
+    chrome.storage.local.set(data, async () => {
+      await migrateItemRegistry();
       alert('Import complete');
     });
   } catch (e) {

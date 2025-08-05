@@ -5,13 +5,30 @@ async function loadJSON(path) {
 }
 
 async function loadPurchases() {
-  const mod = await import('../../utils/purchaseStorage.js');
-  return mod.loadPurchases();
+  const [{ loadPurchasesById }, { getItemName }] = await Promise.all([
+    import('../../utils/purchaseStorage.js'),
+    import('../../utils/itemRegistry.js')
+  ]);
+  const byId = await loadPurchasesById();
+  const result = {};
+  for (const [id, value] of Object.entries(byId)) {
+    const name = await getItemName(id);
+    result[name] = value;
+  }
+  return result;
 }
 
 async function savePurchases(purchases) {
-  const mod = await import('../../utils/purchaseStorage.js');
-  return mod.savePurchases(purchases);
+  const [{ savePurchases: savePurchasesById }, { getItemId }] = await Promise.all([
+    import('../../utils/purchaseStorage.js'),
+    import('../../utils/itemRegistry.js')
+  ]);
+  const byId = {};
+  for (const [name, value] of Object.entries(purchases)) {
+    const id = await getItemId(name);
+    byId[id] = value;
+  }
+  return savePurchasesById(byId);
 }
 
 async function loadData() {
