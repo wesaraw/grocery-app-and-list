@@ -6,8 +6,8 @@ import {
 } from './utils/userData.js';
 import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
-import { loadJSON } from './utils/dataLoader.js';
 import { sortItemsByCategory } from './utils/sortByCategory.js';
+import { loadArrayWithFallback, convertArrayToNames } from './utils/itemRegistry.js';
 
 const btnContainer = document.getElementById('userButtons');
 const mealList = document.getElementById('mealList');
@@ -103,21 +103,19 @@ async function saveNameEdits() {
   renderButtons();
 }
 
-function loadMeals(type) {
+async function loadMeals(type) {
   const info = MEAL_TYPES[type];
   const { key, path } = info;
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      let arr = data[key];
-      if (!arr) arr = await loadJSON(path);
-      arr.forEach(m => {
-        if (!m.category) m.category = info.label;
-        if (m.prepared === undefined) m.prepared = false;
-        if (m.recipeBook === undefined) m.recipeBook = '';
-      });
-      resolve(arr);
-    });
-  });
+  const arr = await loadArrayWithFallback(key, path);
+  for (const m of arr) {
+    if (!m.category) m.category = info.label;
+    if (m.prepared === undefined) m.prepared = false;
+    if (m.recipeBook === undefined) m.recipeBook = '';
+    if (Array.isArray(m.ingredients)) {
+      m.ingredients = await convertArrayToNames(m.ingredients);
+    }
+  }
+  return arr;
 }
 
 async function loadAllMeals() {
