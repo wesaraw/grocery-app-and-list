@@ -1,34 +1,16 @@
-import { loadJSON } from './utils/dataLoader.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from "./utils/priceUtils.js";
+import { loadArray, loadArrayWithFallback, getItemId } from './utils/itemRegistry.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
 
-function loadArray(key, path) {
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      if (data[key]) {
-        resolve(data[key]);
-      } else {
-        const arr = await loadJSON(path);
-        resolve(arr);
-      }
-    });
-  });
-}
+const loadMealPlanMonth = () => loadArray('mealPlanMonthly');
 
-function loadStoredArray(key) {
-  return new Promise(resolve => {
-    chrome.storage.local.get(key, data => resolve(data[key] || []));
-  });
-}
-
-const loadMealPlanMonth = () => loadStoredArray('mealPlanMonthly');
-
-const loadNeeds = () => loadArray('yearlyNeeds', YEARLY_NEEDS_PATH);
-const loadMonthlyConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
+const loadNeeds = () => loadArrayWithFallback('yearlyNeeds', YEARLY_NEEDS_PATH);
+const loadMonthlyConsumption = () =>
+  loadArrayWithFallback('monthlyConsumption', CONSUMPTION_PATH);
 
 let needsData = [];
 let consumptionMap = new Map();
@@ -211,8 +193,9 @@ function monthlyCost(itemName, product) {
   return unitPrice * (cons.monthly_consumption || 0);
 }
 
-function storageKey(type, item, store) {
-  return `${type}_${encodeURIComponent(item)}_${encodeURIComponent(store)}`;
+async function storageKey(type, item, store) {
+  const id = await getItemId(item);
+  return `${type}_${id}_${encodeURIComponent(store)}`;
 }
 
 function loadCoupons() {
@@ -275,9 +258,12 @@ function applyCoupon(prod, coupons, week, store) {
 }
 
 function loadProducts(item, store) {
-  return new Promise(resolve => {
-    const key = storageKey('scraped', item, store);
-    chrome.storage.local.get([key], data => resolve(data[key] || []));
+  return new Promise(async resolve => {
+    const idKey = await storageKey('scraped', item, store);
+    const nameKey = `scraped_${encodeURIComponent(item)}_${encodeURIComponent(store)}`;
+    chrome.storage.local.get([idKey, nameKey], data => {
+      resolve(data[idKey] || data[nameKey] || []);
+    });
   });
 }
 
@@ -301,8 +287,8 @@ function buildWeightPackMap(products) {
 }
 
 function saveSelected(item, store, product) {
-  return new Promise(resolve => {
-    const key = storageKey('selected', item, store);
+  return new Promise(async resolve => {
+    const key = await storageKey('selected', item, store);
     chrome.storage.local.set({ [key]: product }, () => resolve());
   });
 }

@@ -1,4 +1,3 @@
-import { loadJSON } from './utils/dataLoader.js';
 import { sortItemsByCategory, renderItemsWithCategoryHeaders } from './utils/sortByCategory.js';
 import { canonicalName } from './utils/nameUtils.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
@@ -9,7 +8,11 @@ import {
   loadArrayWithFallback,
   saveArray,
   loadObjectWithFallback,
-  saveObject
+  saveObject,
+  getItemId,
+  renameItemInRegistry,
+  convertArrayToNames,
+  convertArrayToIds
 } from './utils/itemRegistry.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -55,13 +58,27 @@ const loadExpiration = () =>
 const loadStoreSelections = () =>
   loadArrayWithFallback(STORE_SELECTION_KEY, STORE_SELECTION_PATH);
 
-function loadMealsForType({ key, path }) {
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      let arr = data[key];
-      if (!arr) arr = await loadJSON(path);
-      resolve(arr || []);
-    });
+async function loadMealsForType({ key, path }) {
+  let arr = await loadArrayWithFallback(key, path);
+  if (Array.isArray(arr)) {
+    for (const m of arr) {
+      m.ingredients = await convertArrayToNames(m.ingredients || []);
+    }
+  }
+  return arr || [];
+}
+
+async function saveMealsForType(key, arr) {
+  const toStore = [];
+  for (const m of arr) {
+    const converted = {
+      ...m,
+      ingredients: await convertArrayToIds(m.ingredients || [])
+    };
+    toStore.push(converted);
+  }
+  return new Promise(resolve => {
+    chrome.storage.local.set({ [key]: toStore }, () => resolve());
   });
 }
 
@@ -74,18 +91,18 @@ const save = (key, value) => saveArray(key, value);
 const saveOverrides = overrides => saveObject('consumptionOverrides', overrides);
 const saveHistory = history => saveObject('consumedHistory', history);
 
-function renameFinalKeys(oldName, newName) {
+function renameFinalKeys(oldName, id) {
   return new Promise(resolve => {
     const oldFinal = `final_${encodeURIComponent(oldName)}`;
     const oldProd = `final_product_${encodeURIComponent(oldName)}`;
-    chrome.storage.local.get([oldFinal, oldProd], data => {
+    const idFinal = `final_${id}`;
+    const idProd = `final_product_${id}`;
+    chrome.storage.local.get([oldFinal, oldProd, idFinal, idProd], data => {
       const setObj = {};
-      if (data[oldFinal] !== undefined) {
-        setObj[`final_${encodeURIComponent(newName)}`] = data[oldFinal];
-      }
-      if (data[oldProd] !== undefined) {
-        setObj[`final_product_${encodeURIComponent(newName)}`] = data[oldProd];
-      }
+      const storeVal = data[idFinal] ?? data[oldFinal];
+      const prodVal = data[idProd] ?? data[oldProd];
+      if (storeVal !== undefined) setObj[idFinal] = storeVal;
+      if (prodVal !== undefined) setObj[idProd] = prodVal;
       chrome.storage.local.set(setObj, () => {
         chrome.storage.local.remove([oldFinal, oldProd], resolve);
       });
@@ -94,6 +111,7 @@ function renameFinalKeys(oldName, newName) {
 }
 
 async function renameItem(oldName, newName) {
+  const id = await renameItemInRegistry(oldName, newName);
   await initializeMealCategories();
 
   const mealEntries = Object.entries(MEAL_TYPES);
@@ -174,10 +192,11 @@ async function renameItem(oldName, newName) {
     saveOverrides(overrides),
     saveHistory(history),
     saveItemSeasons(itemSeasons),
-    ...mealEntries.map(([type, info]) => save(info.key, mealsByType[type]))
+    ...mealEntries.map(([type, info]) => saveMealsForType(info.key, mealsByType[type]))
   ]);
 
-  await renameFinalKeys(oldName, newName);
+  const finalId = id || (await getItemId(newName));
+  await renameFinalKeys(oldName, finalId);
 
   try {
     chrome.runtime.sendMessage({ type: 'inventory-updated' });
