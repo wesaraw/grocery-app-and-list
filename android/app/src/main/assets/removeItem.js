@@ -86,8 +86,6 @@ async function removeItem(name) {
 
   const id = await getItemId(name);
   chrome.storage.local.remove([
-    `final_${encodeURIComponent(name)}`,
-    `final_product_${encodeURIComponent(name)}`,
     `final_${id}`,
     `final_product_${id}`
   ]);

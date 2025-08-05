@@ -259,9 +259,16 @@ function applyCoupon(prod, coupons, week, store) {
 function loadProducts(item, store) {
   return new Promise(async resolve => {
     const idKey = await storageKey('scraped', item, store);
-    const nameKey = `scraped_${encodeURIComponent(item)}_${encodeURIComponent(store)}`;
-    chrome.storage.local.get([idKey, nameKey], data => {
-      resolve(data[idKey] || data[nameKey] || []);
+    const legacyKey = `scraped_${encodeURIComponent(item)}_${encodeURIComponent(store)}`;
+    chrome.storage.local.get([idKey, legacyKey], data => {
+      if (data[legacyKey] && !data[idKey]) {
+        chrome.storage.local.set({ [idKey]: data[legacyKey] }, () => {
+          chrome.storage.local.remove(legacyKey, () => resolve(data[legacyKey] || []));
+        });
+      } else {
+        if (data[legacyKey]) chrome.storage.local.remove(legacyKey);
+        resolve(data[idKey] || []);
+      }
     });
   });
 }

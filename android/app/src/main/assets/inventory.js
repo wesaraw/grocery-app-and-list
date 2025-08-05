@@ -42,12 +42,10 @@ async function loadFinalProducts(names) {
   return new Promise(async resolve => {
     const ids = await Promise.all(names.map(n => getItemId(n)));
     const idKeys = ids.map(id => `final_product_${id}`);
-    const nameKeys = names.map(n => `final_product_${encodeURIComponent(n)}`);
-    const allKeys = [...idKeys, ...nameKeys];
-    chrome.storage.local.get(allKeys, data => {
+    chrome.storage.local.get(idKeys, data => {
       const map = {};
       names.forEach((n, idx) => {
-        map[n] = data[idKeys[idx]] || data[nameKeys[idx]] || null;
+        map[n] = data[idKeys[idx]] || null;
       });
       resolve(map);
     });

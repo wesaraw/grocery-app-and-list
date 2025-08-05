@@ -50,9 +50,16 @@ function loadFinalProduct(item) {
   return new Promise(async resolve => {
     const id = await getItemId(item);
     const idKey = `final_product_${id}`;
-    const nameKey = `final_product_${encodeURIComponent(item)}`;
-    chrome.storage.local.get([idKey, nameKey], data => {
-      resolve(data[idKey] || data[nameKey] || null);
+    const legacyKey = `final_product_${encodeURIComponent(item)}`;
+    chrome.storage.local.get([idKey, legacyKey], data => {
+      if (data[legacyKey] && !data[idKey]) {
+        chrome.storage.local.set({ [idKey]: data[legacyKey] }, () => {
+          chrome.storage.local.remove(legacyKey, () => resolve(data[legacyKey]));
+        });
+      } else {
+        if (data[legacyKey]) chrome.storage.local.remove(legacyKey);
+        resolve(data[idKey] || null);
+      }
     });
   });
 }

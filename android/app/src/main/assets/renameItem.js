@@ -7,7 +7,8 @@ import {
   loadArrayWithFallback,
   saveArray,
   loadObjectWithFallback,
-  saveObject
+  saveObject,
+  getItemId
 } from './utils/itemRegistry.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -63,21 +64,16 @@ const saveOverrides = overrides =>
   saveObject('consumptionOverrides', overrides);
 const saveHistory = history => saveObject('consumedHistory', history);
 
-function renameFinalKeys(oldName, newName) {
+async function renameFinalKeys(_oldName, newName) {
+  const id = await getItemId(newName);
   return new Promise(resolve => {
-    const oldFinal = `final_${encodeURIComponent(oldName)}`;
-    const oldProd = `final_product_${encodeURIComponent(oldName)}`;
-    chrome.storage.local.get([oldFinal, oldProd], data => {
+    const idFinal = `final_${id}`;
+    const idProd = `final_product_${id}`;
+    chrome.storage.local.get([idFinal, idProd], data => {
       const setObj = {};
-      if (data[oldFinal] !== undefined) {
-        setObj[`final_${encodeURIComponent(newName)}`] = data[oldFinal];
-      }
-      if (data[oldProd] !== undefined) {
-        setObj[`final_product_${encodeURIComponent(newName)}`] = data[oldProd];
-      }
-      chrome.storage.local.set(setObj, () => {
-        chrome.storage.local.remove([oldFinal, oldProd], resolve);
-      });
+      if (data[idFinal] !== undefined) setObj[idFinal] = data[idFinal];
+      if (data[idProd] !== undefined) setObj[idProd] = data[idProd];
+      chrome.storage.local.set(setObj, resolve);
     });
   });
 }

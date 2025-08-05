@@ -161,10 +161,17 @@ const initReady = new Promise(resolve => {
 async function getFinal(itemName) {
   const id = await getItemId(itemName);
   const keyId = `final_${id}`;
-  const keyName = `final_${encodeURIComponent(itemName)}`;
+  const legacyKey = `final_${encodeURIComponent(itemName)}`;
   return new Promise(resolve => {
-    chrome.storage.local.get([keyId, keyName], data => {
-      resolve(data[keyId] ?? data[keyName]);
+    chrome.storage.local.get([keyId, legacyKey], data => {
+      if (data[legacyKey] && !data[keyId]) {
+        chrome.storage.local.set({ [keyId]: data[legacyKey] }, () => {
+          chrome.storage.local.remove(legacyKey, () => resolve(data[legacyKey]));
+        });
+      } else {
+        if (data[legacyKey]) chrome.storage.local.remove(legacyKey);
+        resolve(data[keyId]);
+      }
     });
   });
 }
@@ -172,10 +179,17 @@ async function getFinal(itemName) {
 async function getFinalProduct(itemName) {
   const id = await getItemId(itemName);
   const keyId = `final_product_${id}`;
-  const keyName = `final_product_${encodeURIComponent(itemName)}`;
+  const legacyKey = `final_product_${encodeURIComponent(itemName)}`;
   return new Promise(resolve => {
-    chrome.storage.local.get([keyId, keyName], data => {
-      resolve(data[keyId] ?? data[keyName]);
+    chrome.storage.local.get([keyId, legacyKey], data => {
+      if (data[legacyKey] && !data[keyId]) {
+        chrome.storage.local.set({ [keyId]: data[legacyKey] }, () => {
+          chrome.storage.local.remove(legacyKey, () => resolve(data[legacyKey]));
+        });
+      } else {
+        if (data[legacyKey]) chrome.storage.local.remove(legacyKey);
+        resolve(data[keyId]);
+      }
     });
   });
 }

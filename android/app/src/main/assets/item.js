@@ -246,13 +246,27 @@ async function getStoreEntries(itemName) {
 
 async function loadSelected(item, store) {
   const k = await key('selected', item, store);
-  const data = await getStorage([k]);
+  const legacy = `selected_${encodeURIComponent(item)}_${encodeURIComponent(store)}`;
+  const data = await getStorage([k, legacy]);
+  if (data[legacy] && !data[k]) {
+    await setStorage({ [k]: data[legacy] });
+    chrome.storage.local.remove(legacy);
+    return data[legacy];
+  }
+  if (data[legacy]) chrome.storage.local.remove(legacy);
   return data[k] || null;
 }
 
 async function loadScraped(item, store) {
   const k = await key('scraped', item, store);
-  const data = await getStorage([k]);
+  const legacy = `scraped_${encodeURIComponent(item)}_${encodeURIComponent(store)}`;
+  const data = await getStorage([k, legacy]);
+  if (data[legacy] && !data[k]) {
+    await setStorage({ [k]: data[legacy] });
+    chrome.storage.local.remove(legacy);
+    return data[legacy];
+  }
+  if (data[legacy]) chrome.storage.local.remove(legacy);
   return data[k] || [];
 }
 
@@ -285,7 +299,14 @@ async function buildWeightPackMap(item, stores) {
 async function loadFinal(item) {
   const id = await getItemId(item);
   const k = `final_${id}`;
-  const data = await getStorage([k]);
+  const legacy = `final_${encodeURIComponent(item)}`;
+  const data = await getStorage([k, legacy]);
+  if (data[legacy] && !data[k]) {
+    await setStorage({ [k]: data[legacy] });
+    chrome.storage.local.remove(legacy);
+    return data[legacy];
+  }
+  if (data[legacy]) chrome.storage.local.remove(legacy);
   return data[k] || null;
 }
 
@@ -293,8 +314,16 @@ async function saveFinal(item, store, product) {
   const id = await getItemId(item);
   const storeKey = `final_${id}`;
   const productKey = `final_product_${id}`;
-  const existingData = await getStorage([productKey]);
-  const existingProd = existingData[productKey] || null;
+  const legacyProdKey = `final_product_${encodeURIComponent(item)}`;
+  const existingData = await getStorage([productKey, legacyProdKey]);
+  let existingProd = existingData[productKey] || null;
+  if (!existingProd && existingData[legacyProdKey]) {
+    existingProd = existingData[legacyProdKey];
+    await setStorage({ [productKey]: existingProd });
+    chrome.storage.local.remove(legacyProdKey);
+  } else if (existingData[legacyProdKey]) {
+    chrome.storage.local.remove(legacyProdKey);
+  }
 
   let image = product?.image || '';
   if (!image && existingProd && existingProd.image) {
