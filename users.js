@@ -8,6 +8,7 @@ import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 import { loadJSON } from './utils/dataLoader.js';
 import { sortItemsByCategory } from './utils/sortByCategory.js';
+import { convertArrayToNames, convertArrayToIds } from './utils/itemRegistry.js';
 
 const btnContainer = document.getElementById('userButtons');
 const mealList = document.getElementById('mealList');
@@ -110,11 +111,12 @@ function loadMeals(type) {
     chrome.storage.local.get(key, async data => {
       let arr = data[key];
       if (!arr) arr = await loadJSON(path);
-      arr.forEach(m => {
+      for (const m of arr) {
         if (!m.category) m.category = info.label;
         if (m.prepared === undefined) m.prepared = false;
         if (m.recipeBook === undefined) m.recipeBook = '';
-      });
+        m.ingredients = await convertArrayToNames(m.ingredients || []);
+      }
       resolve(arr);
     });
   });
