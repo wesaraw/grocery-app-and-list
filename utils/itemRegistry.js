@@ -48,6 +48,16 @@ export async function getItemName(id) {
   return reverse[id] || id;
 }
 
+export async function renameItemInRegistry(oldName, newName) {
+  const map = await loadMap();
+  const id = map[oldName];
+  if (!id) return null;
+  delete map[oldName];
+  map[newName] = id;
+  await saveMap(map);
+  return id;
+}
+
 export async function convertArrayToIds(arr) {
   const result = [];
   for (const item of arr) {

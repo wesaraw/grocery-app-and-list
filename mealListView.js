@@ -1,5 +1,4 @@
 import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
-import { loadJSON } from './utils/dataLoader.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 import { loadUsers } from './utils/userData.js';
@@ -8,6 +7,14 @@ import { parseQuantity } from './utils/calendarUtils.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
+import { loadJSON } from './utils/dataLoader.js';
+import {
+  loadArrayWithFallback,
+  convertArrayToNames,
+  convertArrayToIds,
+  loadArray,
+  getItemId
+} from './utils/itemRegistry.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -27,9 +34,13 @@ const UOM_PATH = 'Required for grocery app/uom_conversion_table.json';
 let units = [];
 
 function loadFinalProduct(item) {
-  return new Promise(resolve => {
-    const key = `final_product_${encodeURIComponent(item)}`;
-    chrome.storage.local.get([key], data => resolve(data[key] || null));
+  return new Promise(async resolve => {
+    const id = await getItemId(item);
+    const idKey = `final_product_${id}`;
+    const nameKey = `final_product_${encodeURIComponent(item)}`;
+    chrome.storage.local.get([idKey, nameKey], data => {
+      resolve(data[idKey] || data[nameKey] || null);
+    });
   });
 }
 
@@ -62,84 +73,63 @@ function createAddButton(name) {
   return btn;
 }
 
-function loadMeals() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      let arr = data[key];
-      if (!arr) arr = await loadJSON(path);
-      if (Array.isArray(arr)) {
-        arr.forEach(m => {
-          if (m.prepared === undefined) m.prepared = false;
-          if (m.prepAhead === undefined) m.prepAhead = false;
-          if (m.recipeBook === undefined) m.recipeBook = '';
-        });
-      }
-      resolve(arr || []);
-    });
-  });
+async function loadMeals() {
+  let arr = await loadArrayWithFallback(key, path);
+  if (Array.isArray(arr)) {
+    for (const m of arr) {
+      if (m.prepared === undefined) m.prepared = false;
+      if (m.prepAhead === undefined) m.prepAhead = false;
+      if (m.recipeBook === undefined) m.recipeBook = '';
+      m.ingredients = await convertArrayToNames(m.ingredients || []);
+    }
+  }
+  return arr || [];
 }
 
-function loadStock() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get('currentStock', async data => {
-      if (data.currentStock) {
-        resolve(data.currentStock);
-      } else {
-        const stock = await loadJSON(STOCK_PATH);
-        resolve(stock);
-      }
-    });
-  });
-}
-
-function loadNeeds() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get('yearlyNeeds', async data => {
-      if (data.yearlyNeeds) {
-        resolve(data.yearlyNeeds);
-      } else {
-        const arr = await loadJSON(NEEDS_PATH);
-        resolve(arr);
-      }
-    });
-  });
-}
+const loadStock = () => loadArrayWithFallback('currentStock', STOCK_PATH);
+const loadNeeds = () => loadArrayWithFallback('yearlyNeeds', NEEDS_PATH);
 
 async function loadUnits() {
   const data = await loadJSON(UOM_PATH);
   return Object.keys(data);
 }
 
-function saveMeals(arr) {
+async function saveMeals(arr) {
+  const toStore = [];
+  for (const m of arr) {
+    const converted = { ...m, ingredients: await convertArrayToIds(m.ingredients || []) };
+    toStore.push(converted);
+  }
   return new Promise(resolve => {
-    chrome.storage.local.set({ [key]: arr }, () => resolve());
+    chrome.storage.local.set({ [key]: toStore }, () => resolve());
   });
 }
 
-function loadMealsForType(cat) {
+async function loadMealsForType(cat) {
   const info = MEAL_TYPES[cat];
-  if (!info) return Promise.resolve([]);
-  return new Promise(async resolve => {
-    chrome.storage.local.get(info.key, async data => {
-      let arr = data[info.key];
-      if (!arr) arr = await loadJSON(info.path);
-      if (Array.isArray(arr)) {
-        arr.forEach(m => {
-          if (m.prepared === undefined) m.prepared = false;
-          if (m.prepAhead === undefined) m.prepAhead = false;
-          if (m.recipeBook === undefined) m.recipeBook = '';
-        });
-      }
-      resolve(arr || []);
-    });
-  });
+  if (!info) return [];
+  let arr = await loadArrayWithFallback(info.key, info.path);
+  if (Array.isArray(arr)) {
+    for (const m of arr) {
+      if (m.prepared === undefined) m.prepared = false;
+      if (m.prepAhead === undefined) m.prepAhead = false;
+      if (m.recipeBook === undefined) m.recipeBook = '';
+      m.ingredients = await convertArrayToNames(m.ingredients || []);
+    }
+  }
+  return arr || [];
 }
 
-function saveMealsForType(cat, arr) {
+async function saveMealsForType(cat, arr) {
   const info = MEAL_TYPES[cat];
-  if (!info) return Promise.resolve();
+  if (!info) return;
+  const toStore = [];
+  for (const m of arr) {
+    const converted = { ...m, ingredients: await convertArrayToIds(m.ingredients || []) };
+    toStore.push(converted);
+  }
   return new Promise(resolve => {
-    chrome.storage.local.set({ [info.key]: arr }, () => resolve());
+    chrome.storage.local.set({ [info.key]: toStore }, () => resolve());
   });
 }
 

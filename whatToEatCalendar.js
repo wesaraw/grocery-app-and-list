@@ -4,8 +4,12 @@ import {
   loadMealsPerDay
 } from './utils/mealData.js';
 import { loadUsers } from './utils/userData.js';
-import { loadJSON } from './utils/dataLoader.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
+import {
+  getItemId,
+  convertArrayToNames,
+  loadArrayWithFallback
+} from './utils/itemRegistry.js';
 
 function loadCalendar() {
   return new Promise(resolve => {
@@ -50,9 +54,13 @@ let editMode = false;
 const mealMap = {};
 
 function loadFinalProduct(item) {
-  return new Promise(resolve => {
-    const key = `final_product_${encodeURIComponent(item)}`;
-    chrome.storage.local.get([key], data => resolve(data[key] || null));
+  return new Promise(async resolve => {
+    const id = await getItemId(item);
+    const idKey = `final_product_${id}`;
+    const nameKey = `final_product_${encodeURIComponent(item)}`;
+    chrome.storage.local.get([idKey, nameKey], data => {
+      resolve(data[idKey] || data[nameKey] || null);
+    });
   });
 }
 
@@ -76,21 +84,17 @@ function setMealImage(imgEl, meal) {
   });
 }
 
-function loadMeals(type) {
+async function loadMeals(type) {
   const { key, path } = MEAL_TYPES[type];
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      let arr = data[key];
-      if (!arr) arr = await loadJSON(path);
-      if (Array.isArray(arr)) {
-        arr.forEach(m => {
-          if (m.prepared === undefined) m.prepared = false;
-          if (m.recipeBook === undefined) m.recipeBook = '';
-        });
-      }
-      resolve(arr || []);
-    });
-  });
+  let arr = await loadArrayWithFallback(key, path);
+  if (Array.isArray(arr)) {
+    for (const m of arr) {
+      if (m.prepared === undefined) m.prepared = false;
+      if (m.recipeBook === undefined) m.recipeBook = '';
+      m.ingredients = await convertArrayToNames(m.ingredients || []);
+    }
+  }
+  return arr || [];
 }
 
 async function loadAllMeals() {
