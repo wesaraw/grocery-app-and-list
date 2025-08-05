@@ -1,3 +1,5 @@
+import { convertObjectKeysToIds, convertObjectKeysToNames } from './itemRegistry.js';
+
 export function loadUsers() {
   return new Promise(resolve => {
     chrome.storage.local.get('users', data => {
@@ -43,14 +45,17 @@ export function saveUserCategoryDays(arr) {
 
 export function loadUserPriceThresholds() {
   return new Promise(resolve => {
-    chrome.storage.local.get('userPriceThresholds', data => {
-      resolve(data.userPriceThresholds || {});
+    chrome.storage.local.get('userPriceThresholds', async data => {
+      const obj = data.userPriceThresholds || {};
+      const withNames = await convertObjectKeysToNames(obj);
+      resolve(withNames);
     });
   });
 }
 
-export function saveUserPriceThresholds(obj) {
+export async function saveUserPriceThresholds(obj) {
+  const stored = await convertObjectKeysToIds(obj);
   return new Promise(resolve => {
-    chrome.storage.local.set({ userPriceThresholds: obj }, () => resolve());
+    chrome.storage.local.set({ userPriceThresholds: stored }, () => resolve());
   });
 }
