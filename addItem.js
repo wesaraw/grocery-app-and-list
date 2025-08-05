@@ -7,7 +7,8 @@ import {
   getItemId,
   convertArrayToIds,
   convertObjectKeysToIds,
-  loadArray as loadItemArray
+  loadArray as loadItemArray,
+  saveArray
 } from './utils/itemRegistry.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -123,12 +124,6 @@ async function loadConsumed() {
   if (arr.length > 0) return arr;
   const needs = await loadNeeds();
   return needs.map(n => ({ name: n.name, amount: 0, unit: n.home_unit }));
-}
-
-function save(key, value) {
-  return new Promise(resolve => {
-    chrome.storage.local.set({ [key]: value }, () => resolve());
-  });
 }
 
 function highlightError(el) {
@@ -319,12 +314,12 @@ async function commit() {
   itemSeasons[id] = seasons;
 
   await Promise.all([
-    save('yearlyNeeds', needs),
-    save('monthlyConsumption', consumption),
-    save('currentStock', stock),
-    save('expirationData', expiration),
-    save('consumedThisYear', consumed),
-    save(STORE_SELECTION_KEY, storeSelections),
+    saveArray('yearlyNeeds', needs),
+    saveArray('monthlyConsumption', consumption),
+    saveArray('currentStock', stock),
+    saveArray('expirationData', expiration),
+    saveArray('consumedThisYear', consumed),
+    saveArray(STORE_SELECTION_KEY, storeSelections),
     savePurchases(purchases),
     saveDensityMap(densityMap),
     saveItemSeasons(itemSeasons)
