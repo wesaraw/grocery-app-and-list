@@ -1,6 +1,7 @@
 import { MEAL_TYPES, initializeMealCategories, addMealCategory } from './utils/mealData.js';
 import { loadJSON } from './utils/dataLoader.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
+import { convertArrayToNames } from './utils/itemRegistry.js';
 
 function loadMeals(type) {
   const { key, path } = MEAL_TYPES[type];
@@ -9,10 +10,13 @@ function loadMeals(type) {
       let arr = data[key];
       if (!arr) arr = await loadJSON(path);
       if (Array.isArray(arr)) {
-        arr.forEach(m => {
+        for (const m of arr) {
+          if (Array.isArray(m.ingredients)) {
+            m.ingredients = await convertArrayToNames(m.ingredients);
+          }
           if (m.prepared === undefined) m.prepared = false;
           if (m.prepAhead === undefined) m.prepAhead = false;
-        });
+        }
       }
       resolve(arr || []);
     });
