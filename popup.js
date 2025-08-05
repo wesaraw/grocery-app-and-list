@@ -577,7 +577,7 @@ async function init() {
     const btn = document.createElement('button');
     btn.textContent = item.name + amountText;
     btn.addEventListener('click', () => {
-      openOrFocusWindow(`item.html?item=${encodeURIComponent(item.name)}`);
+      openOrFocusWindow(`item.html?id=${item.id}`);
     });
     li.appendChild(btn);
     const finalSpan = document.createElement('span');
@@ -593,7 +593,7 @@ async function init() {
       !hideZeroItems || (needAmt != null && needAmt > 0);
     li.style.display = showByStock && showByNeed ? 'list-item' : 'none';
     const rec = { li, btn, span: finalSpan, img: finalImg, needAmt, product: null, weightMap: null };
-    finalMap.set(item.name, rec);
+    finalMap.set(item.id, rec);
     getFinal(item.name).then(async store => {
       const product = await getFinalProduct(item.name);
       const stores = selections
@@ -639,18 +639,19 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     console.log(message.products);
   } else if (message.type === 'finalSelection') {
     await initReady;
-    const rec = finalMap.get(message.item);
+    const name = await getItemName(message.itemId);
+    const rec = finalMap.get(message.itemId);
     if (rec) {
       const { span, img, btn } = rec;
       const prod = message.product;
       const stores = selectionsData
-        .filter(s => s.name === message.item)
+        .filter(s => s.name === name)
         .map(s => s.store);
-      const weightMap = await buildWeightPackMap(message.item, stores);
+      const weightMap = await buildWeightPackMap(name, stores);
       if (prod) {
-        const info = getPackInfo(prod, weightMap, message.item);
+        const info = getPackInfo(prod, weightMap, name);
         if (info.count > 1) {
-          const wKey = weightKey(prod, message.item);
+          const wKey = weightKey(prod, name);
           if (wKey && (!weightMap.has(wKey) || weightMap.get(wKey).count < info.count)) {
             weightMap.set(wKey, info);
           }
@@ -660,10 +661,10 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
       rec.weightMap = weightMap;
       const amountText =
         rec.needAmt != null && !isNaN(rec.needAmt)
-          ? needText(message.item, rec.needAmt, rec.product, rec.weightMap)
+          ? needText(name, rec.needAmt, rec.product, rec.weightMap)
           : '';
-      rec.btn.textContent = message.item + amountText;
-      updateFinalInfo(message.item, span, img, message.store, prod, weightMap);
+      rec.btn.textContent = name + amountText;
+      updateFinalInfo(name, span, img, message.store, prod, weightMap);
     }
   }
 });
@@ -689,7 +690,7 @@ async function refreshNeeds(stock = stockData, consumed = consumedYearData) {
   const stockMap = new Map(stock.map(i => [i.name, i]));
   const text = filterText.trim().toLowerCase();
   needsData.forEach(item => {
-    const rec = finalMap.get(item.name);
+    const rec = finalMap.get(item.id);
     if (rec && rec.btn) {
       const needInfo = purchaseMap.get(item.name);
       const needAmt = needInfo ? Math.round(needInfo.toBuy) : null;
@@ -785,7 +786,7 @@ async function rerenderAll() {
     const btn = document.createElement('button');
     btn.textContent = item.name + amountText;
     btn.addEventListener('click', () => {
-      openOrFocusWindow(`item.html?item=${encodeURIComponent(item.name)}`);
+      openOrFocusWindow(`item.html?id=${item.id}`);
     });
     li.appendChild(btn);
     const finalSpan = document.createElement('span');
@@ -800,7 +801,7 @@ async function rerenderAll() {
     const showByNeed = !hideZeroItems || (needAmt != null && needAmt > 0);
     li.style.display = showByStock && showByNeed ? 'list-item' : 'none';
     const rec = { li, btn, span: finalSpan, img: finalImg, needAmt, product: null, weightMap: null };
-    finalMap.set(item.name, rec);
+    finalMap.set(item.id, rec);
     getFinal(item.name).then(async store => {
       const product = await getFinalProduct(item.name);
       const stores = selectionsData
@@ -854,8 +855,9 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
     if (key.startsWith('final_') || key.startsWith('final_product_')) {
       (async () => {
         const idPart = key.replace(/^final(_product)?_/, '');
-        const item = await getItemName(decodeURIComponent(idPart));
-        const rec = finalMap.get(item);
+        const id = decodeURIComponent(idPart);
+        const item = await getItemName(id);
+        const rec = finalMap.get(id);
         if (rec) {
           initReady.then(() =>
             Promise.all([getFinal(item), getFinalProduct(item)]).then(

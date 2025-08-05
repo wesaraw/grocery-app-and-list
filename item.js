@@ -6,6 +6,7 @@ import {
   loadArray,
   loadArrayWithFallback,
   getItemId,
+  getItemName,
   loadObject,
   saveObject
 } from './utils/itemRegistry.js';
@@ -371,7 +372,13 @@ async function saveFinal(item, store, product) {
 async function init() {
   await initUomTable();
   const params = new URLSearchParams(location.search);
-  const itemName = params.get('item');
+  let itemName = params.get('item');
+  if (!itemName) {
+    const idParam = params.get('id');
+    if (idParam) {
+      itemName = await getItemName(idParam);
+    }
+  }
 
   const [needs, consumption, mealMonth, dMap] = await Promise.all([
     loadNeeds(),
@@ -425,12 +432,13 @@ async function init() {
 
     const scrapeBtn = document.createElement('button');
     scrapeBtn.textContent = 'Scrape';
-    scrapeBtn.addEventListener('click', () => {
+    scrapeBtn.addEventListener('click', async () => {
       const rec = storeMap.get(entry.store);
       if (rec && rec.tabId) {
         chrome.tabs.sendMessage(rec.tabId, { type: 'triggerScrape' });
       }
-      const path = `scrapeResults.html?item=${encodeURIComponent(itemName)}&store=${encodeURIComponent(entry.store)}`;
+      const id = await getItemId(itemName);
+      const path = `scrapeResults.html?id=${id}&store=${encodeURIComponent(entry.store)}`;
       setTimeout(() => {
         openOrFocusWindow(path);
       }, 1000);
@@ -444,9 +452,10 @@ async function init() {
       const rec = storeMap.get(entry.store);
       let product = rec ? rec.selectedProduct : null;
       product = await saveFinal(itemName, entry.store, product);
+      const itemId = await getItemId(itemName);
       chrome.runtime.sendMessage({
         type: 'finalSelection',
-        item: itemName,
+        itemId,
         store: entry.store,
         product
       });

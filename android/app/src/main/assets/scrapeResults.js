@@ -6,6 +6,7 @@ import {
   loadArray,
   loadArrayWithFallback,
   getItemId,
+  getItemName,
   loadObject
 } from './utils/itemRegistry.js';
 
@@ -301,8 +302,8 @@ async function saveSelected(item, store, product) {
 
 
 const params = new URLSearchParams(location.search);
-const item = params.get('item');
 const store = params.get('store');
+let item;
 
 const title = document.getElementById('title');
 const container = document.getElementById('products');
@@ -312,10 +313,16 @@ const PLACEHOLDER_IMG =
 
 const imagesToRetry = [];
 
-title.textContent = `${item} - ${store}`;
-
 async function init() {
   await initUomTable();
+  item = params.get('item');
+  if (!item) {
+    const idParam = params.get('id');
+    if (idParam) {
+      item = await getItemName(idParam);
+    }
+  }
+  title.textContent = `${item} - ${store}`;
   const [products, coupons, needs, consumption, mealMonth, dMap] = await Promise.all([
     loadProducts(item, store),
     loadCoupons(),

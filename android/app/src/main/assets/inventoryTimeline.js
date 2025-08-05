@@ -2,7 +2,13 @@ import { WEEKS_PER_MONTH } from './utils/constants.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 import { canonicalName } from './utils/nameUtils.js';
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
-import { loadArray as loadItemArray, loadObject as loadItemObject, getItemId } from './utils/itemRegistry.js';
+import {
+  loadArray as loadItemArray,
+  loadObject as loadItemObject,
+  convertObjectKeysToNames,
+  getItemId,
+  getItemName
+} from './utils/itemRegistry.js';
 
 async function loadJSON(path) {
   const url = chrome.runtime.getURL(path);
@@ -534,16 +540,17 @@ async function init() {
       });
       updated = true;
     }
-    Object.keys(changes).forEach(k => {
+    for (const k of Object.keys(changes)) {
       if (k.startsWith('final_product_')) {
-        const name = decodeURIComponent(k.slice('final_product_'.length));
+        const id = k.slice('final_product_'.length);
+        const name = await getItemName(id);
         const item = globalItems.find(i => i.name === name);
         if (item) {
           item.finalProduct = changes[k].newValue || null;
           updated = true;
         }
       }
-    });
+    }
     if (updated) {
       if (showingHistory) {
         showPurchaseHistory();
@@ -559,7 +566,8 @@ async function init() {
       if (msg.type === 'inventory-updated') {
         await refreshItems();
       } else if (msg.type === 'finalSelection') {
-        const item = globalItems.find(i => i.name === msg.item);
+        const name = await getItemName(msg.itemId);
+        const item = globalItems.find(i => i.name === name);
         if (item) {
           item.finalProduct = msg.product || null;
           applyFilter();
