@@ -39,6 +39,12 @@ document.getElementById('importBtn').addEventListener('click', triggerImport);
 document.getElementById('importFile').addEventListener('change', e => {
   const file = e.target.files[0];
   if (!file) return;
+  if (!file.name.endsWith('.json')) {
+    if (status) {
+      status.textContent = 'Please select a .json backup file';
+    }
+    return;
+  }
   const reader = new FileReader();
   reader.onload = () => importFromText(reader.result);
   reader.readAsText(file);

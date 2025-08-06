@@ -29,7 +29,12 @@ export async function exportAll() {
 }
 
 export async function importAll(text) {
-  const data = JSON.parse(text);
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error('Malformed JSON backup');
+  }
   if (data.schemaVersion !== schemaVersion) {
     throw new Error('Incompatible schema version');
   }

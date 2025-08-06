@@ -1,34 +1,31 @@
-import { migrateItemRegistry } from './utils/itemRegistry.js';
-import { migrateItemDetails } from './utils/itemDetails.js';
-import { migrateSearchResults } from './utils/searchResults.js';
+import { exportAll, importAll } from './db.js';
+
+const status = document.getElementById('status');
 
 async function exportData() {
-  await migrateItemRegistry();
-  await migrateItemDetails();
-  await migrateSearchResults();
-  chrome.storage.local.get(null, data => {
-    const json = JSON.stringify(data, null, 2);
-    const blob = new Blob([json], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'grocery_backup.txt';
-    a.click();
-    URL.revokeObjectURL(url);
-  });
+  const json = await exportAll();
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'grocery_backup.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  if (status) {
+    status.textContent = 'Export complete';
+  }
 }
 
-function importFromText(text) {
+async function importFromText(text) {
   try {
-    const data = JSON.parse(text);
-    chrome.storage.local.set(data, async () => {
-      await migrateItemRegistry();
-      await migrateItemDetails();
-      await migrateSearchResults();
-      alert('Import complete');
-    });
+    await importAll(text);
+    if (status) {
+      status.textContent = 'Import complete';
+    }
   } catch (e) {
-    alert('Invalid file');
+    if (status) {
+      status.textContent = `Import failed: ${e.message}`;
+    }
   }
 }
 
@@ -42,6 +39,12 @@ document.getElementById('importBtn').addEventListener('click', triggerImport);
 document.getElementById('importFile').addEventListener('change', e => {
   const file = e.target.files[0];
   if (!file) return;
+  if (!file.name.endsWith('.json')) {
+    if (status) {
+      status.textContent = 'Please select a .json backup file';
+    }
+    return;
+  }
   const reader = new FileReader();
   reader.onload = () => importFromText(reader.result);
   reader.readAsText(file);
