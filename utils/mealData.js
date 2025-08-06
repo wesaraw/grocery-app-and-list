@@ -3,7 +3,9 @@ import { loadJSON } from './dataLoader.js';
 import {
   convertArrayToIds,
   convertArrayToNames,
-  getItemId
+  getItemId,
+  loadArray,
+  saveArray
 } from './itemRegistry.js';
 
 export const MEAL_TYPES = {
@@ -30,14 +32,9 @@ export const MEAL_TYPES = {
 };
 
 export async function initializeMealCategories() {
-  return new Promise(resolve => {
-    chrome.storage.local.get('mealCategories', data => {
-      const cats = data.mealCategories || [];
-      cats.forEach(cat => {
-        MEAL_TYPES[cat.id] = cat;
-      });
-      resolve();
-    });
+  const cats = await loadArray('mealCategories');
+  cats.forEach(cat => {
+    MEAL_TYPES[cat.id] = cat;
   });
 }
 
@@ -46,12 +43,10 @@ export async function addMealCategory(label) {
   if (!id) return null;
   const key = `${id}Meals`;
   const cat = { id, key, path: '', label };
-  const cats = await new Promise(resolve => {
-    chrome.storage.local.get('mealCategories', d => resolve(d.mealCategories || []));
-  });
+  const cats = await loadArray('mealCategories');
   if (!cats.find(c => c.id === id)) {
     cats.push(cat);
-    await new Promise(res => chrome.storage.local.set({ mealCategories: cats }, () => res()));
+    await saveArray('mealCategories', cats);
   }
   MEAL_TYPES[id] = cat;
   const mealsPerDay = await loadMealsPerDay();
@@ -59,11 +54,10 @@ export async function addMealCategory(label) {
     mealsPerDay[id] = 1;
     await saveMealsPerDay(mealsPerDay);
   }
-  await new Promise(res => chrome.storage.local.get(key, data => {
-    if (!data[key]) {
-      chrome.storage.local.set({ [key]: [] }, () => res());
-    } else res();
-  }));
+  const existing = await db.lists.get(key);
+  if (!existing) {
+    await saveArray(key, []);
+  }
   return cat;
 }
 
@@ -75,36 +69,26 @@ export const DEFAULT_MEALS_PER_DAY = {
   dessert: 1
 };
 
-export function loadMealsPerDay() {
-  return new Promise(resolve => {
-    chrome.storage.local.get('mealsPerDay', data => {
-      resolve({ ...DEFAULT_MEALS_PER_DAY, ...(data.mealsPerDay || {}) });
-    });
-  });
+export async function loadMealsPerDay() {
+  const rec = await db.lists.get('mealsPerDay');
+  return { ...DEFAULT_MEALS_PER_DAY, ...(rec?.value || {}) };
 }
 
-export function saveMealsPerDay(obj) {
-  return new Promise(resolve => {
-    chrome.storage.local.set({ mealsPerDay: obj }, () => resolve());
-  });
+export async function saveMealsPerDay(obj) {
+  await db.lists.put({ key: 'mealsPerDay', value: obj });
 }
 
-export function loadCookingDays() {
-  return new Promise(resolve => {
-    chrome.storage.local.get('cookingDays', data => {
-      const obj = data.cookingDays || {};
-      Object.keys(obj).forEach(k => {
-        if (!Array.isArray(obj[k])) obj[k] = [];
-      });
-      resolve(obj);
-    });
+export async function loadCookingDays() {
+  const rec = await db.lists.get('cookingDays');
+  const obj = rec?.value || {};
+  Object.keys(obj).forEach(k => {
+    if (!Array.isArray(obj[k])) obj[k] = [];
   });
+  return obj;
 }
 
-export function saveCookingDays(obj) {
-  return new Promise(resolve => {
-    chrome.storage.local.set({ cookingDays: obj }, () => resolve());
-  });
+export async function saveCookingDays(obj) {
+  await db.lists.put({ key: 'cookingDays', value: obj });
 }
 
 export async function loadMealsByType(type) {

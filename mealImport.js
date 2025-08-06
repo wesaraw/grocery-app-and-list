@@ -16,6 +16,7 @@ import {
   loadObject,
   saveObject
 } from './utils/itemRegistry.js';
+import { db } from './db.js';
 
 // Paths for inventory data used when adding new items
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -119,35 +120,38 @@ async function ensureItemExists(name) {
   ]);
 }
 
-function loadMeals(category) {
+async function loadMeals(category) {
   const info = MEAL_TYPES[category] || MEAL_TYPES.lunchDinner;
-  return new Promise(async resolve => {
-    chrome.storage.local.get(info.key, async data => {
-      let arr = data[info.key];
-      if (!arr) arr = await loadJSON(info.path);
-      if (Array.isArray(arr)) {
-        for (const m of arr) {
-          m.ingredients = await convertArrayToNames(m.ingredients || []);
-          if (m.prepared === undefined) m.prepared = false;
-          if (m.prepAhead === undefined) m.prepAhead = false;
-          if (m.recipeBook === undefined) m.recipeBook = '';
-        }
-      }
-      resolve(arr || []);
-    });
-  });
+  let arr = await db.meals.where('category').equals(category).toArray();
+  if (!arr.length && info.path) {
+    arr = await loadJSON(info.path).catch(() => []);
+    for (const m of arr) {
+      m.category = category;
+    }
+  }
+  if (Array.isArray(arr)) {
+    for (const m of arr) {
+      m.ingredients = await convertArrayToNames(m.ingredients || []);
+      if (m.prepared === undefined) m.prepared = false;
+      if (m.prepAhead === undefined) m.prepAhead = false;
+      if (m.recipeBook === undefined) m.recipeBook = '';
+      if (m.weight === undefined) m.weight = 1;
+      if (m.groupMeal === undefined) m.groupMeal = false;
+    }
+  }
+  return arr || [];
 }
 
-function saveMeals(category, arr) {
-  const info = MEAL_TYPES[category] || MEAL_TYPES.lunchDinner;
-  return new Promise(async resolve => {
-    const stored = [];
-    for (const m of arr) {
-      const ingredients = await convertArrayToIds(m.ingredients || []);
-      stored.push({ ...m, ingredients });
-    }
-    chrome.storage.local.set({ [info.key]: stored }, () => resolve());
-  });
+async function saveMeals(category, arr) {
+  const stored = [];
+  for (const m of arr) {
+    const ingredients = await convertArrayToIds(m.ingredients || []);
+    stored.push({ ...m, category, ingredients });
+  }
+  await db.meals.where('category').equals(category).delete();
+  if (stored.length) {
+    await db.meals.bulkPut(stored);
+  }
 }
 
 function parseMealsFromXml(text) {

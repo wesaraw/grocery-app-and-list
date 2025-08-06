@@ -8,6 +8,7 @@ import {
   getItemName,
   loadObject
 } from './utils/itemRegistry.js';
+import { db } from './db.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -257,21 +258,23 @@ function applyCoupon(prod, coupons, week, store) {
   return copy;
 }
 
-function loadProducts(item, store) {
-  return new Promise(async resolve => {
-    const idKey = await storageKey('scraped', item, store);
-    const legacyKey = `scraped_${encodeURIComponent(item)}_${encodeURIComponent(store)}`;
-    chrome.storage.local.get([idKey, legacyKey], data => {
-      if (data[legacyKey] && !data[idKey]) {
-        chrome.storage.local.set({ [idKey]: data[legacyKey] }, () => {
-          chrome.storage.local.remove(legacyKey, () => resolve(data[legacyKey] || []));
-        });
-      } else {
-        if (data[legacyKey]) chrome.storage.local.remove(legacyKey);
-        resolve(data[idKey] || []);
-      }
+async function loadProducts(item, store) {
+  const idKey = await storageKey('scraped', item, store);
+  const legacyKey = `scraped_${encodeURIComponent(item)}_${encodeURIComponent(store)}`;
+  const rec = await db.lists.get(idKey);
+  if (rec?.value) return rec.value;
+  if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+    const data = await new Promise(resolve => {
+      chrome.storage.local.get([idKey, legacyKey], d => resolve(d));
     });
-  });
+    const arr = data[idKey] || data[legacyKey] || [];
+    if (arr.length > 0) {
+      await db.lists.put({ key: idKey, value: arr });
+      await new Promise(resolve => chrome.storage.local.remove([idKey, legacyKey], resolve));
+    }
+    return arr;
+  }
+  return [];
 }
 
 function buildWeightPackMap(products) {
@@ -293,11 +296,9 @@ function buildWeightPackMap(products) {
   weightPackMap = map;
 }
 
-function saveSelected(item, store, product) {
-  return new Promise(async resolve => {
-    const key = await storageKey('selected', item, store);
-    chrome.storage.local.set({ [key]: product }, () => resolve());
-  });
+async function saveSelected(item, store, product) {
+  const key = await storageKey('selected', item, store);
+  await db.lists.put({ key, value: product });
 }
 
 

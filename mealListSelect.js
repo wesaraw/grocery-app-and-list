@@ -1,25 +1,19 @@
 import { MEAL_TYPES, initializeMealCategories, addMealCategory } from './utils/mealData.js';
-import { loadJSON } from './utils/dataLoader.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
-import { convertArrayToNames } from './utils/itemRegistry.js';
+import { convertArrayToNames, loadArrayWithFallback } from './utils/itemRegistry.js';
 
-function loadMeals(type) {
+async function loadMeals(type) {
   const { key, path } = MEAL_TYPES[type];
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      let arr = data[key];
-      if (!arr) arr = await loadJSON(path);
-      if (Array.isArray(arr)) {
-        for (const m of arr) {
-          m.ingredients = await convertArrayToNames(m.ingredients || []);
-          if (m.prepared === undefined) m.prepared = false;
-          if (m.prepAhead === undefined) m.prepAhead = false;
-          if (m.recipeBook === undefined) m.recipeBook = '';
-        }
-      }
-      resolve(arr || []);
-    });
-  });
+  let arr = await loadArrayWithFallback(key, path);
+  if (Array.isArray(arr)) {
+    for (const m of arr) {
+      m.ingredients = await convertArrayToNames(m.ingredients || []);
+      if (m.prepared === undefined) m.prepared = false;
+      if (m.prepAhead === undefined) m.prepAhead = false;
+      if (m.recipeBook === undefined) m.recipeBook = '';
+    }
+  }
+  return arr || [];
 }
 
 async function renderButtons() {
