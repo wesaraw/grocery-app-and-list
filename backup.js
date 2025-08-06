@@ -1,32 +1,19 @@
-import { migrateItemRegistry } from './utils/itemRegistry.js';
-import { migrateItemDetails } from './utils/itemDetails.js';
-import { migrateSearchResults } from './utils/searchResults.js';
-
+import { exportAll, importAll } from './db.js';
 async function exportData() {
-  await migrateItemRegistry();
-  await migrateItemDetails();
-  await migrateSearchResults();
-  chrome.storage.local.get(null, data => {
-    const json = JSON.stringify(data, null, 2);
-    const blob = new Blob([json], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'grocery_backup.txt';
-    a.click();
-    URL.revokeObjectURL(url);
-  });
+  const json = await exportAll();
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'grocery_backup.txt';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
-function importFromText(text) {
+async function importFromText(text) {
   try {
-    const data = JSON.parse(text);
-    chrome.storage.local.set(data, async () => {
-      await migrateItemRegistry();
-      await migrateItemDetails();
-      await migrateSearchResults();
-      alert('Import complete');
-    });
+    await importAll(text);
+    alert('Import complete');
   } catch (e) {
     alert('Invalid file');
   }

@@ -1,4 +1,7 @@
 import { getItemId } from './utils/itemRegistry.js';
+import { migrateFromLocalStorage } from './db.js';
+
+migrateFromLocalStorage();
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'openStoreTab') {
