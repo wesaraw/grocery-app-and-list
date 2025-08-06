@@ -8,7 +8,8 @@ import {
   convertArrayToIds,
   convertObjectKeysToIds,
   loadArray as loadItemArray,
-  saveArray
+  saveArray,
+  saveObject
 } from './utils/itemRegistry.js';
 import { setSearchResult } from './utils/searchResults.js';
 
@@ -182,6 +183,7 @@ async function commit() {
     stockRaw,
     expirationRaw,
     consumedRaw,
+
     purchasesRaw,
     densityMapRaw,
     itemSeasonsRaw
@@ -191,6 +193,7 @@ async function commit() {
     loadStock(),
     loadExpiration(),
     loadConsumed(),
+
     loadPurchases(),
     loadDensityMap(),
     loadItemSeasons()
@@ -225,6 +228,7 @@ async function commit() {
   consumed.push({ id, amount: 0, unit });
 
   const defaultStores = {
+
     'Stop & Shop': {
       price: null,
       convertedQty: null,
@@ -268,9 +272,11 @@ async function commit() {
       image: null
     }
   };
+
   for (const [store, data] of Object.entries(defaultStores)) {
     await setSearchResult(id, store, data);
   }
+
 
   densityMap[id] = { convert: false, ratio: densityRatio };
 
