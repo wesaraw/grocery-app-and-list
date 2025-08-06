@@ -1,11 +1,12 @@
 {
   "dependencies": {
     "dexie": "^3.2.4",
+    "fake-indexeddb": "^5.0.0",
     "js-beautify": "^1.15.4",
     "jsdom": "^26.1.0"
   },
   "scripts": {
-    "test": "node test/unitPriceTest.js && node test/unitNormalizeTest.js && node test/canOfSoupTest.js && node test/weightingCalendarTest.js && node test/sharedStateCalendarTest.js && node test/multiSnackSlotTest.js && node test/itemRegistryTest.js && node test/searchResultsTest.js"
+    "test": "node test/unitPriceTest.js && node test/unitNormalizeTest.js && node test/canOfSoupTest.js && node test/weightingCalendarTest.js && node test/sharedStateCalendarTest.js && node test/multiSnackSlotTest.js && node test/itemRegistryTest.js && node test/searchResultsTest.js && node test/mealDBTest.js"
   },
   "type": "module"
 }

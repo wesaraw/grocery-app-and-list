@@ -3,14 +3,15 @@ import {
   DEFAULT_MEALS_PER_DAY,
   loadMealsPerDay,
   initializeMealCategories,
-  loadCookingDays
+  loadCookingDays,
+  loadMealsByType
 } from './mealData.js';
 import {
   generatePreparedMealsCalendar
 } from './preparedMealsCalendar.js';
 import { generateWhatToEatCalendar } from './whatToEatCalendar.js';
 import { loadJSON } from './dataLoader.js';
-import { initUomTable, convert } from './uomConverter.js';
+import { initUomTable } from './uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './unitNormalize.js';
 import {
   loadUsers,
@@ -46,24 +47,8 @@ function parseQuantity(str) {
   return { value, unit };
 }
 
-function loadMeals(type) {
-  const { key, path } = MEAL_TYPES[type];
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      let arr = data[key];
-      if (!arr) {
-        arr = await loadJSON(path);
-      }
-      if (Array.isArray(arr)) {
-        arr.forEach(m => {
-          if (m.prepared === undefined) m.prepared = false;
-          if (m.weight === undefined) m.weight = 1;
-          if (m.groupMeal === undefined) m.groupMeal = false;
-        });
-      }
-      resolve(arr || []);
-    });
-  });
+async function loadMeals(type) {
+  return loadMealsByType(type);
 }
 
 export async function calculateAndSaveMealNeeds() {

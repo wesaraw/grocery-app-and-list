@@ -1,41 +1,16 @@
 import { loadJSON } from './utils/dataLoader.js';
-import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
+import {
+  MEAL_TYPES,
+  initializeMealCategories,
+  saveMealRecord
+} from './utils/mealData.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
-import { convertArrayToNames, convertArrayToIds, getItemId } from './utils/itemRegistry.js';
+import { getItemId } from './utils/itemRegistry.js';
 
 const params = new URLSearchParams(location.search);
 const mealType = params.get('type') || 'lunchDinner';
-let MEAL_KEY, MEAL_PATH, label;
+let label;
 const UOM_PATH = 'Required for grocery app/uom_conversion_table.json';
-
-function loadMeals() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get(MEAL_KEY, async data => {
-      let arr = data[MEAL_KEY];
-      if (!arr) arr = await loadJSON(MEAL_PATH);
-      if (Array.isArray(arr)) {
-        for (const m of arr) {
-          m.ingredients = await convertArrayToNames(m.ingredients || []);
-          if (m.prepared === undefined) m.prepared = false;
-          if (m.prepAhead === undefined) m.prepAhead = false;
-          if (m.recipeBook === undefined) m.recipeBook = '';
-        }
-      }
-      resolve(arr || []);
-    });
-  });
-}
-
-function saveMeals(arr) {
-  return new Promise(async resolve => {
-    const stored = [];
-    for (const m of arr) {
-      const ingredients = await convertArrayToIds(m.ingredients || []);
-      stored.push({ ...m, ingredients });
-    }
-    chrome.storage.local.set({ [MEAL_KEY]: stored }, () => resolve());
-  });
-}
 
 async function loadUnits() {
   const data = await loadJSON(UOM_PATH);
@@ -93,8 +68,6 @@ function anyFilled(row) {
 async function init() {
   await initializeMealCategories();
   const info = MEAL_TYPES[mealType] || MEAL_TYPES.lunchDinner;
-  MEAL_KEY = info.key;
-  MEAL_PATH = info.path;
   label = info.label;
   const titleEl = document.getElementById('title');
   if (titleEl) titleEl.textContent = `Add ${label} Meal`;
@@ -189,8 +162,7 @@ async function init() {
     const weight = parseFloat(weightInput.value);
     const mealWeight = !isNaN(weight) && weight > 0 ? weight : 1;
 
-    const meals = await loadMeals();
-    meals.push({
+    await saveMealRecord({
       name: mealName,
       recipeBook: recipeBookInput.value.trim() || '',
       ingredients,
@@ -199,9 +171,9 @@ async function init() {
       prepAhead: preparedBox.checked && prepAheadBox.checked,
       image: null,
       weight: mealWeight,
-      groupMeal: groupChk.checked
+      groupMeal: groupChk.checked,
+      category: mealType
     });
-    await saveMeals(meals);
     await calculateAndSaveMealNeeds();
     window.close();
   });

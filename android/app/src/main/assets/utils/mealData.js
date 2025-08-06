@@ -1,3 +1,11 @@
+import { db } from '../db.js';
+import { loadJSON } from './dataLoader.js';
+import {
+  convertArrayToIds,
+  convertArrayToNames,
+  getItemId
+} from './itemRegistry.js';
+
 export const MEAL_TYPES = {
   breakfast: {
     key: 'breakfastMeals',
@@ -97,4 +105,48 @@ export function saveCookingDays(obj) {
   return new Promise(resolve => {
     chrome.storage.local.set({ cookingDays: obj }, () => resolve());
   });
+}
+
+export async function loadMealsByType(type) {
+  const info = MEAL_TYPES[type];
+  if (!info) return [];
+  let arr = await db.meals.where('category').equals(type).toArray();
+  if (!arr.length && info.path) {
+    arr = await loadJSON(info.path).catch(() => []);
+    for (const m of arr) {
+      m.id = m.id || (m.name ? await getItemId(m.name) : undefined);
+      m.category = type;
+      m.ingredients = await convertArrayToIds(m.ingredients || []);
+      if (m.prepared === undefined) m.prepared = false;
+      if (m.prepAhead === undefined) m.prepAhead = false;
+      if (m.recipeBook === undefined) m.recipeBook = '';
+      if (m.weight === undefined) m.weight = 1;
+      if (m.groupMeal === undefined) m.groupMeal = false;
+    }
+    if (arr.length) {
+      await db.meals.bulkPut(arr);
+    }
+  } else {
+    arr = await Promise.all(
+      arr.map(async m => ({
+        ...m,
+        ingredients: await convertArrayToNames(m.ingredients || [])
+      }))
+    );
+    arr.forEach(m => {
+      if (m.prepared === undefined) m.prepared = false;
+      if (m.prepAhead === undefined) m.prepAhead = false;
+      if (m.recipeBook === undefined) m.recipeBook = '';
+      if (m.weight === undefined) m.weight = 1;
+      if (m.groupMeal === undefined) m.groupMeal = false;
+    });
+  }
+  return arr;
+}
+
+export async function saveMealRecord(meal) {
+  const id = meal.id || (meal.name ? await getItemId(meal.name) : undefined);
+  if (!id) return;
+  const ingredients = await convertArrayToIds(meal.ingredients || []);
+  await db.meals.put({ ...meal, id, ingredients });
 }

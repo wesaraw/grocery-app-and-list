@@ -1,6 +1,12 @@
 import { loadUsers } from './utils/userData.js';
-import { MEAL_TYPES, DEFAULT_MEALS_PER_DAY, loadMealsPerDay, initializeMealCategories } from './utils/mealData.js';
-import { getItemId, loadArrayWithFallback } from './utils/itemRegistry.js';
+import {
+  MEAL_TYPES,
+  DEFAULT_MEALS_PER_DAY,
+  loadMealsPerDay,
+  initializeMealCategories,
+  loadMealsByType
+} from './utils/mealData.js';
+import { getItemId } from './utils/itemRegistry.js';
 
 function getCurrentWeek() {
   const start = new Date(new Date().getFullYear(), 0, 1);
@@ -9,17 +15,7 @@ function getCurrentWeek() {
 }
 
 async function loadMeals(type) {
-  const { key, path } = MEAL_TYPES[type];
-  let arr = await loadArrayWithFallback(key, path);
-  if (Array.isArray(arr)) {
-    for (const m of arr) {
-      if (m.prepared === undefined) m.prepared = false;
-      if (m.prepAhead === undefined) m.prepAhead = false;
-      if (m.recipeBook === undefined) m.recipeBook = '';
-      if (!m.id && m.name) m.id = await getItemId(m.name);
-    }
-  }
-  return arr || [];
+  return loadMealsByType(type);
 }
 
 function loadMealSlots() {

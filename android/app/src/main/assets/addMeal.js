@@ -1,49 +1,16 @@
 import { loadJSON } from './utils/dataLoader.js';
-import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
-import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 import {
-  convertArrayToNames,
-  convertArrayToIds,
-  getItemId
-} from './utils/itemRegistry.js';
+  MEAL_TYPES,
+  initializeMealCategories,
+  saveMealRecord
+} from './utils/mealData.js';
+import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
+import { getItemId } from './utils/itemRegistry.js';
 
 const params = new URLSearchParams(location.search);
 const mealType = params.get('type') || 'lunchDinner';
-let MEAL_KEY, MEAL_PATH, label;
+let label;
 const UOM_PATH = 'Required for grocery app/uom_conversion_table.json';
-
-function loadMeals() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get(MEAL_KEY, async data => {
-      let arr = data[MEAL_KEY];
-      if (!arr) arr = await loadJSON(MEAL_PATH);
-      if (Array.isArray(arr)) {
-        for (const m of arr) {
-          if (Array.isArray(m.ingredients)) {
-            m.ingredients = await convertArrayToNames(m.ingredients);
-          }
-          if (m.prepared === undefined) m.prepared = false;
-          if (m.prepAhead === undefined) m.prepAhead = false;
-          if (m.recipeBook === undefined) m.recipeBook = '';
-        }
-      }
-      resolve(arr || []);
-    });
-  });
-}
-
-async function saveMeals(arr) {
-  const stored = [];
-  for (const m of arr) {
-    const ing = Array.isArray(m.ingredients)
-      ? await convertArrayToIds(m.ingredients)
-      : m.ingredients;
-    stored.push({ ...m, ingredients: ing });
-  }
-  return new Promise(resolve => {
-    chrome.storage.local.set({ [MEAL_KEY]: stored }, () => resolve());
-  });
-}
 
 async function loadUnits() {
   const data = await loadJSON(UOM_PATH);
@@ -101,8 +68,6 @@ function anyFilled(row) {
 async function init() {
   await initializeMealCategories();
   const info = MEAL_TYPES[mealType] || MEAL_TYPES.lunchDinner;
-  MEAL_KEY = info.key;
-  MEAL_PATH = info.path;
   label = info.label;
   const titleEl = document.getElementById('title');
   if (titleEl) titleEl.textContent = `Add ${label} Meal`;
@@ -190,8 +155,7 @@ async function init() {
       ingredients.push({ id, amount, serving_size: amount });
     }
 
-    const meals = await loadMeals();
-    meals.push({
+    await saveMealRecord({
       name: mealName,
       recipeBook: recipeBookInput.value.trim() || '',
       ingredients,
@@ -199,9 +163,9 @@ async function init() {
       prepared: preparedBox.checked,
       prepAhead: preparedBox.checked && prepAheadBox.checked,
       image: null,
-      groupMeal: groupChk.checked
+      groupMeal: groupChk.checked,
+      category: mealType
     });
-    await saveMeals(meals);
     await calculateAndSaveMealNeeds();
     window.close();
   });
