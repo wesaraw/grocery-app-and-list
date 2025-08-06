@@ -11,6 +11,7 @@ import {
   getItemId,
   loadObject
 } from './utils/itemRegistry.js';
+import { deleteHistoryForItem } from './utils/historyStorage.js';
 import { removeItemDetail } from './utils/itemDetails.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -37,15 +38,13 @@ const loadSearchResults = () => loadObject(SEARCH_RESULTS_KEY);
 const loadConsumed = () => loadArrayWithFallback('consumedThisYear');
 const loadOverrides = () =>
   loadObjectWithFallback('consumptionOverrides');
-const loadHistory = () => loadObjectWithFallback('consumedHistory');
 
 const save = (key, value) => saveArray(key, value);
 const saveOverrides = overrides =>
   saveObject('consumptionOverrides', overrides);
-const saveHistory = history => saveObject('consumedHistory', history);
 
 async function removeItem(name) {
-  const [needs, consumption, stock, expiration, consumed, searchResults, purchases, overrides, history] = await Promise.all([
+  const [needs, consumption, stock, expiration, consumed, searchResults, purchases, overrides] = await Promise.all([
     loadNeeds(),
     loadConsumption(),
     loadStock(),
@@ -53,8 +52,7 @@ async function removeItem(name) {
     loadConsumed(),
     loadSearchResults(),
     loadPurchases(),
-    loadOverrides(),
-    loadHistory()
+    loadOverrides()
   ]);
 
   const filter = arr => arr.filter(i => i.name !== name);
@@ -67,7 +65,6 @@ async function removeItem(name) {
   delete newResults[name];
   delete purchases[name];
   delete overrides[name];
-  delete history[name];
 
   await Promise.all([
     save('yearlyNeeds', newNeeds),
@@ -77,8 +74,7 @@ async function removeItem(name) {
     save('consumedThisYear', newConsumed),
     saveObject(SEARCH_RESULTS_KEY, newResults),
     savePurchases(purchases),
-    saveOverrides(overrides),
-    saveHistory(history)
+    saveOverrides(overrides)
   ]);
 
   try {
@@ -86,6 +82,7 @@ async function removeItem(name) {
   } catch (_) {}
 
   const id = await getItemId(name);
+  await deleteHistoryForItem(id);
   await removeItemDetail(id);
 }
 

@@ -6,7 +6,7 @@
     "jsdom": "^26.1.0"
   },
   "scripts": {
-    "test": "node test/unitPriceTest.js && node test/unitNormalizeTest.js && node test/canOfSoupTest.js && node test/weightingCalendarTest.js && node test/sharedStateCalendarTest.js && node test/multiSnackSlotTest.js && node test/itemRegistryTest.js && node test/searchResultsTest.js && node test/mealDBTest.js"
+    "test": "node test/unitPriceTest.js && node test/unitNormalizeTest.js && node test/canOfSoupTest.js && node test/weightingCalendarTest.js && node test/sharedStateCalendarTest.js && node test/multiSnackSlotTest.js && node test/itemRegistryTest.js && node test/searchResultsTest.js && node test/mealDBTest.js && node test/historyDBTest.js"
   },
   "type": "module"
 }

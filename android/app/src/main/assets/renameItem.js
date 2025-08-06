@@ -57,15 +57,13 @@ const loadSearchResults = () => loadObject(SEARCH_RESULTS_KEY);
 const loadConsumed = () => loadArrayWithFallback('consumedThisYear');
 const loadOverrides = () =>
   loadObjectWithFallback('consumptionOverrides');
-const loadHistory = () => loadObjectWithFallback('consumedHistory');
 
 const save = (key, value) => saveArray(key, value);
 const saveOverrides = overrides =>
   saveObject('consumptionOverrides', overrides);
-const saveHistory = history => saveObject('consumedHistory', history);
 
 async function renameItem(oldName, newName) {
-  const [needs, consumption, stock, expiration, consumed, searchResults, purchases, overrides, history] = await Promise.all([
+  const [needs, consumption, stock, expiration, consumed, searchResults, purchases, overrides] = await Promise.all([
     loadNeeds(),
     loadConsumption(),
     loadStock(),
@@ -73,8 +71,7 @@ async function renameItem(oldName, newName) {
     loadConsumed(),
     loadSearchResults(),
     loadPurchases(),
-    loadOverrides(),
-    loadHistory()
+    loadOverrides()
   ]);
 
   const canonOld = canonicalName(oldName);
@@ -112,7 +109,6 @@ async function renameItem(oldName, newName) {
   };
   renameKeys(purchases);
   renameKeys(overrides);
-  renameKeys(history);
 
   await Promise.all([
     save('yearlyNeeds', needs),
@@ -122,8 +118,7 @@ async function renameItem(oldName, newName) {
     save('consumedThisYear', consumed),
     saveObject(SEARCH_RESULTS_KEY, searchResults),
     savePurchases(purchases),
-    saveOverrides(overrides),
-    saveHistory(history)
+    saveOverrides(overrides)
   ]);
 
   const id = await getItemId(newName);

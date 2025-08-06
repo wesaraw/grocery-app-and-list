@@ -9,6 +9,11 @@ import {
   loadObject as loadItemObject,
   saveObject as saveItemObject
 } from './utils/itemRegistry.js';
+import {
+  loadConsumptionHistory,
+  addConsumptionRecord,
+  removeHistoryEntry
+} from './utils/historyStorage.js';
 
 const NEEDS_KEY = 'yearlyNeeds';
 
@@ -39,20 +44,12 @@ function saveConsumption(cons) {
   return saveItemArray('consumedThisYear', cons);
 }
 
-async function loadHistory() {
-  return loadItemObject('consumedHistory');
-}
-
 async function loadOverrides() {
   return loadItemObject('consumptionOverrides');
 }
 
 function saveOverrides(overrides) {
   return saveItemObject('consumptionOverrides', overrides);
-}
-
-function saveHistory(hist) {
-  return saveItemObject('consumedHistory', hist);
 }
 
 function updateHistoryList(name, ul, span, map, history, overrides, weekly) {
@@ -82,8 +79,8 @@ function updateHistoryList(name, ul, span, map, history, overrides, weekly) {
         }
       }
       await saveConsumption(Array.from(map.values()));
-      await saveHistory(history);
       await saveOverrides(overrides);
+      await removeHistoryEntry(entry.id);
       updateHistoryList(name, ul, span, map, history, overrides, weekly);
     });
     li.appendChild(document.createTextNode(' '));
@@ -118,13 +115,13 @@ function createItemRow(item, map, history, overrides, weekly) {
         item.amount += change;
         const wkTxt = weekly ? ` - ${weekly.toFixed(2)}/wk` : '';
         span.textContent = `${item.name} - ${item.amount} ${item.unit}${wkTxt}`;
+        const rec = await addConsumptionRecord(item.name, change, week);
         const arr = history[item.name] || [];
-        arr.unshift({ id: Date.now(), date: new Date().toLocaleDateString(), diff: change, week });
+        arr.unshift({ id: rec.id, date: rec.date, diff: change, week });
         history[item.name] = arr;
         if (!overrides[item.name]) overrides[item.name] = {};
         overrides[item.name][week] = (overrides[item.name][week] || 0) + change;
         await saveConsumption(Array.from(map.values()));
-        await saveHistory(history);
         await saveOverrides(overrides);
         updateHistoryList(item.name, ul, span, map, history, overrides, weekly);
         input.value = '';
@@ -149,7 +146,7 @@ async function init() {
   container = document.getElementById('consumption');
   const [consumed, history, needs, overrides] = await Promise.all([
     loadConsumption(),
-    loadHistory(),
+    loadConsumptionHistory(),
     loadNeeds(),
     loadOverrides()
   ]);

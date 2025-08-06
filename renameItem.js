@@ -65,11 +65,9 @@ async function saveMealsForType(type, arr) {
 const loadConsumed = () => loadArrayWithFallback('consumedThisYear');
 const loadOverrides = () =>
   loadObjectWithFallback('consumptionOverrides');
-const loadHistory = () => loadObjectWithFallback('consumedHistory');
 
 const save = (key, value) => saveArray(key, value);
 const saveOverrides = overrides => saveObject('consumptionOverrides', overrides);
-const saveHistory = history => saveObject('consumedHistory', history);
 
 async function renameItem(oldName, newName) {
   const id = await renameItemInRegistry(oldName, newName);
@@ -80,7 +78,7 @@ async function renameItem(oldName, newName) {
     mealEntries.map(([type]) => loadMealsByType(type))
   );
 
-  const [needs, consumption, stock, expiration, consumed, searchResults, purchases, overrides, history, itemSeasons] = await Promise.all([
+  const [needs, consumption, stock, expiration, consumed, searchResults, purchases, overrides, itemSeasons] = await Promise.all([
     loadNeeds(),
     loadConsumption(),
     loadStock(),
@@ -89,7 +87,6 @@ async function renameItem(oldName, newName) {
     loadSearchResults(),
     loadPurchases(),
     loadOverrides(),
-    loadHistory(),
     loadItemSeasons()
   ]);
 
@@ -133,7 +130,6 @@ async function renameItem(oldName, newName) {
   };
   renameKeys(purchases);
   renameKeys(overrides);
-  renameKeys(history);
   renameKeys(itemSeasons);
 
   // rename ingredient references across all meals
@@ -156,7 +152,6 @@ async function renameItem(oldName, newName) {
     saveObject(SEARCH_RESULTS_KEY, searchResults),
     savePurchases(purchases),
     saveOverrides(overrides),
-    saveHistory(history),
     saveItemSeasons(itemSeasons),
     ...mealEntries.map(([type]) => saveMealsForType(type, mealsByType[type]))
   ]);
