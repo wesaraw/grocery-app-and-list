@@ -10,9 +10,9 @@ import {
   loadObject,
   saveObject
 } from './utils/itemRegistry.js';
+import { loadSearchResults, setSearchResult } from './utils/searchResults.js';
+import { getItemDetail, setItemDetail } from './utils/itemDetails.js';
 
-const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
-const STORE_SELECTION_KEY = 'storeSelections';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -37,8 +37,6 @@ function setStorage(obj) {
     chrome.storage.local.set(obj, () => resolve());
   });
 }
-const loadStoreSelections = () =>
-  loadArrayWithFallback(STORE_SELECTION_KEY, STORE_SELECTION_PATH);
 
 const loadMealPlanMonth = () => loadArray('mealPlanMonthly');
 
@@ -248,8 +246,10 @@ function monthlyCost(itemName, product, map = weightPackMap) {
 }
 
 async function getStoreEntries(itemName) {
-  const all = await loadStoreSelections();
-  return all.filter(e => e.name === itemName);
+  const id = await getItemId(itemName);
+  const all = await loadSearchResults();
+  const stores = all[id] || {};
+  return Object.entries(stores).map(([store, data]) => ({ store, ...data }));
 }
 
 async function loadSelected(item, store) {
@@ -306,36 +306,17 @@ async function buildWeightPackMap(item, stores) {
 
 async function loadFinal(item) {
   const id = await getItemId(item);
-  const idKey = `final_${id}`;
-  const legacyKey = `final_${encodeURIComponent(item)}`;
-  const data = await getStorage([idKey, legacyKey]);
-  if (data[legacyKey] && !data[idKey]) {
-    await setStorage({ [idKey]: data[legacyKey] });
-    chrome.storage.local.remove(legacyKey);
-    return data[legacyKey];
-  }
-  if (data[legacyKey]) chrome.storage.local.remove(legacyKey);
-  return data[idKey] || null;
+  const detail = await getItemDetail(id);
+  return detail ? detail.selectedStore || null : null;
 }
 
 async function saveFinal(item, store, product) {
   const id = await getItemId(item);
-  const storeKey = `final_${id}`;
-  const productKey = `final_product_${id}`;
-  const legacyProdKey = `final_product_${encodeURIComponent(item)}`;
-  const existingData = await getStorage([productKey, legacyProdKey]);
-  let existingProd = existingData[productKey] || null;
-  if (!existingProd && existingData[legacyProdKey]) {
-    existingProd = existingData[legacyProdKey];
-    await setStorage({ [productKey]: existingProd });
-    chrome.storage.local.remove(legacyProdKey);
-  } else if (existingData[legacyProdKey]) {
-    chrome.storage.local.remove(legacyProdKey);
-  }
+  const existing = await getItemDetail(id);
 
   let image = product?.image || '';
-  if (!image && existingProd && existingProd.image) {
-    image = existingProd.image;
+  if (!image && existing && existing.image) {
+    image = existing.image;
   }
   if (!image) {
     for (const s of storeOrder) {
@@ -363,7 +344,17 @@ async function saveFinal(item, store, product) {
     product = updated;
   }
 
-  await setStorage({ [storeKey]: store, [productKey]: product });
+  const detail = { ...(product || existing || {}), selectedStore: store, name: item };
+  await setItemDetail(id, detail);
+  if (product) {
+    await setSearchResult(id, store, {
+      link: product.link || null,
+      image: product.image || '',
+      price: product.priceNumber ?? product.price ?? null,
+      convertedQty: product.convertedQty ?? null,
+      pricePerUnit: product.pricePerUnit ?? null
+    });
+  }
   return product;
 }
 

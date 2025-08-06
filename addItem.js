@@ -10,13 +10,12 @@ import {
   loadArray as loadItemArray,
   saveArray
 } from './utils/itemRegistry.js';
+import { setSearchResult } from './utils/searchResults.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
-const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
-const STORE_SELECTION_KEY = 'storeSelections';
 
 const DEFAULTS = {
   yearly: 0,
@@ -116,7 +115,6 @@ const loadNeeds = () => loadArray('yearlyNeeds', YEARLY_NEEDS_PATH);
 const loadConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
 const loadStock = () => loadArray('currentStock', STOCK_PATH);
 const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
-const loadStoreSelections = () => loadArray(STORE_SELECTION_KEY, STORE_SELECTION_PATH);
 
 
 async function loadConsumed() {
@@ -184,7 +182,6 @@ async function commit() {
     stockRaw,
     expirationRaw,
     consumedRaw,
-    storeSelectionsRaw,
     purchasesRaw,
     densityMapRaw,
     itemSeasonsRaw
@@ -194,26 +191,17 @@ async function commit() {
     loadStock(),
     loadExpiration(),
     loadConsumed(),
-    loadStoreSelections(),
     loadPurchases(),
     loadDensityMap(),
     loadItemSeasons()
   ]);
 
-  const [
-    needs,
-    consumption,
-    stock,
-    expiration,
-    consumed,
-    storeSelections
-  ] = await Promise.all([
+  const [needs, consumption, stock, expiration, consumed] = await Promise.all([
     convertArrayToIds(needsRaw),
     convertArrayToIds(consumptionRaw),
     convertArrayToIds(stockRaw),
     convertArrayToIds(expirationRaw),
-    convertArrayToIds(consumedRaw),
-    convertArrayToIds(storeSelectionsRaw)
+    convertArrayToIds(consumedRaw)
   ]);
 
   const purchases = await convertObjectKeysToIds(purchasesRaw);
@@ -236,62 +224,53 @@ async function commit() {
   expiration.push({ id, shelf_life_months: shelf });
   consumed.push({ id, amount: 0, unit });
 
-  storeSelections.push(
-    {
-      id,
-      store: 'Stop & Shop',
+  const defaultStores = {
+    'Stop & Shop': {
       price: null,
       convertedQty: null,
       pricePerUnit: null,
       link: STORE_LINKS['Stop & Shop'](name),
       image: null
     },
-    {
-      id,
-      store: 'Walmart',
+    Walmart: {
       price: null,
       convertedQty: null,
       pricePerUnit: null,
       link: STORE_LINKS['Walmart'](name),
       image: null
     },
-    {
-      id,
-      store: 'Amazon',
+    Amazon: {
       price: null,
       convertedQty: null,
       pricePerUnit: null,
       link: STORE_LINKS['Amazon'](name),
       image: null
     },
-    {
-      id,
-      store: 'Shaws',
+    Shaws: {
       price: null,
       convertedQty: null,
       pricePerUnit: null,
       link: STORE_LINKS['Shaws'](name),
       image: null
     },
-    {
-      id,
-      store: 'Roche Bros',
+    'Roche Bros': {
       price: null,
       convertedQty: null,
       pricePerUnit: null,
       link: STORE_LINKS['Roche Bros'](name),
       image: null
     },
-    {
-      id,
-      store: 'Hannaford',
+    Hannaford: {
       price: null,
       convertedQty: null,
       pricePerUnit: null,
       link: STORE_LINKS['Hannaford'](name),
       image: null
     }
-  );
+  };
+  for (const [store, data] of Object.entries(defaultStores)) {
+    await setSearchResult(id, store, data);
+  }
 
   densityMap[id] = { convert: false, ratio: densityRatio };
 
@@ -319,7 +298,6 @@ async function commit() {
     saveArray('currentStock', stock),
     saveArray('expirationData', expiration),
     saveArray('consumedThisYear', consumed),
-    saveArray(STORE_SELECTION_KEY, storeSelections),
     savePurchases(purchases),
     saveDensityMap(densityMap),
     saveItemSeasons(itemSeasons)

@@ -18,9 +18,10 @@ import {
   getItemId,
   getItemName
 } from './utils/itemRegistry.js';
+import { getItemDetail, migrateItemDetails } from './utils/itemDetails.js';
+import { loadSearchResults, migrateSearchResults } from './utils/searchResults.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
-const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
@@ -101,7 +102,7 @@ async function getData() {
   const [needs, selections, consumption, stock, expiration, consumed, purchases, mealYear, mealMonth, calendar, meals, dMap] =
     await Promise.all([
       loadNeeds(),
-      loadJSON(STORE_SELECTION_PATH),
+      loadSearchResults(),
       loadMonthlyConsumption(),
       loadStock(),
       loadExpiration(),
@@ -147,7 +148,7 @@ let weightPackMap = new Map();
 let densityMap = {};
 let mealMonthMap = new Map();
 let mealPlanMonthMap = new Map();
-let selectionsData = [];
+let searchResults = {};
 
 let resolveInit;
 const initReady = new Promise(resolve => {
@@ -156,38 +157,14 @@ const initReady = new Promise(resolve => {
 
 async function getFinal(itemName) {
   const id = await getItemId(itemName);
-  const keyId = `final_${id}`;
-  const legacyKey = `final_${encodeURIComponent(itemName)}`;
-  return new Promise(resolve => {
-    chrome.storage.local.get([keyId, legacyKey], data => {
-      if (data[legacyKey] && !data[keyId]) {
-        chrome.storage.local.set({ [keyId]: data[legacyKey] }, () => {
-          chrome.storage.local.remove(legacyKey, () => resolve(data[legacyKey]));
-        });
-      } else {
-        if (data[legacyKey]) chrome.storage.local.remove(legacyKey);
-        resolve(data[keyId]);
-      }
-    });
-  });
+  const detail = await getItemDetail(id);
+  return detail ? detail.selectedStore || null : null;
 }
 
 async function getFinalProduct(itemName) {
   const id = await getItemId(itemName);
-  const keyId = `final_product_${id}`;
-  const legacyKey = `final_product_${encodeURIComponent(itemName)}`;
-  return new Promise(resolve => {
-    chrome.storage.local.get([keyId, legacyKey], data => {
-      if (data[legacyKey] && !data[keyId]) {
-        chrome.storage.local.set({ [keyId]: data[legacyKey] }, () => {
-          chrome.storage.local.remove(legacyKey, () => resolve(data[legacyKey]));
-        });
-      } else {
-        if (data[legacyKey]) chrome.storage.local.remove(legacyKey);
-        resolve(data[keyId]);
-      }
-    });
-  });
+  const detail = await getItemDetail(id);
+  return detail || null;
 }
 
 async function storageKey(type, item, store) {
@@ -499,6 +476,8 @@ function updateFinalInfo(itemName, span, img, store, product, map = weightPackMa
 
 async function init() {
   await initUomTable();
+  await migrateItemDetails();
+  await migrateSearchResults();
   const {
     needs,
     selections,
@@ -515,7 +494,7 @@ async function init() {
   } = await getData();
   needsData = needs;
   densityMap = density;
-  selectionsData = selections;
+  searchResults = selections;
   const sortedNeeds = sortItemsByCategory(needs);
   const consMap = new Map(consumption.map(c => [c.name, c]));
   const hasCalendar = calendar && Object.keys(calendar).length > 0;
@@ -592,9 +571,7 @@ async function init() {
     finalMap.set(item.id, rec);
     getFinal(item.name).then(async store => {
       const product = await getFinalProduct(item.name);
-      const stores = selections
-        .filter(s => s.name === item.name)
-        .map(s => s.store);
+      const stores = Object.keys(selections[item.id] || {});
       const weightMap = await buildWeightPackMap(item.name, stores);
       if (product) {
         const pInfo = getPackInfo(product, weightMap, item.name);
@@ -640,9 +617,17 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     if (rec) {
       const { span, img, btn } = rec;
       const prod = message.product;
-      const stores = selectionsData
-        .filter(s => s.name === name)
-        .map(s => s.store);
+      if (prod) {
+        if (!searchResults[message.itemId]) searchResults[message.itemId] = {};
+        searchResults[message.itemId][message.store] = {
+          link: prod.link || null,
+          image: prod.image || '',
+          price: prod.priceNumber ?? prod.price ?? null,
+          convertedQty: prod.convertedQty ?? null,
+          pricePerUnit: prod.pricePerUnit ?? null
+        };
+      }
+      const stores = Object.keys(searchResults[message.itemId] || {});
       const weightMap = await buildWeightPackMap(name, stores);
       if (prod) {
         const info = getPackInfo(prod, weightMap, name);
@@ -723,7 +708,7 @@ async function rerenderAll() {
     mealsByCategory
   } = await getData();
   needsData = needs;
-  selectionsData = selections;
+  searchResults = selections;
   const sortedNeeds = sortItemsByCategory(needs);
   const consMap = new Map(consumption.map(c => [c.name, c]));
   const hasCalendar = calendar && Object.keys(calendar).length > 0;
@@ -800,9 +785,7 @@ async function rerenderAll() {
     finalMap.set(item.id, rec);
     getFinal(item.name).then(async store => {
       const product = await getFinalProduct(item.name);
-      const stores = selectionsData
-        .filter(s => s.name === item.name)
-        .map(s => s.store);
+      const stores = Object.keys(searchResults[item.id] || {});
       const weightMap = await buildWeightPackMap(item.name, stores);
       if (product) {
         const pInfo = getPackInfo(product, weightMap, item.name);
@@ -851,37 +834,40 @@ chrome.storage.onChanged.addListener((changes, area) => {
       refreshNeeds(stockData, consumedYearData);
     });
   }
-  Object.keys(changes).forEach(key => {
-    if (key.startsWith('final_') || key.startsWith('final_product_')) {
-      (async () => {
-        const idPart = key.replace(/^final(_product)?_/, '');
-        const id = decodeURIComponent(idPart);
-        const item = await getItemName(id);
-        const rec = finalMap.get(id);
-        if (rec) {
-          initReady.then(() =>
-            Promise.all([getFinal(item), getFinalProduct(item)]).then(
-              async ([store, product]) => {
-                const { span, img, btn } = rec;
-                const stores = selectionsData
-                  .filter(s => s.name === item)
-                  .map(s => s.store);
-                const weightMap = await buildWeightPackMap(item, stores);
-                rec.product = product;
-                rec.weightMap = weightMap;
-                const amountText =
-                  rec.needAmt != null && !isNaN(rec.needAmt)
-                    ? needText(item, rec.needAmt, rec.product, rec.weightMap)
-                    : '';
-                btn.textContent = item + amountText;
-                updateFinalInfo(item, span, img, store, product, weightMap);
-              }
-            )
-          );
-        }
-      })();
-    }
-  });
+    Object.keys(changes).forEach(key => {
+      if (key === 'itemDetails') {
+        const newDetails = changes.itemDetails.newValue || {};
+        const oldDetails = changes.itemDetails.oldValue || {};
+        const ids = new Set([
+          ...Object.keys(newDetails),
+          ...Object.keys(oldDetails)
+        ]);
+        ids.forEach(id => {
+          (async () => {
+            const rec = finalMap.get(id);
+            if (!rec) return;
+            const item = await getItemName(id);
+            initReady.then(() =>
+              Promise.all([getFinal(item), getFinalProduct(item)]).then(
+                async ([store, product]) => {
+                  const { span, img, btn } = rec;
+                const stores = Object.keys(searchResults[id] || {});
+                  const weightMap = await buildWeightPackMap(item, stores);
+                  rec.product = product;
+                  rec.weightMap = weightMap;
+                  const amountText =
+                    rec.needAmt != null && !isNaN(rec.needAmt)
+                      ? needText(item, rec.needAmt, rec.product, rec.weightMap)
+                      : '';
+                  btn.textContent = item + amountText;
+                  updateFinalInfo(item, span, img, store, product, weightMap);
+                }
+              )
+            );
+          })();
+        });
+      }
+    });
   if (
     area === 'local' &&
     (changes.yearlyNeeds ||
