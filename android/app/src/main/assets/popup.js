@@ -20,7 +20,7 @@ import {
   loadArrayWithFallback,
   loadObject
 } from './utils/itemRegistry.js';
-import { db } from './db.js';
+import { db, subscribeToChanges } from './db.js';
 import { getItemDetail, migrateItemDetails } from './utils/itemDetails.js';
 import { loadSearchResults, migrateSearchResults } from './utils/searchResults.js';
 
@@ -824,71 +824,19 @@ async function rerenderAll() {
   window.scrollTo(0, scrollTop);
 }
 
-chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && changes.currentStock) {
-    convertArrayToNames(changes.currentStock.newValue || []).then(newStock => {
-      refreshNeeds(newStock, consumedYearData);
-    });
-  }
-  if (area === 'local' && changes[CONSUMED_PATH]) {
-    convertArrayToNames(changes[CONSUMED_PATH].newValue || []).then(newConsumed => {
-      consumedYearData = newConsumed;
-      refreshNeeds(stockData, newConsumed);
-    });
-  }
-  if (area === 'local' && changes.purchases) {
-    convertObjectKeysToNames(changes.purchases.newValue || {}).then(p => {
-      purchasesData = p;
-      refreshNeeds(stockData, consumedYearData);
-    });
-  }
-    Object.keys(changes).forEach(key => {
-      if (key === 'itemDetails') {
-        const newDetails = changes.itemDetails.newValue || {};
-        const oldDetails = changes.itemDetails.oldValue || {};
-        const ids = new Set([
-          ...Object.keys(newDetails),
-          ...Object.keys(oldDetails)
-        ]);
-        ids.forEach(id => {
-          (async () => {
-            const rec = finalMap.get(id);
-            if (!rec) return;
-            const item = await getItemName(id);
-            initReady.then(() =>
-              Promise.all([getFinal(item), getFinalProduct(item)]).then(
-                async ([store, product]) => {
-                  const { span, img, btn } = rec;
-                const stores = Object.keys(searchResults[id] || {});
-                  const weightMap = await buildWeightPackMap(item, stores);
-                  rec.product = product;
-                  rec.weightMap = weightMap;
-                  const amountText =
-                    rec.needAmt != null && !isNaN(rec.needAmt)
-                      ? needText(item, rec.needAmt, rec.product, rec.weightMap)
-                      : '';
-                  btn.textContent = item + amountText;
-                  updateFinalInfo(item, span, img, store, product, weightMap);
-                }
-              )
-            );
-          })();
-        });
-      }
-    });
-  if (
-    area === 'local' &&
-    (changes.yearlyNeeds ||
-      changes.monthlyConsumption ||
-      changes.expirationData ||
-      changes.mealPlanMonthly ||
-      changes.mealPlanYearly ||
-      changes.mealPlanMonthlyBreakdown ||
-      changes.preparedMealsCalendar ||
-      changes.whatToEatCalendar ||
-      changes.mealCategories ||
-      Object.keys(changes).some(k => k.endsWith('Meals')))
-  ) {
+subscribeToChanges(async table => {
+  if (table === 'lists') {
+    const [newStock, newConsumed, newPurchases] = await Promise.all([
+      loadStock(),
+      loadConsumed(),
+      loadPurchases()
+    ]);
+    stockData = await convertArrayToNames(newStock);
+    consumedYearData = await convertArrayToNames(newConsumed);
+    purchasesData = await convertObjectKeysToNames(newPurchases);
+    refreshNeeds(stockData, consumedYearData);
+    rerenderAll();
+  } else {
     rerenderAll();
   }
 });

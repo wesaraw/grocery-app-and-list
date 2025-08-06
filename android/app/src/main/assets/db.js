@@ -71,34 +71,8 @@ export async function importAll(text) {
 }
 
 export async function migrateFromLocalStorage() {
-  const arrayKeys = ['items', 'meals', 'history'];
-  const listKeys = [
-    'currentStock',
-    'yearlyNeeds',
-    'searchResults',
-    'consumedThisYear',
-    'expirationData',
-    'lastCommitItems',
-    'mealCategories',
-    'mealPlanMonthly',
-    'mealPlanYearly',
-    'monthlyConsumption',
-    'userCategoryDays',
-    'users',
-    'coupons',
-    'itemSeasons',
-    'mealPlanMonthlyBreakdown',
-    'userPriceThresholds',
-    'whatToEatCalendar',
-    'calendarColumnOrder',
-    'cookingDays',
-    'mealSlots',
-    'mealsPerDay',
-    'pendingCommitWeek',
-    'storeSelections'
-  ];
-  const allKeys = arrayKeys.concat(listKeys);
-  const legacy = await new Promise(res => chrome.storage.local.get(allKeys, res));
+  const keys = ['items', 'meals', 'history'];
+  const legacy = await new Promise(res => chrome.storage.local.get(keys, res));
   let migrated = false;
   await db.transaction('rw', db.tables, async () => {
     if (Array.isArray(legacy.items) && legacy.items.length) {
@@ -113,15 +87,9 @@ export async function migrateFromLocalStorage() {
       await db.history.bulkPut(legacy.history);
       migrated = true;
     }
-    for (const key of listKeys) {
-      if (legacy[key] !== undefined) {
-        await db.lists.put({ key, value: legacy[key] });
-        migrated = true;
-      }
-    }
   });
   if (migrated) {
-    await new Promise(res => chrome.storage.local.remove(allKeys, res));
+    await new Promise(res => chrome.storage.local.remove(keys, res));
   }
 }
 
