@@ -8,6 +8,7 @@ import {
 } from './utils/sortByCategory.js';
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
 import { loadArray as loadItemArray, getItemId } from './utils/itemRegistry.js';
+import { loadItemDetails } from './utils/itemDetails.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -39,17 +40,13 @@ const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
 const loadNeeds = () => loadArray('yearlyNeeds', NEEDS_PATH);
 
 async function loadFinalProducts(names) {
-  return new Promise(async resolve => {
-    const ids = await Promise.all(names.map(n => getItemId(n)));
-    const idKeys = ids.map(id => `final_product_${id}`);
-    chrome.storage.local.get(idKeys, data => {
-      const map = {};
-      names.forEach((n, idx) => {
-        map[n] = data[idKeys[idx]] || null;
-      });
-      resolve(map);
-    });
+  const ids = await Promise.all(names.map(n => getItemId(n)));
+  const details = await loadItemDetails(ids);
+  const map = {};
+  names.forEach((n, idx) => {
+    map[n] = details[ids[idx]] || null;
   });
+  return map;
 }
 
 function baseGetPackInfo(product) {

@@ -2,14 +2,13 @@ import { loadJSON } from './utils/dataLoader.js';
 import { loadDensityMap, saveDensityMap } from './utils/unitNormalize.js';
 import { WEEKS_PER_MONTH } from './utils/constants.js';
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
-import { loadArray, loadArrayWithFallback, saveArray } from './utils/itemRegistry.js';
+import { loadArray, loadArrayWithFallback, saveArray, loadObject, saveObject } from './utils/itemRegistry.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
-const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
-const STORE_SELECTION_KEY = 'storeSelections';
+const SEARCH_RESULTS_KEY = 'searchResults';
 
 const DEFAULTS = {
   yearly: 0,
@@ -69,7 +68,7 @@ const loadNeeds = () => loadArrayWithFallback('yearlyNeeds', YEARLY_NEEDS_PATH);
 const loadConsumption = () => loadArrayWithFallback('monthlyConsumption', CONSUMPTION_PATH);
 const loadStock = () => loadArrayWithFallback('currentStock', STOCK_PATH);
 const loadExpiration = () => loadArrayWithFallback('expirationData', EXPIRATION_PATH);
-const loadStoreSelections = () => loadArrayWithFallback(STORE_SELECTION_KEY, STORE_SELECTION_PATH);
+const loadSearchResults = () => loadObject(SEARCH_RESULTS_KEY);
 
 
 async function loadConsumed() {
@@ -131,13 +130,13 @@ async function commit() {
   }
   const densityRatio = parseRatio(ratioText);
 
-  const [needs, consumption, stock, expiration, consumed, storeSelections, purchases, densityMap] = await Promise.all([
+  const [needs, consumption, stock, expiration, consumed, searchResults, purchases, densityMap] = await Promise.all([
     loadNeeds(),
     loadConsumption(),
     loadStock(),
     loadExpiration(),
     loadConsumed(),
-    loadStoreSelections(),
+    loadSearchResults(),
     loadPurchases(),
     loadDensityMap()
   ]);
@@ -156,62 +155,14 @@ async function commit() {
   expiration.push({ name, shelf_life_months: shelf });
   consumed.push({ name, amount: 0, unit });
 
-  storeSelections.push(
-    {
-      name,
-      store: 'Stop & Shop',
-      price: null,
-      convertedQty: null,
-      pricePerUnit: null,
-      link: STORE_LINKS['Stop & Shop'](name),
-      image: null
-    },
-    {
-      name,
-      store: 'Walmart',
-      price: null,
-      convertedQty: null,
-      pricePerUnit: null,
-      link: STORE_LINKS['Walmart'](name),
-      image: null
-    },
-    {
-      name,
-      store: 'Amazon',
-      price: null,
-      convertedQty: null,
-      pricePerUnit: null,
-      link: STORE_LINKS['Amazon'](name),
-      image: null
-    },
-    {
-      name,
-      store: 'Shaws',
-      price: null,
-      convertedQty: null,
-      pricePerUnit: null,
-      link: STORE_LINKS['Shaws'](name),
-      image: null
-    },
-    {
-      name,
-      store: 'Roche Bros',
-      price: null,
-      convertedQty: null,
-      pricePerUnit: null,
-      link: STORE_LINKS['Roche Bros'](name),
-      image: null
-    },
-    {
-      name,
-      store: 'Hannaford',
-      price: null,
-      convertedQty: null,
-      pricePerUnit: null,
-      link: STORE_LINKS['Hannaford'](name),
-      image: null
-    }
-  );
+  searchResults[name] = {
+    'Stop & Shop': { price: null, convertedQty: null, pricePerUnit: null, link: STORE_LINKS['Stop & Shop'](name), image: null },
+    Walmart: { price: null, convertedQty: null, pricePerUnit: null, link: STORE_LINKS['Walmart'](name), image: null },
+    Amazon: { price: null, convertedQty: null, pricePerUnit: null, link: STORE_LINKS['Amazon'](name), image: null },
+    Shaws: { price: null, convertedQty: null, pricePerUnit: null, link: STORE_LINKS['Shaws'](name), image: null },
+    'Roche Bros': { price: null, convertedQty: null, pricePerUnit: null, link: STORE_LINKS['Roche Bros'](name), image: null },
+    Hannaford: { price: null, convertedQty: null, pricePerUnit: null, link: STORE_LINKS['Hannaford'](name), image: null }
+  };
 
   densityMap[name] = { convert: false, ratio: densityRatio };
 
@@ -228,7 +179,7 @@ async function commit() {
     saveArray('currentStock', stock),
     saveArray('expirationData', expiration),
     saveArray('consumedThisYear', consumed),
-    saveArray(STORE_SELECTION_KEY, storeSelections),
+    saveObject(SEARCH_RESULTS_KEY, searchResults),
     savePurchases(purchases),
     saveDensityMap(densityMap)
   ]);

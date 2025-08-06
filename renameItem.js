@@ -12,15 +12,16 @@ import {
   getItemId,
   renameItemInRegistry,
   convertArrayToNames,
-  convertArrayToIds
+  convertArrayToIds,
+  loadObject
 } from './utils/itemRegistry.js';
+import { renameItemDetail } from './utils/itemDetails.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
-const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
-const STORE_SELECTION_KEY = 'storeSelections';
+const SEARCH_RESULTS_KEY = 'searchResults';
 
 const STORE_LINKS = {
   'Stop & Shop': name =>
@@ -55,8 +56,7 @@ const loadStock = () =>
   loadArrayWithFallback('currentStock', STOCK_PATH);
 const loadExpiration = () =>
   loadArrayWithFallback('expirationData', EXPIRATION_PATH);
-const loadStoreSelections = () =>
-  loadArrayWithFallback(STORE_SELECTION_KEY, STORE_SELECTION_PATH);
+const loadSearchResults = () => loadObject(SEARCH_RESULTS_KEY);
 
 async function loadMealsForType({ key, path }) {
   let arr = await loadArrayWithFallback(key, path);
@@ -91,19 +91,6 @@ const save = (key, value) => saveArray(key, value);
 const saveOverrides = overrides => saveObject('consumptionOverrides', overrides);
 const saveHistory = history => saveObject('consumedHistory', history);
 
-function renameFinalKeys(_oldName, id) {
-  return new Promise(resolve => {
-    const idFinal = `final_${id}`;
-    const idProd = `final_product_${id}`;
-    chrome.storage.local.get([idFinal, idProd], data => {
-      const setObj = {};
-      if (data[idFinal] !== undefined) setObj[idFinal] = data[idFinal];
-      if (data[idProd] !== undefined) setObj[idProd] = data[idProd];
-      chrome.storage.local.set(setObj, resolve);
-    });
-  });
-}
-
 async function renameItem(oldName, newName) {
   const id = await renameItemInRegistry(oldName, newName);
   await initializeMealCategories();
@@ -113,13 +100,13 @@ async function renameItem(oldName, newName) {
     mealEntries.map(([, info]) => loadMealsForType(info))
   );
 
-  const [needs, consumption, stock, expiration, consumed, selections, purchases, overrides, history, itemSeasons] = await Promise.all([
+  const [needs, consumption, stock, expiration, consumed, searchResults, purchases, overrides, history, itemSeasons] = await Promise.all([
     loadNeeds(),
     loadConsumption(),
     loadStock(),
     loadExpiration(),
     loadConsumed(),
-    loadStoreSelections(),
+    loadSearchResults(),
     loadPurchases(),
     loadOverrides(),
     loadHistory(),
@@ -142,14 +129,19 @@ async function renameItem(oldName, newName) {
   };
 
   [needs, consumption, stock, expiration, consumed].forEach(renameInArray);
-  selections.forEach(s => {
-    if (canonicalName(s.name) === canonOld) {
-      s.name = newName;
-      if (STORE_LINKS[s.store]) {
-        s.link = STORE_LINKS[s.store](newName);
-      }
+  Object.keys(searchResults).forEach(k => {
+    if (canonicalName(k) === canonOld) {
+      searchResults[newName] = searchResults[k];
+      delete searchResults[k];
     }
   });
+  if (searchResults[newName]) {
+    for (const [store, data] of Object.entries(searchResults[newName])) {
+      if (STORE_LINKS[store]) {
+        data.link = STORE_LINKS[store](newName);
+      }
+    }
+  }
 
   const renameKeys = obj => {
     Object.keys(obj).forEach(k => {
@@ -181,7 +173,7 @@ async function renameItem(oldName, newName) {
     save('currentStock', stock),
     save('expirationData', expiration),
     save('consumedThisYear', consumed),
-    save(STORE_SELECTION_KEY, selections),
+    saveObject(SEARCH_RESULTS_KEY, searchResults),
     savePurchases(purchases),
     saveOverrides(overrides),
     saveHistory(history),
@@ -190,7 +182,7 @@ async function renameItem(oldName, newName) {
   ]);
 
   const finalId = id || (await getItemId(newName));
-  await renameFinalKeys(oldName, finalId);
+  await renameItemDetail(finalId, newName);
 
   try {
     chrome.runtime.sendMessage({ type: 'inventory-updated' });

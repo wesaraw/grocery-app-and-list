@@ -11,6 +11,7 @@ import {
   loadArrayWithFallback,
   loadObject
 } from './utils/itemRegistry.js';
+import { getItemDetail } from './utils/itemDetails.js';
 
 function loadCalendar() {
   return loadObject('whatToEatCalendar');
@@ -46,22 +47,10 @@ let columnOrder = {};
 let editMode = false;
 const mealMap = {};
 
-function loadFinalProduct(item) {
-  return new Promise(async resolve => {
-    const id = await getItemId(item);
-    const idKey = `final_product_${id}`;
-    const legacyKey = `final_product_${encodeURIComponent(item)}`;
-    chrome.storage.local.get([idKey, legacyKey], data => {
-      if (data[legacyKey] && !data[idKey]) {
-        chrome.storage.local.set({ [idKey]: data[legacyKey] }, () => {
-          chrome.storage.local.remove(legacyKey, () => resolve(data[legacyKey]));
-        });
-      } else {
-        if (data[legacyKey]) chrome.storage.local.remove(legacyKey);
-        resolve(data[idKey] || null);
-      }
-    });
-  });
+async function loadFinalProduct(item) {
+  const id = await getItemId(item);
+  const detail = await getItemDetail(id);
+  return detail || null;
 }
 
 async function getMealImage(meal) {

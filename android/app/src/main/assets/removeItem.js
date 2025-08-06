@@ -8,15 +8,16 @@ import {
   saveArray,
   loadObjectWithFallback,
   saveObject,
-  getItemId
+  getItemId,
+  loadObject
 } from './utils/itemRegistry.js';
+import { removeItemDetail } from './utils/itemDetails.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
-const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
-const STORE_SELECTION_KEY = 'storeSelections';
+const SEARCH_RESULTS_KEY = 'searchResults';
 
 let filterText = '';
 const headerState = {};
@@ -31,8 +32,7 @@ const loadStock = () =>
   loadArrayWithFallback('currentStock', STOCK_PATH);
 const loadExpiration = () =>
   loadArrayWithFallback('expirationData', EXPIRATION_PATH);
-const loadStoreSelections = () =>
-  loadArrayWithFallback(STORE_SELECTION_KEY, STORE_SELECTION_PATH);
+const loadSearchResults = () => loadObject(SEARCH_RESULTS_KEY);
 
 const loadConsumed = () => loadArrayWithFallback('consumedThisYear');
 const loadOverrides = () =>
@@ -45,13 +45,13 @@ const saveOverrides = overrides =>
 const saveHistory = history => saveObject('consumedHistory', history);
 
 async function removeItem(name) {
-  const [needs, consumption, stock, expiration, consumed, selections, purchases, overrides, history] = await Promise.all([
+  const [needs, consumption, stock, expiration, consumed, searchResults, purchases, overrides, history] = await Promise.all([
     loadNeeds(),
     loadConsumption(),
     loadStock(),
     loadExpiration(),
     loadConsumed(),
-    loadStoreSelections(),
+    loadSearchResults(),
     loadPurchases(),
     loadOverrides(),
     loadHistory()
@@ -63,7 +63,8 @@ async function removeItem(name) {
   const newStock = filter(stock);
   const newExpiration = filter(expiration);
   const newConsumed = filter(consumed);
-  const newSelections = selections.filter(s => s.name !== name);
+  const newResults = { ...searchResults };
+  delete newResults[name];
   delete purchases[name];
   delete overrides[name];
   delete history[name];
@@ -74,7 +75,7 @@ async function removeItem(name) {
     save('currentStock', newStock),
     save('expirationData', newExpiration),
     save('consumedThisYear', newConsumed),
-    save(STORE_SELECTION_KEY, newSelections),
+    saveObject(SEARCH_RESULTS_KEY, newResults),
     savePurchases(purchases),
     saveOverrides(overrides),
     saveHistory(history)
@@ -85,10 +86,7 @@ async function removeItem(name) {
   } catch (_) {}
 
   const id = await getItemId(name);
-  chrome.storage.local.remove([
-    `final_${id}`,
-    `final_product_${id}`
-  ]);
+  await removeItemDetail(id);
 }
 
 function createListItem(name) {
