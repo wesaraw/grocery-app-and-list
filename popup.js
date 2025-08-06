@@ -16,8 +16,11 @@ import {
   convertArrayToNames,
   convertObjectKeysToNames,
   getItemId,
-  getItemName
+  getItemName,
+  loadArrayWithFallback,
+  loadObject
 } from './utils/itemRegistry.js';
+import { db } from './db.js';
 import { getItemDetail, migrateItemDetails } from './utils/itemDetails.js';
 import { loadSearchResults, migrateSearchResults } from './utils/searchResults.js';
 
@@ -68,27 +71,18 @@ function loadStoredArray(key) {
 const loadMealPlanMonth = () => loadStoredArray('mealPlanMonthly');
 
 function loadCalendar() {
-  return new Promise(resolve => {
-    chrome.storage.local.get('whatToEatCalendar', data => {
-      resolve(data.whatToEatCalendar || {});
-    });
-  });
+  return loadObject('whatToEatCalendar');
 }
 
-function loadMeals(type) {
+async function loadMeals(type) {
   const { key, path } = MEAL_TYPES[type];
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      let arr = data[key];
-      if (!arr) arr = await loadJSON(path);
-      if (Array.isArray(arr)) {
-        arr.forEach(m => {
-          if (m.prepared === undefined) m.prepared = false;
-        });
-      }
-      resolve(arr || []);
+  let arr = await loadArrayWithFallback(key, path);
+  if (Array.isArray(arr)) {
+    arr.forEach(m => {
+      if (m.prepared === undefined) m.prepared = false;
     });
-  });
+  }
+  return arr || [];
 }
 
 async function loadMealsByCategory() {
@@ -174,11 +168,25 @@ async function storageKey(type, item, store) {
   return `${type}_${id}_${encodeURIComponent(store)}`;
 }
 
-function loadScraped(item, store) {
-  return new Promise(async resolve => {
-    const key = await storageKey('scraped', item, store);
-    chrome.storage.local.get([key], data => resolve(data[key] || []));
-  });
+async function loadScraped(item, store) {
+  const idKey = await storageKey('scraped', item, store);
+  const legacyKey = `scraped_${encodeURIComponent(item)}_${encodeURIComponent(store)}`;
+  const rec = await db.lists.get(idKey);
+  if (rec?.value) return rec.value;
+  if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+    const data = await new Promise(resolve => {
+      chrome.storage.local.get([idKey, legacyKey], d => resolve(d));
+    });
+    const arr = data[idKey] || data[legacyKey] || [];
+    if (arr.length > 0) {
+      await db.lists.put({ key: idKey, value: arr });
+      await new Promise(resolve => {
+        chrome.storage.local.remove([idKey, legacyKey], resolve);
+      });
+    }
+    return arr;
+  }
+  return [];
 }
 
 function baseGetPackInfo(product) {
@@ -978,7 +986,7 @@ async function commitSelections() {
     ...rest
   }));
   await saveArray('lastCommitItems', commitItemsForSave);
-  chrome.storage.local.set({ pendingCommitWeek: currentWeek });
+  await db.lists.put({ key: 'pendingCommitWeek', value: currentWeek });
 
   openOrFocusWindow('shoppingList.html');
 }

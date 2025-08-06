@@ -1,7 +1,7 @@
 // Utility functions for normalizing units and handling volume to weight ratios
 import { convert } from './uomConverter.js';
 import { UNIT_ALIASES } from './priceUtils.js';
-import { convertObjectKeysToNames, convertObjectKeysToIds } from './itemRegistry.js';
+import { loadObject, saveObject } from './itemRegistry.js';
 
 const VOLUME_UNITS = new Set(['floz', 'fl oz', 'ml', 'l', 'gal', 'qt', 'pt', 'cup', 'tbsp', 'tsp']);
 const WEIGHT_UNITS = new Set(['oz', 'lb', 'g', 'kg']);
@@ -34,28 +34,14 @@ export async function userDensityCalibration(itemName, measuredWeightG) {
   return ratio;
 }
 
-const DENSITY_KEY = 'densityRatios';
+const DENSITY_KEY = 'densityMap';
 
 export function loadDensityMap() {
-  return new Promise(resolve => {
-    chrome.storage.local.get(DENSITY_KEY, async data => {
-      const raw = data[DENSITY_KEY] || {};
-      const withNames = await convertObjectKeysToNames(raw);
-      if (raw && Object.keys(raw).some(k => isNaN(parseInt(k, 10)))) {
-        const stored = await convertObjectKeysToIds(withNames);
-        chrome.storage.local.set({ [DENSITY_KEY]: stored });
-      }
-      resolve(withNames);
-    });
-  });
+  return loadObject(DENSITY_KEY);
 }
 
 export function saveDensityMap(map) {
-  return new Promise(resolve => {
-    convertObjectKeysToIds(map).then(stored => {
-      chrome.storage.local.set({ [DENSITY_KEY]: stored }, () => resolve());
-    });
-  });
+  return saveObject(DENSITY_KEY, map);
 }
 
 function parseQuantity(text) {

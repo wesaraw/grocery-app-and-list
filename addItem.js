@@ -56,7 +56,6 @@ function addSeasonRow(start = '', end = '') {
   document.getElementById('seasonContainer').appendChild(row);
 }
 
-const DENSITY_KEY = "densityRatios";
 const STORE_LINKS = {
   'Stop & Shop': name =>
     `https://stopandshop.com/product-search/${name
@@ -209,7 +208,7 @@ async function commit() {
 
   const purchases = await convertObjectKeysToIds(purchasesRaw);
   const densityMap = await convertObjectKeysToIds(densityMapRaw);
-  const itemSeasons = await convertObjectKeysToIds(itemSeasonsRaw);
+  const itemSeasons = itemSeasonsRaw;
 
   const id = await getItemId(name);
 
@@ -296,7 +295,7 @@ async function commit() {
       return null;
     })
     .filter(Boolean);
-  itemSeasons[id] = seasons;
+  itemSeasons[name] = seasons;
 
   await Promise.all([
     saveArray('yearlyNeeds', needs),

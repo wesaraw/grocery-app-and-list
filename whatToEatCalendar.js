@@ -12,31 +12,19 @@ import {
   loadObject
 } from './utils/itemRegistry.js';
 import { getItemDetail } from './utils/itemDetails.js';
+import { db } from './db.js';
 
 function loadCalendar() {
   return loadObject('whatToEatCalendar');
 }
 
-function loadColumnOrder() {
-  return new Promise(resolve => {
-    try {
-      chrome.storage.local.get('calendarColumnOrder', data => {
-        resolve(data.calendarColumnOrder || {});
-      });
-    } catch (e) {
-      resolve({});
-    }
-  });
+async function loadColumnOrder() {
+  const rec = await db.lists.get('calendarColumnOrder');
+  return rec?.value || {};
 }
 
-function saveColumnOrder(order) {
-  return new Promise(resolve => {
-    try {
-      chrome.storage.local.set({ calendarColumnOrder: order }, () => resolve());
-    } catch (e) {
-      resolve();
-    }
-  });
+async function saveColumnOrder(order) {
+  await db.lists.put({ key: 'calendarColumnOrder', value: order });
 }
 
 let calendar = {};

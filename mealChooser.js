@@ -7,6 +7,7 @@ import {
   loadMealsByType
 } from './utils/mealData.js';
 import { getItemId } from './utils/itemRegistry.js';
+import { db } from './db.js';
 
 function getCurrentWeek() {
   const start = new Date(new Date().getFullYear(), 0, 1);
@@ -18,36 +19,33 @@ async function loadMeals(type) {
   return loadMealsByType(type);
 }
 
-function loadMealSlots() {
-  return new Promise(resolve => {
-    chrome.storage.local.get('mealSlots', async data => {
-      const week = getCurrentWeek();
-      let slots = data.mealSlots || { week, users: {} };
-      let changed = false;
-      if (slots.week !== week) {
-        slots = { week, users: {} };
-      } else {
-        for (const rec of Object.values(slots.users)) {
-          for (const cat of Object.keys(rec)) {
-            const obj = rec[cat] || {};
-            const converted = {};
-            for (const [name, val] of Object.entries(obj)) {
-              if (isNaN(parseInt(name, 10))) {
-                const id = await getItemId(name);
-                converted[id] = val;
-                changed = true;
-              } else {
-                converted[name] = val;
-              }
-            }
-            rec[cat] = converted;
+async function loadMealSlots() {
+  const week = getCurrentWeek();
+  const rec = await db.lists.get('mealSlots');
+  let slots = rec?.value || { week, users: {} };
+  let changed = false;
+  if (slots.week !== week) {
+    slots = { week, users: {} };
+  } else {
+    for (const rec of Object.values(slots.users)) {
+      for (const cat of Object.keys(rec)) {
+        const obj = rec[cat] || {};
+        const converted = {};
+        for (const [name, val] of Object.entries(obj)) {
+          if (isNaN(parseInt(name, 10))) {
+            const id = await getItemId(name);
+            converted[id] = val;
+            changed = true;
+          } else {
+            converted[name] = val;
           }
         }
+        rec[cat] = converted;
       }
-      if (changed) await saveMealSlots(slots);
-      resolve(slots);
-    });
-  });
+    }
+  }
+  if (changed) await saveMealSlots(slots);
+  return slots;
 }
 
 async function saveMealSlots(slots) {
@@ -66,9 +64,7 @@ async function saveMealSlots(slots) {
       stored.users[user][cat] = converted;
     }
   }
-  return new Promise(resolve => {
-    chrome.storage.local.set({ mealSlots: stored }, () => resolve());
-  });
+  await db.lists.put({ key: 'mealSlots', value: stored });
 }
 
 

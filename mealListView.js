@@ -16,6 +16,7 @@ import {
   getItemId
 } from './utils/itemRegistry.js';
 import { getItemDetail } from './utils/itemDetails.js';
+import { db } from './db.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -96,9 +97,7 @@ async function saveMeals(arr) {
     const converted = { ...m, ingredients: await convertArrayToIds(m.ingredients || []) };
     toStore.push(converted);
   }
-  return new Promise(resolve => {
-    chrome.storage.local.set({ [key]: toStore }, () => resolve());
-  });
+  await db.lists.put({ key, value: toStore });
 }
 
 async function loadMealsForType(cat) {
@@ -124,9 +123,7 @@ async function saveMealsForType(cat, arr) {
     const converted = { ...m, ingredients: await convertArrayToIds(m.ingredients || []) };
     toStore.push(converted);
   }
-  return new Promise(resolve => {
-    chrome.storage.local.set({ [info.key]: toStore }, () => resolve());
-  });
+  await db.lists.put({ key: info.key, value: toStore });
 }
 
 function pricePerHomeUnit(itemName, product) {

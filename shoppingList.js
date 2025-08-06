@@ -1,5 +1,6 @@
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
 import { loadArray } from './utils/itemRegistry.js';
+import { db } from './db.js';
 
 async function loadCommitItems() {
   const arr = await loadArray('lastCommitItems');
@@ -120,12 +121,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (confirmBtn) {
     confirmBtn.addEventListener('click', async () => {
       const purchases = await loadPurchases();
-      const [lastCommitItems, pendingCommitWeek] = await Promise.all([
+      const [lastCommitItems, pendingRec] = await Promise.all([
         loadCommitItems(),
-        new Promise(resolve =>
-          chrome.storage.local.get('pendingCommitWeek', d => resolve(d.pendingCommitWeek))
-        )
+        db.lists.get('pendingCommitWeek')
       ]);
+      const pendingCommitWeek = pendingRec?.value;
       if (pendingCommitWeek == null) {
         window.close();
         return;
@@ -138,9 +138,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
       }
       await savePurchases(purchases);
-      chrome.storage.local.remove('pendingCommitWeek', () => {
-        window.close();
-      });
+      await db.lists.delete('pendingCommitWeek');
+      window.close();
     });
   }
 });

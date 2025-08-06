@@ -1,5 +1,4 @@
 import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
-import { loadJSON } from './utils/dataLoader.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 import { loadUsers } from './utils/userData.js';
@@ -15,6 +14,7 @@ import {
   convertArrayToIds
 } from './utils/itemRegistry.js';
 import { getItemDetail } from './utils/itemDetails.js';
+import { db } from './db.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -66,24 +66,17 @@ function createAddButton(name) {
   return btn;
 }
 
-function loadMeals() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      let arr = data[key];
-      if (!arr) arr = await loadJSON(path);
-      if (Array.isArray(arr)) {
-        for (const m of arr) {
-          if (Array.isArray(m.ingredients)) {
-            m.ingredients = await convertArrayToNames(m.ingredients);
-          }
-          if (m.prepared === undefined) m.prepared = false;
-          if (m.prepAhead === undefined) m.prepAhead = false;
-          if (m.recipeBook === undefined) m.recipeBook = '';
-        }
-      }
-      resolve(arr || []);
-    });
-  });
+async function loadMeals() {
+  let arr = await loadArrayWithFallback(key, path);
+  if (Array.isArray(arr)) {
+    for (const m of arr) {
+      if (m.prepared === undefined) m.prepared = false;
+      if (m.prepAhead === undefined) m.prepAhead = false;
+      if (m.recipeBook === undefined) m.recipeBook = '';
+      m.ingredients = await convertArrayToNames(m.ingredients || []);
+    }
+  }
+  return arr || [];
 }
 
 function loadStock() {
@@ -103,36 +96,27 @@ async function saveMeals(arr) {
     }
     toStore.push(copy);
   }
-  return new Promise(resolve => {
-    chrome.storage.local.set({ [key]: toStore }, () => resolve());
-  });
+  await db.lists.put({ key, value: toStore });
 }
 
-function loadMealsForType(cat) {
+async function loadMealsForType(cat) {
   const info = MEAL_TYPES[cat];
-  if (!info) return Promise.resolve([]);
-  return new Promise(async resolve => {
-    chrome.storage.local.get(info.key, async data => {
-      let arr = data[info.key];
-      if (!arr) arr = await loadJSON(info.path);
-      if (Array.isArray(arr)) {
-        for (const m of arr) {
-          if (Array.isArray(m.ingredients)) {
-            m.ingredients = await convertArrayToNames(m.ingredients);
-          }
-          if (m.prepared === undefined) m.prepared = false;
-          if (m.prepAhead === undefined) m.prepAhead = false;
-          if (m.recipeBook === undefined) m.recipeBook = '';
-        }
-      }
-      resolve(arr || []);
-    });
-  });
+  if (!info) return [];
+  let arr = await loadArrayWithFallback(info.key, info.path);
+  if (Array.isArray(arr)) {
+    for (const m of arr) {
+      if (m.prepared === undefined) m.prepared = false;
+      if (m.prepAhead === undefined) m.prepAhead = false;
+      if (m.recipeBook === undefined) m.recipeBook = '';
+      m.ingredients = await convertArrayToNames(m.ingredients || []);
+    }
+  }
+  return arr || [];
 }
 
 async function saveMealsForType(cat, arr) {
   const info = MEAL_TYPES[cat];
-  if (!info) return Promise.resolve();
+  if (!info) return;
   const toStore = [];
   for (const m of arr) {
     const copy = { ...m };
@@ -141,9 +125,7 @@ async function saveMealsForType(cat, arr) {
     }
     toStore.push(copy);
   }
-  return new Promise(resolve => {
-    chrome.storage.local.set({ [info.key]: toStore }, () => resolve());
-  });
+  await db.lists.put({ key: info.key, value: toStore });
 }
 
 function pricePerHomeUnit(itemName, product) {

@@ -1,25 +1,11 @@
-import { convertObjectKeysToNames, convertObjectKeysToIds } from './itemRegistry.js';
+import { loadObject, saveObject } from './itemRegistry.js';
 
-export function loadItemSeasons() {
-  return new Promise(resolve => {
-    chrome.storage.local.get('itemSeasons', async data => {
-      const raw = data.itemSeasons || {};
-      const withNames = await convertObjectKeysToNames(raw);
-      if (Object.keys(raw).some(k => isNaN(parseInt(k, 10)))) {
-        const stored = await convertObjectKeysToIds(withNames);
-        chrome.storage.local.set({ itemSeasons: stored });
-      }
-      resolve(withNames);
-    });
-  });
+export async function loadItemSeasons() {
+  return loadObject('itemSeasons');
 }
 
-export function saveItemSeasons(map) {
-  return new Promise(resolve => {
-    convertObjectKeysToIds(map).then(stored => {
-      chrome.storage.local.set({ itemSeasons: stored }, () => resolve());
-    });
-  });
+export async function saveItemSeasons(map) {
+  await saveObject('itemSeasons', map);
 }
 
 function parseMonth(str) {

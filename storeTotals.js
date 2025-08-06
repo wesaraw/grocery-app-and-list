@@ -5,8 +5,14 @@ import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
 import { loadPurchases } from './utils/purchaseStorage.js';
-import { loadArray as loadItemArray, getItemId } from './utils/itemRegistry.js';
+import {
+  loadArray as loadItemArray,
+  getItemId,
+  loadArrayWithFallback,
+  loadObject
+} from './utils/itemRegistry.js';
 import { loadSearchResults } from './utils/searchResults.js';
+import { db } from './db.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -62,42 +68,35 @@ async function loadSelected(item, store) {
   const id = await getItemId(item);
   const k = key('selected', id, store);
   const legacy = `selected_${encodeURIComponent(item)}_${encodeURIComponent(store)}`;
-  return new Promise(resolve => {
-    chrome.storage.local.get([k, legacy], data => {
-      if (data[legacy] && !data[k]) {
-        chrome.storage.local.set({ [k]: data[legacy] }, () => {
-          chrome.storage.local.remove(legacy, () => resolve(data[legacy]));
-        });
-      } else {
-        if (data[legacy]) chrome.storage.local.remove(legacy);
-        resolve(data[k] || null);
-      }
+  const rec = await db.lists.get(k);
+  if (rec?.value) return rec.value;
+  if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+    const data = await new Promise(resolve => {
+      chrome.storage.local.get([k, legacy], d => resolve(d));
     });
-  });
+    const val = data[k] || data[legacy] || null;
+    if (val != null) {
+      await db.lists.put({ key: k, value: val });
+      await new Promise(resolve => chrome.storage.local.remove([k, legacy], resolve));
+    }
+    return val;
+  }
+  return null;
 }
 
 function loadCalendar() {
-  return new Promise(resolve => {
-    chrome.storage.local.get('whatToEatCalendar', data => {
-      resolve(data.whatToEatCalendar || {});
-    });
-  });
+  return loadObject('whatToEatCalendar');
 }
 
-function loadMeals(type) {
+async function loadMeals(type) {
   const { key, path } = MEAL_TYPES[type];
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      let arr = data[key];
-      if (!arr) arr = await loadJSON(path);
-      if (Array.isArray(arr)) {
-        arr.forEach(m => {
-          if (m.prepared === undefined) m.prepared = false;
-        });
-      }
-      resolve(arr || []);
+  let arr = await loadArrayWithFallback(key, path);
+  if (Array.isArray(arr)) {
+    arr.forEach(m => {
+      if (m.prepared === undefined) m.prepared = false;
     });
-  });
+  }
+  return arr || [];
 }
 
 async function loadMealsByCategory() {

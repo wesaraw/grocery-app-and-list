@@ -1,61 +1,37 @@
-import { convertObjectKeysToIds, convertObjectKeysToNames } from './itemRegistry.js';
+import { loadArray, saveArray, loadObject, saveObject } from './itemRegistry.js';
 
-export function loadUsers() {
-  return new Promise(resolve => {
-    chrome.storage.local.get('users', data => {
-      if (Array.isArray(data.users) && data.users.length) {
-        resolve(data.users);
-      } else {
-        const defaultUsers = Array.from({ length: 5 }, (_, i) => `User ${i + 1}`);
-        resolve(defaultUsers);
+export async function loadUsers() {
+  const arr = await loadArray('users');
+  if (arr.length) return arr;
+  return Array.from({ length: 5 }, (_, i) => `User ${i + 1}`);
+}
+
+export async function saveUsers(arr) {
+  await saveArray('users', arr);
+}
+
+export async function loadUserCategoryDays() {
+  const arr = await loadArray('userCategoryDays');
+  const weekdays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  arr.forEach(rec => {
+    Object.keys(rec).forEach(cat => {
+      const val = rec[cat];
+      if (typeof val === 'number') {
+        rec[cat] = weekdays.slice(0, Math.min(7, Math.round(val)));
       }
     });
   });
+  return arr;
 }
 
-export function saveUsers(arr) {
-  return new Promise(resolve => {
-    chrome.storage.local.set({ users: arr }, () => resolve());
-  });
+export async function saveUserCategoryDays(arr) {
+  await saveArray('userCategoryDays', arr);
 }
 
-export function loadUserCategoryDays() {
-  return new Promise(resolve => {
-    chrome.storage.local.get('userCategoryDays', data => {
-      const arr = Array.isArray(data.userCategoryDays) ? data.userCategoryDays : [];
-      const weekdays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-      arr.forEach(rec => {
-        Object.keys(rec).forEach(cat => {
-          const val = rec[cat];
-          if (typeof val === 'number') {
-            rec[cat] = weekdays.slice(0, Math.min(7, Math.round(val)));
-          }
-        });
-      });
-      resolve(arr);
-    });
-  });
-}
-
-export function saveUserCategoryDays(arr) {
-  return new Promise(resolve => {
-    chrome.storage.local.set({ userCategoryDays: arr }, () => resolve());
-  });
-}
-
-export function loadUserPriceThresholds() {
-  return new Promise(resolve => {
-    chrome.storage.local.get('userPriceThresholds', async data => {
-      const obj = data.userPriceThresholds || {};
-      const withNames = await convertObjectKeysToNames(obj);
-      resolve(withNames);
-    });
-  });
+export async function loadUserPriceThresholds() {
+  return loadObject('userPriceThresholds');
 }
 
 export async function saveUserPriceThresholds(obj) {
-  const stored = await convertObjectKeysToIds(obj);
-  return new Promise(resolve => {
-    chrome.storage.local.set({ userPriceThresholds: stored }, () => resolve());
-  });
+  await saveObject('userPriceThresholds', obj);
 }
