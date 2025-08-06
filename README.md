@@ -58,23 +58,25 @@ information so you can refer to it later.
 
 ## Saving your data
 
-The add-on keeps track of your inventory, consumption, and shopping list selections using Chrome's `chrome.storage.local` API. This means the data lives inside your browser profile, not inside the extension files themselves. When you update or reload the extension, your information stays intact.
+The add-on now persists information in an IndexedDB database using the [Dexie](https://dexie.org) library. Items, meals and history each live in their own object store defined in `db.js`, replacing earlier `chrome.storage.local` calls.
 
-Example code from the extension:
+Example code using the database:
 
 ```javascript
-// Save purchases
-chrome.storage.local.set({ purchases: map }, () => {
-  console.log('Inventory saved');
-});
+import { db } from './db.js';
 
-// Load purchases
-chrome.storage.local.get('purchases', data => {
-  console.log('Inventory loaded:', data.purchases);
-});
+// Save a meal
+await db.meals.put({ id: 'tacos', name: 'Tacos', category: 'lunchDinner' });
+
+// Load all meals
+const meals = await db.meals.toArray();
 ```
 
-Chrome stores this data in a database under your profile directory. **It is tied to the extension ID**, so the ID must remain the same across updates. This repository includes a `key` field in `manifest.json` that keeps the ID constant even if you reload the extension from a fresh checkout. If you remove or change this key, Chrome will treat it as a brand new extension and any saved data will not be loaded.
+A migration helper automatically copies any existing `chrome.storage.local` data into IndexedDB the first time the new code runs.
+
+To back up or restore your data, open `backup.html`. Use **Export** to download a `grocery_backup.json` file containing all object stores, and **Import** to load a previously saved backup.
+
+Chrome still stores this database under your profile directory and ties it to the extension ID. The `manifest.json` file includes a `key` field so the ID remains constant across updates. Changing or removing this key would cause Chrome to treat the extension as new and the saved data would not be loaded.
 
 ### Weeks per Month
 

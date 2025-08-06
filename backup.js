@@ -1,21 +1,31 @@
 import { exportAll, importAll } from './db.js';
+
+const status = document.getElementById('status');
+
 async function exportData() {
   const json = await exportAll();
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'grocery_backup.txt';
+  a.download = 'grocery_backup.json';
   a.click();
   URL.revokeObjectURL(url);
+  if (status) {
+    status.textContent = 'Export complete';
+  }
 }
 
 async function importFromText(text) {
   try {
     await importAll(text);
-    alert('Import complete');
+    if (status) {
+      status.textContent = 'Import complete';
+    }
   } catch (e) {
-    alert('Invalid file');
+    if (status) {
+      status.textContent = `Import failed: ${e.message}`;
+    }
   }
 }
 
