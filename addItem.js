@@ -11,13 +11,12 @@ import {
   saveArray,
   saveObject
 } from './utils/itemRegistry.js';
-import { loadSearchResults as loadSearchResultsRegistry } from './utils/searchResults.js';
+import { setSearchResult } from './utils/searchResults.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
-const SEARCH_RESULTS_KEY = 'searchResults';
 
 const DEFAULTS = {
   yearly: 0,
@@ -184,7 +183,7 @@ async function commit() {
     stockRaw,
     expirationRaw,
     consumedRaw,
-    searchResults,
+
     purchasesRaw,
     densityMapRaw,
     itemSeasonsRaw
@@ -194,7 +193,7 @@ async function commit() {
     loadStock(),
     loadExpiration(),
     loadConsumed(),
-    loadSearchResultsRegistry(),
+
     loadPurchases(),
     loadDensityMap(),
     loadItemSeasons()
@@ -228,7 +227,8 @@ async function commit() {
   expiration.push({ id, shelf_life_months: shelf });
   consumed.push({ id, amount: 0, unit });
 
-  searchResults[id] = {
+  const defaultStores = {
+
     'Stop & Shop': {
       price: null,
       convertedQty: null,
@@ -273,6 +273,11 @@ async function commit() {
     }
   };
 
+  for (const [store, data] of Object.entries(defaultStores)) {
+    await setSearchResult(id, store, data);
+  }
+
+
   densityMap[id] = { convert: false, ratio: densityRatio };
 
   if (!purchases[id]) purchases[id] = [];
@@ -299,7 +304,6 @@ async function commit() {
     saveArray('currentStock', stock),
     saveArray('expirationData', expiration),
     saveArray('consumedThisYear', consumed),
-    saveObject(SEARCH_RESULTS_KEY, searchResults),
     savePurchases(purchases),
     saveDensityMap(densityMap),
     saveItemSeasons(itemSeasons)
