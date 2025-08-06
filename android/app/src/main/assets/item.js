@@ -8,9 +8,8 @@ import {
   loadArray,
   loadArrayWithFallback
 } from './utils/itemRegistry.js';
-
-const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
-const STORE_SELECTION_KEY = 'storeSelections';
+import { getItemDetail, setItemDetail } from './utils/itemDetails.js';
+import { loadSearchResults } from './utils/searchResults.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -36,7 +35,6 @@ function setStorage(obj) {
   });
 }
 
-const loadStoreSelections = () => loadArrayWithFallback(STORE_SELECTION_KEY, STORE_SELECTION_PATH);
 
 const loadMealPlanMonth = () => loadArray('mealPlanMonthly');
 
@@ -245,8 +243,10 @@ function monthlyCost(itemName, product, map = weightPackMap) {
 }
 
 async function getStoreEntries(itemName) {
-  const all = await loadStoreSelections();
-  return all.filter(e => e.name === itemName);
+  const id = await getItemId(itemName);
+  const all = await loadSearchResults();
+  const stores = all[id] || {};
+  return Object.entries(stores).map(([store, data]) => ({ store, ...data }));
 }
 
 async function loadSelected(item, store) {
@@ -303,36 +303,17 @@ async function buildWeightPackMap(item, stores) {
 
 async function loadFinal(item) {
   const id = await getItemId(item);
-  const k = `final_${id}`;
-  const legacy = `final_${encodeURIComponent(item)}`;
-  const data = await getStorage([k, legacy]);
-  if (data[legacy] && !data[k]) {
-    await setStorage({ [k]: data[legacy] });
-    chrome.storage.local.remove(legacy);
-    return data[legacy];
-  }
-  if (data[legacy]) chrome.storage.local.remove(legacy);
-  return data[k] || null;
+  const detail = await getItemDetail(id);
+  return detail ? detail.selectedStore || null : null;
 }
 
 async function saveFinal(item, store, product) {
   const id = await getItemId(item);
-  const storeKey = `final_${id}`;
-  const productKey = `final_product_${id}`;
-  const legacyProdKey = `final_product_${encodeURIComponent(item)}`;
-  const existingData = await getStorage([productKey, legacyProdKey]);
-  let existingProd = existingData[productKey] || null;
-  if (!existingProd && existingData[legacyProdKey]) {
-    existingProd = existingData[legacyProdKey];
-    await setStorage({ [productKey]: existingProd });
-    chrome.storage.local.remove(legacyProdKey);
-  } else if (existingData[legacyProdKey]) {
-    chrome.storage.local.remove(legacyProdKey);
-  }
+  const existing = await getItemDetail(id);
 
   let image = product?.image || '';
-  if (!image && existingProd && existingProd.image) {
-    image = existingProd.image;
+  if (!image && existing && existing.image) {
+    image = existing.image;
   }
   if (!image) {
     for (const s of storeOrder) {
@@ -360,7 +341,8 @@ async function saveFinal(item, store, product) {
     product = updated;
   }
 
-  await setStorage({ [storeKey]: store, [productKey]: product });
+  const detail = { ...(product || existing || {}), selectedStore: store, name: item };
+  await setItemDetail(id, detail);
   return product;
 }
 

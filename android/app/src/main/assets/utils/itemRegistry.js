@@ -51,10 +51,13 @@ export async function getItemName(id) {
 export async function convertArrayToIds(arr) {
   const result = [];
   for (const item of arr) {
-    if (item && item.name != null && item.id == null) {
-      const id = await getItemId(item.name);
-      const { name, ...rest } = item;
-      result.push({ ...rest, id });
+    if (item) {
+      let id = item.id;
+      if (id == null && item.name != null) {
+        id = await getItemId(item.name);
+      }
+      const { name, unit, ...rest } = item;
+      result.push(id != null ? { ...rest, id } : { ...rest });
     } else {
       result.push(item);
     }
@@ -66,9 +69,10 @@ export async function convertArrayToNames(arr) {
   const map = await loadMap();
   const reverse = buildReverseMap(map);
   return arr.map(item => {
-    if (item && item.id != null && item.name == null) {
+    if (item && item.id != null) {
       const { id, ...rest } = item;
-      return { ...rest, name: reverse[id] || id };
+      const name = item.name != null ? item.name : reverse[id] || id;
+      return { ...rest, id, name };
     }
     return item;
   });
@@ -100,7 +104,7 @@ export async function loadArray(key) {
     chrome.storage.local.get(key, async data => {
       const arr = data[key] || [];
       let stored = arr;
-      if (arr.some(it => it && it.name != null && it.id == null)) {
+      if (arr.some(it => it && it.name != null)) {
         stored = await convertArrayToIds(arr);
         chrome.storage.local.set({ [key]: stored });
       }
@@ -147,7 +151,7 @@ export async function loadArrayWithFallback(key, path) {
       if (!arr && path) arr = await loadJSON(path);
       const stored = arr || [];
       let toStore = stored;
-      if (stored.some(it => it && it.name != null && it.id == null)) {
+      if (stored.some(it => it && it.name != null)) {
         toStore = await convertArrayToIds(stored);
         chrome.storage.local.set({ [key]: toStore });
       }
@@ -181,7 +185,7 @@ export async function migrateItemRegistry() {
       const updates = {};
       for (const [key, value] of Object.entries(data)) {
         if (Array.isArray(value)) {
-          if (value.some(it => it && it.name != null && it.id == null)) {
+          if (value.some(it => it && it.name != null)) {
             updates[key] = await convertArrayToIds(value);
           }
         } else if (value && typeof value === 'object') {

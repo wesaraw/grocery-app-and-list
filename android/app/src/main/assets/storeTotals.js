@@ -6,14 +6,13 @@ import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
 import { loadPurchases } from './utils/purchaseStorage.js';
 import { loadArray as loadItemArray, getItemId } from './utils/itemRegistry.js';
+import { loadSearchResults } from './utils/searchResults.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
 const CONSUMED_PATH = 'consumedThisYear';
-const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
-const STORE_SELECTION_KEY = 'storeSelections';
 
 function loadArray(key, path) {
   return new Promise(async resolve => {
@@ -56,11 +55,7 @@ function key(type, itemId, store) {
   return `${type}_${itemId}_${encodeURIComponent(store)}`;
 }
 
-async function loadStoreSelections() {
-  const arr = await loadItemArray(STORE_SELECTION_KEY);
-  if (arr.length > 0) return arr;
-  return await loadJSON(STORE_SELECTION_PATH);
-}
+const loadSearchResultsData = () => loadSearchResults();
 
 async function loadSelected(item, store) {
   const id = await getItemId(item);
@@ -127,7 +122,7 @@ async function getData() {
       loadCalendar(),
       loadMealsByCategory(),
       loadDensityMap(),
-      loadStoreSelections()
+      loadSearchResultsData()
     ]);
   return {
     needs,
@@ -330,7 +325,7 @@ async function renderTotals() {
   const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
   const totals = {};
   for (const item of needs) {
-    const stores = selections.filter(s => s.name === item.name).map(s => s.store);
+    const stores = Object.keys(selections[item.id] || {});
     for (const store of stores) {
       const product = await loadSelected(item.name, store);
       if (!product) continue;

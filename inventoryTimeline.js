@@ -9,6 +9,7 @@ import {
   getItemId,
   getItemName
 } from './utils/itemRegistry.js';
+import { loadItemDetails } from './utils/itemDetails.js';
 
 async function loadJSON(path) {
   const url = chrome.runtime.getURL(path);
@@ -22,21 +23,17 @@ async function loadOverrides() {
 }
 
 async function loadFinalProducts(names) {
-  return new Promise(async resolve => {
-    try {
-      const ids = await Promise.all(names.map(n => getItemId(n)));
-      const idKeys = ids.map(id => `final_product_${id}`);
-      chrome.storage.local.get(idKeys, data => {
-        const map = {};
-        names.forEach((n, idx) => {
-          map[n] = data[idKeys[idx]] || null;
-        });
-        resolve(map);
-      });
-    } catch (e) {
-      resolve({});
-    }
-  });
+  try {
+    const ids = await Promise.all(names.map(n => getItemId(n)));
+    const details = await loadItemDetails(ids);
+    const map = {};
+    names.forEach((n, idx) => {
+      map[n] = details[ids[idx]] || null;
+    });
+    return map;
+  } catch (e) {
+    return {};
+  }
 }
 
 
@@ -534,13 +531,20 @@ async function init() {
       updated = true;
     }
     for (const k of Object.keys(changes)) {
-      if (k.startsWith('final_product_')) {
-        const id = k.slice('final_product_'.length);
-        const name = await getItemName(id);
-        const item = globalItems.find(i => i.name === name);
-        if (item) {
-          item.finalProduct = changes[k].newValue || null;
-          updated = true;
+      if (k === 'itemDetails') {
+        const newDetails = changes.itemDetails.newValue || {};
+        const oldDetails = changes.itemDetails.oldValue || {};
+        const ids = new Set([
+          ...Object.keys(newDetails),
+          ...Object.keys(oldDetails)
+        ]);
+        for (const id of ids) {
+          const name = await getItemName(id);
+          const item = globalItems.find(i => i.name === name);
+          if (item) {
+            item.finalProduct = newDetails[id] || null;
+            updated = true;
+          }
         }
       }
     }

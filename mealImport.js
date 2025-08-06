@@ -12,7 +12,9 @@ import {
   saveArray,
   getItemId,
   convertArrayToNames,
-  convertArrayToIds
+  convertArrayToIds,
+  loadObject,
+  saveObject
 } from './utils/itemRegistry.js';
 
 // Paths for inventory data used when adding new items
@@ -20,8 +22,7 @@ const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_fla
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
-const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
-const STORE_SELECTION_KEY = 'storeSelections';
+const SEARCH_RESULTS_KEY = 'searchResults';
 
 const DEFAULT_ITEM = {
   yearly: 0,
@@ -35,7 +36,7 @@ const loadNeeds = () => loadArrayWithFallback('yearlyNeeds', YEARLY_NEEDS_PATH);
 const loadConsumption = () => loadArrayWithFallback('monthlyConsumption', CONSUMPTION_PATH);
 const loadStock = () => loadArrayWithFallback('currentStock', STOCK_PATH);
 const loadExpiration = () => loadArrayWithFallback('expirationData', EXPIRATION_PATH);
-const loadStoreSelections = () => loadArrayWithFallback(STORE_SELECTION_KEY, STORE_SELECTION_PATH);
+const loadSearchResults = () => loadObject(SEARCH_RESULTS_KEY);
 
 
 async function loadConsumed() {
@@ -69,12 +70,12 @@ const STORE_LINKS = {
 async function ensureItemExists(name) {
   const needs = await loadNeeds();
   if (needs.find(n => n.name === name)) return;
-  const [consumption, stock, expiration, consumed, storeSelections, purchases, densityMap, itemSeasons] = await Promise.all([
+  const [consumption, stock, expiration, consumed, searchResults, purchases, densityMap, itemSeasons] = await Promise.all([
     loadConsumption(),
     loadStock(),
     loadExpiration(),
     loadConsumed(),
-    loadStoreSelections(),
+    loadSearchResults(),
     loadPurchases(),
     loadDensityMap(),
     loadItemSeasons()
@@ -92,14 +93,14 @@ async function ensureItemExists(name) {
   const shelf = DEFAULT_ITEM.shelf / WEEKS_PER_MONTH;
   expiration.push({ name, shelf_life_months: shelf });
   consumed.push({ name, amount: 0, unit: DEFAULT_ITEM.unit });
-  storeSelections.push(
-    { name, store: 'Stop & Shop', price: null, convertedQty: null, pricePerUnit: null, link: STORE_LINKS['Stop & Shop'](name), image: null },
-    { name, store: 'Walmart', price: null, convertedQty: null, pricePerUnit: null, link: STORE_LINKS['Walmart'](name), image: null },
-    { name, store: 'Amazon', price: null, convertedQty: null, pricePerUnit: null, link: STORE_LINKS['Amazon'](name), image: null },
-    { name, store: 'Shaws', price: null, convertedQty: null, pricePerUnit: null, link: STORE_LINKS['Shaws'](name), image: null },
-    { name, store: 'Roche Bros', price: null, convertedQty: null, pricePerUnit: null, link: STORE_LINKS['Roche Bros'](name), image: null },
-    { name, store: 'Hannaford', price: null, convertedQty: null, pricePerUnit: null, link: STORE_LINKS['Hannaford'](name), image: null }
-  );
+  searchResults[name] = {
+    'Stop & Shop': { price: null, convertedQty: null, pricePerUnit: null, link: STORE_LINKS['Stop & Shop'](name), image: null },
+    Walmart: { price: null, convertedQty: null, pricePerUnit: null, link: STORE_LINKS['Walmart'](name), image: null },
+    Amazon: { price: null, convertedQty: null, pricePerUnit: null, link: STORE_LINKS['Amazon'](name), image: null },
+    Shaws: { price: null, convertedQty: null, pricePerUnit: null, link: STORE_LINKS['Shaws'](name), image: null },
+    'Roche Bros': { price: null, convertedQty: null, pricePerUnit: null, link: STORE_LINKS['Roche Bros'](name), image: null },
+    Hannaford: { price: null, convertedQty: null, pricePerUnit: null, link: STORE_LINKS['Hannaford'](name), image: null }
+  };
   densityMap[name] = { convert: false, ratio: 1 };
   if (!purchases[name]) purchases[name] = [];
   purchases[name].push({ purchase_week: getCurrentWeek(), quantity_purchased: 0, date_added: new Date().toISOString() });
@@ -111,7 +112,7 @@ async function ensureItemExists(name) {
     saveArray('currentStock', stock),
     saveArray('expirationData', expiration),
     saveArray('consumedThisYear', consumed),
-    saveArray(STORE_SELECTION_KEY, storeSelections),
+    saveObject(SEARCH_RESULTS_KEY, searchResults),
     savePurchases(purchases),
     saveDensityMap(densityMap),
     saveItemSeasons(itemSeasons)
