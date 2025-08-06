@@ -9,9 +9,9 @@ import {
   convertObjectKeysToIds,
   loadArray as loadItemArray,
   saveArray,
-  loadObject,
   saveObject
 } from './utils/itemRegistry.js';
+import { loadSearchResults as loadSearchResultsRegistry } from './utils/searchResults.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -117,7 +117,6 @@ const loadNeeds = () => loadArray('yearlyNeeds', YEARLY_NEEDS_PATH);
 const loadConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
 const loadStock = () => loadArray('currentStock', STOCK_PATH);
 const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
-const loadSearchResults = () => loadObject(SEARCH_RESULTS_KEY);
 
 
 async function loadConsumed() {
@@ -195,7 +194,7 @@ async function commit() {
     loadStock(),
     loadExpiration(),
     loadConsumed(),
-    loadSearchResults(),
+    loadSearchResultsRegistry(),
     loadPurchases(),
     loadDensityMap(),
     loadItemSeasons()
@@ -229,7 +228,7 @@ async function commit() {
   expiration.push({ id, shelf_life_months: shelf });
   consumed.push({ id, amount: 0, unit });
 
-  searchResults[name] = {
+  searchResults[id] = {
     'Stop & Shop': {
       price: null,
       convertedQty: null,
