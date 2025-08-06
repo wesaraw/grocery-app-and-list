@@ -9,7 +9,7 @@ import {
   loadArrayWithFallback
 } from './utils/itemRegistry.js';
 import { getItemDetail, setItemDetail } from './utils/itemDetails.js';
-import { loadSearchResults } from './utils/searchResults.js';
+import { loadSearchResults, setSearchResult } from './utils/searchResults.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -343,6 +343,15 @@ async function saveFinal(item, store, product) {
 
   const detail = { ...(product || existing || {}), selectedStore: store, name: item };
   await setItemDetail(id, detail);
+  if (product) {
+    await setSearchResult(id, store, {
+      link: product.link || null,
+      image: product.image || '',
+      price: product.priceNumber ?? product.price ?? null,
+      convertedQty: product.convertedQty ?? null,
+      pricePerUnit: product.pricePerUnit ?? null
+    });
+  }
   return product;
 }
 

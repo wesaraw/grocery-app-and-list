@@ -571,9 +571,7 @@ async function init() {
     finalMap.set(item.id, rec);
     getFinal(item.name).then(async store => {
       const product = await getFinalProduct(item.name);
-      const stores = Object.keys(searchResults[message.itemId] || {});
-        .filter(s => s.name === item.name)
-        .map(s => s.store);
+      const stores = Object.keys(selections[item.id] || {});
       const weightMap = await buildWeightPackMap(item.name, stores);
       if (product) {
         const pInfo = getPackInfo(product, weightMap, item.name);
@@ -619,6 +617,16 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     if (rec) {
       const { span, img, btn } = rec;
       const prod = message.product;
+      if (prod) {
+        if (!searchResults[message.itemId]) searchResults[message.itemId] = {};
+        searchResults[message.itemId][message.store] = {
+          link: prod.link || null,
+          image: prod.image || '',
+          price: prod.priceNumber ?? prod.price ?? null,
+          convertedQty: prod.convertedQty ?? null,
+          pricePerUnit: prod.pricePerUnit ?? null
+        };
+      }
       const stores = Object.keys(searchResults[message.itemId] || {});
       const weightMap = await buildWeightPackMap(name, stores);
       if (prod) {

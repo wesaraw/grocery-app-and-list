@@ -10,7 +10,7 @@ import {
   loadObject,
   saveObject
 } from './utils/itemRegistry.js';
-import { loadSearchResults } from './utils/searchResults.js';
+import { loadSearchResults, setSearchResult } from './utils/searchResults.js';
 import { getItemDetail, setItemDetail } from './utils/itemDetails.js';
 
 
@@ -346,6 +346,15 @@ async function saveFinal(item, store, product) {
 
   const detail = { ...(product || existing || {}), selectedStore: store, name: item };
   await setItemDetail(id, detail);
+  if (product) {
+    await setSearchResult(id, store, {
+      link: product.link || null,
+      image: product.image || '',
+      price: product.priceNumber ?? product.price ?? null,
+      convertedQty: product.convertedQty ?? null,
+      pricePerUnit: product.pricePerUnit ?? null
+    });
+  }
   return product;
 }
 
