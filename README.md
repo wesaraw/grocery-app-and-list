@@ -58,7 +58,7 @@ information so you can refer to it later.
 
 ## Saving your data
 
-The add-on now persists information in an IndexedDB database using the [Dexie](https://dexie.org) library. Items, meals and history each live in their own object store defined in `db.js`, replacing earlier `chrome.storage.local` calls.
+All pantry information, meal plans, and history are stored in IndexedDB via the [Dexie](https://dexie.org) wrapper defined in `db.js`. Each major collection (items, meals, history, lists, etc.) gets its own object store with a primary key and optional indexes, replacing the earlier `chrome.storage.local` approach and avoiding key collisions as the extension grows.
 
 Example code using the database:
 
@@ -72,11 +72,13 @@ await db.meals.put({ id: 'tacos', name: 'Tacos', category: 'lunchDinner' });
 const meals = await db.meals.toArray();
 ```
 
-A migration helper automatically copies any existing `chrome.storage.local` data into IndexedDB the first time the new code runs.
+On first run the extension migrates any existing `chrome.storage.local` data into these stores so you keep your previous information.
 
-To back up or restore your data, open `backup.html`. Use **Export** to download a `grocery_backup.json` file containing all object stores, and **Import** to load a previously saved backup.
+To back up or restore the database, open `backup.html` from the extension menu.
+* Press **Export** to download `grocery_backup.json`, which contains the contents of every object store.
+* Press **Import** and choose a previously saved JSON file to restore the data.
 
-Chrome still stores this database under your profile directory and ties it to the extension ID. The `manifest.json` file includes a `key` field so the ID remains constant across updates. Changing or removing this key would cause Chrome to treat the extension as new and the saved data would not be loaded.
+Chrome still stores the IndexedDB database under your profile directory and ties it to the extension ID. The `manifest.json` file includes a fixed `key` so the ID remains constant across updates. Changing or removing this key would cause Chrome to treat the extension as new and the saved data would not be loaded.
 
 ### Weeks per Month
 
