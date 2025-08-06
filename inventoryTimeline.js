@@ -10,6 +10,7 @@ import {
   getItemName
 } from './utils/itemRegistry.js';
 import { loadItemDetails } from './utils/itemDetails.js';
+import { subscribeToChanges } from './db.js';
 
 async function loadJSON(path) {
   const url = chrome.runtime.getURL(path);
@@ -492,69 +493,8 @@ async function init() {
     }
   });
 
-  chrome.storage.onChanged.addListener(async (changes, area) => {
-    if (area !== 'local') return;
-
-    if (
-      changes.yearlyNeeds ||
-      changes.expirationData ||
-      changes.currentStock ||
-      changes.monthlyConsumption ||
-      changes.mealPlanMonthly ||
-      changes.mealPlanYearly
-    ) {
-      await refreshItems();
-      return;
-    }
-
-    let updated = false;
-    if (changes.purchases) {
-      const map = await convertObjectKeysToNames(changes.purchases.newValue || {});
-      globalItems.forEach(it => {
-        it.purchases = map[it.name] || [];
-      });
-      updated = true;
-    }
-    if (changes.consumptionOverrides || changes.consumedThisYear) {
-      const overridesMap = await loadOverrides();
-      globalItems.forEach(it => {
-        const data = overridesMap[it.name] || {};
-        const weekMap = {};
-        Object.keys(data).forEach(w => {
-          const diff = data[w];
-          weekMap[w] = it.weekly_consumption
-            ? 1 + diff / it.weekly_consumption
-            : 1;
-        });
-        it.overrideWeeks = weekMap;
-      });
-      updated = true;
-    }
-    for (const k of Object.keys(changes)) {
-      if (k === 'itemDetails') {
-        const newDetails = changes.itemDetails.newValue || {};
-        const oldDetails = changes.itemDetails.oldValue || {};
-        const ids = new Set([
-          ...Object.keys(newDetails),
-          ...Object.keys(oldDetails)
-        ]);
-        for (const id of ids) {
-          const name = await getItemName(id);
-          const item = globalItems.find(i => i.name === name);
-          if (item) {
-            item.finalProduct = newDetails[id] || null;
-            updated = true;
-          }
-        }
-      }
-    }
-    if (updated) {
-      if (showingHistory) {
-        showPurchaseHistory();
-      } else {
-        applyFilter();
-      }
-    }
+  subscribeToChanges(async () => {
+    await refreshItems();
   });
 
   try {
