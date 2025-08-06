@@ -1,3 +1,5 @@
+import 'fake-indexeddb/auto';
+import { db } from '../db.js';
 import {
   getItemId,
   getItemName,
@@ -12,40 +14,13 @@ import {
   loadObject
 } from '../utils/itemRegistry.js';
 
-const storage = {};
-
-global.chrome = {
-  storage: {
-    local: {
-      get: (key, cb) => {
-        if (key == null) return cb({ ...storage });
-        if (typeof key === 'string') return cb({ [key]: storage[key] });
-        if (Array.isArray(key)) {
-          const res = {};
-          for (const k of key) res[k] = storage[k];
-          return cb(res);
-        }
-        cb({});
-      },
-      set: (obj, cb) => {
-        Object.assign(storage, obj);
-        cb && cb();
-      },
-      remove: (keys, cb) => {
-        if (Array.isArray(keys)) {
-          for (const k of keys) delete storage[k];
-        } else {
-          delete storage[keys];
-        }
-        cb && cb();
-      }
-    }
-  }
-};
-
 async function run() {
+  await db.items.clear();
+  await db.lists.clear();
   const appleId = await getItemId('Apple');
   if (appleId !== '1') throw new Error(`Expected Apple id 1 but got ${appleId}`);
+  const storedApple = await db.items.get(appleId);
+  if (!storedApple || storedApple.name !== 'Apple') throw new Error('Apple not persisted');
   const bananaId = await getItemId('Banana');
   if (bananaId !== '2') throw new Error(`Expected Banana id 2 but got ${bananaId}`);
   const name1 = await getItemName('1');
@@ -71,12 +46,19 @@ async function run() {
   if (objNames.Apple !== 5 || objNames.Banana !== 7) throw new Error('convertObjectKeysToNames failed');
 
   await saveArray('arrKey', arrWithId);
-  if ('name' in storage.arrKey[0] || 'unit' in storage.arrKey[0]) throw new Error('saveArray stored name/unit');
+  const rawArr = await db.lists.get('arrKey');
+  if (rawArr.value[0].id !== '1' || 'name' in rawArr.value[0] || 'unit' in rawArr.value[0]) {
+    throw new Error('saveArray stored name/unit');
+  }
   await saveObject('objKey', obj);
 
   await renameItemInRegistry('Apple', 'Gala Apple');
   const renamed = await getItemName('1');
   if (renamed !== 'Gala Apple') throw new Error('renameItemInRegistry failed');
+  const storedRenamed = await db.items.get('1');
+  if (!storedRenamed || storedRenamed.name !== 'Gala Apple') {
+    throw new Error('Renamed item not persisted');
+  }
 
   const loadedArr = await loadArray('arrKey');
   if (loadedArr[0].name !== 'Gala Apple') throw new Error('loadArray failed');

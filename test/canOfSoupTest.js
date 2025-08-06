@@ -1,7 +1,9 @@
+import 'fake-indexeddb/auto';
 import fs from 'fs';
 import { pathToFileURL } from 'url';
 import { calculatePurchaseNeeds } from '../utils/purchaseCalculator.js';
 import { initUomTable } from '../utils/uomConverter.js';
+import { db } from '../db.js';
 import {
   convertArrayToIds,
   convertArrayToNames,
@@ -29,6 +31,8 @@ global.chrome = {
 global.fetch = async url => ({ json: async () => JSON.parse(fs.readFileSync(new URL(url), 'utf8')) });
 
 await initUomTable();
+await db.items.clear();
+await db.lists.clear();
 const data = JSON.parse(fs.readFileSync('grocery_backup (44).txt', 'utf8'));
 
 async function convertItems(d) {

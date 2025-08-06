@@ -1,7 +1,7 @@
 import { sortItemsByCategory, renderItemsWithCategoryHeaders } from './utils/sortByCategory.js';
 import { canonicalName } from './utils/nameUtils.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
-import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
+import { MEAL_TYPES, initializeMealCategories, loadMealsByType, saveMealRecord } from './utils/mealData.js';
 import { loadItemSeasons, saveItemSeasons } from './utils/seasonData.js';
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
 import {
@@ -11,8 +11,6 @@ import {
   saveObject,
   getItemId,
   renameItemInRegistry,
-  convertArrayToNames,
-  convertArrayToIds,
   loadObject
 } from './utils/itemRegistry.js';
 import { renameItemDetail } from './utils/itemDetails.js';
@@ -58,28 +56,10 @@ const loadExpiration = () =>
   loadArrayWithFallback('expirationData', EXPIRATION_PATH);
 const loadSearchResults = () => loadObject(SEARCH_RESULTS_KEY);
 
-async function loadMealsForType({ key, path }) {
-  let arr = await loadArrayWithFallback(key, path);
-  if (Array.isArray(arr)) {
-    for (const m of arr) {
-      m.ingredients = await convertArrayToNames(m.ingredients || []);
-    }
-  }
-  return arr || [];
-}
-
-async function saveMealsForType(key, arr) {
-  const toStore = [];
+async function saveMealsForType(type, arr) {
   for (const m of arr) {
-    const converted = {
-      ...m,
-      ingredients: await convertArrayToIds(m.ingredients || [])
-    };
-    toStore.push(converted);
+    await saveMealRecord({ ...m, category: type });
   }
-  return new Promise(resolve => {
-    chrome.storage.local.set({ [key]: toStore }, () => resolve());
-  });
 }
 
 const loadConsumed = () => loadArrayWithFallback('consumedThisYear');
@@ -97,7 +77,7 @@ async function renameItem(oldName, newName) {
 
   const mealEntries = Object.entries(MEAL_TYPES);
   const mealLists = await Promise.all(
-    mealEntries.map(([, info]) => loadMealsForType(info))
+    mealEntries.map(([type]) => loadMealsByType(type))
   );
 
   const [needs, consumption, stock, expiration, consumed, searchResults, purchases, overrides, history, itemSeasons] = await Promise.all([
@@ -178,7 +158,7 @@ async function renameItem(oldName, newName) {
     saveOverrides(overrides),
     saveHistory(history),
     saveItemSeasons(itemSeasons),
-    ...mealEntries.map(([type, info]) => saveMealsForType(info.key, mealsByType[type]))
+    ...mealEntries.map(([type]) => saveMealsForType(type, mealsByType[type]))
   ]);
 
   const finalId = id || (await getItemId(newName));

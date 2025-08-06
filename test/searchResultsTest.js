@@ -1,3 +1,5 @@
+import 'fake-indexeddb/auto';
+import { db } from '../db.js';
 import { migrateSearchResults, setSearchResult, getSearchResult, loadSearchResults } from '../utils/searchResults.js';
 import { getItemId } from '../utils/itemRegistry.js';
 
@@ -33,6 +35,8 @@ global.chrome = {
 };
 
 async function run() {
+  await db.items.clear();
+  await db.lists.clear();
   const appleId = await getItemId('Apple');
   const bananaId = await getItemId('Banana');
   storage.storeSelections = [

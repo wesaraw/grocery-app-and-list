@@ -1,6 +1,6 @@
 import Dexie from 'dexie';
 
-export const schemaVersion = 1;
+export const schemaVersion = 2;
 
 class GroceryDB extends Dexie {
   constructor() {
@@ -9,7 +9,8 @@ class GroceryDB extends Dexie {
       .stores({
         items: '&id,name,category',
         meals: '&id,name,category',
-        history: '&id,itemId,timestamp,date'
+        history: '&id,itemId,timestamp,date',
+        lists: '&key'
       })
       .upgrade(() => {
         // Placeholder for future migrations when schema changes

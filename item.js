@@ -12,6 +12,7 @@ import {
 } from './utils/itemRegistry.js';
 import { loadSearchResults, setSearchResult } from './utils/searchResults.js';
 import { getItemDetail, setItemDetail } from './utils/itemDetails.js';
+import { db } from './db.js';
 
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -26,16 +27,22 @@ async function key(type, item, store) {
   return `${type}_${id}_${encodeURIComponent(store)}`;
 }
 
-function getStorage(keys) {
-  return new Promise(resolve => {
-    chrome.storage.local.get(keys, data => resolve(data));
-  });
+async function getStorage(keys) {
+  if (Array.isArray(keys)) {
+    const entries = await Promise.all(keys.map(k => db.lists.get(k)));
+    const res = {};
+    keys.forEach((k, i) => {
+      if (entries[i]) res[k] = entries[i].value;
+    });
+    return res;
+  }
+  const rec = await db.lists.get(keys);
+  return { [keys]: rec ? rec.value : undefined };
 }
 
-function setStorage(obj) {
-  return new Promise(resolve => {
-    chrome.storage.local.set(obj, () => resolve());
-  });
+async function setStorage(obj) {
+  const entries = Object.entries(obj).map(([key, value]) => ({ key, value }));
+  await db.lists.bulkPut(entries);
 }
 
 const loadMealPlanMonth = () => loadArray('mealPlanMonthly');
@@ -258,10 +265,10 @@ async function loadSelected(item, store) {
   const data = await getStorage([k, legacy]);
   if (data[legacy] && !data[k]) {
     await setStorage({ [k]: data[legacy] });
-    chrome.storage.local.remove(legacy);
+    await db.lists.delete(legacy);
     return data[legacy];
   }
-  if (data[legacy]) chrome.storage.local.remove(legacy);
+  if (data[legacy]) await db.lists.delete(legacy);
   return data[k] || null;
 }
 
@@ -271,10 +278,10 @@ async function loadScraped(item, store) {
   const data = await getStorage([k, legacy]);
   if (data[legacy] && !data[k]) {
     await setStorage({ [k]: data[legacy] });
-    chrome.storage.local.remove(legacy);
+    await db.lists.delete(legacy);
     return data[legacy];
   }
-  if (data[legacy]) chrome.storage.local.remove(legacy);
+  if (data[legacy]) await db.lists.delete(legacy);
   return data[k] || [];
 }
 

@@ -1,6 +1,5 @@
+import { db } from '../db.js';
 import { loadJSON } from './dataLoader.js';
-
-const NAME_ID_KEY = 'itemNameMap';
 
 function buildReverseMap(map) {
   const reverse = {};
@@ -10,52 +9,48 @@ function buildReverseMap(map) {
   return reverse;
 }
 
-function loadMap() {
-  return new Promise(resolve => {
-    try {
-      chrome.storage.local.get(NAME_ID_KEY, data => {
-        const idMap = data[NAME_ID_KEY] || {};
-        resolve(idMap);
-      });
-    } catch (e) {
-      resolve({});
-    }
-  });
+async function loadMap() {
+  const items = await db.items.toArray();
+  const map = {};
+  for (const it of items) {
+    if (it.name) map[it.name] = it.id;
+  }
+  return map;
 }
 
-function saveMap(map) {
-  return new Promise(resolve => {
-    try {
-      chrome.storage.local.set({ [NAME_ID_KEY]: map }, () => resolve());
-    } catch (e) {
-      resolve();
-    }
-  });
+async function saveMap(map) {
+  const existing = await db.items.toArray();
+  const byId = new Map(existing.map(it => [it.id, it]));
+  const records = [];
+  for (const [name, id] of Object.entries(map)) {
+    const rec = byId.get(id) || { id };
+    rec.name = name;
+    records.push(rec);
+  }
+  if (records.length) {
+    await db.items.bulkPut(records);
+  }
 }
 
 export async function getItemId(name) {
-  const map = await loadMap();
-  if (map[name]) return map[name];
-  const id = String(Object.keys(map).length + 1);
-  map[name] = id;
-  await saveMap(map);
+  const rec = await db.items.where('name').equals(name).first();
+  if (rec) return rec.id;
+  const id = String((await db.items.count()) + 1);
+  await db.items.put({ id, name });
   return id;
 }
 
 export async function getItemName(id) {
-  const map = await loadMap();
-  const reverse = buildReverseMap(map);
-  return reverse[id] || id;
+  const rec = await db.items.get(id);
+  return rec?.name || id;
 }
 
 export async function renameItemInRegistry(oldName, newName) {
-  const map = await loadMap();
-  const id = map[oldName];
-  if (!id) return null;
-  delete map[oldName];
-  map[newName] = id;
-  await saveMap(map);
-  return id;
+  const rec = await db.items.where('name').equals(oldName).first();
+  if (!rec) return null;
+  rec.name = newName;
+  await db.items.put(rec);
+  return rec.id;
 }
 
 export async function convertArrayToIds(arr) {
@@ -108,107 +103,89 @@ export async function convertObjectKeysToNames(obj) {
   return result;
 }
 
+async function getList(key) {
+  const rec = await db.lists.get(key);
+  return rec ? rec.value : undefined;
+}
+
+async function setList(key, value) {
+  await db.lists.put({ key, value });
+}
+
 export async function loadArray(key) {
-  return new Promise(resolve => {
-    chrome.storage.local.get(key, async data => {
-      const arr = data[key] || [];
-      let stored = arr;
-      if (arr.some(it => it && it.name != null)) {
-        stored = await convertArrayToIds(arr);
-        chrome.storage.local.set({ [key]: stored });
-      }
-      const withNames = await convertArrayToNames(stored);
-      resolve(withNames);
-    });
-  });
+  let arr = (await getList(key)) || [];
+  let stored = arr;
+  if (arr.some(it => it && it.name != null)) {
+    stored = await convertArrayToIds(arr);
+    await setList(key, stored);
+  }
+  return convertArrayToNames(stored);
 }
 
 export async function saveArray(key, arr) {
   const stored = await convertArrayToIds(arr);
-  return new Promise(resolve => {
-    chrome.storage.local.set({ [key]: stored }, () => resolve());
-  });
+  await setList(key, stored);
 }
 
 export async function loadObject(key) {
-  return new Promise(resolve => {
-    chrome.storage.local.get(key, async data => {
-      const obj = data[key] || {};
-      let stored = obj;
-      const hasNameKeys = Object.keys(obj).some(k => isNaN(parseInt(k, 10)));
-      if (hasNameKeys) {
-        stored = await convertObjectKeysToIds(obj);
-        chrome.storage.local.set({ [key]: stored });
-      }
-      const withNames = await convertObjectKeysToNames(stored);
-      resolve(withNames);
-    });
-  });
+  let obj = (await getList(key)) || {};
+  let stored = obj;
+  const hasNameKeys = Object.keys(obj).some(k => isNaN(parseInt(k, 10)));
+  if (hasNameKeys) {
+    stored = await convertObjectKeysToIds(obj);
+    await setList(key, stored);
+  }
+  return convertObjectKeysToNames(stored);
 }
 
 export async function saveObject(key, obj) {
   const stored = await convertObjectKeysToIds(obj);
-  return new Promise(resolve => {
-    chrome.storage.local.set({ [key]: stored }, () => resolve());
-  });
+  await setList(key, stored);
 }
 
 export async function loadArrayWithFallback(key, path) {
-  return new Promise(resolve => {
-    chrome.storage.local.get(key, async data => {
-      let arr = data[key];
-      if (!arr && path) arr = await loadJSON(path);
-      const stored = arr || [];
-      let toStore = stored;
-      if (stored.some(it => it && it.name != null)) {
-        toStore = await convertArrayToIds(stored);
-        chrome.storage.local.set({ [key]: toStore });
-      }
-      const withNames = await convertArrayToNames(toStore);
-      resolve(withNames);
-    });
-  });
+  let arr = await getList(key);
+  if (!arr && path) arr = await loadJSON(path);
+  const stored = arr || [];
+  let toStore = stored;
+  if (stored.some(it => it && it.name != null)) {
+    toStore = await convertArrayToIds(stored);
+    await setList(key, toStore);
+  }
+  return convertArrayToNames(toStore);
 }
 
 export async function loadObjectWithFallback(key, path) {
-  return new Promise(resolve => {
-    chrome.storage.local.get(key, async data => {
-      let obj = data[key];
-      if (!obj && path) obj = await loadJSON(path);
-      const stored = obj || {};
-      let toStore = stored;
-      const hasNameKeys = Object.keys(stored).some(k => isNaN(parseInt(k, 10)));
-      if (hasNameKeys) {
-        toStore = await convertObjectKeysToIds(stored);
-        chrome.storage.local.set({ [key]: toStore });
-      }
-      const withNames = await convertObjectKeysToNames(toStore);
-      resolve(withNames);
-    });
-  });
+  let obj = await getList(key);
+  if (!obj && path) obj = await loadJSON(path);
+  const stored = obj || {};
+  let toStore = stored;
+  const hasNameKeys = Object.keys(stored).some(k => isNaN(parseInt(k, 10)));
+  if (hasNameKeys) {
+    toStore = await convertObjectKeysToIds(stored);
+    await setList(key, toStore);
+  }
+  return convertObjectKeysToNames(toStore);
 }
 
 export async function migrateItemRegistry() {
-  return new Promise(resolve => {
-    chrome.storage.local.get(null, async data => {
-      const updates = {};
-      for (const [key, value] of Object.entries(data)) {
-        if (Array.isArray(value)) {
-          if (value.some(it => it && it.name != null)) {
-            updates[key] = await convertArrayToIds(value);
-          }
-        } else if (value && typeof value === 'object') {
-          const hasNameKeys = Object.keys(value).some(k => isNaN(parseInt(k, 10)));
-          if (hasNameKeys) {
-            updates[key] = await convertObjectKeysToIds(value);
-          }
-        }
+  const lists = await db.lists.toArray();
+  for (const rec of lists) {
+    const { key, value } = rec;
+    let updated = null;
+    if (Array.isArray(value)) {
+      if (value.some(it => it && it.name != null)) {
+        updated = await convertArrayToIds(value);
       }
-      if (Object.keys(updates).length > 0) {
-        chrome.storage.local.set(updates, () => resolve());
-      } else {
-        resolve();
+    } else if (value && typeof value === 'object') {
+      const hasNameKeys = Object.keys(value).some(k => isNaN(parseInt(k, 10)));
+      if (hasNameKeys) {
+        updated = await convertObjectKeysToIds(value);
       }
-    });
-  });
+    }
+    if (updated) {
+      await setList(key, updated);
+    }
+  }
 }
+
