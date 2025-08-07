@@ -1,4 +1,4 @@
-import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
+import { MEAL_TYPES, initializeMealCategories, loadMealsByType } from './utils/mealData.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 import { loadUsers } from './utils/userData.js';
@@ -10,20 +10,18 @@ import { getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
 import { loadJSON } from './utils/dataLoader.js';
 import {
   loadArrayWithFallback,
-  convertArrayToNames,
   convertArrayToIds,
-  loadArray,
   getItemId
 } from './utils/itemRegistry.js';
 import { getItemDetail } from './utils/itemDetails.js';
-import { db } from './db.js';
+import { db, subscribeToChanges } from './db.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 
 const params = new URLSearchParams(location.search);
 let type = params.get('type') || 'breakfast';
-let key, path, label;
+let label;
 
 let inventorySet = new Set();
 const ingredientCells = {};
@@ -71,16 +69,7 @@ function createAddButton(name) {
 }
 
 async function loadMeals() {
-  let arr = await loadArrayWithFallback(key, path);
-  if (Array.isArray(arr)) {
-    for (const m of arr) {
-      if (m.prepared === undefined) m.prepared = false;
-      if (m.prepAhead === undefined) m.prepAhead = false;
-      if (m.recipeBook === undefined) m.recipeBook = '';
-      m.ingredients = await convertArrayToNames(m.ingredients || []);
-    }
-  }
-  return arr || [];
+  return loadMealsByType(type);
 }
 
 const loadStock = () => loadArrayWithFallback('currentStock', STOCK_PATH);
@@ -94,36 +83,37 @@ async function loadUnits() {
 async function saveMeals(arr) {
   const toStore = [];
   for (const m of arr) {
-    const converted = { ...m, ingredients: await convertArrayToIds(m.ingredients || []) };
+    const converted = {
+      ...m,
+      category: type,
+      ingredients: await convertArrayToIds(m.ingredients || [])
+    };
     toStore.push(converted);
   }
-  await db.lists.put({ key, value: toStore });
+  await db.meals.where('category').equals(type).delete();
+  if (toStore.length) {
+    await db.meals.bulkPut(toStore);
+  }
 }
 
 async function loadMealsForType(cat) {
-  const info = MEAL_TYPES[cat];
-  if (!info) return [];
-  let arr = await loadArrayWithFallback(info.key, info.path);
-  if (Array.isArray(arr)) {
-    for (const m of arr) {
-      if (m.prepared === undefined) m.prepared = false;
-      if (m.prepAhead === undefined) m.prepAhead = false;
-      if (m.recipeBook === undefined) m.recipeBook = '';
-      m.ingredients = await convertArrayToNames(m.ingredients || []);
-    }
-  }
-  return arr || [];
+  return loadMealsByType(cat);
 }
 
 async function saveMealsForType(cat, arr) {
-  const info = MEAL_TYPES[cat];
-  if (!info) return;
   const toStore = [];
   for (const m of arr) {
-    const converted = { ...m, ingredients: await convertArrayToIds(m.ingredients || []) };
+    const converted = {
+      ...m,
+      category: cat,
+      ingredients: await convertArrayToIds(m.ingredients || [])
+    };
     toStore.push(converted);
   }
-  await db.lists.put({ key: info.key, value: toStore });
+  await db.meals.where('category').equals(cat).delete();
+  if (toStore.length) {
+    await db.meals.bulkPut(toStore);
+  }
 }
 
 function pricePerHomeUnit(itemName, product) {
@@ -918,8 +908,6 @@ async function init() {
   densityMap = dMap;
   units = u;
   const info = MEAL_TYPES[type] || MEAL_TYPES.breakfast;
-  key = info.key;
-  path = info.path;
   label = info.label;
   document.getElementById('title').textContent = `${label} Meals`;
   const addBtn = document.getElementById('addMeal');
@@ -940,21 +928,12 @@ async function init() {
   }
   await loadAndRender();
 
-  chrome.storage.onChanged.addListener(async (changes, area) => {
-    if (area === 'local' && changes.currentStock) {
-      const newStock = await convertArrayToNames(
-        changes.currentStock.newValue || []
-      );
-      inventorySet = new Set(newStock.map(s => canonicalName(s.name)));
-      updateInventoryDisplay();
-    }
-    if (area === 'local' && changes.users) {
-      loadAndRender();
-    }
-    if (area === 'local' && changes[key]) {
-      loadAndRender();
+  const unsubscribe = subscribeToChanges(async table => {
+    if (table === 'meals' || table === 'lists') {
+      await loadAndRender();
     }
   });
+  window.addEventListener('unload', unsubscribe);
 }
 
 document.addEventListener('DOMContentLoaded', init);

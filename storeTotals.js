@@ -12,7 +12,7 @@ import {
   loadObject
 } from './utils/itemRegistry.js';
 import { loadSearchResults } from './utils/searchResults.js';
-import { db } from './db.js';
+import { db, subscribeToChanges } from './db.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -369,9 +369,12 @@ async function renderTotals() {
 
 function init() {
   renderTotals();
-  chrome.storage.onChanged.addListener(() => {
-    renderTotals();
+  const unsubscribe = subscribeToChanges(table => {
+    if (['items', 'meals', 'history', 'lists'].includes(table)) {
+      renderTotals();
+    }
   });
+  window.addEventListener('unload', unsubscribe);
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === 'selectedItem' || msg.type === 'finalSelection') {
       renderTotals();

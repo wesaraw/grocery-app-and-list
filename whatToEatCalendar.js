@@ -1,16 +1,12 @@
 import {
   MEAL_TYPES,
   initializeMealCategories,
-  loadMealsPerDay
+  loadMealsPerDay,
+  loadMealsByType
 } from './utils/mealData.js';
 import { loadUsers } from './utils/userData.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
-import {
-  getItemId,
-  convertArrayToNames,
-  loadArrayWithFallback,
-  loadObject
-} from './utils/itemRegistry.js';
+import { getItemId, loadObject } from './utils/itemRegistry.js';
 import { getItemDetail } from './utils/itemDetails.js';
 import { db } from './db.js';
 
@@ -61,28 +57,13 @@ function setMealImage(imgEl, meal) {
   });
 }
 
-async function loadMeals(type) {
-  const { key, path } = MEAL_TYPES[type];
-  let arr = await loadArrayWithFallback(key, path);
-  if (Array.isArray(arr)) {
-    for (const m of arr) {
-      if (m.prepared === undefined) m.prepared = false;
-      if (m.recipeBook === undefined) m.recipeBook = '';
-      m.ingredients = await convertArrayToNames(m.ingredients || []);
-    }
-  }
-  return arr || [];
-}
-
 async function loadAllMeals() {
   const types = Object.keys(MEAL_TYPES);
   for (const type of types) {
-    const meals = await loadMeals(type);
-    for (const m of meals) {
-      const id = m.id || (m.name ? await getItemId(m.name) : null);
-      if (id) m.id = id;
-      mealMap[id || m.name] = m;
-    }
+    const meals = await loadMealsByType(type);
+    meals.forEach(m => {
+      mealMap[m.id || m.name] = m;
+    });
   }
 }
 

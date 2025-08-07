@@ -1,3 +1,4 @@
+import { db } from '../db.js';
 import {
   MEAL_TYPES,
   DEFAULT_MEALS_PER_DAY,
@@ -218,15 +219,10 @@ export async function calculateAndSaveMealNeeds() {
     priceThresholds
   );
 
-  await new Promise(resolve => {
-    chrome.storage.local.set(
-      {
-        preparedMealsCalendar: preparedCal,
-        whatToEatCalendar: whatCal
-      },
-      () => resolve()
-    );
-  });
+  await Promise.all([
+    db.lists.put({ key: 'preparedMealsCalendar', value: preparedCal }),
+    db.lists.put({ key: 'whatToEatCalendar', value: whatCal })
+  ]);
   return { monthlyArr, yearlyArr, monthlyBreakdown };
 }
 
