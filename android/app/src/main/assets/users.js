@@ -4,11 +4,9 @@ import {
   loadUserCategoryDays,
   saveUserCategoryDays
 } from './utils/userData.js';
-import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
+import { MEAL_TYPES, initializeMealCategories, loadMealsByType } from './utils/mealData.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
-import { loadJSON } from './utils/dataLoader.js';
 import { sortItemsByCategory } from './utils/sortByCategory.js';
-import { convertArrayToNames, convertArrayToIds } from './utils/itemRegistry.js';
 
 const btnContainer = document.getElementById('userButtons');
 const mealList = document.getElementById('mealList');
@@ -104,27 +102,10 @@ async function saveNameEdits() {
   renderButtons();
 }
 
-function loadMeals(type) {
-  const info = MEAL_TYPES[type];
-  const { key, path } = info;
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      let arr = data[key];
-      if (!arr) arr = await loadJSON(path);
-      for (const m of arr) {
-        if (!m.category) m.category = info.label;
-        if (m.prepared === undefined) m.prepared = false;
-        m.ingredients = await convertArrayToNames(m.ingredients || []);
-      }
-      resolve(arr);
-    });
-  });
-}
-
 async function loadAllMeals() {
   const all = [];
   for (const type of Object.keys(MEAL_TYPES)) {
-    const meals = await loadMeals(type);
+    const meals = await loadMealsByType(type);
     all.push(...meals);
   }
   return all;

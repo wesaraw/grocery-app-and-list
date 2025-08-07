@@ -11,3 +11,6 @@ android/keystore.properties
 *.jks
 
 /android/build/
+# Generated Android asset copies
+android/app/src/main/assets/db.js
+android/app/src/main/assets/utils/

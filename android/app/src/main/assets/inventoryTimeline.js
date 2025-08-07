@@ -18,16 +18,9 @@ async function loadJSON(path) {
   return res.json();
 }
 
+
 async function loadOverrides() {
-  return new Promise(resolve => {
-    try {
-      chrome.storage.local.get('consumptionOverrides', data => {
-        resolve(data.consumptionOverrides || {});
-      });
-    } catch (e) {
-      resolve({});
-    }
-  });
+  return loadItemObject('consumptionOverrides');
 }
 
 async function loadFinalProducts(names) {
@@ -44,12 +37,12 @@ async function loadFinalProducts(names) {
   }
 }
 
-function loadArray(key, path) {
-  return new Promise(async resolve => {
-    const arr = await loadItemArray(key);
-    if (arr.length > 0) resolve(arr);
-    else resolve(await loadJSON(path));
-  });
+
+async function loadArray(key, path) {
+  const arr = await loadItemArray(key);
+  if (arr.length > 0) return arr;
+  const fromJson = await loadJSON(path);
+  return fromJson;
 }
 
 function sortItemsByCategory(arr) {
@@ -563,6 +556,9 @@ async function init() {
   });
   document.getElementById('editExpirations').addEventListener('click', () => {
     openOrFocusWindow('expiration.html');
+  });
+  document.getElementById('editSeasons').addEventListener('click', () => {
+    openOrFocusWindow('editSeason.html');
   });
   document.getElementById('couponBtn').addEventListener('click', () => {
     openOrFocusWindow('coupon.html');
