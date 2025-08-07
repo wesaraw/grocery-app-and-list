@@ -8,7 +8,31 @@ const mappings = [
   { input: "Search Results toilet paper _ Shaw's.html", selector: 'product-item-al-v2', output: 'test/samples/shaws-toilet-paper.html' },
   { input: "Search Results Dentastixs _ Shaw's.html", selector: 'product-item-al-v2', output: 'test/samples/shaws-dentastixs.html' },
   { input: 'Bounty Paper Towels - Walmart.com.html', selector: '[data-item-id], [data-testid="list-view"]', match: /12\s*Double\s*Rolls/i, output: 'test/samples/walmart-bounty.html' },
-  { input: "'pepsi' _ Hannaford Supermarket.html", selector: '.catalog-product', match: /Pepsi Zero Sugar/i, output: 'test/samples/hannaford-pepsi.html' }
+  { input: "'pepsi' _ Hannaford Supermarket.html", selector: '.catalog-product', match: /Pepsi Zero Sugar/i, output: 'test/samples/hannaford-pepsi.html' },
+  {
+    input: 'Amazon.com _ Minute Rice White Side Dishes.html',
+    selector: 'div[data-asin][data-component-type="s-search-result"]',
+    match: /Minute Rice/i,
+    output: 'test/samples/amazon-minute-rice.html'
+  },
+  {
+    input: "Search Results Pepsi _ Shaw's.html",
+    selector: 'product-item-al-v2',
+    match: /Pepsi Zero Sugar/i,
+    output: 'test/samples/shaws-pepsi.html'
+  },
+  {
+    input: "Search Results Pepsi _ Stop & Shop.html",
+    selector: 'li.tile.product-cell.product-grid-cell',
+    match: /Pepsi Zero Sugar/i,
+    output: 'test/samples/stopandshop-pepsi.html'
+  },
+  {
+    input: "Search Results_ Pepsi Soda Zero Beverages _ Roche Bros. Supermarkets, Boston MA, Same-Day Grocery Delivery and Pickup.html",
+    selector: '[data-test-id="product-card"], [data-test="product-cell"]',
+    match: /Pepsi Zero Sugar/i,
+    output: 'test/samples/rochebros-pepsi.html'
+  }
 ];
 
 mappings.forEach(({ input, selector, match, output }) => {
