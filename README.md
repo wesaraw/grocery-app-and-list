@@ -236,6 +236,18 @@ folder in sync with the rest of the project whenever you update the extension.
 Make sure the **Required for grocery app** directory is also copied there or the
 APK will not include the default data files.
 
+### Syncing shared code
+
+Run the following before building so the Android assets include the latest shared
+JavaScript modules:
+
+```bash
+npm run sync-android
+```
+
+This copies `src/db.js` and the `src/utils` directory into
+`android/app/src/main/assets/`.
+
 ### Debug build
 
 1. From the `android` directory run:

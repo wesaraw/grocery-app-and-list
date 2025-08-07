@@ -1,3 +1,4 @@
+import Dexie from 'dexie';
 import { db } from '../db.js';
 import { getItemId, getItemName } from './itemRegistry.js';
 
@@ -30,5 +31,8 @@ export async function removeHistoryEntry(id) {
 }
 
 export async function deleteHistoryForItem(itemId) {
-  await db.history.where('itemId').equals(itemId).delete();
+  await db.history
+    .where('[itemId+type]')
+    .between([itemId, Dexie.minKey], [itemId, Dexie.maxKey])
+    .delete();
 }

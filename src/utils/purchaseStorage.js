@@ -30,9 +30,8 @@ export async function savePurchases(purchases) {
   for (const [key, arr] of Object.entries(purchases)) {
     const itemId = isNaN(parseInt(key, 10)) ? await getItemId(key) : key;
     await db.history
-      .where('itemId')
-      .equals(itemId)
-      .and(r => r.type === 'purchase')
+      .where('[itemId+type]')
+      .equals([itemId, 'purchase'])
       .delete();
     const records = [];
     for (const p of arr) {
