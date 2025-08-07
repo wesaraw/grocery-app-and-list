@@ -66,6 +66,10 @@ async function run() {
   const loadedObj = await loadObject('objKey');
   if (loadedObj['Gala Apple'] !== 5 || loadedObj['Banana'] !== 7) throw new Error('loadObject failed');
 
+  await db.items.delete(bananaId);
+  const cherryId = await getItemId('Cherry');
+  if (cherryId !== '3') throw new Error(`Expected Cherry id 3 but got ${cherryId}`);
+
   console.log('itemRegistry tests passed');
 }
 

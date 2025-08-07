@@ -7,7 +7,7 @@ import {
   loadMealsByType
 } from './utils/mealData.js';
 import { getItemId } from './utils/itemRegistry.js';
-import { db } from './db.js';
+import { db, subscribeToChanges } from './db.js';
 
 function getCurrentWeek() {
   const start = new Date(new Date().getFullYear(), 0, 1);
@@ -175,22 +175,18 @@ async function init() {
   categorySelect.addEventListener('change', renderMeals);
   renderMeals();
 
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local') {
-      if (Object.values(MEAL_TYPES).some(t => changes[t.key])) {
-        renderMeals();
-      }
-      if (changes.users) {
-        Promise.all([loadUsers(), loadMealSlots()]).then(([u, s]) => {
-          users = u;
-          slots = s;
-          currentUser = Math.min(currentUser, users.length - 1);
-          renderUserButtons();
-          renderMeals();
-        });
-      }
+  const unsubscribe = subscribeToChanges(async table => {
+    if (table === 'meals') {
+      renderMeals();
+    }
+    if (table === 'lists') {
+      [users, slots] = await Promise.all([loadUsers(), loadMealSlots()]);
+      currentUser = Math.min(currentUser, users.length - 1);
+      renderUserButtons();
+      renderMeals();
     }
   });
+  window.addEventListener('unload', unsubscribe);
 }
 
 document.addEventListener('DOMContentLoaded', init);

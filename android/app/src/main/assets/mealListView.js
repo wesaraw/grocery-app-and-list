@@ -14,7 +14,7 @@ import {
   convertArrayToIds
 } from './utils/itemRegistry.js';
 import { getItemDetail } from './utils/itemDetails.js';
-import { db } from './db.js';
+import { db, subscribeToChanges } from './db.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -795,21 +795,12 @@ async function init() {
   }
   await loadAndRender();
 
-  chrome.storage.onChanged.addListener(async (changes, area) => {
-    if (area === 'local' && changes.currentStock) {
-      const newStock = await convertArrayToNames(
-        changes.currentStock.newValue || []
-      );
-      inventorySet = new Set(newStock.map(s => canonicalName(s.name)));
-      updateInventoryDisplay();
-    }
-    if (area === 'local' && changes.users) {
-      loadAndRender();
-    }
-    if (area === 'local' && changes[key]) {
-      loadAndRender();
+  const unsubscribe = subscribeToChanges(async table => {
+    if (table === 'meals' || table === 'lists') {
+      await loadAndRender();
     }
   });
+  window.addEventListener('unload', unsubscribe);
 }
 
 document.addEventListener('DOMContentLoaded', init);
