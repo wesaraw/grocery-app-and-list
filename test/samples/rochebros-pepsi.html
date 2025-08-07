@@ -1,0 +1,59 @@
+<div class="cell product-cell" ng-click="storeImpressionIfFeatured()" analytics-product-impression="[product, location, position]" send-analytics="!$root.modifyingOrder" data-test="product-cell" role="group" aria-label="Product" product-cell="" product-details-modal-link="true" product="product" promoted-product="product.placement" location="Search Results" location-value="{'id': null, 'display_name': term}" index="$index"> <!----> <!----> <!---->
+  <div class="cell-overlay" ng-class="{show: showIf}" ng-if="::!hasUnclippedCoupon" cell-overlay="" show-if="overlay.recoProduct">
+    <div class="close" ng-click="close()"></div>
+    <div class="cell-overlay-wrapper">
+      <div ng-transclude=""> <span class="cell-overlay-header" aria-hidden="true">May We Suggest</span> <!----> </div>
+    </div>
+  </div><!---->
+  <div class="product-cell__badges"> <!----> <!----> </div>
+  <div class="cell-image-wrapper"> <span aria-label="Pepsi Zero Sugar Cola Bottle, 2 Liters" ng-click="linkToProductDetails()" class="cell-image show" analytics-click="['product cell image link', 'click']" analytics-product-click="[product, location, offerType]" send-analytics="!$root.modifyingOrder" cell-image="" lazy-load-image="true" default-image="::imageURLService.getProductImageURL(product, (mobile.isMobile ? 'medium' : 'small') )" promoted-media="promotedMedia" title="Pepsi Zero Sugar Cola Bottle, 2 Liters" ng-class="{'cell-sponsored': showSponsoredLabel || showFeaturedLabel || sponsoredByText }" data-src="https://assets-prd-rbr.unataops.com/web/product_small/495677057e9624295fafb714e0169e8f932bc6de.jpg" style="background-image: url(&quot;https://assets-prd-rbr.unataops.com/web/product_small/495677057e9624295fafb714e0169e8f932bc6de.jpg&quot;);"> <!----> <!----> <!----> <!---->
+      <ul class="attributes" ng-if="::product.tags.length"> <!---->
+        <li uib-popover="" popover-trigger="mouseenter focus" ng-repeat="tag in ::product.tags" class="attribute hide-empty" tag-style="" tag="tag" tag-location="productCell" data-test="tag-cell ebt" tabindex="0"></li><!---->
+      </ul><!---->
+    </span> <!----> <!----> <!----> </div>
+  <div class="cell-content-wrapper"> <!----> <button title="Pepsi Zero Sugar Cola Bottle, 2 Liters" class="cell-title" ng-class="{ 'cell-title-product-configuration': (product.product_config.config_type === 'prep_style' || product.product_config.config_type === 'custom') }" ng-click="linkToProductDetails()" analytics-click="['product cell name link', 'click']" analytics-product-click="[product, location]" send-analytics="!$root.modifyingOrder">
+      <div class="cell-title-text" ng-bind-html="productTitle()" role="heading" aria-level="2">Pepsi Zero Sugar Cola Bottle, 2 Liters</div> <!---->
+      <div class="cell-product-size" ng-if="product.size_string">67.6 FL OZ</div><!----> <!---->
+      <div class="cell-aisle-label icon-solidpin" ng-if="showAisle" ng-bind-html="product.aisle.trim()">Aisle 5</div><!---->
+    </button> <!---->
+    <div ng-if="::(!config.userReviews.enabled &amp;&amp; !config.disableUserRating &amp;&amp; (!config.disableRecoRating || product.user_rating) &amp;&amp; (product.reco_rating !== null || product.user_rating))" rating-directive="" product="product" disabled="disabled">
+      <div ng-class="{user: product.user_rating, reco: !config.disableRecoRating &amp;&amp; product.reco_rating !== null}" class="rating reco" analytics-click="['rating', 'click']"> <button type="button" ng-class="{full: !config.disableRecoRating &amp;&amp; product.reco_rating >= 0 &amp;&amp; !product.user_rating, 'user-star': product.user_rating >= 1}" aria-label="Set rating to 1 out of 5 stars" class="segment full" ng-click="setRating(1, product)" data-test="rating-star-1" aria-current="false"></button> <button type="button" ng-class="{full: !config.disableRecoRating &amp;&amp; product.reco_rating >= 1.5 &amp;&amp; !product.user_rating, 'user-star': product.user_rating >= 2}" aria-label="Set rating to 2 out of 5 stars" class="segment full" ng-click="setRating(2, product)" data-test="rating-star-2" aria-current="false"></button> <button type="button" ng-class="{full: !config.disableRecoRating &amp;&amp; product.reco_rating >= 2.5 &amp;&amp; !product.user_rating, 'user-star': product.user_rating >= 3}" aria-label="Set rating to 3 out of 5 stars" class="segment full" ng-click="setRating(3, product)" data-test="rating-star-3" aria-current="false"></button> <button type="button" ng-class="{full: !config.disableRecoRating &amp;&amp; product.reco_rating >= 3.5 &amp;&amp; !product.user_rating, 'user-star': product.user_rating >= 4}" aria-label="Set rating to 4 out of 5 stars" class="segment full" ng-click="setRating(4, product)" data-test="rating-star-4" aria-current="false"></button> <button type="button" ng-class="{full: !config.disableRecoRating &amp;&amp; product.reco_rating >= 4.5 &amp;&amp; !product.user_rating, 'user-star': product.user_rating == 5}" aria-label="Set rating to 5 out of 5 stars" class="segment full" ng-click="setRating(5, product)" data-test="rating-star-5" aria-current="false"></button> </div>
+      <div class="rating-msg"> <!----><span ng-if="!config.disableRecoRating &amp;&amp; !product.user_rating"> <span class="screen-reader-text">5 out of 5 stars is </span> Our Best Guess For You. </span><!----> Click to rate. </div>
+    </div><!----> <!----> <!---->
+    <div ng-if="::!mobile.isMobile" class="actions"> <!----><add-to-list ng-if="::!config.disableSaveForLaterLists &amp;&amp; !product.product_config" products="[product]" is-external-routes-disabled="isExternalRoutesDisabled" toggle-style="icon" class="action">
+        <div uib-dropdown="" dropdown-append-to="$ctrl.appendToBody" auto-close="outsideClick" is-open="$ctrl.dropdownIsOpen" ng-class="::{'button-style': $ctrl.toggleStyle === 'button' }" class="dropdown"> <!----> </div> <!---->
+      </add-to-list><!----> <!---->
+      <div price-alert="" class="action" product="product" small="true" source="product_tile" ng-if="::(!config.disablePriceAlerts &amp;&amp; !config.disablePriceAlertsOnProductCells &amp;&amp; auth.user.status !== 'trial')"><!----> </div><!---->
+    </div><!---->
+    <div class="cell-prices product-prices">
+      <div product-prices="" product="product" label="priceLabel" show-uom="true" styles="priceStyles">
+        <div class="product-prices"> <react-product-price i18n="i18n" inline="inline" label="label" loyalty-pricing-enabled="loyaltyPricingEnabled" has-loyalty-card="hasLoyaltyCard" loyalty-icon="loyaltyIcon" unit-price="unitPrice" styles="styles" product="product" show-uom="showUom" show-ebt-label="showEbtLabel">
+            <div class="css-1t08fcf">
+              <div data-test="base-price-label" class="css-1beady2">Price</div>
+              <div data-test="base-price" class="css-0"><span data-test="amount"><span class="css-dr3s47">$2.99</span><span class="css-1beady2"> / ea</span></span><span data-test="per-unit-price" class="css-1beady2"> ($5.64/gl)</span></div>
+            </div>
+          </react-product-price></div>
+      </div>
+    </div>
+  </div> <!---->
+  <div add-to-cart="" small="true" product="product" class="product-cell-add-to-cart" location="Search Results" location-value="locationValue" index="index" ng-if="(existingConfigurationCartItems.length <= 1 || !existingConfigurationCartItems) &amp;&amp; !showAllOptions" is-product-cell="true" existing-config-singular="existingConfigSingular"><!---->
+    <div ng-include="templateUrl"><!---->
+      <div class="add-to-cart-button" ng-if="!(productOptionsValidated === false) &amp;&amp; (isProductInStock || !isProductInStock &amp;&amp; enableOutOfStockAdd)" ng-class="{'in-cart': cartItem &amp;&amp; quantity}" uib-popover-html="outOfStockWarningPopover" popover-trigger="mouseenter focus" popover-enable="!isProductInStock &amp;&amp; !mobile.isMobile" tabindex="-1"> <!---->
+        <div ng-if="!product.product_config || (product.product_config &amp;&amp; product.product_config.options.length === 0)"> <!----> <!---->
+          <div ng-if="!product.order_by_weight" class="each" uib-popover-html="maxQuantityWarningPopover" popover-trigger="mouseenter focus" popover-enable="!mobile.isMobile &amp;&amp; hasReachedProductAddLimit()" tabindex="-1"> <span id="add-to-cart-ada-increment-180254" class="screen-reader-text" aria-live="polite"></span> <!----> <!---->
+            <div ng-if="!cartItem || !quantity"> <button data-test="add-to-cart-button" ng-click="
+            tellParents();
+            cartService.addItem(product, 1, product.uoms[0]);
+            productsService.getBeacon(product.onAddToCartBeacon);
+            accessibleItemAdded();
+            cartAnalytics.addItem(product, 1, index, location, locationValue, { is_modal: isModal, corner_distance: getCornerDistance() });
+            analytics.logFBAddToCart(product);
+            appReviewCheck();
+
+          " analytics-click="['add to cart product add button', 'click']" send-analytics="!$root.modifyingOrder" id="add-to-cart-button-cart-service-add-item-180254-search-results" class="button full cart add icon-fixed-right icon-after-plus small icon-cart" ng-class="{small: small, 'icon-list': auth.getContext().intent === 'instore', 'icon-cart': auth.getContext().intent !== 'instore', 'product-details': isProductDetails}" aria-label="Add to Cart Pepsi Zero Sugar Cola Bottle, 2 Liters"> Add to Cart </button> </div><!---->
+          </div><!---->
+        </div><!----> <!---->
+      </div><!----> <!----> <!---->
+    </div>
+  </div><!----> <!---->
+</div>

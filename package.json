@@ -7,7 +7,7 @@
   },
   "scripts": {
     "sync-android": "rm -rf android/app/src/main/assets/db.js android/app/src/main/assets/utils && mkdir -p android/app/src/main/assets && cp src/db.js android/app/src/main/assets/ && cp -r src/utils android/app/src/main/assets/",
-    "test": "npm run sync-android && node test/unitPriceTest.js && node test/unitNormalizeTest.js && node test/canOfSoupTest.js && node test/weightingCalendarTest.js && node test/sharedStateCalendarTest.js && node test/multiSnackSlotTest.js && node test/itemRegistryTest.js && node test/searchResultsTest.js && node test/mealDBTest.js && node test/historyDBTest.js && node test/androidAssetDBParityTest.js"
+    "test": "npm run sync-android && node test/unitPriceTest.js && node test/unitNormalizeTest.js && node test/canOfSoupTest.js && node test/weightingCalendarTest.js && node test/sharedStateCalendarTest.js && node test/multiSnackSlotTest.js && node test/itemRegistryTest.js && node test/searchResultsTest.js && node test/mealDBTest.js && node test/historyDBTest.js && node test/androidAssetDBParityTest.js && node test/defaultDataScrapeTest.js"
   },
   "type": "module"
 }
