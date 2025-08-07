@@ -1,19 +1,14 @@
-import { MEAL_TYPES, initializeMealCategories, addMealCategory } from './utils/mealData.js';
+import {
+  MEAL_TYPES,
+  initializeMealCategories,
+  addMealCategory,
+  loadMealsByType
+} from './utils/mealData.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
-import { convertArrayToNames, loadArrayWithFallback } from './utils/itemRegistry.js';
+import { subscribeToChanges } from './db.js';
 
 async function loadMeals(type) {
-  const { key, path } = MEAL_TYPES[type];
-  let arr = await loadArrayWithFallback(key, path);
-  if (Array.isArray(arr)) {
-    for (const m of arr) {
-      m.ingredients = await convertArrayToNames(m.ingredients || []);
-      if (m.prepared === undefined) m.prepared = false;
-      if (m.prepAhead === undefined) m.prepAhead = false;
-      if (m.recipeBook === undefined) m.recipeBook = '';
-    }
-  }
-  return arr || [];
+  return loadMealsByType(type);
 }
 
 async function renderButtons() {
@@ -61,12 +56,10 @@ async function init() {
   await renderButtons();
   const newBtn = document.getElementById('newCategoryBtn');
   if (newBtn) newBtn.addEventListener('click', startAddCategory);
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local') {
-      const changed = Object.values(MEAL_TYPES).some(t => changes[t.key]);
-      if (changed) renderButtons();
-    }
+  const unsubscribe = subscribeToChanges(table => {
+    if (table === 'meals') renderButtons();
   });
+  window.addEventListener('unload', unsubscribe);
 }
 
 document.addEventListener('DOMContentLoaded', init);

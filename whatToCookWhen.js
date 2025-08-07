@@ -1,7 +1,12 @@
-import { MEAL_TYPES, initializeMealCategories, loadCookingDays } from './utils/mealData.js';
+import {
+  MEAL_TYPES,
+  initializeMealCategories,
+  loadCookingDays,
+  loadMealsByType
+} from './utils/mealData.js';
 import { loadUsers } from './utils/userData.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
-import { loadObject, loadArrayWithFallback, getItemId } from './utils/itemRegistry.js';
+import { loadObject } from './utils/itemRegistry.js';
 
 function loadCalendar() {
   return loadObject('whatToEatCalendar');
@@ -10,17 +15,10 @@ function loadCalendar() {
 async function loadAllMeals() {
   const map = {};
   for (const type of Object.keys(MEAL_TYPES)) {
-    const { key, path } = MEAL_TYPES[type];
-    const arr = await loadArrayWithFallback(key, path);
-    if (Array.isArray(arr)) {
-      for (const m of arr) {
-        if (m.prepared === undefined) m.prepared = false;
-        if (m.prepAhead === undefined) m.prepAhead = false;
-        const id = m.id || (m.name ? await getItemId(m.name) : null);
-        if (id) m.id = id;
-        map[id || m.name] = m;
-      }
-    }
+    const arr = await loadMealsByType(type);
+    arr.forEach(m => {
+      map[m.id || m.name] = m;
+    });
   }
   return map;
 }
