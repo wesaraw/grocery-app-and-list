@@ -33,11 +33,24 @@ async function saveMap(map) {
 }
 
 export async function getItemId(name) {
-  const rec = await db.items.where('name').equals(name).first();
-  if (rec) return rec.id;
-  const id = String((await db.items.count()) + 1);
-  await db.items.put({ id, name });
-  return id;
+  return db.transaction('rw', db.items, db.lists, async () => {
+    const rec = await db.items.where('name').equals(name).first();
+    if (rec) return rec.id;
+
+    let lastId = (await db.lists.get('lastItemId'))?.value;
+    if (lastId == null) {
+      const keys = await db.items.toCollection().primaryKeys();
+      lastId = keys.reduce((max, key) => {
+        const num = parseInt(key, 10);
+        return isNaN(num) ? max : Math.max(max, num);
+      }, 0);
+    }
+
+    const id = String(lastId + 1);
+    await db.items.put({ id, name });
+    await db.lists.put({ key: 'lastItemId', value: lastId + 1 });
+    return id;
+  });
 }
 
 export async function getItemName(id) {
