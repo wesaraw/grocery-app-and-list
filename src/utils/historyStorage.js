@@ -1,5 +1,4 @@
-import Dexie from '../../node_modules/dexie/dist/dexie.mjs';
-import { db } from '../db.js';
+import { db, Dexie } from '../db.js';
 import { getItemId, getItemName } from './itemRegistry.js';
 
 export async function loadConsumptionHistory() {
