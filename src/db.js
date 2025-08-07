@@ -1,4 +1,5 @@
-import Dexie from '../node_modules/dexie/dist/dexie.mjs';
+import Dexie from '../dexie.mjs';
+export { Dexie };
 
 export const schemaVersion = 4;
 
