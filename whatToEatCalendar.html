@@ -15,6 +15,13 @@
       display: block;
       margin-top: 2px;
     }
+    .meal-img.selected {
+      outline: 2px solid blue;
+    }
+    .error {
+      color: red;
+      margin-left: 10px;
+    }
     .hidden { display: none; }
   </style>
 </head>
@@ -37,6 +44,9 @@
     <thead id="tableHead"></thead>
     <tbody id="calendarBody"></tbody>
   </table>
+  <button id="mealSwapBtn">Reorder Meals</button>
+  <button id="confirmSwapBtn" class="hidden">Confirm Swap</button>
+  <span id="swapError" class="error hidden"></span>
   <button id="reorderBtn">Reorder Columns</button>
   <button id="saveOrderBtn" class="hidden">Save Order</button>
   <script type="module" src="whatToEatCalendar.js"></script>

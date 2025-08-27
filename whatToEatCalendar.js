@@ -47,6 +47,8 @@ let slotOrder = [];
 let slotOrderIds = [];
 let columnOrder = {};
 let editMode = false;
+let swapMode = false;
+const selected = [];
 const mealMap = {};
 
 function loadFinalProduct(item) {
@@ -271,6 +273,14 @@ function render() {
             const img = document.createElement('img');
             img.className = 'meal-img';
             setMealImage(img, meal);
+            if (swapMode) {
+              img.dataset.date = dStr;
+              img.dataset.cat = cat;
+              img.dataset.index = idx;
+              img.dataset.mealId = val;
+              img.style.cursor = 'pointer';
+              img.addEventListener('click', () => selectMeal(img));
+            }
             td.appendChild(img);
           }
         }
@@ -317,6 +327,90 @@ function openCookView() {
   }
 }
 
+function updateConfirmState() {
+  const confirmBtn = document.getElementById('confirmSwapBtn');
+  const err = document.getElementById('swapError');
+  if (selected.length === 2) {
+    if (selected[0].cat === selected[1].cat) {
+      confirmBtn.classList.remove('hidden');
+      err.classList.add('hidden');
+    } else {
+      confirmBtn.classList.add('hidden');
+      err.textContent = 'Select two meals from the same category';
+      err.classList.remove('hidden');
+    }
+  } else {
+    confirmBtn.classList.add('hidden');
+    err.classList.add('hidden');
+  }
+}
+
+function selectMeal(img) {
+  const existing = selected.find(s => s.img === img);
+  if (existing) {
+    selected.splice(selected.indexOf(existing), 1);
+    img.classList.remove('selected');
+  } else {
+    if (selected.length === 2) {
+      const first = selected.shift();
+      first.img.classList.remove('selected');
+    }
+    selected.push({
+      img,
+      date: img.dataset.date,
+      cat: img.dataset.cat,
+      idx: parseInt(img.dataset.index, 10),
+      mealId: img.dataset.mealId
+    });
+    img.classList.add('selected');
+  }
+  updateConfirmState();
+}
+
+function setMealAt(user, date, cat, idx, mealId) {
+  const dayMap = calendar[user] || (calendar[user] = {});
+  const day = dayMap[date] || (dayMap[date] = {});
+  const cur = day[cat];
+  if (Array.isArray(cur)) {
+    cur[idx] = mealId;
+  } else if (idx === 0) {
+    day[cat] = mealId;
+  } else {
+    const arr = [];
+    if (cur !== undefined) arr[0] = cur;
+    arr[idx] = mealId;
+    day[cat] = arr;
+  }
+}
+
+function confirmSwap() {
+  if (selected.length !== 2) return;
+  if (selected[0].cat !== selected[1].cat) return;
+  const user = document.getElementById('userSelect').value;
+  setMealAt(user, selected[0].date, selected[0].cat, selected[0].idx, selected[1].mealId);
+  setMealAt(user, selected[1].date, selected[1].cat, selected[1].idx, selected[0].mealId);
+  selected.forEach(s => s.img.classList.remove('selected'));
+  selected.length = 0;
+  document.getElementById('confirmSwapBtn').classList.add('hidden');
+  document.getElementById('swapError').classList.add('hidden');
+  render();
+}
+
+function toggleSwapMode() {
+  swapMode = !swapMode;
+  const btn = document.getElementById('mealSwapBtn');
+  if (swapMode) {
+    btn.textContent = 'Cancel Reorder';
+  } else {
+    btn.textContent = 'Reorder Meals';
+    selected.forEach(s => s.img.classList.remove('selected'));
+    selected.length = 0;
+    document.getElementById('confirmSwapBtn').classList.add('hidden');
+    document.getElementById('swapError').classList.add('hidden');
+  }
+  render();
+}
+
 async function init() {
   await initializeMealCategories();
   const mealsPerDay = await loadMealsPerDay();
@@ -342,6 +436,8 @@ async function init() {
   document.getElementById('cookViewBtn').addEventListener('click', openCookView);
   document.getElementById('reorderBtn').addEventListener('click', startReorder);
   document.getElementById('saveOrderBtn').addEventListener('click', saveOrder);
+  document.getElementById('mealSwapBtn').addEventListener('click', toggleSwapMode);
+  document.getElementById('confirmSwapBtn').addEventListener('click', confirmSwap);
   userSelect.addEventListener('change', () => {
     applySavedOrderForUser(userSelect.value);
     buildHeader(editMode);
