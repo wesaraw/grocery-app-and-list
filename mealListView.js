@@ -8,6 +8,7 @@ import { parseQuantity } from './utils/calendarUtils.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
+import { setupStartMiniButton } from './utils/startMini.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -25,6 +26,8 @@ let needsMap = new Map();
 let densityMap = {};
 const UOM_PATH = 'Required for grocery app/uom_conversion_table.json';
 let units = [];
+let startMini = true;
+const headerState = {};
 
 function loadFinalProduct(item) {
   return new Promise(resolve => {
@@ -904,18 +907,23 @@ async function loadAndRender() {
       headerTr.appendChild(th);
       tbody.appendChild(headerTr);
       const rows = [];
+      const hidden =
+        headerState[book] !== undefined ? headerState[book] : startMini;
       bookMap[book].forEach(meal => {
         const r = createRows(meal, meals);
         r.forEach(row => {
           row.dataset.book = book;
-          row.style.display = 'none';
+          row.style.display = hidden ? 'none' : '';
           rows.push(row);
           tbody.appendChild(row);
         });
       });
+      th.dataset.hidden = hidden ? 'true' : 'false';
       th.addEventListener('click', () => {
-        const hidden = rows[0] && rows[0].style.display === 'none';
-        rows.forEach(r => (r.style.display = hidden ? '' : 'none'));
+        const isHidden = th.dataset.hidden === 'true';
+        th.dataset.hidden = isHidden ? 'false' : 'true';
+        rows.forEach(r => (r.style.display = isHidden ? '' : 'none'));
+        headerState[book] = !isHidden;
       });
     });
   updateInventoryDisplay();
@@ -924,6 +932,7 @@ async function loadAndRender() {
 }
 
 async function init() {
+  startMini = await setupStartMiniButton('mealListViewStartMini');
   await initializeMealCategories();
   await initUomTable();
   const [needs, dMap, u] = await Promise.all([
