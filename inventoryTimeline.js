@@ -429,14 +429,15 @@ async function refreshItems() {
     showPurchaseHistory();
   } else {
     const text = filterText.trim();
-    if (text) {
-      const filtered = globalItems.filter(it =>
-        it.name.toLowerCase().includes(text)
-      );
-      showGrid(filtered);
-    } else {
-      showGrid();
+    let items = text
+      ? globalItems.filter(it => it.name.toLowerCase().includes(text))
+      : globalItems;
+    if (mealFilter === 'with') {
+      items = items.filter(it => (it.meal_monthly_consumption || 0) > 0);
+    } else if (mealFilter === 'without') {
+      items = items.filter(it => (it.meal_monthly_consumption || 0) === 0);
     }
+    showGrid(items);
   }
 }
 
@@ -459,6 +460,7 @@ function resizeWindowToContent() {
 }
 
 let filterText = '';
+let mealFilter = null;
 
 function showGrid(items = globalItems) {
   showingHistory = false;
@@ -484,9 +486,14 @@ async function init() {
   function applyFilter() {
     filterText = document.getElementById('purchase-item').value.trim().toLowerCase();
     if (showingHistory) return;
-    const items = filterText
+    let items = filterText
       ? globalItems.filter(it => it.name.toLowerCase().includes(filterText))
       : globalItems;
+    if (mealFilter === 'with') {
+      items = items.filter(it => (it.meal_monthly_consumption || 0) > 0);
+    } else if (mealFilter === 'without') {
+      items = items.filter(it => (it.meal_monthly_consumption || 0) === 0);
+    }
     showGrid(items);
   }
 
@@ -503,6 +510,27 @@ async function init() {
     currentOnly = !currentOnly;
     const btn = document.getElementById('current-view');
     btn.textContent = currentOnly ? 'Full Year' : 'Current View';
+    if (!showingHistory) {
+      applyFilter();
+    }
+  });
+
+  const withMealBtn = document.getElementById('with-meal');
+  const withoutMealBtn = document.getElementById('without-meal');
+
+  withMealBtn.addEventListener('click', () => {
+    mealFilter = mealFilter === 'with' ? null : 'with';
+    withMealBtn.textContent = mealFilter === 'with' ? 'All Items' : 'With Meal';
+    withoutMealBtn.textContent = 'Without Meal';
+    if (!showingHistory) {
+      applyFilter();
+    }
+  });
+
+  withoutMealBtn.addEventListener('click', () => {
+    mealFilter = mealFilter === 'without' ? null : 'without';
+    withoutMealBtn.textContent = mealFilter === 'without' ? 'All Items' : 'Without Meal';
+    withMealBtn.textContent = 'With Meal';
     if (!showingHistory) {
       applyFilter();
     }
