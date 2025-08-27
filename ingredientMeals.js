@@ -1,6 +1,7 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { sortItemsByCategory, renderItemsWithCategoryHeaders } from './utils/sortByCategory.js';
 import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
+import { setupStartMiniButton } from './utils/startMini.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 
@@ -13,6 +14,7 @@ const ingredientMealMap = new Map();
 const mealNameById = new Map();
 const scheduledMeals = new Set();
 let currentIngredient = null;
+let startMini = true;
 
 function loadArray(key, path) {
   return new Promise(async resolve => {
@@ -108,7 +110,13 @@ function renderIngredients() {
   const arr = filterText
     ? allItems.filter(it => it.name.toLowerCase().includes(filterText))
     : allItems;
-  renderItemsWithCategoryHeaders(arr, ingredientUl, it => createIngredientItem(it.name), headerState);
+  renderItemsWithCategoryHeaders(
+    arr,
+    ingredientUl,
+    it => createIngredientItem(it.name),
+    headerState,
+    startMini
+  );
 }
 
 function renderMealList(meals) {
@@ -133,6 +141,7 @@ function showMealsForIngredient(name) {
 async function init() {
   ingredientUl = document.getElementById('ingredientList');
   mealUl = document.getElementById('mealList');
+  startMini = await setupStartMiniButton('ingredientMealsStartMini');
   const needs = await loadNeeds();
   allItems = sortItemsByCategory(needs);
   await buildIngredientMealMap();

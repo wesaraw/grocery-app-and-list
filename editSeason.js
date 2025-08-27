@@ -1,6 +1,7 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { loadItemSeasons, saveItemSeasons } from './utils/seasonData.js';
 import { sortItemsByCategory, renderItemsWithCategoryHeaders } from './utils/sortByCategory.js';
+import { setupStartMiniButton } from './utils/startMini.js';
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 
@@ -54,6 +55,7 @@ async function init() {
   const items = sortItemsByCategory(needs);
   const container = document.getElementById('items');
   const headerState = {};
+  const startMini = await setupStartMiniButton('editSeasonStartMini');
 
   function createRow(item) {
     const div = document.createElement('div');
@@ -98,7 +100,13 @@ async function init() {
       ? items.filter(n => n.name.toLowerCase().includes(filterText))
       : items;
     container.innerHTML = '';
-    renderItemsWithCategoryHeaders(arr, container, createRow, headerState);
+    renderItemsWithCategoryHeaders(
+      arr,
+      container,
+      createRow,
+      headerState,
+      startMini
+    );
   }
 
   render();

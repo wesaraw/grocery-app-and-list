@@ -3,6 +3,7 @@ import {
   sortItemsByCategory,
   renderItemsWithCategoryHeaders
 } from './utils/sortByCategory.js';
+import { setupStartMiniButton } from './utils/startMini.js';
 import { WEEKS_PER_MONTH } from './utils/constants.js';
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -12,6 +13,7 @@ let filterText = '';
 const headerState = {};
 let allNeeds = [];
 let container;
+let startMini = true;
 
 function loadArray(key, path) {
   return new Promise(async resolve => {
@@ -81,6 +83,7 @@ function createRow(item, expMap, expArr) {
 
 async function init() {
   container = document.getElementById('expirations');
+  startMini = await setupStartMiniButton('expirationStartMini');
   const [needs, expiration] = await Promise.all([loadNeeds(), loadExpiration()]);
   allNeeds = sortItemsByCategory(needs);
   const expMap = new Map(expiration.map(e => [e.name, e]));
@@ -94,7 +97,8 @@ async function init() {
       arr,
       container,
       n => createRow(n, expMap, expiration),
-      headerState
+      headerState,
+      startMini
     );
   }
 

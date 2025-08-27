@@ -3,6 +3,7 @@ import { sortItemsByCategory, renderItemsWithCategoryHeaders } from './utils/sor
 import { canonicalName } from './utils/nameUtils.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
+import { setupStartMiniButton } from './utils/startMini.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -35,6 +36,7 @@ let filterText = '';
 const headerState = {};
 let allItems = [];
 let container;
+let startMini = true;
 
 function loadArray(key, path) {
   return new Promise(async resolve => {
@@ -226,6 +228,7 @@ function createRow(name) {
 
 async function init() {
   container = document.getElementById('items');
+  startMini = await setupStartMiniButton('renameItemStartMini');
   const needs = await loadNeeds();
   allItems = sortItemsByCategory(needs);
 
@@ -234,7 +237,13 @@ async function init() {
     const arr = filterText
       ? allItems.filter(it => it.name.toLowerCase().includes(filterText))
       : allItems;
-    renderItemsWithCategoryHeaders(arr, container, it => createRow(it.name), headerState);
+    renderItemsWithCategoryHeaders(
+      arr,
+      container,
+      it => createRow(it.name),
+      headerState,
+      startMini
+    );
   }
 
   render();

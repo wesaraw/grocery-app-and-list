@@ -3,6 +3,7 @@ import {
   sortItemsByCategory,
   renderItemsWithCategoryHeaders
 } from './utils/sortByCategory.js';
+import { setupStartMiniButton } from './utils/startMini.js';
 
 const NEEDS_KEY = 'yearlyNeeds';
 
@@ -15,6 +16,7 @@ let globalMap;
 let globalHistory;
 let globalOverrides;
 let container;
+let startMini = true;
 
 function loadNeeds() {
   return new Promise(async resolve => {
@@ -168,6 +170,7 @@ function createItemRow(item, map, history, overrides, weekly) {
 
 async function init() {
   container = document.getElementById('consumption');
+  startMini = await setupStartMiniButton('consumedStartMini');
   const [consumed, history, needs, overrides] = await Promise.all([
     loadConsumption(),
     loadHistory(),
@@ -195,7 +198,7 @@ async function init() {
       const item = globalMap.get(n.name);
       const weekly = n.total_needed_year ? n.total_needed_year / 52 : 0;
       return createItemRow(item, globalMap, globalHistory, globalOverrides, weekly);
-    }, headerState);
+    }, headerState, startMini);
   }
 
   render();
