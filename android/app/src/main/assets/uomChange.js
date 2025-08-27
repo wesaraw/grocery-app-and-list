@@ -1,6 +1,7 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { sortItemsByCategory } from './utils/sortByCategory.js';
 import { convert } from './utils/uomConverter.js';
+import { setupStartMiniButton } from './utils/startMini.js';
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -10,6 +11,7 @@ let filterText = '';
 const headerState = {};
 let allNeeds = [];
 let tbody;
+let startMini = true;
 
 function loadArray(key, path) {
   return new Promise(async resolve => {
@@ -102,6 +104,7 @@ async function init() {
     loadArray('currentStock', STOCK_PATH)
   ]);
   tbody = document.getElementById('uom-list');
+  startMini = await setupStartMiniButton('uomChangeStartMini');
   allNeeds = sortItemsByCategory(needs);
 
   function render() {
@@ -115,7 +118,7 @@ async function init() {
     function finalizeHeader(cat, row, rowsArr) {
       if (!row) return;
       const hidden =
-        headerState[cat] !== undefined ? headerState[cat] : true;
+        headerState[cat] !== undefined ? headerState[cat] : startMini;
       row.dataset.hidden = hidden ? 'true' : 'false';
       rowsArr.forEach(r => {
         r.style.display = hidden ? 'none' : '';

@@ -8,6 +8,7 @@ import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 import { loadJSON } from './utils/dataLoader.js';
 import { sortItemsByCategory } from './utils/sortByCategory.js';
+import { setupStartMiniButton } from './utils/startMini.js';
 
 const btnContainer = document.getElementById('userButtons');
 const mealList = document.getElementById('mealList');
@@ -22,6 +23,7 @@ let addBtn = null;
 let editInputs = [];
 let editing = false;
 const headerState = {};
+let startMini = true;
 
 function renderButtons() {
   btnContainer.innerHTML = '';
@@ -151,7 +153,7 @@ async function showMeals(userIndex) {
 
   function finalizeHeader(cat, hdr, ns) {
     if (!hdr) return;
-    const hidden = headerState[cat] !== undefined ? headerState[cat] : true;
+    const hidden = headerState[cat] !== undefined ? headerState[cat] : startMini;
     hdr.dataset.hidden = hidden ? 'true' : 'false';
     ns.forEach(n => {
       n.style.display = hidden ? 'none' : '';
@@ -235,6 +237,7 @@ async function showMeals(userIndex) {
 
 async function init() {
   await initializeMealCategories();
+  startMini = await setupStartMiniButton('usersStartMini');
   users = await loadUsers();
   userDays = await loadUserCategoryDays();
   while (userDays.length < users.length) userDays.push({});
