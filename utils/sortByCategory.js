@@ -1,7 +1,15 @@
 export function sortItemsByCategory(arr) {
-  return arr.slice().sort((a, b) => {
-    const catA = (a.category || '').toLowerCase();
-    const catB = (b.category || '').toLowerCase();
+  const items = (arr || [])
+    .filter(Boolean)
+    .map(i => ({
+      ...i,
+      category: i?.category || 'Missing',
+      name: i?.name || '',
+    }));
+
+  return items.sort((a, b) => {
+    const catA = a.category.toLowerCase();
+    const catB = b.category.toLowerCase();
     if (catA === catB) {
       return a.name.localeCompare(b.name);
     }
