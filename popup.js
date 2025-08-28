@@ -1103,14 +1103,6 @@ document
   .getElementById('mealChooser')
   .addEventListener('click', openMealChooser);
 
-function openIngredientMeals() {
-  openOrFocusWindow('ingredientMeals.html');
-}
-
-document
-  .getElementById('ingredientMeals')
-  .addEventListener('click', openIngredientMeals);
-
 function openStoreTotals() {
   openOrFocusWindow('storeTotals.html');
 }
