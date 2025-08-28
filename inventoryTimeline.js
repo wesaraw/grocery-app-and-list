@@ -655,6 +655,9 @@ async function init() {
   document.getElementById('nameCheck').addEventListener('click', () => {
     openOrFocusWindow('nameCheck.html');
   });
+  document.getElementById('stockNameCheck').addEventListener('click', () => {
+    openOrFocusWindow('stockNameCheck.html');
+  });
   document.getElementById('editNames').addEventListener('click', () => {
     openOrFocusWindow('renameItem.html');
   });
