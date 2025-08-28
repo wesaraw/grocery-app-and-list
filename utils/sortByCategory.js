@@ -1,9 +1,20 @@
 export function sortItemsByCategory(arr) {
+  let missingCount = 1;
+  arr.forEach(item => {
+    if (!item.name) {
+      item.name = `Missing ${missingCount++}`;
+    }
+    if (!item.category) {
+      item.category = 'Missing';
+    }
+  });
   return arr.slice().sort((a, b) => {
-    const catA = (a.category || '').toLowerCase();
-    const catB = (b.category || '').toLowerCase();
+    const catA = (a?.category || '').toLowerCase();
+    const catB = (b?.category || '').toLowerCase();
     if (catA === catB) {
-      return a.name.localeCompare(b.name);
+      const nameA = a?.name || '';
+      const nameB = b?.name || '';
+      return nameA.localeCompare(nameB);
     }
     return catA.localeCompare(catB);
   });

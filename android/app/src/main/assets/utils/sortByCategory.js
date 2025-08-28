@@ -1,4 +1,13 @@
 export function sortItemsByCategory(arr) {
+  let missingCount = 1;
+  arr.forEach(item => {
+    if (!item.name) {
+      item.name = `Missing ${missingCount++}`;
+    }
+    if (!item.category) {
+      item.category = 'Missing';
+    }
+  });
   return arr.slice().sort((a, b) => {
     const catA = (a.category || '').toLowerCase();
     const catB = (b.category || '').toLowerCase();
