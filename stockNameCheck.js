@@ -27,11 +27,12 @@ function saveStock(arr) {
   });
 }
 
-function createRow(item, stock) {
+function createRow(item, stock, index) {
   const div = document.createElement('div');
   div.className = 'item';
+
   const span = document.createElement('span');
-  span.textContent = item.category || 'Unnamed item';
+  span.textContent = (item && item.category) || '(missing entry)';
   div.appendChild(span);
 
   const input = document.createElement('input');
@@ -41,7 +42,11 @@ function createRow(item, stock) {
     if (e.key === 'Enter') {
       const val = input.value.trim();
       if (!val) return;
-      item.name = val;
+      if (item) {
+        item.name = val;
+      } else {
+        stock[index] = { name: val, category: '' };
+      }
       await saveStock(stock);
       div.remove();
     }
@@ -54,8 +59,15 @@ function createRow(item, stock) {
 async function init() {
   const container = document.getElementById('items');
   const stock = await loadArray(STOCK_KEY, STOCK_PATH);
-  const missing = stock.filter(n => !n.name || !n.name.trim());
-  missing.forEach(item => container.appendChild(createRow(item, stock)));
+  const missing = [];
+  stock.forEach((n, i) => {
+    if (!n || typeof n.name !== 'string' || !n.name.trim()) {
+      missing.push({ item: n, index: i });
+    }
+  });
+  missing.forEach(({ item, index }) =>
+    container.appendChild(createRow(item, stock, index))
+  );
 }
 
 document.addEventListener('DOMContentLoaded', init);
