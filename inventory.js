@@ -259,9 +259,10 @@ function renderWeek(week) {
   );
   const stockArr = getStockBeforeWeek(timelineItems, purchasesMap, week);
   const stockForWeek = new Map(stockArr.map(i => [i.name, i.amount]));
-  const sortedStock = sortItemsByCategory(
-    baseStock.map(it => ({ ...it, category: categoryMap.get(it.name) || '' }))
-  );
+  const stockItems = baseStock
+    .filter(it => it && typeof it.name === 'string' && it.name.trim())
+    .map(it => ({ ...it, category: categoryMap.get(it.name) || '' }));
+  const sortedStock = sortItemsByCategory(stockItems);
   const filtered = filterText
     ? sortedStock.filter(it => it.name.toLowerCase().includes(filterText))
     : sortedStock;
