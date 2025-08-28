@@ -13,7 +13,7 @@ step‑by‑step.
 * Remembers which store you chose for each item.
 * Shows how much you might need to buy next to each item.
 * Lets you save the final product you want with its picture and price.
-* Can create a shopping list. When you press **Comit**, the list opens and you
+* Can create a shopping list. When you press **Commit**, the list opens and you
   press **Confirm Add** to update your pantry.
 * Allows you to edit your pantry and how much you have used.
 * Lets you add new grocery items to track.
@@ -44,7 +44,7 @@ step‑by‑step.
 6. After selecting items from the stores you like, choose the final store for
    the item. The add-on remembers your choice.
 7. Repeat these steps for each grocery item you wish to check.
-8. When you are ready to shop, click **Comit**. This opens a shopping list.
+8. When you are ready to shop, click **Commit**. This opens a shopping list.
    Press **Confirm Add** to update your pantry.
 9. Use **Edit Inventory** to change what you have on hand.
 10. Use **Edit Consumption** to record how much you used this year.

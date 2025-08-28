@@ -897,7 +897,6 @@ async function loadCommitData(itemName) {
 
 
 async function commitSelections() {
-  const purchases = await loadPurchases();
   const commitItems = [];
   const currentWeek = getCurrentWeek();
 
@@ -958,12 +957,6 @@ async function commitSelections() {
     const packsToBuy = Math.ceil(needRecord.toBuy / perPackHomeQty);
     const amount = perPackHomeQty * packsToBuy;
 
-    if (!purchases[item.name]) purchases[item.name] = [];
-    purchases[item.name].push({
-      purchase_week: currentWeek,
-      quantity_purchased: amount
-    });
-
     commitItems.push({
       item: item.name,
       store,
@@ -973,8 +966,7 @@ async function commitSelections() {
       packs: packsToBuy
     });
   }
-  await savePurchases(purchases);
-
+  // Save items and week for later confirmation
   chrome.storage.local.set({
     lastCommitItems: commitItems,
     pendingCommitWeek: currentWeek
