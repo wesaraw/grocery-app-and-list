@@ -619,6 +619,9 @@ async function init() {
   document.getElementById('editCategory').addEventListener('click', () => {
     openOrFocusWindow('editCategory.html');
   });
+  document.getElementById('categoryCheck').addEventListener('click', () => {
+    openOrFocusWindow('categoryCheck.html');
+  });
   document.getElementById('editNames').addEventListener('click', () => {
     openOrFocusWindow('renameItem.html');
   });
