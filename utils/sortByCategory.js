@@ -13,8 +13,7 @@ export function renderItemsWithCategoryHeaders(
   items,
   container,
   renderFn,
-  headerState = {},
-  defaultHidden = true
+  headerState = {}
 ) {
   let lastCat = null;
   let header = null;
@@ -22,8 +21,7 @@ export function renderItemsWithCategoryHeaders(
 
   function finalizeHeader(cat, hdr, nodesForHeader) {
     if (!hdr) return;
-    const hidden =
-      headerState[cat] !== undefined ? headerState[cat] : defaultHidden;
+    const hidden = headerState[cat] !== undefined ? headerState[cat] : true;
     hdr.dataset.hidden = hidden ? 'true' : 'false';
     nodesForHeader.forEach(n => {
       n.style.display = hidden ? 'none' : '';

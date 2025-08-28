@@ -1,7 +1,6 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { sortItemsByCategory, renderItemsWithCategoryHeaders } from './utils/sortByCategory.js';
 import { loadMealPlanData } from './utils/mealNeedsCalculator.js';
-import { setupStartMiniButton } from './utils/startMini.js';
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONS_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -14,7 +13,6 @@ let consMap;
 let mealYearMap;
 let mealMonthMap;
 let container;
-let startMini = true;
 
 function loadArray(key, path) {
   return new Promise(async resolve => {
@@ -146,7 +144,6 @@ async function init() {
     loadConsumption(),
     loadMealPlanData()
   ]);
-  startMini = await setupStartMiniButton('editPlanStartMini');
   allNeeds = sortItemsByCategory(needs);
   needsMap = new Map(needs.map(n => [n.name, n]));
   consMap = new Map(consumption.map(c => [c.name, c]));
@@ -171,8 +168,7 @@ async function init() {
           needs,
           consumption
         ),
-      headerState,
-      startMini
+      headerState
     );
   }
 
