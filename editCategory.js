@@ -34,7 +34,7 @@ function createRow(item, needs) {
   const div = document.createElement('div');
   div.className = 'item';
   const span = document.createElement('span');
-  span.textContent = `${item.name} - ${item.category || ''}`;
+  span.textContent = `${item.name} - ${item.category || 'Missing'}`;
   div.appendChild(span);
 
   const input = document.createElement('input');

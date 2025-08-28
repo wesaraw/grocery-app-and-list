@@ -3,6 +3,7 @@ import { openOrFocusWindow } from './utils/windowUtils.js';
 import { canonicalName } from './utils/nameUtils.js';
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
 import { setupStartMiniButton } from './utils/startMini.js';
+import { sortItemsByCategory } from './utils/sortByCategory.js';
 
 async function loadJSON(path) {
   const url = chrome.runtime.getURL(path);
@@ -57,16 +58,6 @@ function loadArray(key, path) {
   });
 }
 
-function sortItemsByCategory(arr) {
-  return arr.slice().sort((a, b) => {
-    const catA = (a.category || '').toLowerCase();
-    const catB = (b.category || '').toLowerCase();
-    if (catA === catB) {
-      return a.name.localeCompare(b.name);
-    }
-    return catA.localeCompare(catB);
-  });
-}
 
 function loadStoredArray(key) {
   return new Promise(resolve => {
@@ -273,7 +264,7 @@ function buildGrid(items, headerState = {}, startWeek = 1, startMini = true) {
   }
 
   items.forEach(item => {
-    const cat = item.category || 'Other';
+    const cat = item.category || 'Missing';
     if (cat !== lastCat) {
       finalizeHeader(lastCat, headerRow, itemRows);
       lastCat = cat;

@@ -1,9 +1,11 @@
 export function sortItemsByCategory(arr) {
   return arr.slice().sort((a, b) => {
-    const catA = (a.category || '').toLowerCase();
-    const catB = (b.category || '').toLowerCase();
+    const catA = (a.category || 'Missing').toLowerCase();
+    const catB = (b.category || 'Missing').toLowerCase();
+    const nameA = a.name || '';
+    const nameB = b.name || '';
     if (catA === catB) {
-      return a.name.localeCompare(b.name);
+      return nameA.localeCompare(nameB);
     }
     return catA.localeCompare(catB);
   });
@@ -40,7 +42,7 @@ export function renderItemsWithCategoryHeaders(
   }
 
   items.forEach(item => {
-    const cat = item.category || 'Other';
+    const cat = item.category || 'Missing';
     if (cat !== lastCat) {
       finalizeHeader(lastCat, header, nodes);
       lastCat = cat;
