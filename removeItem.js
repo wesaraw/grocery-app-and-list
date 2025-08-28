@@ -4,6 +4,7 @@ import {
   renderItemsWithCategoryHeaders
 } from './utils/sortByCategory.js';
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
+import { setupStartMiniButton } from './utils/startMini.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -16,6 +17,7 @@ let filterText = '';
 const headerState = {};
 let allItems = [];
 let ul;
+let startMini = true;
 
 function loadArray(key, path) {
   return new Promise(async resolve => {
@@ -158,6 +160,7 @@ function createListItem(name) {
 
 async function init() {
   ul = document.getElementById('items');
+  startMini = await setupStartMiniButton('removeItemStartMini');
   const items = await loadNeeds();
   allItems = sortItemsByCategory(items);
 
@@ -166,7 +169,13 @@ async function init() {
     const arr = filterText
       ? allItems.filter(it => it.name.toLowerCase().includes(filterText))
       : allItems;
-    renderItemsWithCategoryHeaders(arr, ul, it => createListItem(it.name), headerState);
+    renderItemsWithCategoryHeaders(
+      arr,
+      ul,
+      it => createListItem(it.name),
+      headerState,
+      startMini
+    );
   }
 
   render();
