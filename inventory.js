@@ -8,7 +8,6 @@ import {
 } from './utils/sortByCategory.js';
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
 import { loadArray as loadItemArray } from './utils/itemStorage.js';
-import { setupStartMiniButton } from './utils/startMini.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -246,7 +245,6 @@ let finalProductMap = {};
 let densityMap = {};
 let filterText = '';
 const headerState = {};
-let startMini = true;
 
 function renderWeek(week) {
   const container = document.getElementById('inventory');
@@ -276,7 +274,7 @@ function renderWeek(week) {
       finalProductMap[item.name],
       densityMap
     );
-  }, headerState, startMini);
+  }, headerState);
 }
 
 function getCurrentWeek() {
@@ -289,7 +287,6 @@ function getCurrentWeek() {
 async function init() {
   const weekInput = document.getElementById('week-number');
   weekInput.value = getCurrentWeek();
-  startMini = await setupStartMiniButton('inventoryStartMini');
   [
     baseStock,
     purchasesMap,

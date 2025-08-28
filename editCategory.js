@@ -1,6 +1,5 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { sortItemsByCategory, renderItemsWithCategoryHeaders } from './utils/sortByCategory.js';
-import { setupStartMiniButton } from './utils/startMini.js';
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const NEEDS_KEY = 'yearlyNeeds';
@@ -9,7 +8,6 @@ let filterText = '';
 const headerState = {};
 let allNeeds = [];
 let container;
-let startMini = true;
 
 function loadNeeds() {
   return new Promise(async resolve => {
@@ -59,7 +57,6 @@ function createRow(item, needs) {
 
 async function init() {
   container = document.getElementById('categories');
-  startMini = await setupStartMiniButton('editCategoryStartMini');
   const needs = await loadNeeds();
   allNeeds = sortItemsByCategory(needs);
 
@@ -72,8 +69,7 @@ async function init() {
       arr,
       container,
       item => createRow(item, needs),
-      headerState,
-      startMini
+      headerState
     );
   }
 

@@ -3,7 +3,6 @@ import {
   sortItemsByCategory,
   renderItemsWithCategoryHeaders
 } from './utils/sortByCategory.js';
-import { setupStartMiniButton } from './utils/startMini.js';
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 
@@ -12,7 +11,6 @@ const headerState = {};
 let allNeeds = [];
 let container;
 let couponsMap;
-let startMini = true;
 
 function loadNeeds() {
   return new Promise(async resolve => {
@@ -174,7 +172,6 @@ function createRow(item, couponsMap) {
 
 async function init() {
   container = document.getElementById('coupons');
-  startMini = await setupStartMiniButton('couponStartMini');
   const [needs, coupons] = await Promise.all([loadNeeds(), loadCoupons()]);
   allNeeds = sortItemsByCategory(needs);
   couponsMap = coupons;
@@ -188,8 +185,7 @@ async function init() {
       arr,
       container,
       n => createRow(n, couponsMap),
-      headerState,
-      startMini
+      headerState
     );
   }
 

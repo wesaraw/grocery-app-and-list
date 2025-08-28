@@ -10,7 +10,6 @@ import {
 } from './utils/sortByCategory.js';
 import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from "./utils/priceUtils.js";
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
-import { setupStartMiniButton } from './utils/startMini.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
@@ -162,7 +161,6 @@ let mealsByCategoryData = {};
 let hideZeroItems = false;
 let filterText = '';
 const headerState = {};
-let startMini = true;
 let weightPackMap = new Map();
 let densityMap = {};
 let mealMonthMap = new Map();
@@ -496,7 +494,6 @@ function updateFinalInfo(itemName, span, img, store, product, map = weightPackMa
 
 async function init() {
   await initUomTable();
-  startMini = await setupStartMiniButton('popupStartMini');
   const {
     needs,
     selections,
@@ -619,7 +616,7 @@ async function init() {
     li.appendChild(finalImg);
     // rec already stored in finalMap
     return li;
-  }, headerState, startMini);
+  }, headerState);
 
   resolveInit();
 }
@@ -826,7 +823,7 @@ async function rerenderAll() {
     li.appendChild(finalImg);
     // rec already stored in finalMap
     return li;
-  }, headerState, startMini);
+  }, headerState);
   window.scrollTo(0, scrollTop);
 }
 

@@ -2,7 +2,6 @@ import { WEEKS_PER_MONTH } from './utils/constants.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 import { canonicalName } from './utils/nameUtils.js';
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
-import { setupStartMiniButton } from './utils/startMini.js';
 
 async function loadJSON(path) {
   const url = chrome.runtime.getURL(path);
@@ -226,7 +225,7 @@ function simulateItem(item, overrides) {
   return weeks;
 }
 
-function buildGrid(items, headerState = {}, startWeek = 1, startMini = true) {
+function buildGrid(items, headerState = {}, startWeek = 1) {
   const grid = document.createElement('table');
   const thead = document.createElement('thead');
   const header = document.createElement('tr');
@@ -252,7 +251,7 @@ function buildGrid(items, headerState = {}, startWeek = 1, startMini = true) {
 
   function finalizeHeader(cat, row, rows) {
     if (!row) return;
-    const hidden = headerState[cat] !== undefined ? headerState[cat] : startMini;
+    const hidden = headerState[cat] !== undefined ? headerState[cat] : true;
     row.dataset.hidden = hidden ? 'true' : 'false';
     rows.forEach(r => {
       r.style.display = hidden ? 'none' : '';
@@ -377,7 +376,6 @@ let showingHistory = false;
 let globalItems = [];
 let gridContainer;
 const headerState = {};
-let startMini = true;
 let currentOnly = false;
 
 async function fetchItems() {
@@ -465,7 +463,7 @@ function showGrid(items = globalItems) {
   document.getElementById('view-purchases').textContent = 'Purchase History';
   gridContainer.innerHTML = '';
   const startWeek = currentOnly ? getCurrentWeek() : 1;
-  gridContainer.appendChild(buildGrid(items, headerState, startWeek, startMini));
+  gridContainer.appendChild(buildGrid(items, headerState, startWeek));
   resizeWindowToContent();
 }
 
@@ -479,7 +477,6 @@ function showPurchaseHistory() {
 
 async function init() {
   gridContainer = document.getElementById('grid-container');
-  startMini = await setupStartMiniButton('inventoryTimelineStartMini');
   await refreshItems();
 
   function applyFilter() {
