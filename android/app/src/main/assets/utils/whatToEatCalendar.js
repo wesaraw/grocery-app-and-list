@@ -1,0 +1,142 @@
+export function generateWhatToEatCalendar(
+  users,
+  preparedCal,
+  subscriptions,
+  eatingDays,
+  mealsPerDay,
+  startDate,
+  weeks = 4,
+  priceThresholds = {}
+) {
+  const calendar = {};
+  const nonPrepState = {};
+  const sharedNonPrepState = {};
+  const sharedDailyPick = {};
+
+  const subCount = {};
+  Object.values(subscriptions).forEach(prefs => {
+    Object.entries(prefs || {}).forEach(([cat, meals]) => {
+      subCount[cat] = subCount[cat] || {};
+      (meals || []).forEach(m => {
+        const id = m.id || m.name;
+        subCount[cat][id] = (subCount[cat][id] || 0) + 1;
+      });
+    });
+  });
+  const date = new Date(startDate);
+  for (const u of users) calendar[u] = {};
+
+  function weightMeals(list) {
+    return list
+      .map(m => ({ meal: m, weight: m && m.weight != null ? m.weight : 1 }))
+      .filter(w => w.weight > 0);
+  }
+
+  function pickWeighted(list, state) {
+    const total = list.reduce((s, i) => s + i.weight, 0);
+    if (!total) return null;
+    for (const it of list) {
+      const id = it.meal.id || it.meal.name;
+      state[id] = (state[id] || 0) + it.weight;
+    }
+    let chosen = list[0].meal;
+    let chosenId = list[0].meal.id || list[0].meal.name;
+    let max = state[chosenId];
+    for (const it of list) {
+      const id = it.meal.id || it.meal.name;
+      if (state[id] > max) {
+        max = state[id];
+        chosen = it.meal;
+        chosenId = id;
+      }
+    }
+    state[chosenId] -= total;
+    return chosen;
+  }
+
+  for (let i = 0; i < weeks * 7; i++) {
+    const dateStr = date.toISOString().split('T')[0];
+    const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+    sharedDailyPick[dateStr] = sharedDailyPick[dateStr] || {};
+    users.forEach(user => {
+      calendar[user][dateStr] = calendar[user][dateStr] || {};
+      const prefs = subscriptions[user] || {};
+      const dayPrefs = eatingDays[user] || {};
+      Object.keys(prefs).forEach(cat => {
+        const validDays = dayPrefs[cat] || [];
+        if (!validDays.includes(dayName)) return;
+        const meals = prefs[cat] || [];
+        if (!meals.length) return;
+        const numSlots = mealsPerDay[cat] || 1;
+        const prepMealId = preparedCal[dateStr]?.[cat];
+        const stateRec = nonPrepState[user] || (nonPrepState[user] = {});
+        const maxPrice =
+          priceThresholds[user] !== undefined ? priceThresholds[user] : Infinity;
+        const nonPrepMeals = meals.filter(
+          m => !m.prepared && (m.totalCost == null || m.totalCost <= maxPrice)
+        );
+        const sharedMeals = nonPrepMeals.filter(
+          m => (subCount[cat]?.[m.id || m.name] || 0) > 1
+        );
+        const affordableAll = meals.filter(
+          m => m.totalCost == null || m.totalCost <= maxPrice
+        );
+        const nonPrepFallback = meals.filter(m => !m.prepared);
+        const weightedNonPrep = weightMeals(nonPrepMeals);
+        const weightedShared = weightMeals(sharedMeals);
+        const weightedAffordable = weightMeals(affordableAll.filter(m => !m.prepared));
+        const weightedFallback = weightMeals(nonPrepFallback);
+        const weightedAvail = weightMeals(meals);
+        const chooseList =
+          weightedNonPrep.length
+            ? weightedNonPrep
+            : weightedAffordable.length
+            ? weightedAffordable
+            : weightedFallback.length
+            ? weightedFallback
+            : weightedAvail;
+        const choices = [];
+        for (let s = 0; s < numSlots; s++) {
+          let chosen;
+          const prepMeal = meals.find(m => (m.id || m.name) === prepMealId);
+          const prepOk =
+            prepMeal && (prepMeal.totalCost == null || prepMeal.totalCost <= maxPrice);
+          if (s === 0 && prepOk) {
+            chosen = prepMealId;
+          } else if (weightedShared.length) {
+            if (!sharedDailyPick[dateStr][cat]) sharedDailyPick[dateStr][cat] = {};
+            if (!sharedDailyPick[dateStr][cat][s]) {
+              const state = sharedNonPrepState[cat] || (sharedNonPrepState[cat] = {});
+              const meal = pickWeighted(weightedShared, state);
+              sharedDailyPick[dateStr][cat][s] = meal.id || meal.name;
+            }
+            chosen = sharedDailyPick[dateStr][cat][s];
+          } else {
+            const list = chooseList;
+            const state = stateRec[cat] || (stateRec[cat] = {});
+            const meal = pickWeighted(list, state);
+            chosen = meal.id || meal.name;
+          }
+          if (s === 0 && prepOk) {
+            if (weightedShared.length) {
+              if (!sharedDailyPick[dateStr][cat]) sharedDailyPick[dateStr][cat] = {};
+              if (!sharedDailyPick[dateStr][cat][s]) {
+                const state = sharedNonPrepState[cat] || (sharedNonPrepState[cat] = {});
+                const meal = pickWeighted(weightedShared, state);
+                sharedDailyPick[dateStr][cat][s] = meal.id || meal.name;
+              }
+            } else {
+              const state = stateRec[cat] || (stateRec[cat] = {});
+              pickWeighted(chooseList, state);
+            }
+          }
+          choices.push(chosen);
+        }
+        calendar[user][dateStr][cat] = numSlots === 1 ? choices[0] : choices;
+      });
+    });
+    date.setDate(date.getDate() + 1);
+  }
+
+  return calendar;
+}

@@ -1,0 +1,547 @@
+<?xml version="1.0" ?>
+<meals>
+  <meal>
+    <category>Snack</category>
+    <name>Minecraft Baked Potatoes</name>
+    <recipeBook>Minecraft Cookbook</recipeBook>
+    <image>Minecraft Baked Potatoes.jpg</image>
+    <users>10100</users>
+    <prepared>true</prepared>
+    <group>false</group>
+    <weight>1</weight>
+    <ingredients>
+      <item>
+        <name>Potato</name>
+        <amount>1</amount>
+        <unit>item</unit>
+      </item>
+      <item>
+        <name>Olive Oil</name>
+        <amount>1</amount>
+        <unit>tbsp</unit>
+      </item>
+      <item>
+        <name>Salt</name>
+        <amount>0.1</amount>
+        <unit>tsp</unit>
+      </item>
+    </ingredients>
+  </meal>
+  <meal>
+    <category>Snack</category>
+    <name>Minecraft Creative Mode Munchies</name>
+    <recipeBook>Minecraft Cookbook</recipeBook>
+    <image>Minecraft Creative Mode Munchies.jpg</image>
+    <users>10100</users>
+    <prepared>true</prepared>
+    <group>false</group>
+    <weight>1</weight>
+    <ingredients>
+      <item>
+        <name>Block of Cheese</name>
+        <amount>3</amount>
+        <unit>oz</unit>
+      </item>
+      <item>
+        <name>Salami Stick</name>
+        <amount>1</amount>
+        <unit>item</unit>
+      </item>
+      <item>
+        <name>Melon (Mixed Types)</name>
+        <amount>0.5</amount>
+        <unit>cup</unit>
+      </item>
+      <item>
+        <name>French Bread Baguette</name>
+        <amount>0.5</amount>
+        <unit>loaf</unit>
+      </item>
+    </ingredients>
+  </meal>
+  <meal>
+    <category>Snack</category>
+    <name>Minecraft Hay Bale Granola Bars</name>
+    <recipeBook>Minecraft Cookbook</recipeBook>
+    <image>Minecraft Hay Bale Granola Bars.jpg</image>
+    <users>10100</users>
+    <prepared>true</prepared>
+    <group>false</group>
+    <weight>1</weight>
+    <ingredients>
+      <item>
+        <name>Apple</name>
+        <amount>1</amount>
+        <unit>item</unit>
+      </item>
+      <item>
+        <name>Quick-Cooking Oats</name>
+        <amount>2.5</amount>
+        <unit>cups</unit>
+      </item>
+      <item>
+        <name>Sliced Almonds</name>
+        <amount>0.5</amount>
+        <unit>cup</unit>
+      </item>
+      <item>
+        <name>Cinnamon</name>
+        <amount>1</amount>
+        <unit>tsp</unit>
+      </item>
+      <item>
+        <name>Peanut Butter</name>
+        <amount>1</amount>
+        <unit>cup</unit>
+      </item>
+      <item>
+        <name>Honey</name>
+        <amount>0.25</amount>
+        <unit>cup</unit>
+      </item>
+    </ingredients>
+  </meal>
+  <meal>
+    <category>Snack</category>
+    <name>Minecraft Chorus Fruit Salad</name>
+    <recipeBook>Minecraft Cookbook</recipeBook>
+    <image>Minecraft Chorus Fruit Salad.jpg</image>
+    <users>10100</users>
+    <prepared>true</prepared>
+    <group>false</group>
+    <weight>1</weight>
+    <ingredients>
+      <item>
+        <name>Blueberries</name>
+        <amount>3.2</amount>
+        <unit>oz</unit>
+      </item>
+      <item>
+        <name>Strawberries</name>
+        <amount>3.2</amount>
+        <unit>oz</unit>
+      </item>
+      <item>
+        <name>Red Grapes</name>
+        <amount>3.2</amount>
+        <unit>oz</unit>
+      </item>
+      <item>
+        <name>Kiwi</name>
+        <amount>0.6</amount>
+        <unit>item</unit>
+      </item>
+      <item>
+        <name>Banana</name>
+        <amount>0.4</amount>
+        <unit>item</unit>
+      </item>
+      <item>
+        <name>Honey</name>
+        <amount>0.8</amount>
+        <unit>tbsp</unit>
+      </item>
+      <item>
+        <name>Lemon or Lime Juice (Fresh)</name>
+        <amount>0.4</amount>
+        <unit>tbsp</unit>
+      </item>
+    </ingredients>
+  </meal>
+  <meal>
+    <category>Snack</category>
+    <name>Minecraft Farmer's Delight Pumpkin Seeds</name>
+    <recipeBook>Minecraft Cookbook</recipeBook>
+    <image>Minecraft Farmer's Delight Pumpkin Seeds.jpg</image>
+    <users>10100</users>
+    <prepared>true</prepared>
+    <group>false</group>
+    <weight>1</weight>
+    <ingredients>
+      <item>
+        <name>Pumpkin Seeds</name>
+        <amount>1</amount>
+        <unit>pumpkin's worth</unit>
+      </item>
+      <item>
+        <name>Water</name>
+        <amount>3</amount>
+        <unit>cups</unit>
+      </item>
+      <item>
+        <name>Salt</name>
+        <amount>3</amount>
+        <unit>tbsp</unit>
+      </item>
+    </ingredients>
+  </meal>
+  <meal>
+    <category>Snack</category>
+    <name>Minecraft Golden Carrot Dip</name>
+    <recipeBook>Minecraft Cookbook</recipeBook>
+    <image>Minecraft Golden Carrot Dip.jpg</image>
+    <users>10100</users>
+    <prepared>true</prepared>
+    <group>false</group>
+    <weight>1</weight>
+    <ingredients>
+      <item>
+        <name>Plain Greek Yogurt</name>
+        <amount>0.75</amount>
+        <unit>cup</unit>
+      </item>
+      <item>
+        <name>Mustard</name>
+        <amount>0.25</amount>
+        <unit>cup</unit>
+      </item>
+      <item>
+        <name>Honey</name>
+        <amount>0.25</amount>
+        <unit>cup</unit>
+      </item>
+      <item>
+        <name>Salt and Pepper</name>
+        <amount>1</amount>
+        <unit>optional</unit>
+      </item>
+    </ingredients>
+  </meal>
+  <meal>
+    <category>Snack</category>
+    <name>Minecraft Mini Glistering Melons</name>
+    <recipeBook>Minecraft Cookbook</recipeBook>
+    <image>Minecraft Mini Glistering Melons.jpg</image>
+    <users>10100</users>
+    <prepared>true</prepared>
+    <group>false</group>
+    <weight>1</weight>
+    <ingredients>
+      <item>
+        <name>Limes</name>
+        <amount>5</amount>
+        <unit>whole</unit>
+      </item>
+      <item>
+        <name>Red Gelatin</name>
+        <amount>3</amount>
+        <unit>oz</unit>
+      </item>
+      <item>
+        <name>Water</name>
+        <amount>1</amount>
+        <unit>cup</unit>
+      </item>
+      <item>
+        <name>Shimmering Sprinkles</name>
+        <amount>0.5</amount>
+        <unit>cup</unit>
+      </item>
+    </ingredients>
+  </meal>
+  <meal>
+    <category>Snack</category>
+    <name>Minecraft Ice Blocks</name>
+    <recipeBook>Minecraft Cookbook</recipeBook>
+    <image>Minecraft Ice Blocks.png</image>
+    <users>10100</users>
+    <prepared>true</prepared>
+    <group>false</group>
+    <weight>1</weight>
+    <ingredients>
+      <item>
+        <name>Vanilla or Blueberry Yogurt</name>
+        <amount>1.5</amount>
+        <unit>cups</unit>
+      </item>
+      <item>
+        <name>Blueberries</name>
+        <amount>1</amount>
+        <unit>cup</unit>
+      </item>
+    </ingredients>
+  </meal>
+  <meal>
+    <category>Snack</category>
+    <name>Minecraft Not-So-Rotten Flesh</name>
+    <recipeBook>Minecraft Cookbook</recipeBook>
+    <image>Minecraft Not-So-Rotten Flesh.png</image>
+    <users>10100</users>
+    <prepared>true</prepared>
+    <group>false</group>
+    <weight>1</weight>
+    <ingredients>
+      <item>
+        <name>Flank Steak</name>
+        <amount>1</amount>
+        <unit>lb</unit>
+      </item>
+      <item>
+        <name>Soy Sauce</name>
+        <amount>0.66</amount>
+        <unit>cups</unit>
+      </item>
+      <item>
+        <name>Worcestershire Sauce</name>
+        <amount>0.66</amount>
+        <unit>cups</unit>
+      </item>
+      <item>
+        <name>Brown Sugar</name>
+        <amount>2</amount>
+        <unit>tbsp</unit>
+      </item>
+      <item>
+        <name>Paprika</name>
+        <amount>1</amount>
+        <unit>tsp</unit>
+      </item>
+      <item>
+        <name>Garlic Powder</name>
+        <amount>1</amount>
+        <unit>tsp</unit>
+      </item>
+      <item>
+        <name>Onion Powder</name>
+        <amount>1</amount>
+        <unit>tsp</unit>
+      </item>
+      <item>
+        <name>Black Pepper</name>
+        <amount>1</amount>
+        <unit>tsp</unit>
+      </item>
+      <item>
+        <name>Salt</name>
+        <amount>0.5</amount>
+        <unit>tsp</unit>
+      </item>
+    </ingredients>
+  </meal>
+  <meal>
+    <category>Snack</category>
+    <name>Minecraft Pretzel Stick Torches</name>
+    <recipeBook>Minecraft Cookbook</recipeBook>
+    <image>Minecraft Pretzel Stick Torches.png</image>
+    <users>10100</users>
+    <prepared>true</prepared>
+    <group>false</group>
+    <weight>1</weight>
+    <ingredients>
+      <item>
+        <name>White Chocolate Chips</name>
+        <amount>1</amount>
+        <unit>cup</unit>
+      </item>
+      <item>
+        <name>Pretzel Sticks</name>
+        <amount>12</amount>
+        <unit>sticks</unit>
+      </item>
+      <item>
+        <name>Red and Yellow Sparkling Sprinkles</name>
+        <amount>1</amount>
+        <unit>to taste</unit>
+      </item>
+    </ingredients>
+  </meal>
+  <meal>
+    
+    
+    <category>Snack</category>
+    
+    
+    <name>Minecraft Stuffed Brown Mushrooms</name>
+    
+    
+    <users>11011</users>
+    
+    
+    <prepared>false</prepared>
+    
+    
+    <group>false</group>
+    
+    
+    <weight>1</weight>
+    
+    
+    <ingredients>
+      
+      
+      <item>
+        
+        
+        <name>Cremini Mushrooms</name>
+        
+        
+        <amount>24</amount>
+        
+        
+        <unit>count</unit>
+        
+      
+      </item>
+      
+      
+      <item>
+        
+        
+        <name>Fresh Spinach</name>
+        
+        
+        <amount>4</amount>
+        
+        
+        <unit>cups</unit>
+        
+      
+      </item>
+      
+      
+      <item>
+        
+        
+        <name>Olive Oil</name>
+        
+        
+        <amount>1</amount>
+        
+        
+        <unit>Tbsp</unit>
+        
+      
+      </item>
+      
+      
+      <item>
+        
+        
+        <name>Minced Garlic</name>
+        
+        
+        <amount>1</amount>
+        
+        
+        <unit>Tbsp</unit>
+        
+      
+      </item>
+      
+      
+      <item>
+        
+        
+        <name>Italian Bread Crumbs</name>
+        
+        
+        <amount>0.5</amount>
+        
+        
+        <unit>cup</unit>
+        
+      
+      </item>
+      
+      
+      <item>
+        
+        
+        <name>Shredded Mozzarella Cheese</name>
+        
+        
+        <amount>0.5</amount>
+        
+        
+        <unit>cup</unit>
+        
+      
+      </item>
+      
+      
+      <item>
+        
+        
+        <name>Shredded Parmesan Cheese</name>
+        
+        
+        <amount>0.25</amount>
+        
+        
+        <unit>cup</unit>
+        
+      
+      </item>
+      
+    
+    </ingredients>
+    
+  
+  </meal>
+  
+
+  <meal>
+    <category>Snack</category>
+    <name>Minecraft Village Farmer's Bread</name>
+    <recipeBook>MinecraftCookbookPages.png</recipeBook>
+    <image>Minecraft Village Farmer's Bread.png</image>
+    <users>11011</users>
+    <prepared>false</prepared>
+    <group>false</group>
+    <weight>1</weight>
+    <ingredients>
+      <item>
+        <name>Flour</name>
+        <amount>3</amount>
+        <unit>cups</unit>
+      </item>
+      <item>
+        <name>Instant Yeast</name>
+        <amount>0.5</amount>
+        <unit>tsp</unit>
+      </item>
+      <item>
+        <name>Salt</name>
+        <amount>2</amount>
+        <unit>tsp</unit>
+      </item>
+      <item>
+        <name>Lukewarm Water</name>
+        <amount>1.5</amount>
+        <unit>cups</unit>
+      </item>
+    </ingredients>
+  </meal>
+  <meal>
+    <category>Snack</category>
+    <name>Minecraft Spawn Eggs</name>
+    <recipeBook>Minecraft Cookbook</recipeBook>
+    <image>Minecraft Spawn Eggs.png</image>
+    <users>10100</users>
+    <prepared>true</prepared>
+    <group>false</group>
+    <weight>1</weight>
+    <ingredients>
+      <item>
+        <name>Eggs</name>
+        <amount>6</amount>
+        <unit>item</unit>
+      </item>
+      <item>
+        <name>Food Coloring</name>
+        <amount>1</amount>
+        <unit>set</unit>
+      </item>
+      <item>
+        <name>White Vinegar</name>
+        <amount>1</amount>
+        <unit>tbsp per color</unit>
+      </item>
+      <item>
+        <name>Salt and Pepper</name>
+        <amount>1</amount>
+        <unit>optional</unit>
+      </item>
+    </ingredients>
+  </meal>
+</meals>

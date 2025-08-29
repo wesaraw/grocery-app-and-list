@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Meal List</title>
+  <style>
+      body { font-family: Arial, sans-serif; width: 650px; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { border: 1px solid #ccc; padding: 4px; font-size: 12px; vertical-align: top; }
+      .meal-img {
+        width: 160px;
+        height: 160px;
+        object-fit: contain;
+        background: #ccc;
+        margin-right: 4px;
+        vertical-align: middle;
+      }
+      th:nth-child(3), td:nth-child(3) { width: 200px; }
+      th.book-header {
+        border-top: 1px solid #ccc;
+        text-align: left;
+        position: sticky;
+        background: #fff;
+        z-index: 1;
+        cursor: pointer;
+      }
+  </style>
+</head>
+<body>
+  <h1 id="title"></h1>
+  <button id="addMeal">Add Meal</button>
+  <button id="removeMeal">Remove Meal</button>
+  <table>
+    <thead>
+      <tr>
+        <th>Use</th>
+        <th>Image</th>
+        <th>Meal</th>
+        <th>Prep</th>
+        <th>Group</th>
+        <th>Ingredient</th>
+        <th>Amount</th>
+        <th>Cost</th>
+        <th>Total</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="mealBody"></tbody>
+  </table>
+  <script src="bridge.js"></script>
+<script type="module" src="mealListView.js"></script>
+</body>
+</html>
