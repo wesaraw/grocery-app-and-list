@@ -15,8 +15,9 @@ Built with modular utilities, unified schemas, and deduplicated data storage.
 - Schema-based data model with versioning  
 - Unified scraper utility per store  
 - Modular UI components  
-- Deduplicated persistent storage  
-- Offline-friendly test fixtures  
+- Deduplicated persistent storage
+- Unified storage service with validation, migrations, and optional caching
+- Offline-friendly test fixtures
 - Import path for v1 legacy data
 
 ## 🗃 Directory Structure (early plan)
