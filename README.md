@@ -40,8 +40,11 @@ grocery_backup.txt     → Optional test data sample
 ```bash
 git clone <repo-url>
 npm install
-npm run test
+./scripts/run-tests.sh
 ```
+Run `./scripts/run-tests.sh` to execute tests and lint; output is saved to `logs/test.log`. Review this log before committing:
+- fix simple failures in your change.
+- open a separate issue or task for complex or unrelated failures.
 All tests are offline-safe; fixtures are bundled.
 
 ## 🚀 Roadmap
