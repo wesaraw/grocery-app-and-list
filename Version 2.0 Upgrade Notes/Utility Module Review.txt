@@ -1,0 +1,36 @@
+﻿Reusable logic in utils/
+* Date/quantity math
+   * parseQuantity parses strings into numeric amounts and units, handling fractions and special cases like “pinch”
+   * weekNumber derives ISO-like week numbers from dates, enabling weekly aggregations
+   * aggregateCalendar turns planned meals into ingredient totals per week, accounting for unit conversions and multipliers
+* Constants & calculations
+   * WEEKS_PER_MONTH constant simplifies conversions between monthly and weekly needs
+   * calculateMonthlyMealSpots/convertSpotsToMonthlyNeed estimate meal frequency and ingredient needs per month
+* Data & storage helpers
+   * loadJSON fetches local or Chrome-extension resources transparently
+   * itemStorage maps item names to numeric IDs and back, with helpers for arrays/objects and Chrome storage persistence
+   * purchaseStorage performs similar name↔ID conversions specifically for purchase records
+* Price and unit utilities
+   * pricePerUnit calculates cost per quantity when both are known
+   * normalizeUnit, parseUnitPrice, and related helpers decode unit‑priced text into standardized units and prices
+   * convert performs unit conversions using a JSON-driven table and alias map
+   * normalizeUnit / convertWithDensity handle conversions that require density or volume-to-weight logic
+* Domain-specific logic
+   * isItemInSeason checks whether an item is in season based on month ranges
+   * nameMatchesProduct canonicalizes names and checks against synonym sets for fuzzy matching
+   * openOrFocusWindow opens or reuses Chrome extension windows/popup tabs
+   * Image helpers, calendar generators, and meal need calculators provide specialized yet reusable services across the app.
+________________
+
+
+Obsolete or duplicate code
+priceComparer.js duplicates basic cost-per-unit logic already covered more comprehensively in priceUtils.js; no references exist in the repo, suggesting it is obsolete.
+
+
+parseQuantity is implemented separately in calendarUtils.js, mealNeedsCalculator.js, and inside unitNormalize.js, risking inconsistent behavior.
+
+Stock-simulation logic (e.g., simulateBeforeWeekVar in purchaseCalculator.js and simulateForWeek / simulateBeforeWeek in timeline.js) performs nearly identical inventory calculations.
+
+
+Many utilities (e.g., itemStorage, purchaseStorage, userData, windowUtils) depend directly on Chrome extension APIs, reducing portability.
+Suggested taskAbstract Chrome storage and window APIs

@@ -1,0 +1,11 @@
+﻿popup.html → background.js
+* UI elements (e.g., the shopping list) can request the background service worker to open a store page by sending a runtime message of type openStoreTab containing the URL, item name, and store.
+This message originates from the UI (shoppingList.js) and is handled by the background script, which opens a new tab and caches the request context in chrome.storage.local
+content.js (scraping) → background.js → storage
+   * The content script injected into store pages loads the item/store context from chrome.storage.local, runs the appropriate scraper, and sends the results to the extension via chrome.runtime.sendMessage.
+The background script persists this data into local storage under a scraped_<item>_<store> key, making it available to other parts of the extension
+internal APIs → UI
+      * The popup UI (popup.js) pulls in numerous internal modules—data loaders, purchase calculators, unit converters, meal-data utilities, etc.—which provide the business logic for inventory and meal‑plan features.
+These APIs drive the data that the UI renders and respond to runtime messages like scrapedData or finalSelection to keep the display in sync
+Notes
+         * The popup script primarily listens for runtime messages but does not itself send messages to the background; message initiations originate from other UI scripts such as shoppingList.js or item.js.

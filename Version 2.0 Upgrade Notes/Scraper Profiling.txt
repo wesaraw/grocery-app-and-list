@@ -1,0 +1,37 @@
+﻿Amazon
+* Selectors: Iterates through div[data-asin][data-component-type="s-search-result"], capturing link, name, image, unit text, and count text from nested selectors
+* Size & pack: parseUnitInfo searches name/unit/size text to find weight/volume and pack count, skipping strings containing prices
+* Price & unit: Uses parsePriceNumber on the price text and parseUnitPrice on unit text, converting to ounces when needed
+* Output: Pushes a product record with name, price, image, computed size, unit data, and price‑per‑unit, then sorts by that price
+Hannaford
+* Selectors: Targets div.catalog-product, pulling name, size text, unit‑price display, main price, image, and link (made absolute to hannaford.com)
+* Sanitize & pack: Shared sanitize and matchPack helpers strip HTML/nbsp and detect pack counts across name/size/unit fields
+* Size & unit: Normalizes units via UNIT_ALIASES, parses size text, and multiplies by pack count before converting to ounces or fluid ounces as needed
+* Price: parsePriceNumber on display price and parseUnitPrice on per‑unit text; fills in price‑per‑unit if missing
+Roche Bros
+* Selectors: Looks for [data-test-id="product-card"]/[data-test="product-cell"], extracting name, size, per‑unit price, link, and add‑to‑cart ID
+* Parsing: Uses shared sanitize/matchPack helpers, regex parsing for size/unit, and parseUnitPrice with special handling for gl → gal; converts to ounces when appropriate
+* Output: Stores product info plus addToCartId for later use
+Shaw’s
+* Selectors: Processes product-item-al-v2 tiles; name from [data-qa="prd-itm-pttl"], size from [data-qa="prd-itm-sqty"], per‑unit price from [data-qa="prd-itm-upr"] or [data-qa="prd-itm-pprc-qty"], price from [data-qa="prd-itm-prc"], and link/image from related attributes
+* Size extraction: extractSize normalizes text via UNIT_ALIASES, handles hyphenated forms like “1-12 oz,” and chooses the most representative weight vs. count unit
+* Pack & unit: Reuses sanitize/matchPack, applies parseUnitPrice, and converts units to ounces where possible
+Stop & Shop
+* Selectors: Uses li.tile.product-cell.product-grid-cell; product name is hidden in .product-grid-cell_price-container > .sr-only, while price, size, unit, image, and link come from separate selectors
+* Unit parsing: Cleans per‑unit text and parses values using custom regex that supports dollars or cents (¢), then converts units to ounces when necessary
+* Size & price: Extracts size from .product-grid-cell_size, multiplies by pack count, and infers price‑per‑unit when not provided
+Walmart
+* Price helper: extractWalmartPrice handles split integer/mantissa markup and fallback text like “$234 current price $2.34,” returning consistent price text and number
+* Selectors: Queries [data-item-id], [data-testid="list-view"], gathering name, per‑unit text, image, and link; unit size is inferred from the product name itself
+* Parsing: Shares sanitize/matchPack helpers, uses parseUnitPrice, converts units, and computes price‑per‑unit when absent
+Shared Parsing Logic
+* Unit constants: Every scraper declares a nearly identical UNIT_FACTORS map and WEIGHT_UNITS/COUNT_UNITS sets to convert various units to a common base (ounces or counts)
+* Sanitize & pack detection: Hannaford, Roche Bros, Shaw’s, Stop & Shop, and Walmart all implement the same sanitize, matchPack, and getPackCount helpers to clean text and detect multipacks
+* Price & size normalization: Most scrapers rely on parsePriceNumber and parseUnitPrice utilities, then convert to ounces using UNIT_FACTORS; Stop & Shop implements its own per‑unit parsing for formats like “5.5¢/oz”
+Store‑Specific Quirks
+* Amazon: Unit text may include pricing, so parseUnitInfo prefers size/name fields and skips strings containing $ or ¢
+* Hannaford: Requires absolute URLs and maps verbose units like “quart”/“pound” to abbreviations before parsing
+* Roche Bros: Price text needs cleanup (e.g., inserting spaces around “for” and “/”) before parsing
+* Shaw’s: Handles hyphenated sizes and chooses the larger of two potential weights when both name and size text contain measurements
+* Stop & Shop: Names are only in a screen-reader span; per-unit prices can use the cent sign, requiring custom regex handling
+* Walmart: Prices may be split across separate elements or appear as verbose text, necessitating the dedicated extractWalmartPrice helper

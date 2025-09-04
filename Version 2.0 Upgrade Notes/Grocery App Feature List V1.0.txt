@@ -1,0 +1,259 @@
+﻿Grocery Price Checker & Item Selection
+Grocery Price Checker
+The main window for checking prices. This Displays all of the items that need to be purchased. Items are displayed inside a button that opens the next window that facilitates the scraping tool and also which store will be looked at. Besides the button, once the final selection is made, this window shows the information from the item such as name, weight, price of the package, price per unit, cost using totals from monthly needs of the item, the picture of the item, and the number of packs needed to purchase to fill the scheduled meals within the expiration date time frame.
+Items are sorted by Item Category into headers which are collapsable. A search bar at the top allows filtering the results by item name.
+Implemented in: popup.html + popup.js
+________________
+
+
+Store Button
+The store name appears on a button that, when clicked, opens the store’s website with a search query for the item, showing all possible matches. After the scraper gathers results from that page, the app displays the available options for that item across different stores.
+Implemented in: item.html + item.js
+________________
+
+
+Scrape Button
+This button tells the app to pull the results from the store page opened by the Store Button. The results are shown in the app as a list with details such as total cost, quantity, cost per unit, and monthly cost at that price. A select button lets the user send the chosen item back to the previous screen, where options from multiple stores are collected.
+Implemented in: item.html + item.js, scraping logic in contentScript.js & scrapers/*.js
+________________
+
+
+Final Selection Button
+This button in the store selection window lets the user choose one of the available store options and send it back to the main Grocery Price Checker window.
+Implemented in: item.html + item.js; product selection UI in scrapeResults.html + scrapeResults.js
+________________
+
+
+Hide Zero Quantities
+The button that triggers hiding all items that currently have no purchase requirement from display on the grocery price checker.
+Implemented in: popup.html + popup.js
+________________
+
+
+Inventory Timeline & Stock Management
+Inventory Timeline
+This window displays each item’s stock level on a 52‑week grid, showing the planned inventory for every week. Stock levels decrease automatically week by week based on meal plans and the secondary yearly consumption plan.
+Items are grouped by category with collapsible headers.
+A search box allows filtering by item name.
+The Add Purchase button lets the user enter an item and quantity in the search box, then apply that amount to the selected week.
+Purchase History opens a window listing all logged stock additions, showing the item, quantity, and date. Each entry has a delete button to reverse the change.
+Current View limits the 52‑week grid to only the weeks remaining in the current year.
+Item details include the product image, item name, expiration (in weeks), weekly need, and for each of the 52 weeks, both the planned stock value and expiration weeks remaining.
+Clicking the displayed weekly need opens a breakdown window showing how the value is calculated: monthly meal plan consumption plus secondary monthly consumption, combined into a total monthly need, then converted using the 4.33 average weeks per month to yield the weekly need.
+Implemented in:
+* inventoryTimeline.html + inventoryTimeline.js + inventoryTimeline.css (Inventory Timeline window)
+* inventoryTimeline.html + inventoryTimeline.js (Add Purchase button, Purchase History view, Current View limiter)
+* weeklyNeedDebug.html + weeklyNeedDebug.js (Weekly need breakdown window)
+________________
+
+
+Commit & Inventory Editing
+Commit Window
+This button opens a window where the user can review all items marked as final selections in the Grocery Price Checker. Items are grouped by the store they were chosen from. For each item, the window shows the product image, the full store-provided name, the number of packs needed to satisfy unit requirements, the store price, and the total units required.
+A button next to each item links directly to the product’s page on the store’s website (captured during scraping), making it easy to add the item to the shopping cart.
+A search box at the top allows filtering the list by item name.
+At the bottom, there is a confirmation button. Items in this window are not added to inventory until this button is clicked. This lets the user review the Commit window and check the values without immediately adding them to inventory.
+Implemented in: shoppingList.html + shoppingList.js
+________________
+
+
+Edit Inventory
+This button opens a window where the user can update the recorded stock quantities by setting new values. Items are shown in a list organized by category, with each category collapsible under its header. A search box at the top lets the user filter items by name.
+Changes apply to the specific week displayed in the window’s week box.
+Each item shows its current stock level along with two input fields. The first lets the user set the exact number of units remaining. The second allows entering a whole or fractional pack quantity (e.g., 0.33), and the app will automatically calculate the precise unit count using data scraped from the website.
+Implemented in: inventory.html + inventory.js
+________________
+
+
+Edit Consumption
+This button opens a window where the user can record extra consumption (entered as negative values) for a specific item in a specific week.
+The window lists all items by category with collapsible headers. Each item shows its name, the total of any previously entered adjustments, and two input boxes. The first box is for the quantity of additional consumption, and the second is for the week number being modified.
+Any entry here reduces stock. In other words, adding consumption through this screen decreases the remaining inventory for that item.
+Implemented in: consumed.html + consumed.js
+________________
+
+
+Edit Consumption Plan
+This button opens a window for editing the secondary (backup) consumption plan, which works in parallel with the standard meal planner consumption. The window lists all items by category, with collapsible headers for easier navigation.
+Each item displays its current secondary consumption plan, shown in both monthly and yearly values, along with two empty boxes. The user can enter either a monthly or a yearly need; both fields are linked so that entering one automatically updates the other, allowing whichever is easier for the user to work with.
+The system then converts the entered amount into a weekly value. This weekly amount is applied to the inventory timeline as a negative value, reducing stock levels each week accordingly.
+Implemented in: editPlan.html + editPlan.js
+________________
+
+
+Add Item
+This button opens a window where the user can add a new item to be tracked, along with default values provided by the application. The required fields are: Item Name, Current Stock Values, and Item Category. Other fields are pre‑filled with defaults, but the user can override them if needed.
+Yearly Need defaults to 0. This links to the secondary consumption plan and is used to calculate yearly, monthly, and weekly needs on the inventory timeline.
+Home Unit defines the item’s default unit of measure (default: Oz). This unit is used to normalize store data into a consistent price‑per‑unit across all items.
+Volume‑to‑Weight Ratio sets the conversion factor between liquid and weight measurements. The default is 1:1 (1 fl oz = 1 oz, based on water). The user can measure the actual product to determine a more accurate ratio. The app automatically applies this conversion to scraped store data so that pricing is consistent.
+Treat as Whole Unit (default: off) determines how inventory is deducted when an item is used. By default, items are reduced only by the exact unit value (e.g., 10 oz from a 12 oz can). When enabled, the system deducts by item count instead, meaning the entire container is removed from stock. For example, if a recipe calls for 10 oz of tomatoes and the item is tracked as a 12 oz can, this setting ensures that one whole can (12 oz) is deducted rather than leaving a partial can in inventory.
+Shelf Life (in weeks) sets the expiration period for the item. Default is 2 weeks.
+Default Week shows the week the current stock value will be applied to, which defaults to the user’s current week.
+Seasons Available lets the user enter ranges (start and end weeks) when the item is in season. Multiple ranges can be added, and each has a remove button to delete it. Season available gates when the items will be possible scheduled meals. When the calendar is built for weeks outside of the season range, the items out of season will not be considered as meals.
+Finally, the Commit button saves all the entered information and adds the item to the inventory.
+Implemented in: addItem.html + addItem.js
+________________
+
+
+Remove Item
+This button opens a window lists all items by category, with collapsible headers for easier browsing. A search box at the top lets the user filter by item name. Each item appears as a button; clicking it reveals a delete button. This two‑step process helps prevent accidental deletions.
+Implemented in: removeItem.html + removeItem.js
+________________
+
+
+Edit Category
+This button opens a window that lists all items by category, with collapsible headers for easier browsing. A search box at the top lets the user filer by item name. Every item appears with an empty box next to them that the user can enter a new category for the item. It will always be saved in title case, overwriting the entered text, so every first letter in every word will always be capitalized.
+Implemented in: editCategory.html + editCategory.js
+________________
+
+
+Edit Expiration Dates
+This button opens a window showing all items organized by category, with collapsible headers for easier navigation. A search box at the top lets the user filter items by name. Each item displays its name and the current number of weeks remaining before it expires. A blank input box is provided next to each item where the user can enter a new expiration period in weeks, which will replace the saved expiration value for that item.
+Implemented in: expiration.html + expiration.js
+________________
+
+
+Edit Seasons
+This button opens a window showing all items organized by category, with collapsible headers for easier navigation. A search box at the top lets the user filter items by name. Each item is displayed with any existing season ranges saved as their start and end weeks. Each item has a 2 blank boxes to enter new starting and ending ranges as well and each line has a remove button next to it. Below there are buttons to add new lines and save the entered values.
+Season available gates when the items will be possible scheduled meals. When the calendar is built for weeks outside of the season range, the items out of season will not be considered as meals.
+Implemented in: editSeason.html + editSeason.js
+________________
+
+
+Coupons
+This button opens a window where the user can enter coupons for items. These coupons directly affect the prices used by the scraper, so any discounts or overrides entered here will be reflected in all saved prices across the app.
+Supported coupon types include: % Off, $ Off, and Cost Override.
+Items are shown by category with collapsible headers, and a search box at the top allows filtering by name. Each item provides three input fields for entering coupon values, plus start and end fields to define the week range during which the coupon is valid.
+Coupons can be applied for every store or a store can be specified and only apply the coupon to items from that store. The drop down box in this window allows selecting available stores.
+Implemented in: coupon.html + coupon.js
+________________
+
+
+Save/Load
+A floppy disk save icon button opens a window to import and export the save file data.
+Implemented in: backup.html + backup.js
+________________
+
+
+Edit Item Names
+This button opens a window showing all items organized by category, with collapsible headers for easier navigation. A search box at the top lets the user filter items by name. Each item is displayed with an empty box that the user can enter a new name to override the old item name.
+Implemented in: renameItem.html + renameItem.js
+________________
+
+
+UoM Change
+This button opens a window that lists all items by category, with collapsible headers for easier browsing. A search box at the top lets the user filter items by name. For each item, the display shows the item name, its current home unit of measure (UOM), an input box to set a new UOM, a toggle for the “treat as whole unit” flag, and a save button to confirm changes.
+Treat as Whole Unit (default: off) determines how inventory is deducted when an item is used. By default, items are reduced only by the exact unit value (e.g., 10 oz from a 12 oz can). When enabled, the system deducts by item count instead, meaning the entire container is removed from stock.
+Implemented in: uomChange.html + uomChange.js
+________________
+
+
+Volume : Weight Ratio
+This button opens a window that allows the user to edit the Volume‑to‑Weight Ratio, which sets the conversion factor between liquid and weight measurements. The default is 1:1 (1 fl oz = 1 oz, based on water). The user can measure the actual product to determine a more accurate ratio. The app automatically applies this conversion to scraped store data so that pricing is consistent.
+Implemented in: densityRatios.html + densityRatios.js
+________________
+
+
+Meal Planning & Calendar
+Meal Multiplier
+This button opens a window that allows the user to set the number of occurrences of each meal type per day. The window displays each meal type with the number per day and an empty box that the user can enter a new number. Each meal type gets a save button to commit the changes to the application to use for processing in the meal planner.
+Implemented in: mealMultiplier.html + mealMultiplier.js
+________________
+
+
+Meal Chooser
+This button opens a window that lets the user manually override which meals will appear on the calendar for the upcoming week. It functions as a high‑level (pre‑calculation) adjustment that replaces the automatically generated schedule.
+The window first shows a list of users as buttons; clicking one selects which user is being edited. A drop‑down menu allows choosing the meal category to modify. The system then displays how many meal slots are available, based on the calendar and daily meal occurrences. Below that, buttons for all meals the user is subscribed to in that category are shown. The user selects meals until all available slots are filled, creating the custom schedule for the week.
+Implemented in: mealChooser.html + mealChooser.js
+________________
+
+
+Store Totals
+This button opens a window that shows the total cost for each grocery store if all tracked items were purchased from that store, using data collected by the scraper. Each store appears as a collapsible header that displays the store name, the total purchase value, and the combined monthly cost for all items.
+Clicking a store header expands the list to show every item available from that store, along with its purchase price and monthly cost if sourced there.
+Implemented in: storeTotals.html + storeTotals.js
+________________
+
+
+Meal Planner
+This button opens the main meal planning window. Here, the app calculates the user’s meal schedule based on selected options. Using a formula referred to as “meal math,” it estimates how much food will be consumed on average and provides that data to other parts of the application.
+Meal Math works as follows: it uses the formula below to determine how many times each meal is prepared:
+A × (B × C) × 52 = yearly spots for the category
+(yearly spots / D) / 12 = monthly spots for a single meal
+where:
+* A is the number of meals of that category served per day
+* B is the number of people eating that category
+* C is the number of days per week they eat it
+* D is the number of different meals in the category
+After this calculation, the meals each user is subscribed to are placed into the calendar, filling the available meal slots.
+Implemented in: mealPlanner.html + mealPlanner.js (import logic in mealImport.js)
+________________
+
+
+Open Meal List
+This button opens a window where the user can manage meal categories—adding new ones, or editing existing meals and their details.
+The window displays all meal categories as buttons. Clicking a category opens its meal list for editing.
+At the bottom, there is also a button to add a new meal category.
+Within each category, meals are shown under collapsible headers.
+Each meal entry begins with a list of users and checkboxes to indicate who is subscribed to that meal.
+Next, the meal’s image and name are displayed, along with an edit button to make all fields editable.
+When the edit mode is enabled, a box to change the meals recipie book (the headers for this window) is shown.
+Flags indicate whether the meal is a prepared meal (more involved than simple assembly) or a prep‑ahead meal (requiring advance preparation).
+The weight value determines how often the meal is scheduled relative to other meals with different weights.
+A group flag can be set to schedule the meal at the same day and time for all users, if possible. The planner aligns group meals first, then fills in non‑group meals. Users not subscribed to a group meal receive a non‑group meal instead.
+Each meal also includes a section listing its ingredients. For every ingredient, the user can enter a name, amount, and cost. The name links to an item tracked in the inventory timeline and tied to grocery price scraper data. The amount reflects an average per user (not exact for each person if multiple users are subscribed). The cost is calculated from the scraper data associated with that ingredient.
+The total calculated cost for the meal appears at the end of the entry.
+The Add Meal button in the category window opens a form for creating a new meal within that category. The form includes a box for the meal name, an ingredient field with an amount value, and a drop‑down to select the unit of measure. Once data is entered in the first line, a new line appears, allowing multiple ingredients to be added. The selected unit of measure is compared against the item’s home unit of measure to calculate ingredient costs. Options are available to flag the meal as a prepared meal, a prep‑ahead meal, or a group meal. At the bottom, there is also a box to enter which recipe book the meal comes from, used for sorting meals within the category list.
+The Remove Meal button enables a deletion mode, adding a delete button next to each meal, which permanently removes it from the app.
+Implemented in: mealListSelect.html + mealListSelect.js, mealListView.html + mealListView.js, addMeal.html + addMeal.js
+________________
+
+
+Users
+This button opens a window for customizing user‑specific settings. The window first shows each user as a button. Selecting a user expands a panel with meal categories as headers. Inside each category are checkboxes for the days of the week, letting the user choose which days meals from that category should be scheduled. Below this, a list shows all the meals the user is currently subscribed to in that category.
+Beneath the user buttons are options to add a new user or edit existing user names. Selecting either opens an input box below the current user list, where a new or updated name can be entered.
+Implemented in: users.html + users.js
+________________
+
+
+Cooking Days
+This button opens a window where the user can choose which days of the week are designated as cooking days.
+Cooking days are times when more complex, prepared meals (beyond simple assembly) can be scheduled in the meal planner. This lets the user set which days allow for involved cooking and which should stay as easier days.
+The window shows each meal type with checkboxes for the days of the week, so they can be toggled on or off.
+At the bottom, a special option called “Prep Ahead” is displayed alongside the categories. This marks a day when meals requiring preparation in advance are handled.
+Implemented in: cookingDays.html + cookingDays.js
+________________
+
+
+Calendar
+This button opens the main calendar window for viewing the meal plan. By default, it shows the current day plus the next six days, for a full week view. At the top, there are drop‑down menus to adjust the starting day and the number of days displayed.
+The What to Cook When button switches to an alternate view that highlights any prep‑ahead meals on the day they should be prepared for later use.
+The Reorder Columns button enables an edit mode that lets the user change the order in which meals appear. This feature is mostly for organization.
+On the calendar grid, each scheduled meal is shown with additional details, including the meal name, cost per person, and a picture of the meal.
+Implemented in: whatToEatCalendar.html + whatToEatCalendar.js
+________________
+
+
+What To Cook When
+This button opens a specialized view highlighting prep‑ahead meals. It shows on which days certain meals should be prepared in advance for later in the week, ensuring that the meal plan stays on schedule.
+Implemented in: whatToCookWhen.html + whatToCookWhen.js
+________________
+
+
+Import Meals
+This button allows bulk importing of meal XML lists. The lists must follow a specific format described in the readme file. Clicking the button opens a file browser to select the file, and each meal in the file is then imported.
+Each ingredient in the imported meals is added to the inventory with default values. For items missing certain defaults, the app fills them in automatically—for example, assigning the item name, setting the starting quantity to zero, and placing the item in a temporary “Mass Import” category.
+Implemented in: Button in mealPlanner.html calling logic in mealPlanner.js & mealImport.js
+________________
+
+
+Price Threshold
+This box sets a maximum cost threshold per meal for any category, specific to each user. A dropdown list allows selecting a user and assigning their individual pricing limit.
+This feature controls how much can be spent on meals. Since ingredients often overlap across recipes, it also creates opportunities to schedule more elaborate or higher‑cost meals when sale prices make them affordable.
+Implemented in: Controls in mealPlanner.html handled by mealPlanner.js
+________________
+
+
+Rebuild Calendar
+This button refreshes the calendar to reflect any changes in the underlying data, recalculating and reassigning meals based on the updated information.
+Implemented in: Button in mealPlanner.html handled by mealPlanner.js

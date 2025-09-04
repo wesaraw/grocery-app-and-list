@@ -1,0 +1,12 @@
+﻿Key findings
+* The backup contains 1191 top-level keys, with 294 of them prefixed by final_ (item → chosen store)
+* Additional per-item prefixes: 450 scraped_ arrays and 409 selected_ objects; scraped arrays average ~22 entries
+* Traversing the whole file yields 1778 unique key names, indicating wide structural variation across records
+* Example object structures:
+   * currentStock entries use {name, unit, amount}
+   * Meal collections (breakfastMeals, dessertMeals, etc.) share fields such as name, people, ingredients, users, prepared, and totalCost{line_range_start=1 line_range_end=20 path=grocery_backup (75).txt git_url="https://github.com/wesaraw/grocery-app-and-list/blob/main/grocery_backup (75).txt#L1-L20"}
+Schema and deduplication insights
+* Item-centric consolidation: The numerous scraped_*, selected_*, and final_* keys imply each item tracks scraped options, a chosen product, and a final store separately. Consolidating into items[itemId] = {scraped: [...], selected: {...}, finalStore: ...} removes duplicated name prefixes and simplifies lookups.
+* Versioned history: Collections like consumedThisYear, currentStock, and expirationData focus on the same items with temporal data. Representing them as events nested under an items[itemId] record supports versioning (e.g., { purchases: [ {timestamp, qty, store}, ... ] }) and dedupes repeated keys.
+* Field overlap among meals: Meal categories reuse identical fields, suggesting a single meals collection with a type attribute rather than separate arrays.
+This analysis helps shape a normalized schema with nested, versioned records and clearer separation between item metadata, product options, and consumption events.
