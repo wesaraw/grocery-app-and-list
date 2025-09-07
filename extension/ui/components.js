@@ -20,6 +20,9 @@
 // });
 // ---------------------------------------------------------------------------
 
+const BaseElement = typeof HTMLElement === 'undefined' ? class {} : HTMLElement;
+const canDefine = typeof customElements !== 'undefined';
+
 /**
  * `<item-list>` displays items and emits events when users interact.
  *
@@ -28,7 +31,7 @@
  * - `item-updated` — fired when quantity input changes.
  *   `detail` is `{ item, value }`.
  */
-class ItemListElement extends HTMLElement {
+class ItemListElement extends BaseElement {
   /**
    * Render a list of items.
    * @param {Array} items - Array of item objects or strings.
@@ -81,11 +84,11 @@ class ItemListElement extends HTMLElement {
   }
 }
 
-customElements.define('item-list', ItemListElement);
+if (canDefine) customElements.define('item-list', ItemListElement);
 
 /** Factory for `<item-list>` elements. */
 export function createItemList() {
-  return document.createElement('item-list');
+  return typeof document !== 'undefined' ? document.createElement('item-list') : {};
 }
 
 export { ItemListElement as ItemList };
@@ -110,7 +113,7 @@ export { ItemListElement as ItemList };
  * - `pack-qty-entered` — fired when pack quantity changes. `detail` is
  *   `{ item, value }`.
  */
-class PriceEntryElement extends HTMLElement {
+class PriceEntryElement extends BaseElement {
   /**
    * Render price inputs for an item.
    * @param {Object} item - Item metadata.
@@ -141,15 +144,23 @@ class PriceEntryElement extends HTMLElement {
       );
     });
 
-    this.append(price, pack);
+    const final = document.createElement('span');
+    final.className = 'final-price';
+
+    this.setFinalPrice = value => {
+      final.textContent =
+        Number.isFinite(value) && value >= 0 ? `Final: $${value.toFixed(2)}` : '';
+    };
+
+    this.append(price, pack, final);
   }
 }
 
-customElements.define('price-entry', PriceEntryElement);
+if (canDefine) customElements.define('price-entry', PriceEntryElement);
 
 /** Factory for `<price-entry>` elements. */
 export function createPriceEntry() {
-  return document.createElement('price-entry');
+  return typeof document !== 'undefined' ? document.createElement('price-entry') : {};
 }
 
 export { PriceEntryElement as PriceEntry };
@@ -165,7 +176,7 @@ export { PriceEntryElement as PriceEntry };
  * - `meal-plan-change` — fired when a meal entry is clicked. `detail` is
  *   the selected entry.
  */
-class MealPlanViewElement extends HTMLElement {
+class MealPlanViewElement extends BaseElement {
   /**
    * Render a meal plan.
    * @param {Array} plan - Array of meal entries.
@@ -185,12 +196,63 @@ class MealPlanViewElement extends HTMLElement {
   }
 }
 
-customElements.define('meal-plan-view', MealPlanViewElement);
+if (canDefine) customElements.define('meal-plan-view', MealPlanViewElement);
 
 /** Factory for `<meal-plan-view>` elements. */
 export function createMealPlanView() {
-  return document.createElement('meal-plan-view');
+  return typeof document !== 'undefined' ? document.createElement('meal-plan-view') : {};
 }
 
 export { MealPlanViewElement as MealPlanView };
+
+
+/** Sort items by category then name. */
+export function sortItemsByCategory(items = []) {
+  return items.slice().sort((a, b) => {
+    const catA = (a.category || '').toLowerCase();
+    const catB = (b.category || '').toLowerCase();
+    if (catA === catB) return (a.name || '').localeCompare(b.name || '');
+    return catA.localeCompare(catB);
+  });
+}
+
+/**
+ * Render items grouped by category with collapsible headers.
+ * @param {HTMLElement} container
+ * @param {Array} items
+ * @param {Function} renderItem
+ * @param {Object} [headerState={}] remembers toggle states
+ */
+export function renderItemsWithCategoryHeaders(
+  container,
+  items = [],
+  renderItem,
+  headerState = {}
+) {
+  container.innerHTML = '';
+  let currentCat = null;
+  let section;
+  let body;
+  sortItemsByCategory(items).forEach(it => {
+    const cat = it.category || 'Other';
+    if (cat !== currentCat) {
+      currentCat = cat;
+      section = document.createElement('div');
+      const header = document.createElement('h2');
+      header.textContent = cat;
+      header.style.cursor = 'pointer';
+      body = document.createElement('div');
+      const hidden = headerState[cat];
+      body.style.display = hidden ? 'none' : '';
+      header.addEventListener('click', () => {
+        const isHidden = body.style.display === 'none';
+        body.style.display = isHidden ? '' : 'none';
+        headerState[cat] = !isHidden;
+      });
+      section.append(header, body);
+      container.appendChild(section);
+    }
+    renderItem(body, it);
+  });
+}
 

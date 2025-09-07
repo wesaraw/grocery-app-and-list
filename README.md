@@ -13,9 +13,18 @@ Built with modular utilities, unified schemas, and deduplicated data storage.
 
 ## ✨ Key Improvements from v1
 - Schema-based data model with versioning  
-- Unified scraper utility per store  
-- Modular UI components  
+- Unified scraper utility per store
+- Modular UI components
 - Deduplicated persistent storage
+- Per-item inventory editing with unit and pack quantity inputs
+- Week-specific consumption overrides via a dedicated editor
+  (ported from v1 `consumed.js` lines 116‑149 and noted in Upgrade
+  Notes lines 68‑72)
+- Secondary consumption plan editor with linked monthly/yearly fields
+  (ported from v1 `editPlan.js` lines 57‑118)
+- Coupon manager for % off, $ off, or fixed-price discounts by store and week
+  (ported from v1 `coupon.js` lines 1‑80 and noted in Upgrade Notes
+  lines 120–130)
 - Unified storage service with validation, migrations, and optional caching
 - Offline-friendly test fixtures
 - Import path for v1 legacy data

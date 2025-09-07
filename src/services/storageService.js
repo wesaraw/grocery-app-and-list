@@ -27,10 +27,49 @@ const schemas = {
           additionalProperties: true
         },
         stock: { type: 'array', nullable: true },
-        consumption: { type: 'array', nullable: true },
+        consumption: {
+          type: 'array',
+          nullable: true,
+          items: {
+            type: 'object',
+            required: ['week', 'diff'],
+            properties: {
+              week: { type: 'integer' },
+              diff: { type: 'number' },
+              date: { type: 'string', nullable: true }
+            },
+            additionalProperties: false
+          }
+        },
+        consumptionPlan: {
+          type: 'object',
+          nullable: true,
+          properties: {
+            monthly: { type: 'number', nullable: true },
+            yearly: { type: 'number', nullable: true }
+          },
+          additionalProperties: false
+        },
         purchases: { type: 'array', nullable: true }
       },
       additionalProperties: true
+    }
+  },
+  coupons: {
+    type: 'array',
+    items: {
+      type: 'object',
+      required: ['itemId', 'type', 'value', 'startWeek', 'endWeek', 'store', 'version'],
+      properties: {
+        itemId: { type: 'string' },
+        type: { type: 'string', enum: ['percent', 'fixedOff', 'fixedPrice'] },
+        value: { type: 'number' },
+        startWeek: { type: 'integer' },
+        endWeek: { type: 'integer' },
+        store: { type: 'string' },
+        version: { type: 'integer' }
+      },
+      additionalProperties: false
     }
   },
   stores: {
@@ -105,6 +144,7 @@ const migrations = new Map();
 
 const DEFAULTS = {
   items: [],
+  coupons: [],
   stores: [],
   meals: [],
   users: [],

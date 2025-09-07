@@ -1,4 +1,6 @@
 import { createItemList, createPriceEntry } from './components.js';
+import { get as storageGet } from '../../src/services/storageService.js';
+import { applyCoupon, findCoupon } from '../utils/coupon.js';
 
 // Load committed items from storage. Mirrors v1 helper in
 // `Version Old/shoppingList.js`.
@@ -29,8 +31,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   const search = document.getElementById('searchBox');
   const confirmBtn = document.getElementById('confirmAdd');
 
-  const items = await loadCommitItems();
-  if (items.length === 0) {
+  const [commitItems, allItems, coupons, weekData] = await Promise.all([
+    loadCommitItems(),
+    storageGet('items'),
+    storageGet('coupons'),
+    new Promise(resolve => chrome.storage.local.get('pendingCommitWeek', resolve))
+  ]);
+  const pendingWeek = weekData.pendingCommitWeek ?? 0;
+
+  if (commitItems.length === 0) {
     listHost.textContent = 'No items committed.';
     return;
   }
@@ -38,7 +47,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const itemList = createItemList();
   // Group by store to mimic the legacy commit window (see
   // `Version Old/shoppingList.js` lines 27-107).
-  itemList.render(items, { groupBy: 'store' });
+  itemList.render(commitItems, { groupBy: 'store' });
   listHost.appendChild(itemList);
 
   const priceEntry = createPriceEntry();
@@ -59,10 +68,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  priceEntry.addEventListener('price-changed', e => {
+    const { item, value } = e.detail;
+    const name = item.item || item.name;
+    const match = allItems.find(i => i.name === name);
+    const coupon = match && findCoupon(coupons, match.id, item.store, pendingWeek);
+    const final = applyCoupon(value, coupon);
+    if (typeof priceEntry.setFinalPrice === 'function') priceEntry.setFinalPrice(final);
+  });
+
   if (search) {
     search.addEventListener('input', () => {
       const text = search.value.trim().toLowerCase();
-      const filtered = items.filter(it => it.item.toLowerCase().includes(text));
+      const filtered = commitItems.filter(it =>
+        (it.item || it.name || '').toLowerCase().includes(text)
+      );
       itemList.render(filtered, { groupBy: 'store' });
     });
   }

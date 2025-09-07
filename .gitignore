@@ -3,3 +3,5 @@ dist/
 .vscode/
 *.log
 logs/test.log
+
+android/

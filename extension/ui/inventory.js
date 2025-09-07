@@ -1,4 +1,5 @@
 import { get as storageGet, set as storageSet } from '../../src/services/storageService.js';
+import { calculatePackUnits } from '../utils/pack.js';
 
 const WEEKS_PER_MONTH = 4.33;
 
@@ -76,6 +77,7 @@ function sortItemsByCategory(items) {
 }
 
 function buildGrid(items, headerState = {}, startWeek = 1) {
+  const sorted = sortItemsByCategory(items);
   const grid = document.createElement('table');
   const thead = document.createElement('thead');
   const header = document.createElement('tr');
@@ -121,7 +123,7 @@ function buildGrid(items, headerState = {}, startWeek = 1) {
     });
   }
 
-  items.forEach(item => {
+  sorted.forEach(item => {
     const cat = item.category || 'Other';
     if (cat !== lastCat) {
       finalizeHeader(lastCat, headerRow, itemRows);
@@ -156,14 +158,19 @@ function buildGrid(items, headerState = {}, startWeek = 1) {
     th.className = 'item-label';
     th.dataset.name = item.name.toLowerCase();
     const weekly = computeWeeklyNeed(item);
+    let total = Object.values(item.currentStockByWeek || {}).reduce(
+      (s, v) => s + v,
+      0
+    );
     th.innerHTML = `${item.name}<br/><span class="exp-weeks">${
       item.shelfLifeWeeks || 0
     }w</span>` +
-      `<br/><span class="weekly-cons">${weekly.toFixed(2)}/wk</span>`;
-    const span = th.querySelector('.weekly-cons');
-    if (span) {
-      span.style.cursor = 'pointer';
-      span.addEventListener('click', () => {
+      `<br/><span class="weekly-cons">${weekly.toFixed(2)}/wk</span>` +
+      `<br/><span class="current-total">${total.toFixed(2)} ${item.uom}</span>`;
+    const weeklySpan = th.querySelector('.weekly-cons');
+    if (weeklySpan) {
+      weeklySpan.style.cursor = 'pointer';
+      weeklySpan.addEventListener('click', () => {
         const params = new URLSearchParams({
           item: item.name,
           weekly,
@@ -172,6 +179,75 @@ function buildGrid(items, headerState = {}, startWeek = 1) {
         openOrFocusWindow(`weeklyNeedDebug.html?${params.toString()}`, 320, 240);
       });
     }
+    const qtySpan = th.querySelector('.current-total');
+
+    const setInput = document.createElement('input');
+    setInput.type = 'number';
+    setInput.placeholder = 'Set total';
+    setInput.className = 'stock-input';
+    async function commitChange() {
+      const val = parseFloat(setInput.value);
+      if (isNaN(val)) return;
+      const diff = val - total;
+      if (diff !== 0) {
+        item.purchases = Array.isArray(item.purchases) ? item.purchases : [];
+        const week = getCurrentWeek();
+        item.purchases.push({
+          purchase_week: week,
+          quantity_purchased: diff,
+          date_added: new Date().toISOString()
+        });
+        item.currentStockByWeek = item.currentStockByWeek || {};
+        item.currentStockByWeek[week] =
+          (item.currentStockByWeek[week] || 0) + diff;
+        await storageSet('items', items);
+        total = val;
+        qtySpan.textContent = `${total.toFixed(2)} ${item.uom}`;
+      }
+      setInput.value = '';
+    }
+    setInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') commitChange();
+    });
+    setInput.addEventListener('blur', commitChange);
+
+    const packInput = document.createElement('input');
+    packInput.type = 'number';
+    packInput.placeholder = 'Pack qty';
+    packInput.className = 'pack-input';
+    const product = item.options?.selected;
+    async function commitPack() {
+      const val = parseFloat(packInput.value);
+      if (isNaN(val) || !product) return;
+      const newTotal = calculatePackUnits(item, product, val);
+      if (newTotal == null) return;
+      const diff = newTotal - total;
+      if (diff !== 0) {
+        item.purchases = Array.isArray(item.purchases) ? item.purchases : [];
+        const week = getCurrentWeek();
+        item.purchases.push({
+          purchase_week: week,
+          quantity_purchased: diff,
+          date_added: new Date().toISOString()
+        });
+        item.currentStockByWeek = item.currentStockByWeek || {};
+        item.currentStockByWeek[week] =
+          (item.currentStockByWeek[week] || 0) + diff;
+        await storageSet('items', items);
+        total = newTotal;
+        qtySpan.textContent = `${total.toFixed(2)} ${item.uom}`;
+      }
+      packInput.value = '';
+    }
+    packInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') commitPack();
+    });
+    packInput.addEventListener('blur', commitPack);
+
+    th.appendChild(document.createElement('br'));
+    th.appendChild(setInput);
+    th.appendChild(document.createTextNode(' '));
+    th.appendChild(packInput);
     row.appendChild(th);
     weeks.forEach((w, idx) => {
       const weekNum = idx + 1;
@@ -212,7 +288,7 @@ async function render() {
     });
   }
   const startWeek = getStartWeek();
-  const grid = buildGrid(sorted, headerState, startWeek);
+  const grid = buildGrid(items || [], headerState, startWeek);
   const container = document.getElementById('inventory');
   container.innerHTML = '';
   container.appendChild(grid);
