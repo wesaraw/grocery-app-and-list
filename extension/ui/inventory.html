@@ -6,6 +6,20 @@
     <label>Week:
       <input type="number" id="week-number" min="1" max="52" value="1">
     </label>
+    <div id="controls">
+      <label>Item:
+        <input type="text" id="purchase-item" list="item-list">
+        <datalist id="item-list"></datalist>
+      </label>
+      <label>Week:
+        <input type="number" id="purchase-week" min="1" max="52">
+      </label>
+      <label>Qty:
+        <input type="number" id="purchase-qty">
+      </label>
+      <button id="add-purchase">Add Purchase</button>
+    </div>
+    <button id="toggle-history">Purchase History</button>
     <div id="inventory"></div>
     <script type="module" src="inventory.js"></script>
   </body>
