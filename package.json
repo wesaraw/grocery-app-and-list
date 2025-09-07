@@ -1,10 +1,11 @@
 {
   "name": "grocery-app",
   "version": "2.0.0",
+  "type": "module",
   "description": "Modular rewrite of the Grocery App Chrome extension",
   "scripts": {
-    "test": "mocha --require test/setup.js",
-    "lint": "eslint .",
+    "test": "node node_modules/mocha/bin/mocha.js --require test/setup.js",
+    "lint": "node node_modules/eslint/bin/eslint.js .",
     "build": "rollup -c"
   },
   "dependencies": {
