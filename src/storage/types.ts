@@ -1,5 +1,3 @@
-export const SCHEMA_VERSION = 2;
-
 export interface Item {
   id: string;
   name: string;
@@ -17,25 +15,13 @@ export interface Item {
   version: number;
 }
 
-export interface Store {
-  id: string;
-  name: string;
-  logoUrl: string;
-  defaultScraper: string;
-  version: number;
-}
-
-export interface Purchase {
+export interface StoreProduct {
   itemId: string;
-  date: string;
-  quantity: number;
+  store: string;
+  url: string;
+  scrapedAt: number;
   price: number;
-  version: number;
-}
-
-export interface MealPlan {
-  date: string;
-  mealType: string;
-  items: string[];
+  unitCost: number;
+  image: string;
   version: number;
 }

@@ -1,5 +1,5 @@
-﻿chrome.storage.local keys from grocery_backup (75).txt
-The backup contains 1,191 top‑level entries. These fall into four groups:
+chrome.storage.local keys from grocery_backup (75).txt
+The backup contains 1,191 top-level entries. These fall into four groups:
 1. Core structures (38 keys)
 breakfastMeals
 calendarColumnOrder
@@ -39,7 +39,29 @@ userPriceThresholds
 users
 whatToEatCalendar
 yearlyNeeds
-2. 3. final_* keys (294 entries) – per‑product “final” details (e.g., final_Bacon, final_Paper%20Towels, …).
-4. selected_* keys (409 entries) – selected store entries for products (e.g., selected_Pedigree%20Dentastix_Walmart).
-5. scraped_* keys (450 entries) – scraped store data for products (e.g., scraped_Bagels_Shaws).
+
+2. final_* keys (294 entries) – per-product “final” details (e.g., final_Bacon, final_Paper%20Towels, …).
+3. selected_* keys (409 entries) – selected store entries for products (e.g., selected_Pedigree%20Dentastix_Walmart).
+4. scraped_* keys (450 entries) – scraped store data for products (e.g., scraped_Bagels_Shaws).
+
 Notable large objects include currentStock and consumedThisYear, each holding 447 items. The multitude of final_, selected_, and scraped_ entries highlights schema drift and suggests a need for stricter versioned schemas going forward.
+
+## v2 Schema Overview
+
+Item and StoreProduct records are now versioned objects stored under `item-data` and `store-products`. `Item` expands beyond the v1 fields (`unit`, `brand`, `density`) to include explicit `category`, `uom`, shelf-life tracking, seasonal ranges and consumption planning. Store-specific information formerly embedded in `selected_*`, `final_*` and `scraped_*` keys now lives in separate `StoreProduct` entries with `store`, pricing and scrape metadata.
+
+## Migration Notes
+
+Legacy backups and storage objects should be converted using `migrations/v1-to-v2.js`. The script gathers dispersed v1 keys, maps v1 items to the new `Item` shape with default values, and emits normalized `StoreProduct` records. After migration, all legacy keys are dropped to prevent reintroduction of v1 formats.
+
+### Behaviour changes and defaults
+
+- Items now default to **Oz** for `uom` and a **1:1** `volumeWeightRatio` when legacy data omits those fields.
+- Expiration values stored in months are converted to **weeks** (`shelfLifeWeeks`).
+- Seasonal availability arrays are preserved as `seasonRanges`; empty arrays are applied when no data exists.
+- Legacy density, expiration and season maps are consolidated during migration and the original keys (`densityRatios`, `expirationData`, `itemSeasons`) are removed.
+
+The `src/services/items.ts` module replaces v1 mutators like `addItem.js`, `removeItem.js` and friends, providing typed helpers that increment an item's `version` on every mutation.
+
+### Backup and Restore
+`src/services/backup.ts` replaces the v1 backup page. The exporter writes only normalized `item-data`, `store-products` and `metadata` entries. Imports verify version fields, run migrations on items, and reject any deprecated prefixes like `final_`, `scraped_` or `selected_`.
