@@ -1,10 +1,12 @@
 import Ajv from 'ajv';
 import { DEFAULT_MULTIPLIERS } from '../meal-multiplier/constants.js';
 import { runMealMigrations } from '../migrations/meals.js';
+import { runUserMigrations, runUserCategoryDaysMigrations } from '../migrations/users.js';
+import { runCookingDaysMigrations } from '../migrations/cookingDays.js';
 
 const ajv = new Ajv({ allErrors: true });
 
-const CURRENT_VERSION = 2;
+const CURRENT_VERSION = 3;
 
 const schemas = {
   items: {
@@ -140,12 +142,45 @@ const schemas = {
       properties: {
         id: { type: 'string' },
         name: { type: 'string' },
-        priceThresholds: { type: 'object', nullable: true },
-        categoryDays: { type: 'object', nullable: true },
-        version: { type: 'integer' }
+        version: { type: 'integer' },
       },
-      additionalProperties: true
-    }
+      additionalProperties: true,
+    },
+  },
+  'user-category-days': {
+    type: 'array',
+    items: {
+      type: 'object',
+      required: ['userId', 'schedule', 'version'],
+      properties: {
+        userId: { type: 'string' },
+        schedule: {
+          type: 'object',
+          additionalProperties: {
+            type: 'array',
+            items: { type: 'string' },
+          },
+        },
+        version: { type: 'integer' },
+      },
+      additionalProperties: false,
+    },
+  },
+  'cooking-days': {
+    type: 'object',
+    required: ['categories', 'prepDay', 'version'],
+    properties: {
+      categories: {
+        type: 'object',
+        additionalProperties: {
+          type: 'array',
+          items: { type: 'string' },
+        },
+      },
+      prepDay: { type: ['string', 'null'] },
+      version: { type: 'integer' },
+    },
+    additionalProperties: false,
   },
   'meal-per-day': {
     type: 'array',
@@ -255,6 +290,8 @@ const DEFAULTS = {
   stores: [],
   meals: [],
   users: [],
+  'user-category-days': [],
+  'cooking-days': { categories: {}, prepDay: null, version: 1 },
   'meal-per-day': DEFAULT_MULTIPLIERS,
   'meal-plan': { monthly: [], yearly: [], version: 1 },
   'prepared-meals-calendar': { calendar: {}, version: 1 },
@@ -314,6 +351,12 @@ export async function get(key, defaultValue = DEFAULTS[key]) {
         if (key === 'meals' && Array.isArray(value)) {
           value = value.map(runMealMigrations);
         }
+        if (key === 'users' && Array.isArray(value)) {
+          value = value.map((v, idx) => runUserMigrations(v, idx));
+        }
+        if (key === 'user-category-days' && Array.isArray(value)) {
+          value = value.map((v, idx) => runUserCategoryDaysMigrations(v, idx));
+        }
         if (cacheEnabled && value !== undefined) cache.set(key, value);
         resolve(value);
       });
@@ -327,6 +370,12 @@ export async function get(key, defaultValue = DEFAULTS[key]) {
 export async function set(key, value) {
   if (key === 'meals' && Array.isArray(value)) {
     value = value.map(runMealMigrations);
+  }
+  if (key === 'users' && Array.isArray(value)) {
+    value = value.map((v, idx) => runUserMigrations(v, idx));
+  }
+  if (key === 'user-category-days' && Array.isArray(value)) {
+    value = value.map((v, idx) => runUserCategoryDaysMigrations(v, idx));
   }
   const validate = validators[key];
   if (validate && !validate(value)) {
@@ -421,6 +470,39 @@ registerMigration(2, async () => {
       });
     } catch (e) {
       console.error('migration 2 failed', e);
+      resolve();
+    }
+  });
+});
+
+registerMigration(3, async () => {
+  if (!hasChromeStorage()) return;
+  return new Promise(resolve => {
+    try {
+      chrome.storage.local.get(['userCategoryDays', 'users', 'cookingDays'], data => {
+        const migratedUsers = Array.isArray(data.users)
+          ? data.users.map((u, idx) => runUserMigrations(u, idx))
+          : [];
+        const migratedDays = Array.isArray(data.userCategoryDays)
+          ? data.userCategoryDays.map((d, idx) => runUserCategoryDaysMigrations(d, idx))
+          : [];
+        const migratedCooking = data.cookingDays
+          ? runCookingDaysMigrations(data.cookingDays)
+          : null;
+        const toSet = {};
+        if (migratedUsers.length) toSet.users = migratedUsers;
+        if (migratedDays.length) toSet['user-category-days'] = migratedDays;
+        if (migratedCooking) toSet['cooking-days'] = migratedCooking;
+        chrome.storage.local.set(toSet, () => {
+          const toRemove = [];
+          if (data.userCategoryDays !== undefined) toRemove.push('userCategoryDays');
+          if (data.cookingDays !== undefined) toRemove.push('cookingDays');
+          if (toRemove.length) chrome.storage.local.remove(toRemove, () => resolve());
+          else resolve();
+        });
+      });
+    } catch (e) {
+      console.error('migration 3 failed', e);
       resolve();
     }
   });

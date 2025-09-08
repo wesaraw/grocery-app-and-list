@@ -413,6 +413,12 @@ document.getElementById('toggle-history').addEventListener('click', () => {
   if (showHistory) renderHistory();
   else render();
 });
+document.getElementById('usersPage').addEventListener('click', () => {
+  openOrFocusWindow('users.html');
+});
+document.getElementById('cookingDaysPage').addEventListener('click', () => {
+  openOrFocusWindow('cooking-days.html');
+});
 
 async function deletePurchase(itemId, idx) {
   const items = await storageGet('items');

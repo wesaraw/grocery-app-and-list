@@ -100,7 +100,7 @@ describe('storageService', () => {
       }
     ]);
     expect(chromeMock.store.scraped_apple).to.be.undefined;
-    expect(chromeMock.store.metadata.storageVersion).to.equal(2);
+    expect(chromeMock.store.metadata.storageVersion).to.equal(3);
   });
 
   it('uses cache when enabled', async () => {
