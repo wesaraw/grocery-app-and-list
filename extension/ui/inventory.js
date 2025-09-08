@@ -268,6 +268,7 @@ function buildGrid(items, headerState = {}, startWeek = 1) {
 const headerState = {};
 let currentOnly = false;
 let showHistory = false;
+let hideZeroItems = false;
 
 function getStartWeek() {
   if (currentOnly) return getCurrentWeek();
@@ -277,7 +278,10 @@ function getStartWeek() {
 
 async function render() {
   const items = await storageGet('items');
-  const sorted = sortItemsByCategory(items || []);
+  const filtered = (items || []).filter(
+    item => !(hideZeroItems && computeWeeklyNeed(item) <= 0)
+  );
+  const sorted = sortItemsByCategory(filtered);
   const list = document.getElementById('item-list');
   if (list) {
     list.innerHTML = '';
@@ -288,7 +292,7 @@ async function render() {
     });
   }
   const startWeek = getStartWeek();
-  const grid = buildGrid(items || [], headerState, startWeek);
+  const grid = buildGrid(filtered, headerState, startWeek);
   const container = document.getElementById('inventory');
   container.innerHTML = '';
   container.appendChild(grid);
@@ -395,6 +399,12 @@ document.getElementById('searchBox').addEventListener('input', e => {
 });
 document.getElementById('week-number').addEventListener('change', render);
 document.getElementById('add-purchase').addEventListener('click', addPurchase);
+document.getElementById('toggleZero').addEventListener('click', () => {
+  hideZeroItems = !hideZeroItems;
+  const btn = document.getElementById('toggleZero');
+  btn.textContent = hideZeroItems ? 'Show Zero Qty' : 'Hide Zero Qty';
+  render();
+});
 document.getElementById('toggle-history').addEventListener('click', () => {
   showHistory = !showHistory;
   document.getElementById('toggle-history').textContent = showHistory

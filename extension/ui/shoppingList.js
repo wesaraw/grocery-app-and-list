@@ -2,6 +2,8 @@ import { createItemList, createPriceEntry } from './components.js';
 import { get as storageGet } from '../../src/services/storageService.js';
 import { applyCoupon, findCoupon } from '../utils/coupon.js';
 
+let hideZeroItems = false;
+
 // Load committed items from storage. Mirrors v1 helper in
 // `Version Old/shoppingList.js`.
 function loadCommitItems() {
@@ -29,6 +31,7 @@ function savePurchases(purchases) {
 document.addEventListener('DOMContentLoaded', async () => {
   const listHost = document.getElementById('list');
   const search = document.getElementById('searchBox');
+  const toggleZero = document.getElementById('toggleZero');
   const confirmBtn = document.getElementById('confirmAdd');
 
   const [commitItems, allItems, coupons, weekData] = await Promise.all([
@@ -47,11 +50,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   const itemList = createItemList();
   // Group by store to mimic the legacy commit window (see
   // `Version Old/shoppingList.js` lines 27-107).
-  itemList.render(commitItems, { groupBy: 'store' });
   listHost.appendChild(itemList);
 
   const priceEntry = createPriceEntry();
   listHost.appendChild(priceEntry);
+
+  function renderList() {
+    const text = search?.value.trim().toLowerCase() || '';
+    const filtered = commitItems.filter(it => {
+      const matchesSearch = (it.item || it.name || '')
+        .toLowerCase()
+        .includes(text);
+      const nonZero = !hideZeroItems || it.amount > 0;
+      return matchesSearch && nonZero;
+    });
+    itemList.render(filtered, { groupBy: 'store' });
+  }
+
+  renderList();
 
   // When a row is clicked, open the product's store page and expose price/pack
   // inputs for adjustments.
@@ -78,13 +94,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   if (search) {
-    search.addEventListener('input', () => {
-      const text = search.value.trim().toLowerCase();
-      const filtered = commitItems.filter(it =>
-        (it.item || it.name || '').toLowerCase().includes(text)
-      );
-      itemList.render(filtered, { groupBy: 'store' });
+    search.addEventListener('input', renderList);
+  }
+
+  if (toggleZero) {
+    toggleZero.addEventListener('click', () => {
+      hideZeroItems = !hideZeroItems;
+      toggleZero.textContent = hideZeroItems ? 'Show Zero Qty' : 'Hide Zero Qty';
+      renderList();
     });
+    toggleZero.textContent = 'Hide Zero Qty';
   }
 
   if (confirmBtn) {

@@ -23,3 +23,11 @@ Shared extension elements used by the inventory and shopping list pages.
 - **Events**
   - `meal-plan-change` – detail `{ entry }`
 
+## Hide Zero Quantities toggle
+The inventory timeline and price checker expose a **Hide Zero Qty** button, which switches to **Show Zero Qty** when active.
+
+- **Timeline** – skips items when `computeWeeklyNeed(item) <= 0`.
+- **Price checker** – omits committed entries with `amount <= 0`.
+- **Legacy reference** – `Version Old/popup.js` lines 1122‑1132.
+- **Upgrade note** – “Hide Zero Quantities” in `../Version 2.0 Upgrade Notes/Grocery App Feature List V1.0.txt`.
+
