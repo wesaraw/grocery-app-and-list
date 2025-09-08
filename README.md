@@ -25,6 +25,9 @@ Built with modular utilities, unified schemas, and deduplicated data storage.
 - Coupon manager for % off, $ off, or fixed-price discounts by store and week
   (ported from v1 `coupon.js` lines 1‑80 and noted in Upgrade Notes
   lines 120–130)
+- Meal Chooser for per-user weekly overrides
+  (ported from v1 `mealChooser.js` and noted in Upgrade Notes
+  lines 164‑171)
 - Unified storage service with validation, migrations, and optional caching
 - Offline-friendly test fixtures
 - Import path for v1 legacy data

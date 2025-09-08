@@ -186,6 +186,25 @@ const schemas = {
     },
     additionalProperties: false
   },
+  'manual-meal-overrides': {
+    type: 'object',
+    required: ['week', 'users', 'version'],
+    properties: {
+      week: { type: 'integer' },
+      users: {
+        type: 'object',
+        additionalProperties: {
+          type: 'object',
+          additionalProperties: {
+            type: 'array',
+            items: { type: 'string' }
+          }
+        }
+      },
+      version: { type: 'integer' }
+    },
+    additionalProperties: false
+  },
   metadata: {
     type: 'object',
     properties: {
@@ -216,6 +235,7 @@ const DEFAULTS = {
   'meal-plan': { monthly: [], yearly: [], version: 1 },
   'prepared-meals-calendar': { calendar: {}, version: 1 },
   'what-to-eat-calendar': { calendar: {}, version: 1 },
+  'manual-meal-overrides': { week: 0, users: {}, version: 1 },
   metadata: { storageVersion: CURRENT_VERSION }
 };
 

@@ -1,6 +1,12 @@
 import { get, set } from '../services/storageService.js';
 import { DEFAULT_MEALS_PER_DAY, MEAL_CATEGORIES } from '../meal-multiplier/constants.js';
 
+function getCurrentWeek() {
+  const start = new Date(new Date().getFullYear(), 0, 1);
+  const today = new Date();
+  return Math.ceil(((today - start) / 86400000 + start.getDay() + 1) / 7);
+}
+
 // Stub for future meal import logic.
 export async function importMealsFromFiles(_files) {
   // no-op placeholder
@@ -86,6 +92,27 @@ export async function rebuildCalendars() {
     });
     whatToEat[u.id] = map;
   });
+
+  const overrides = await get('manual-meal-overrides');
+  const currentWeek = getCurrentWeek();
+  if (overrides?.week === currentWeek && overrides.users) {
+    const catOverrides = {};
+    Object.entries(overrides.users).forEach(([userId, cats]) => {
+      if (!whatToEat[userId]) return;
+      Object.entries(cats).forEach(([catId, arr]) => {
+        if (!Array.isArray(arr) || !arr.length) return;
+        const seq = whatToEat[userId][catId] || [];
+        for (let i = 0; i < arr.length; i++) seq[i] = arr[i];
+        whatToEat[userId][catId] = seq;
+        if (!catOverrides[catId]) catOverrides[catId] = arr;
+      });
+    });
+    Object.entries(catOverrides).forEach(([catId, arr]) => {
+      const seq = prepared[catId] || [];
+      for (let i = 0; i < arr.length; i++) seq[i] = arr[i];
+      prepared[catId] = seq;
+    });
+  }
 
   const preparedObj = { calendar: prepared, version: 1 };
   const eatObj = { calendar: whatToEat, version: 1 };
