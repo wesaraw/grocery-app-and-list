@@ -32,3 +32,27 @@ export interface MealPlan {
   items: string[];
   version: number;
 }
+
+export interface MealIngredient {
+  name: string;
+  amount: number;
+  unit: string;
+  cost?: number;
+}
+
+export interface MealFlags {
+  prepared?: boolean;
+  prepAhead?: boolean;
+  group?: boolean;
+}
+
+export interface Meal {
+  id: string;
+  name: string;
+  type: string;
+  ingredients: MealIngredient[];
+  flags: MealFlags;
+  weight: number | null;
+  recipeBook: string | null;
+  version: number;
+}

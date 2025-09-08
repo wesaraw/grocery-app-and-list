@@ -1,5 +1,6 @@
 import Ajv from 'ajv';
 import { DEFAULT_MULTIPLIERS } from '../meal-multiplier/constants.js';
+import { runMealMigrations } from '../migrations/meals.js';
 
 const ajv = new Ajv({ allErrors: true });
 
@@ -93,15 +94,38 @@ const schemas = {
     type: 'array',
     items: {
       type: 'object',
-      required: ['id', 'name', 'type', 'version'],
+      required: ['id', 'name', 'type', 'ingredients', 'flags', 'weight', 'recipeBook', 'version'],
       properties: {
         id: { type: 'string' },
         name: { type: 'string' },
         type: { type: 'string' },
-        people: { type: 'number', nullable: true },
-        ingredients: { type: 'array', nullable: true },
+        ingredients: {
+          type: 'array',
+          items: {
+            type: 'object',
+            required: ['name', 'amount', 'unit'],
+            properties: {
+              name: { type: 'string' },
+              amount: { type: 'number' },
+              unit: { type: 'string' },
+              cost: { type: 'number', nullable: true }
+            },
+            additionalProperties: false
+          }
+        },
+        flags: {
+          type: 'object',
+          properties: {
+            prepared: { type: 'boolean', nullable: true },
+            prepAhead: { type: 'boolean', nullable: true },
+            group: { type: 'boolean', nullable: true }
+          },
+          additionalProperties: false
+        },
+        weight: { type: 'number', nullable: true },
+        recipeBook: { type: 'string', nullable: true },
         users: { type: 'array', nullable: true },
-        prepared: { type: 'boolean', nullable: true },
+        image: { type: 'string', nullable: true },
         totalCost: { type: 'number', nullable: true },
         version: { type: 'integer' }
       },
@@ -287,6 +311,9 @@ export async function get(key, defaultValue = DEFAULTS[key]) {
           console.error(`storageService get validation failed for ${key}`, validate.errors);
           value = defaultValue;
         }
+        if (key === 'meals' && Array.isArray(value)) {
+          value = value.map(runMealMigrations);
+        }
         if (cacheEnabled && value !== undefined) cache.set(key, value);
         resolve(value);
       });
@@ -298,6 +325,9 @@ export async function get(key, defaultValue = DEFAULTS[key]) {
 }
 
 export async function set(key, value) {
+  if (key === 'meals' && Array.isArray(value)) {
+    value = value.map(runMealMigrations);
+  }
   const validate = validators[key];
   if (validate && !validate(value)) {
     const errorText = ajv.errorsText(validate.errors, { separator: ', ' });
@@ -328,6 +358,15 @@ export async function remove(key) {
       reject(e);
     }
   });
+}
+
+export async function updateItemById(key, id, patch) {
+  const items = await get(key, []);
+  const idx = items.findIndex(item => item.id === id);
+  if (idx === -1) return false;
+  items[idx] = { ...items[idx], ...patch };
+  await set(key, items);
+  return true;
 }
 
 export function registerMigration(version, fn) {
