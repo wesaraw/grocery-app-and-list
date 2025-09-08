@@ -184,3 +184,8 @@ export async function renderMealPlanner(root) {
 
   root.append(fileInput, importBtn, userSelect, thresholdInput, saveBtn, rebuildBtn);
 }
+
+// Re-export the calendar view so callers can render the meal plan calendar.
+export { renderCalendarView } from './calendarView.js';
+// Re-export the cook schedule view for prep-ahead scheduling.
+export { renderCookScheduleView } from './cookScheduleView.js';
