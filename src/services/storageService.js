@@ -1,4 +1,5 @@
 import Ajv from 'ajv';
+import { DEFAULT_MULTIPLIERS } from '../meal-multiplier/constants.js';
 
 const ajv = new Ajv({ allErrors: true });
 
@@ -122,6 +123,69 @@ const schemas = {
       additionalProperties: true
     }
   },
+  'meal-per-day': {
+    type: 'array',
+    items: {
+      type: 'object',
+      required: ['id', 'mealsPerDay', 'version'],
+      properties: {
+        id: { type: 'string' },
+        mealsPerDay: { type: 'number' },
+        version: { type: 'integer' }
+      },
+      additionalProperties: false
+    }
+  },
+  'meal-plan': {
+    type: 'object',
+    required: ['monthly', 'yearly', 'version'],
+    properties: {
+      monthly: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['mealId', 'monthlySpots'],
+          properties: {
+            mealId: { type: 'string' },
+            monthlySpots: { type: 'number' }
+          },
+          additionalProperties: false
+        }
+      },
+      yearly: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['mealId', 'yearlySpots'],
+          properties: {
+            mealId: { type: 'string' },
+            yearlySpots: { type: 'number' }
+          },
+          additionalProperties: false
+        }
+      },
+      version: { type: 'integer' }
+    },
+    additionalProperties: false
+  },
+  'prepared-meals-calendar': {
+    type: 'object',
+    required: ['calendar', 'version'],
+    properties: {
+      calendar: { type: 'object' },
+      version: { type: 'integer' }
+    },
+    additionalProperties: false
+  },
+  'what-to-eat-calendar': {
+    type: 'object',
+    required: ['calendar', 'version'],
+    properties: {
+      calendar: { type: 'object' },
+      version: { type: 'integer' }
+    },
+    additionalProperties: false
+  },
   metadata: {
     type: 'object',
     properties: {
@@ -148,6 +212,10 @@ const DEFAULTS = {
   stores: [],
   meals: [],
   users: [],
+  'meal-per-day': DEFAULT_MULTIPLIERS,
+  'meal-plan': { monthly: [], yearly: [], version: 1 },
+  'prepared-meals-calendar': { calendar: {}, version: 1 },
+  'what-to-eat-calendar': { calendar: {}, version: 1 },
   metadata: { storageVersion: CURRENT_VERSION }
 };
 
