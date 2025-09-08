@@ -23,6 +23,12 @@ Shared extension elements used by the inventory and shopping list pages.
 - **Events**
   - `meal-plan-change` – detail `{ entry }`
 
+## Grocery Price Checker window
+Displays all items that need pricing, grouped by category with collapsible headers.
+- Search box filters items by name.
+- Layout modeled after `Version Old/popup.html`.
+- Requirements noted under “Grocery Price Checker” in `../Version 2.0 Upgrade Notes/Grocery App Feature List V1.0.txt`.
+
 ## Hide Zero Quantities toggle
 The inventory timeline and price checker expose a **Hide Zero Qty** button, which switches to **Show Zero Qty** when active.
 
