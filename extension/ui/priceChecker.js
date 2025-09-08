@@ -4,6 +4,7 @@ import { renderItemsWithCategoryHeaders } from './components.js';
 document.addEventListener('DOMContentLoaded', async () => {
   const itemsHost = document.getElementById('items');
   const searchBox = document.getElementById('searchBox');
+  const storeTotalsBtn = document.getElementById('storeTotalsBtn');
 
   const items = await storageGet('items');
   const headerState = {};
@@ -26,6 +27,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   searchBox.addEventListener('input', renderList);
+  storeTotalsBtn.addEventListener('click', () => {
+    window.open('storeTotals.html', '_blank');
+  });
   renderList();
 });
 
