@@ -1,4 +1,4 @@
-import { get as storageGet } from '../../src/services/storageService.js';
+import { get as storageGet, set as storageSet } from '../../src/services/storageService.js';
 import { renderItemsWithCategoryHeaders } from './components.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -27,4 +27,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   searchBox.addEventListener('input', renderList);
   renderList();
+});
+
+chrome.runtime.onMessage.addListener(message => {
+  if (message.type === 'finalSelection') {
+    (async () => {
+      const list = await storageGet('lastCommitItems', []);
+      list.push({ item: message.item, store: message.store, product: message.product });
+      await storageSet('lastCommitItems', list);
+    })();
+  }
 });

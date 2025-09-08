@@ -83,7 +83,11 @@ class ItemListElement extends BaseElement {
           e.stopPropagation();
           const tabId = storeTabs.get(it.store);
           if (tabId) {
-            chrome.tabs.sendMessage(tabId, { type: 'triggerScrape' });
+            chrome.tabs.sendMessage(tabId, {
+              type: 'triggerScrape',
+              item: it.item || it.name,
+              store: it.store
+            });
           }
           const path = `scrapeResults.html?item=${encodeURIComponent(
             it.item || it.name
