@@ -69,19 +69,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   renderList();
 
-  // When a row is clicked, open the product's store page and expose price/pack
-  // inputs for adjustments.
+  // When a row is clicked, expose price/pack inputs for adjustments.
   itemList.addEventListener('item-selected', e => {
     const it = e.detail;
     priceEntry.render(it);
-    if (it.product?.link) {
-      chrome.runtime.sendMessage({
-        type: 'openStoreTab',
-        url: it.product.link,
-        item: it.item,
-        store: it.store
-      });
-    }
   });
 
   priceEntry.addEventListener('price-changed', e => {

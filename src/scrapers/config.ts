@@ -1,4 +1,4 @@
-import { registerStoreStrategy, StoreStrategy, selectOne, parsePriceNumber } from './common';
+import { registerStoreStrategy, StoreStrategy, selectOne, parsePriceNumber } from './common.ts';
 
 // Walmart strategy: selectors and price extraction quirks.
 // Reference: Version Old/scrapers/walmart.js and "Scraper Profiling.txt"
@@ -51,3 +51,75 @@ const walmart: StoreStrategy = {
 registerStoreStrategy('walmart', walmart);
 
 export { walmart };
+
+// Amazon selectors
+const amazon: StoreStrategy = {
+  selectors: {
+    tile: ['div[data-asin][data-component-type="s-search-result"]'],
+    name: ['h2 a span'],
+    price: ['span.a-price span.a-offscreen'],
+    perUnit: ['span.a-size-base.a-color-secondary'],
+    size: ['span.a-size-base.a-color-base'],
+    image: ['img.s-image'],
+    link: ['a.a-link-normal.s-no-outline'],
+  },
+};
+registerStoreStrategy('amazon', amazon);
+
+// Hannaford selectors
+const hannaford: StoreStrategy = {
+  selectors: {
+    tile: ['div.catalog-product'],
+    name: ['.productName .real-product-name'],
+    price: ['.priceCell .item-unit-price'],
+    perUnit: ['.unitPriceDisplay'],
+    size: ['.overline.text-truncate'],
+    image: ['img'],
+    link: ['a'],
+  },
+};
+registerStoreStrategy('hannaford', hannaford);
+
+// Roche Bros selectors
+const rocheBros: StoreStrategy = {
+  selectors: {
+    tile: ['[data-test-id="product-card"]', '[data-test="product-cell"]'],
+    name: ['[data-test-id="product-card-title"]', '[data-test="product-title"]'],
+    price: ['[data-test-id="product-card-price"]', '[data-test="product-price"]'],
+    perUnit: ['[data-test-id="product-card-unit-price"]', '[data-test="product-unit-price"]'],
+    size: ['[data-test-id="product-card-size"]', '[data-test="product-size"]'],
+    image: ['img'],
+    link: ['a'],
+  },
+};
+registerStoreStrategy('roche-bros', rocheBros);
+
+// Shaw's selectors
+const shaws: StoreStrategy = {
+  selectors: {
+    tile: ['.product-item-al-v2'],
+    name: ['[data-qa="prd-itm-pttl"]'],
+    price: ['[data-qa="prd-itm-prc"]'],
+    perUnit: ['[data-qa="prd-itm-upr"]', '[data-qa="prd-itm-pprc-qty"]'],
+    size: ['[data-qa="prd-itm-sqty"]'],
+    image: ['img[data-qa="prd-itm-img"]', 'img'],
+    link: ['a[data-qa="prd-itm-lk"]', 'a'],
+  },
+};
+registerStoreStrategy('shaws', shaws);
+
+// Stop & Shop selectors
+const stopAndShop: StoreStrategy = {
+  selectors: {
+    tile: ['li.tile.product-cell.product-grid-cell'],
+    name: ['.product-grid-cell_price-container .sr-only'],
+    price: ['.product-grid-cell_price'],
+    perUnit: ['.product-grid-cell_unit-price'],
+    size: ['.product-grid-cell_size'],
+    image: ['img'],
+    link: ['a.product-grid-cell_link', 'a'],
+  },
+};
+registerStoreStrategy('stop-and-shop', stopAndShop);
+
+export { amazon, hannaford, rocheBros, shaws, stopAndShop };

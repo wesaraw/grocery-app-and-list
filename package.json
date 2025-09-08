@@ -4,7 +4,7 @@
   "type": "module",
   "description": "Modular rewrite of the Grocery App Chrome extension",
   "scripts": {
-    "test": "node node_modules/mocha/bin/mocha.js --require test/setup.js",
+    "test": "node --loader ts-node/esm node_modules/mocha/bin/mocha.js --require test/setup.js",
     "lint": "node node_modules/eslint/bin/eslint.js .",
     "build": "rollup -c"
   },
@@ -17,6 +17,8 @@
     "jsdom": "^21.1.0",
     "mocha": "^10.0.0",
     "prettier": "^3.0.0",
-    "rollup": "^4.0.0"
+    "rollup": "^4.0.0",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.4.0"
   }
 }

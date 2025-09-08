@@ -22,6 +22,7 @@
 
 const BaseElement = typeof HTMLElement === 'undefined' ? class {} : HTMLElement;
 const canDefine = typeof customElements !== 'undefined';
+const storeTabs = new Map();
 
 /**
  * `<item-list>` displays items and emits events when users interact.
@@ -42,10 +43,57 @@ class ItemListElement extends BaseElement {
 
     const renderRow = (parent, it) => {
       const row = document.createElement('div');
-      row.textContent = it.name || it;
+
+      const label = document.createElement('span');
+      label.textContent = it.name || it;
+      row.appendChild(label);
+
       row.addEventListener('click', () => {
         this.dispatchEvent(new CustomEvent('item-selected', { detail: it }));
       });
+
+      if (it.product?.link && it.store) {
+        const openBtn = document.createElement('button');
+        openBtn.textContent = it.store;
+        openBtn.addEventListener('click', e => {
+          e.stopPropagation();
+          let url = it.product.link;
+          if (it.store === 'Walmart') {
+            url = url.replace(/%2B/g, '+');
+          }
+          chrome.runtime.sendMessage(
+            {
+              type: 'openStoreTab',
+              url,
+              item: it.item || it.name,
+              store: it.store
+            },
+            response => {
+              if (response && response.tabId) {
+                storeTabs.set(it.store, response.tabId);
+              }
+            }
+          );
+        });
+        row.appendChild(openBtn);
+
+        const scrapeBtn = document.createElement('button');
+        scrapeBtn.textContent = 'Scrape';
+        scrapeBtn.addEventListener('click', e => {
+          e.stopPropagation();
+          const tabId = storeTabs.get(it.store);
+          if (tabId) {
+            chrome.tabs.sendMessage(tabId, { type: 'triggerScrape' });
+          }
+          const path = `scrapeResults.html?item=${encodeURIComponent(
+            it.item || it.name
+          )}&store=${encodeURIComponent(it.store)}`;
+          setTimeout(() => {
+            window.open(path, '_blank');
+          }, 1000);
+        });
+        row.appendChild(scrapeBtn);
+      }
 
       const input = document.createElement('input');
       input.type = 'number';

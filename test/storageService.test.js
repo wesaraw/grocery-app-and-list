@@ -58,12 +58,14 @@ describe('storageService', () => {
 
   it('validates data on set', async () => {
     const bad = [{ id: '1', unit: 'kg', version: 1 }];
-    try {
-      await storage.set('items', bad);
-      throw new Error('should fail');
-    } catch (e) {
-      expect(e.message).to.match(/Invalid data/);
-    }
+    await storage
+      .set('items', bad)
+      .then(() => {
+        throw new Error('should fail');
+      })
+      .catch(e => {
+        expect(e.message).to.match(/Invalid data/);
+      });
     expect(chromeMock.store.items).to.be.undefined;
   });
 
