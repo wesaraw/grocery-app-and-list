@@ -5,7 +5,10 @@
   "action": {
     "default_popup": "ui/priceChecker.html"
   },
-  "permissions": ["storage"],
+  "permissions": ["storage", "tabs"],
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],

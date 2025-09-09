@@ -7,6 +7,7 @@ let listEl;
 let searchBox;
 let toggleZeroBtn;
 let hideZero = false;
+const headerState = {};
 
 function saveCommit() {
   storageSet('lastCommitItems', Array.from(commitMap.values()));
@@ -33,7 +34,7 @@ function render() {
       };
     });
 
-  listEl.render(filtered);
+  listEl.render(filtered, { groupBy: 'category', headerState });
 
   filtered.forEach(it => {
     const key = it.id || it.name;
@@ -95,6 +96,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     commitMap.set(key, entry);
     saveCommit();
     if (hideZero) render();
+  });
+
+  listEl.addEventListener('item-selected', e => {
+    const it = e.detail;
+    const key = it.id || it.name;
+    const path = `item.html?item=${encodeURIComponent(key)}`;
+    window.open(path, '_blank');
   });
 
   render();

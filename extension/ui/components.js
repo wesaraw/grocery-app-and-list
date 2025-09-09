@@ -37,8 +37,10 @@ class ItemListElement extends BaseElement {
    * Render a list of items.
    * @param {Array} items - Array of item objects or strings.
    * @param {Object} [options] - Optional render configuration.
+   * @param {string} [options.groupBy] - Grouping key (e.g., 'store' or 'category').
+   * @param {Object} [options.headerState] - Collapse state for grouped headers.
    */
-  render(items = [], { groupBy } = {}) {
+  render(items = [], { groupBy, headerState } = {}) {
     this.innerHTML = '';
 
     const renderRow = (parent, it) => {
@@ -115,7 +117,9 @@ class ItemListElement extends BaseElement {
       parent.appendChild(row);
     };
 
-    if (groupBy === 'store') {
+    if (groupBy === 'category') {
+      renderItemsWithCategoryHeaders(this, items, renderRow, headerState || {});
+    } else if (groupBy === 'store') {
       const byStore = items.reduce((map, it) => {
         const store = it.store || 'Unknown';
         (map[store] ||= []).push(it);
