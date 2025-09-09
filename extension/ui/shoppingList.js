@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const search = document.getElementById('searchBox');
   const toggleZero = document.getElementById('toggleZero');
   const confirmBtn = document.getElementById('confirmAdd');
+  const addItemBtn = document.getElementById('addItem');
 
   const [commitItems, pendingWeek] = await Promise.all([
     storageGet('lastCommitItems', []),
@@ -108,6 +109,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       applyFilter();
     });
     toggleZero.textContent = 'Hide Zero Qty';
+  }
+
+  if (addItemBtn) {
+    addItemBtn.addEventListener('click', () => {
+      window.open('addItem.html', '_blank', 'width=400,height=600');
+    });
   }
 
   if (confirmBtn) {

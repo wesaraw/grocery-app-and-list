@@ -126,6 +126,24 @@ export function renderMealForm(root, { meal = {}, category, onDone } = {}) {
   cancelBtn.textContent = 'Cancel';
   cancelBtn.dataset.action = 'cancel';
   actionBar.append(saveBtn, cancelBtn);
+
+  if (meal.id) {
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.textContent = 'Delete';
+    deleteBtn.dataset.action = 'delete';
+    deleteBtn.addEventListener('click', async e => {
+      e.preventDefault();
+      const allMeals = await get('meals', []);
+      const idx = allMeals.findIndex(m => m.id === meal.id);
+      if (idx !== -1) {
+        allMeals.splice(idx, 1);
+        await set('meals', allMeals);
+      }
+      onDone && onDone();
+    });
+    actionBar.appendChild(deleteBtn);
+  }
   form.appendChild(actionBar);
 
   form.addEventListener('submit', async e => {

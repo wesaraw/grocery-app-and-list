@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Add Item</title>
+  </head>
+  <body>
+    <h1>Add Item</h1>
+    <label>Name: <input id="name" type="text" /></label><br />
+    <label>Category: <input id="category" type="text" /></label><br />
+    <label>Default Store: <input id="store" type="text" /></label><br />
+    <label>Purchase Quantity: <input id="qty" type="number" step="any" /></label><br />
+    <label>Home Unit: <input id="unit" type="text" placeholder="oz" /></label><br />
+    <label>Purchase Unit: <input id="purchase-unit" type="text" placeholder="lb" /></label><br />
+    <label>Units per Purchase Unit: <input id="conversion" type="number" step="any" placeholder="16" /></label><br />
+    <button id="commit">Add</button>
+    <div id="warning" style="color:red; display:none;">Incomplete data</div>
+    <script type="module" src="addItem.js"></script>
+  </body>
+</html>

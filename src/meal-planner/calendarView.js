@@ -5,6 +5,12 @@ const COLUMN_KEY = 'calendar-column-order';
 const ORDER_VERSION = 1;
 const DEFAULT_ORDER = MEAL_CATEGORIES.map(c => c.id);
 
+function getCurrentWeek() {
+  const start = new Date(new Date().getFullYear(), 0, 1);
+  const today = new Date();
+  return Math.ceil(((today - start) / 86400000 + start.getDay() + 1) / 7);
+}
+
 function buildSlotIds(order) {
   return order.map((cat, idx) => `${cat}#${idx}`);
 }
@@ -23,6 +29,7 @@ export async function renderCalendarView(root) {
   let slotOrder = DEFAULT_ORDER.slice();
   let slotOrderIds = buildSlotIds(slotOrder);
   let editMode = false;
+  let dragInfo = null;
 
   const container = document.createElement('div');
   const controls = document.createElement('div');
@@ -148,13 +155,23 @@ export async function renderCalendarView(root) {
       slotOrder.forEach(cat => {
         const td = document.createElement('td');
         const seq = calendar[userId]?.[cat] || [];
-        const mealId = seq.length ? seq[i % seq.length] : null;
+        const seqIdx = seq.length ? i % seq.length : -1;
+        td.dataset.cat = cat;
+        td.dataset.pos = seqIdx;
+        const mealId = seqIdx >= 0 ? seq[seqIdx] : null;
         const meal = mealMap.get(mealId);
         if (meal) {
           const nameDiv = document.createElement('div');
           let text = meal.name;
           if (meal.totalCost != null) text += ` - $${meal.totalCost.toFixed(2)}`;
           nameDiv.textContent = text;
+          nameDiv.draggable = true;
+          nameDiv.dataset.cat = cat;
+          nameDiv.dataset.pos = seqIdx;
+          nameDiv.addEventListener('dragstart', e => {
+            dragInfo = { cat, pos: seqIdx };
+            e.dataTransfer.effectAllowed = 'move';
+          });
           td.appendChild(nameDiv);
           if (meal.image) {
             const img = document.createElement('img');
@@ -163,6 +180,25 @@ export async function renderCalendarView(root) {
             td.appendChild(img);
           }
         }
+        td.addEventListener('dragover', e => e.preventDefault());
+        td.addEventListener('drop', async e => {
+          e.preventDefault();
+          if (!dragInfo) return;
+          const targetCat = td.dataset.cat;
+          const targetPos = parseInt(td.dataset.pos, 10);
+          if (dragInfo.cat !== targetCat || targetPos < 0 || dragInfo.pos === targetPos) {
+            dragInfo = null;
+            return;
+          }
+          const seq = calendar[userId][targetCat] || [];
+          const tmp = seq[dragInfo.pos];
+          seq[dragInfo.pos] = seq[targetPos];
+          seq[targetPos] = tmp;
+          await saveOverride(userId, targetCat, seq);
+          calendar[userId][targetCat] = seq;
+          dragInfo = null;
+          render();
+        });
         row.appendChild(td);
       });
       tbody.appendChild(row);
@@ -219,6 +255,18 @@ export async function renderCalendarView(root) {
     calendar = updated.calendar || {};
     render();
   });
+
+  async function saveOverride(userId, catId, seq) {
+    const week = getCurrentWeek();
+    const overrides = (await get('manual-meal-overrides', { week, users: {} })) || {};
+    if (!overrides.users) overrides.users = {};
+    if (!overrides.users[userId]) overrides.users[userId] = {};
+    overrides.users[userId][catId] = seq.slice();
+    overrides.week = week;
+    await set('manual-meal-overrides', overrides);
+    const mod = await import('./index.js');
+    if (mod.rebuildCalendars) await mod.rebuildCalendars();
+  }
 }
 
 export default { renderCalendarView };

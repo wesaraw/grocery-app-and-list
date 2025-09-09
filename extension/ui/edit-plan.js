@@ -1,5 +1,6 @@
 import { get as storageGet, set as storageSet } from '../../src/services/storageService.js';
 import { renderItemsWithCategoryHeaders } from './components.js';
+import { rebuildCalendars } from '../../src/meal-planner/index.js';
 
 let items = [];
 let mealMonthMap = new Map();
@@ -52,6 +53,7 @@ function render(list) {
         if (!isNaN(val)) applyPlanUpdate(item, { yearly: val });
       }
       await storageSet('items', items);
+      await rebuildCalendars();
       const { monthly, yearly } = item.consumptionPlan || {};
       span.textContent = `${item.name} - ${(monthly + mealMonthly).toFixed(2)}/mo - ${(yearly + mealYearly).toFixed(2)}/yr`;
       mInput.value = monthly ?? '';

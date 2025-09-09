@@ -419,6 +419,12 @@ document.getElementById('usersPage').addEventListener('click', () => {
 document.getElementById('cookingDaysPage').addEventListener('click', () => {
   openOrFocusWindow('cooking-days.html');
 });
+document.getElementById('mealListPage').addEventListener('click', () => {
+  openOrFocusWindow('mealList.html');
+});
+document.getElementById('addItem').addEventListener('click', () => {
+  openOrFocusWindow('addItem.html');
+});
 
 async function deletePurchase(itemId, idx) {
   const items = await storageGet('items');

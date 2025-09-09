@@ -43,6 +43,8 @@ class ItemListElement extends BaseElement {
 
     const renderRow = (parent, it) => {
       const row = document.createElement('div');
+      // Expose item identifier for external scripts to append metadata
+      row.dataset.itemId = it.id || it.name || '';
 
       const label = document.createElement('span');
       label.textContent = it.name || it;

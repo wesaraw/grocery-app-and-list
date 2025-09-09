@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Meal List</title>
+  </head>
+  <body>
+    <h1>Meal List</h1>
+    <div id="controls">
+      <input type="file" id="import-files" multiple style="display: none">
+      <button id="importMeals">Import Meals</button>
+      <select id="threshold-user"></select>
+      <input type="number" id="threshold" step="any">
+      <button id="saveThreshold">Save Threshold</button>
+      <button id="rebuildCalendars">Rebuild Calendars</button>
+      <button id="viewCalendar">Meal Calendar</button>
+      <button id="viewCookSchedule">Cook Timeline</button>
+      <button id="editPlanPage">Edit Consumption Plan</button>
+    </div>
+    <div id="mealList"></div>
+    <script type="module" src="mealList.js"></script>
+  </body>
+</html>
