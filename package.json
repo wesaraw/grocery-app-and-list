@@ -12,6 +12,7 @@
     "ajv": "^8.17.1"
   },
   "devDependencies": {
+    "@xmldom/xmldom": "^0.8.10",
     "chai": "^4.3.6",
     "eslint": "^8.57.1",
     "jsdom": "^21.1.0",

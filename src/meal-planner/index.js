@@ -1,5 +1,6 @@
 import { get, set } from '../services/storageService.js';
 import { DEFAULT_MEALS_PER_DAY, MEAL_CATEGORIES } from '../meal-multiplier/constants.js';
+import { DOMParser as XmlDomParser } from '@xmldom/xmldom';
 
 function getCurrentWeek() {
   const start = new Date(new Date().getFullYear(), 0, 1);
@@ -7,9 +8,147 @@ function getCurrentWeek() {
   return Math.ceil(((today - start) / 86400000 + start.getDay() + 1) / 7);
 }
 
-// Stub for future meal import logic.
-export async function importMealsFromFiles(_files) {
-  // no-op placeholder
+function slugify(str) {
+  return str
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
+async function readAsText(file) {
+  if (typeof file.text === 'function') return file.text();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsText(file);
+  });
+}
+
+async function readAsDataURL(file) {
+  if (typeof file.arrayBuffer === 'function') {
+    const buf = await file.arrayBuffer();
+    const base64 =
+      typeof Buffer !== 'undefined'
+        ? Buffer.from(buf).toString('base64')
+        : btoa(String.fromCharCode(...new Uint8Array(buf)));
+    const mime = file.type || 'application/octet-stream';
+    return `data:${mime};base64,${base64}`;
+  }
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function parseMealsFromXml(text) {
+  const Parser = typeof DOMParser !== 'undefined' ? DOMParser : XmlDomParser;
+  const parser = new Parser();
+  const doc = parser.parseFromString(text, 'application/xml');
+  const meals = [];
+  const mealEls = doc.getElementsByTagName('meal');
+  for (let i = 0; i < mealEls.length; i++) {
+    const mEl = mealEls[i];
+    const getText = tag => {
+      const el = mEl.getElementsByTagName(tag)[0];
+      return el && el.textContent ? el.textContent.trim() : '';
+    };
+    const meal = {};
+    meal.category = getText('category') || 'lunchDinner';
+    meal.name = getText('name');
+    meal.recipeBook = getText('recipeBook');
+    meal.image = getText('image') || null;
+    meal.userBits = getText('users');
+    meal.prepared = getText('prepared').toLowerCase() === 'true';
+    meal.group = getText('group').toLowerCase() === 'true';
+    const weight = parseFloat(getText('weight'));
+    meal.weight = !isNaN(weight) && weight > 0 ? weight : 1;
+    meal.ingredients = [];
+    const ingRoot = mEl.getElementsByTagName('ingredients')[0];
+    if (ingRoot) {
+      const itemEls = ingRoot.getElementsByTagName('item');
+      for (let j = 0; j < itemEls.length; j++) {
+        const iEl = itemEls[j];
+        const iname = iEl.getElementsByTagName('name')[0]?.textContent?.trim();
+        const amt = parseFloat(iEl.getElementsByTagName('amount')[0]?.textContent?.trim());
+        const unit = iEl.getElementsByTagName('unit')[0]?.textContent?.trim();
+        if (iname && !isNaN(amt) && unit) {
+          meal.ingredients.push({ name: iname, amount: amt, unit });
+        }
+      }
+    }
+    if (meal.name && meal.ingredients.length) meals.push(meal);
+  }
+  return meals;
+}
+
+export async function importMealsFromFiles(files) {
+  const arr = Array.from(files || []);
+  const xmlFile = arr.find(f => /\.xml$/i.test(f.name));
+  if (!xmlFile) return;
+  const imageFiles = arr.filter(f => f !== xmlFile);
+  const images = {};
+  await Promise.all(
+    imageFiles.map(async f => {
+      images[f.name] = await readAsDataURL(f);
+    })
+  );
+  const xmlText = await readAsText(xmlFile);
+  const parsedMeals = parseMealsFromXml(xmlText);
+
+  const [items = [], meals = [], users = []] = await Promise.all([
+    get('items', []),
+    get('meals', []),
+    get('users', []),
+  ]);
+
+  const newMeals = [];
+  let itemsModified = false;
+
+  parsedMeals.forEach(m => {
+    m.ingredients.forEach(ing => {
+      if (!items.find(i => i.name === ing.name)) {
+        const id = slugify(ing.name);
+        items.push({
+          id,
+          name: ing.name,
+          unit: ing.unit,
+          category: 'Mass Import',
+          stock: [],
+          consumption: [],
+          consumptionPlan: { monthly: 0, yearly: 0 },
+          version: 1,
+        });
+        itemsModified = true;
+      }
+    });
+
+    const id = slugify(m.name) + '-' + (globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2, 10));
+    const userArr = [];
+    for (let i = 0; i < m.userBits.length && i < users.length; i++) {
+      if (m.userBits[i] === '1') userArr.push(users[i].id);
+    }
+    const meal = {
+      id,
+      name: m.name,
+      type: m.category,
+      ingredients: m.ingredients.map(ing => ({ name: ing.name, amount: ing.amount, unit: ing.unit })),
+      flags: { prepared: m.prepared, prepAhead: false, group: m.group },
+      weight: m.weight,
+      recipeBook: m.recipeBook || null,
+      users: userArr,
+      image: m.image && images[m.image] ? images[m.image] : null,
+      version: 2,
+    };
+    newMeals.push(meal);
+  });
+
+  if (itemsModified) await set('items', items);
+  if (newMeals.length) await set('meals', [...meals, ...newMeals]);
+
+  await rebuildCalendars();
 }
 
 export async function calculateMealNeeds() {
