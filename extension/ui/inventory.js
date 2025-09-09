@@ -427,11 +427,38 @@ document.getElementById('usersPage').addEventListener('click', () => {
 document.getElementById('cookingDaysPage').addEventListener('click', () => {
   openOrFocusWindow('cooking-days.html');
 });
+document.getElementById('timelinePage').addEventListener('click', () => {
+  openOrFocusWindow('inventoryTimeline.html');
+});
 document.getElementById('mealListPage').addEventListener('click', () => {
   openOrFocusWindow('mealList.html');
 });
 document.getElementById('addItem').addEventListener('click', () => {
   openOrFocusWindow('addItem.html');
+});
+document.getElementById('removeItem').addEventListener('click', () => {
+  openOrFocusWindow('removeItem.html');
+});
+document.getElementById('renameItem').addEventListener('click', () => {
+  openOrFocusWindow('renameItem.html');
+});
+document.getElementById('uomChange').addEventListener('click', () => {
+  openOrFocusWindow('uomChange.html');
+});
+document.getElementById('densityRatios').addEventListener('click', () => {
+  openOrFocusWindow('densityRatios.html');
+});
+document.getElementById('editCategory').addEventListener('click', () => {
+  openOrFocusWindow('editCategory.html');
+});
+document.getElementById('editExpiration').addEventListener('click', () => {
+  openOrFocusWindow('expiration.html');
+});
+document.getElementById('editSeason').addEventListener('click', () => {
+  openOrFocusWindow('editSeason.html');
+});
+document.getElementById('backupPage').addEventListener('click', () => {
+  openOrFocusWindow('backup.html');
 });
 
 async function deletePurchase(itemId, idx) {
