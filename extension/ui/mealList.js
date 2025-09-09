@@ -82,3 +82,15 @@ document.getElementById('viewCookSchedule').addEventListener('click', () => {
 document.getElementById('editPlanPage').addEventListener('click', () => {
   window.location.href = 'edit-plan.html';
 });
+
+document.getElementById('addCategory').addEventListener('click', async () => {
+  const label = prompt('Category name?');
+  const name = label ? label.trim() : '';
+  if (!name) return;
+  const id = name.toLowerCase().replace(/\s+/g, '');
+  const cats = await storageGet('meal-categories', []);
+  if (cats.some(c => c.id === id)) return;
+  cats.push({ id, label: name });
+  await storageSet('meal-categories', cats);
+  await renderMealList(root, { category: id });
+});

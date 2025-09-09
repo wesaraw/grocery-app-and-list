@@ -1,15 +1,21 @@
-import { get } from '../services/storageService.js';
-import { MEAL_CATEGORIES } from '../meal-multiplier/constants.js';
+import { get, set, updateItemById } from '../services/storageService.js';
+import { MEAL_CATEGORIES as DEFAULT_CATEGORIES } from '../meal-multiplier/constants.js';
 import { renderMealForm } from './form.js';
 
 export async function renderMealList(root, { category } = {}) {
   const meals = await get('meals', []);
-  let currentCategory = category || MEAL_CATEGORIES[0]?.id;
+  let categories = await get('meal-categories', []);
+  if (!categories.length) {
+    categories = DEFAULT_CATEGORIES;
+    await set('meal-categories', categories);
+  }
+  const users = await get('users', []);
+  let currentCategory = category || categories[0]?.id;
 
   root.innerHTML = '';
   const categoryBar = document.createElement('div');
   categoryBar.dataset.categoryBar = '';
-  MEAL_CATEGORIES.forEach(cat => {
+  categories.forEach(cat => {
     const btn = document.createElement('button');
     btn.textContent = cat.label;
     btn.dataset.categoryButton = cat.id;
@@ -74,7 +80,27 @@ export async function renderMealList(root, { category } = {}) {
 
         const subsCell = document.createElement('td');
         subsCell.dataset.subscribers = '';
-        subsCell.textContent = Array.isArray(meal.users) ? meal.users.length : 0;
+        users.forEach(u => {
+          const label = document.createElement('label');
+          const box = document.createElement('input');
+          box.type = 'checkbox';
+          box.dataset.userToggle = u.id;
+          box.checked = Array.isArray(meal.users) && meal.users.includes(u.id);
+          box.addEventListener('click', async e => {
+            e.stopPropagation();
+            const updated = Array.isArray(meal.users) ? [...meal.users] : [];
+            if (box.checked) {
+              if (!updated.includes(u.id)) updated.push(u.id);
+            } else {
+              const idx = updated.indexOf(u.id);
+              if (idx !== -1) updated.splice(idx, 1);
+            }
+            meal.users = updated;
+            await updateItemById('meals', meal.id, { users: updated });
+          });
+          label.append(box, document.createTextNode(u.name));
+          subsCell.appendChild(label);
+        });
         mealRow.appendChild(subsCell);
 
         const imgCell = document.createElement('td');

@@ -2,7 +2,7 @@ import { get, set, updateItemById } from '../services/storageService.js';
 
 const UNITS = ['', 'g', 'kg', 'oz', 'lb', 'ml', 'l', 'cup', 'tbsp', 'tsp', 'pc'];
 
-export function renderMealForm(root, { meal = {}, category, onDone } = {}) {
+export async function renderMealForm(root, { meal = {}, category, onDone } = {}) {
   root.innerHTML = '';
   const form = document.createElement('form');
   form.dataset.mealForm = '';
@@ -49,6 +49,21 @@ export function renderMealForm(root, { meal = {}, category, onDone } = {}) {
   recipeBookInput.dataset.recipeBookInput = '';
   recipeBookInput.value = meal.recipeBook || '';
   form.appendChild(recipeBookInput);
+
+  const userSection = document.createElement('div');
+  userSection.dataset.userSection = '';
+  const userList = await get('users', []);
+  userList.forEach(u => {
+    const label = document.createElement('label');
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.value = u.id;
+    box.dataset.userCheckbox = u.id;
+    box.checked = Array.isArray(meal.users) && meal.users.includes(u.id);
+    label.append(box, document.createTextNode(u.name));
+    userSection.appendChild(label);
+  });
+  form.appendChild(userSection);
 
   const table = document.createElement('table');
   table.dataset.ingredientTable = '';
@@ -171,6 +186,11 @@ export function renderMealForm(root, { meal = {}, category, onDone } = {}) {
       alert('Please complete all ingredient fields.');
       return;
     }
+    const userIds = Array.from(
+      form.querySelectorAll('[data-user-checkbox]')
+    )
+      .filter(cb => cb.checked)
+      .map(cb => cb.value);
     const allMeals = await get('meals', []);
     const newMeal = {
       id: meal.id || Date.now().toString(),
@@ -183,6 +203,7 @@ export function renderMealForm(root, { meal = {}, category, onDone } = {}) {
       },
       weight: weightInput.value ? parseFloat(weightInput.value) : null,
       recipeBook: recipeBookInput.value.trim() || null,
+      users: userIds,
       ingredients,
       version: meal.version ? meal.version : 2
     };

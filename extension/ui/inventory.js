@@ -3,8 +3,16 @@ import { calculatePackUnits } from '../utils/pack.js';
 
 const WEEKS_PER_MONTH = 4.33;
 
+const openWindows = {};
 function openOrFocusWindow(path, width = 400, height = 600) {
-  window.open(path, '_blank', `width=${width},height=${height}`);
+  const [base] = path.split('?');
+  const existing = openWindows[base];
+  if (existing && !existing.closed) {
+    existing.location.href = path;
+    existing.focus();
+    return;
+  }
+  openWindows[base] = window.open(path, base, `width=${width},height=${height}`);
 }
 
 function getCurrentWeek() {
