@@ -1,6 +1,6 @@
-import { get as storageGet, set as storageSet } from '../../src/services/storageService.js';
+import { get as storageGet, set as storageSet } from '../services/storageService.js';
 import { renderItemsWithCategoryHeaders } from './components.js';
-import { rebuildCalendars } from '../../src/meal-planner/index.js';
+import { rebuildCalendars } from '../meal-planner/index.js';
 
 let items = [];
 let mealMonthMap = new Map();

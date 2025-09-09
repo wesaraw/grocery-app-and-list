@@ -1,5 +1,5 @@
-import { renderMultiplier } from '../../src/meal-multiplier/index.js';
-import { rebuildCalendars } from '../../src/meal-planner/index.js';
+import { renderMultiplier } from '../meal-multiplier/index.js';
+import { rebuildCalendars } from '../meal-planner/index.js';
 
 const root = document.getElementById('multiplier');
 renderMultiplier(root);

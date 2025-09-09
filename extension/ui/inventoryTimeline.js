@@ -1,4 +1,4 @@
-import { get as storageGet } from '../../src/services/storageService.js';
+import { get as storageGet } from '../services/storageService.js';
 
 export function computeTimeline(item) {
   const stockByWeek = item.currentStockByWeek || {};

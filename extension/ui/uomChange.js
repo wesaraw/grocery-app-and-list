@@ -1,4 +1,4 @@
-import { get as storageGet, updateItemById } from '../../src/services/storageService.js';
+import { get as storageGet, updateItemById } from '../services/storageService.js';
 import { unitNormalize } from '../utils/units.js';
 
 const CURRENT = 1;

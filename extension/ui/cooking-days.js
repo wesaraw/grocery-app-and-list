@@ -1,4 +1,4 @@
-import { get, set } from '../../src/services/storageService.js';
+import { get, set } from '../services/storageService.js';
 
 const daysFull = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 let config = { categories: {}, prepDay: null, version: 1 };

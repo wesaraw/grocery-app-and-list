@@ -1,4 +1,4 @@
-import scrapeWithStrategy from './generic.ts';
+import scrapeWithStrategy from './generic';
 
 /**
  * Scrape Walmart search results using the shared generic scraper.

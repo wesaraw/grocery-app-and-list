@@ -7,7 +7,7 @@ import {
   selectOne,
   getStoreStrategy,
   sanitizeText,
-} from './common.ts';
+} from './common';
 
 /**
  * Generic scraper that reads selector configuration from {@link storeStrategies}.

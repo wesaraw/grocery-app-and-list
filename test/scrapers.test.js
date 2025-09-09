@@ -7,7 +7,7 @@ import {
   scrapeShaws,
   scrapeStopAndShop,
   scrapeWalmart,
-} from '../src/scrapers/index.ts';
+} from '../extension/scrapers/generated/index.js';
 
 describe('store scrapers', () => {
   it('scrapes Amazon', () => {

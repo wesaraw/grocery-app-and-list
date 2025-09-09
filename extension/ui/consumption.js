@@ -1,4 +1,4 @@
-import { get as storageGet, set as storageSet } from '../../src/services/storageService.js';
+import { get as storageGet, set as storageSet } from '../services/storageService.js';
 import { renderItemsWithCategoryHeaders } from './components.js';
 
 let items = [];

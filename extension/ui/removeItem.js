@@ -1,4 +1,4 @@
-import { get as storageGet, set as storageSet, remove as storageRemove } from '../../src/services/storageService.js';
+import { get as storageGet, set as storageSet, remove as storageRemove } from '../services/storageService.js';
 
 export async function removeItem(itemId) {
   const items = await storageGet('items', []);

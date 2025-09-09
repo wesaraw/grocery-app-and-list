@@ -6,8 +6,7 @@
     "strict": false,
     "esModuleInterop": true,
     "lib": ["es2020", "dom"],
-    "skipLibCheck": true,
-    "allowImportingTsExtensions": true
+    "skipLibCheck": true
   },
   "include": ["src/**/*.ts", "test/**/*.ts"],
   "exclude": []

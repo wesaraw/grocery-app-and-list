@@ -69,6 +69,18 @@ Run `./scripts/run-tests.sh` to execute tests and lint; output is saved to `logs
 - open a separate issue or task for complex or unrelated failures.
 All tests are offline-safe; fixtures are bundled.
 
+## 🚢 Build & Load the Extension
+
+1. Bundle the source into the extension folder:
+
+   ```bash
+   npm run build
+   ```
+
+2. In Chrome, open `chrome://extensions` and enable **Developer mode**.
+3. Choose **Load unpacked** and select the `extension/` directory from this repo.
+4. The Grocery App icon should appear in the toolbar once loaded.
+
 ## 🚀 Roadmap
 - Phase 1: Analysis ✅
 - Phase 2: Core Rewrite  

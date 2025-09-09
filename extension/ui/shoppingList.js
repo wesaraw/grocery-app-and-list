@@ -1,4 +1,4 @@
-import { get as storageGet, set as storageSet, remove as storageRemove } from '../../src/services/storageService.js';
+import { get as storageGet, set as storageSet, remove as storageRemove } from '../services/storageService.js';
 
 // Placeholder image used when a product thumbnail is missing.
 const PLACEHOLDER_IMG =

@@ -1,4 +1,4 @@
-import { renderCalendarView } from '../../src/meal-planner/index.js';
+import { renderCalendarView } from '../meal-planner/index.js';
 
 const root = document.getElementById('calendar');
 renderCalendarView(root);

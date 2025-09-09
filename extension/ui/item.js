@@ -1,4 +1,4 @@
-import { get as storageGet } from '../../src/services/storageService.js';
+import { get as storageGet } from '../services/storageService.js';
 
 const STORE_SEARCH_BASE = {
   'Stop & Shop': 'https://stopandshop.com/product-search/',

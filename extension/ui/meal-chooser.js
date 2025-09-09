@@ -1,4 +1,4 @@
-import { renderMealChooser } from '../../src/meal-chooser/index.js';
+import { renderMealChooser } from '../meal-chooser/index.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   const root = document.getElementById('mealChooser');

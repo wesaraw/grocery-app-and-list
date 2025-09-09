@@ -1,17 +1,17 @@
-export { scrapeAmazon } from './amazon.ts';
-export { scrapeHannaford } from './hannaford.ts';
-export { scrapeRocheBros } from './rochebros.ts';
-export { scrapeShaws } from './shaws.ts';
-export { scrapeStopAndShop } from './stopandshop.ts';
-export { scrapeWalmart } from './walmart.ts';
+export { scrapeAmazon } from './amazon';
+export { scrapeHannaford } from './hannaford';
+export { scrapeRocheBros } from './rochebros';
+export { scrapeShaws } from './shaws';
+export { scrapeStopAndShop } from './stopandshop';
+export { scrapeWalmart } from './walmart';
 
-import { scrapeAmazon } from './amazon.ts';
-import { scrapeHannaford } from './hannaford.ts';
-import { scrapeRocheBros } from './rochebros.ts';
-import { scrapeShaws } from './shaws.ts';
-import { scrapeStopAndShop } from './stopandshop.ts';
-import { scrapeWalmart } from './walmart.ts';
-import './config.ts';
+import { scrapeAmazon } from './amazon';
+import { scrapeHannaford } from './hannaford';
+import { scrapeRocheBros } from './rochebros';
+import { scrapeShaws } from './shaws';
+import { scrapeStopAndShop } from './stopandshop';
+import { scrapeWalmart } from './walmart';
+import './config';
 
 export const scrapers = {
   amazon: scrapeAmazon,

@@ -1,4 +1,4 @@
-import { registerStoreStrategy, StoreStrategy, selectOne, parsePriceNumber } from './common.ts';
+import { registerStoreStrategy, StoreStrategy, selectOne, parsePriceNumber } from './common';
 
 // Walmart strategy: selectors and price extraction quirks.
 // Reference: Version Old/scrapers/walmart.js and "Scraper Profiling.txt"

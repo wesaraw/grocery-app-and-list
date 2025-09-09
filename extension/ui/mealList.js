@@ -1,12 +1,12 @@
-import { renderMealList } from '../../src/meal-list/index.js';
+import { renderMealList } from '../meal-list/index.js';
 import {
   importMealsFromFiles,
   rebuildCalendars
-} from '../../src/meal-planner/index.js';
+} from '../meal-planner/index.js';
 import {
   get as storageGet,
   set as storageSet
-} from '../../src/services/storageService.js';
+} from '../services/storageService.js';
 
 const root = document.getElementById('mealList');
 renderMealList(root);

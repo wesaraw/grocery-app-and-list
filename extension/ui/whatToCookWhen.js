@@ -1,4 +1,4 @@
-import { renderCookScheduleView } from '../../src/meal-planner/index.js';
+import { renderCookScheduleView } from '../meal-planner/index.js';
 
 const root = document.getElementById('schedule');
 renderCookScheduleView(root);

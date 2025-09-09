@@ -1,4 +1,4 @@
-import scrapeWithStrategy from './generic.ts';
+import scrapeWithStrategy from './generic';
 
 /**
  * Scrape Hannaford search result tiles.
