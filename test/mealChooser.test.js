@@ -90,4 +90,59 @@ describe('meal-chooser', () => {
     const eat = await storage.get('what-to-eat-calendar');
     expect(eat.calendar.u1.lunchDinner[0]).to.equal('m2');
   });
+
+  it('filters meals above the price threshold', async () => {
+    await storage.set('users', [
+      { id: 'u1', name: 'Alice', priceThresholds: { default: 5 }, version: 1 }
+    ]);
+    await storage.set('meals', [
+      {
+        id: 'm1',
+        name: 'Budget',
+        type: 'lunchDinner',
+        users: ['u1'],
+        totalCost: 4,
+        version: 1
+      },
+      {
+        id: 'm2',
+        name: 'Pricey',
+        type: 'lunchDinner',
+        users: ['u1'],
+        totalCost: 6,
+        version: 1
+      }
+    ]);
+    await rebuildCalendars();
+    const eat = await storage.get('what-to-eat-calendar');
+    expect(eat.calendar.u1.lunchDinner).to.not.include('m2');
+    expect(eat.calendar.u1.lunchDinner[0]).to.equal('m1');
+  });
+
+  it('falls back to cheapest meal when none meet threshold', async () => {
+    await storage.set('users', [
+      { id: 'u1', name: 'Alice', priceThresholds: { default: 3 }, version: 1 }
+    ]);
+    await storage.set('meals', [
+      {
+        id: 'm1',
+        name: 'Budget',
+        type: 'lunchDinner',
+        users: ['u1'],
+        totalCost: 4,
+        version: 1
+      },
+      {
+        id: 'm2',
+        name: 'Pricey',
+        type: 'lunchDinner',
+        users: ['u1'],
+        totalCost: 6,
+        version: 1
+      }
+    ]);
+    await rebuildCalendars();
+    const eat = await storage.get('what-to-eat-calendar');
+    expect(eat.calendar.u1.lunchDinner[0]).to.equal('m1');
+  });
 });

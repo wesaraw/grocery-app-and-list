@@ -18,7 +18,7 @@ export async function renderCalendarView(root) {
   ]);
 
   const mealMap = new Map(meals.map(m => [m.id, m]));
-  const calendar = calendarObj.calendar || {};
+  let calendar = calendarObj.calendar || {};
   let columnOrder = orderObj.order || {};
   let slotOrder = DEFAULT_ORDER.slice();
   let slotOrderIds = buildSlotIds(slotOrder);
@@ -212,6 +212,13 @@ export async function renderCalendarView(root) {
   startInput.value = todayStr;
   buildHeader();
   render();
+
+  // Refresh view when calendars are rebuilt elsewhere
+  document.addEventListener('calendars-updated', async () => {
+    const updated = await get('what-to-eat-calendar', { calendar: {}, version: 1 });
+    calendar = updated.calendar || {};
+    render();
+  });
 }
 
 export default { renderCalendarView };

@@ -221,9 +221,27 @@ export async function rebuildCalendars() {
   users.forEach(u => {
     const map = {};
     MEAL_CATEGORIES.forEach(cat => {
-      const allowed = meals.filter(
+      const userMeals = meals.filter(
         m => m.type === cat.id && Array.isArray(m.users) && m.users.includes(u.id)
       );
+      let allowed = userMeals;
+      const threshold = u.priceThresholds?.default;
+      if (threshold != null) {
+        // Respect legacy Price Threshold controls (Version Old/mealPlanner.html lines 20-25)
+        // and Upgrade Notes/Grocery App Feature List V1.0.txt lines 250-253.
+        allowed = userMeals.filter(
+          m => m.totalCost != null && m.totalCost <= threshold
+        );
+        if (!allowed.length && userMeals.length) {
+          const cheapest = userMeals.reduce((min, m) => {
+            const cost = m.totalCost != null ? m.totalCost : Infinity;
+            const minCost =
+              min.totalCost != null ? min.totalCost : Infinity;
+            return cost < minCost ? m : min;
+          });
+          allowed = [cheapest];
+        }
+      }
       if (allowed.length) {
         const seq = prepared[cat.id] || [];
         map[cat.id] = seq.filter(id => allowed.some(m => m.id === id));
@@ -257,7 +275,14 @@ export async function rebuildCalendars() {
   const eatObj = { calendar: whatToEat, version: 1 };
   await set('prepared-meals-calendar', preparedObj);
   await set('what-to-eat-calendar', eatObj);
-  return { prepared: preparedObj, whatToEat: eatObj, plan };
+  const detail = { prepared: preparedObj, whatToEat: eatObj, plan };
+  // Notify calendar views to refresh (Upgrade Notes/Grocery App Feature List V1.0.txt lines 257-259)
+  if (typeof document !== 'undefined') {
+    document.dispatchEvent(
+      new CustomEvent('calendars-updated', { detail })
+    );
+  }
+  return detail;
 }
 
 export async function renderMealPlanner(root) {

@@ -32,6 +32,11 @@ Built with modular utilities, unified schemas, and deduplicated data storage.
   (ported from v1 `mealImport.js` and Upgrade Notes lines 243‑249).
   See [docs/meal-import.md](docs/meal-import.md) for XML format and
   default item behavior.
+- Cost controls via per-user Price Thresholds
+  (see [docs/price-threshold.md](docs/price-threshold.md); legacy UI in
+  `Version Old/mealPlanner.html` lines 20‑25 and Upgrade Notes lines 250‑259).
+- Auto-refreshing calendar view after using Rebuild Calendars
+  (noted in Upgrade Notes lines 257‑259).
 - Unified storage service with validation, migrations, and optional caching
 - Offline-friendly test fixtures
 - Import path for v1 legacy data
