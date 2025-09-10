@@ -83,6 +83,6 @@ All tests are offline-safe; fixtures are bundled.
 
 ## 🚀 Roadmap
 - Phase 1: Analysis ✅
-- Phase 2: Core Rewrite  
-- Phase 3: Tests, CI, offline bundling  
+- Phase 2: Core Rewrite ✅
+- Phase 3: Tests, CI, offline bundling
 - Phase 4: UX polish, accessibility, release

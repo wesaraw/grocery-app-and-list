@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { set, get } from '../src/services/storageService.js';
+import { set, get, init } from '../extension/services/storageService.js';
 import { removeItem } from '../extension/ui/removeItem.js';
 
 function mockChrome() {
@@ -41,9 +41,10 @@ function mockChrome() {
 describe('remove item utility', () => {
   const chromeMock = mockChrome();
 
-  beforeEach(() => {
+  beforeEach(async () => {
     global.chrome = chromeMock.api;
     chromeMock.reset();
+    await init({ useCache: false });
   });
 
   afterEach(() => {
