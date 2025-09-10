@@ -1,7 +1,7 @@
 import { get as storageGet, set as storageSet, remove as storageRemove } from '../storageService.js';
 
 export async function removeItem(itemId) {
-  const items = await storageGet('items', []);
+  const items = await storageGet('items');
   const remainingItems = items.filter(it => it.id !== itemId);
   if (remainingItems.length > 0) {
     await storageSet('items', remainingItems);
@@ -19,7 +19,7 @@ export async function removeItem(itemId) {
 }
 
 async function populateItems() {
-  const items = await storageGet('items', []);
+  const items = await storageGet('items');
   const select = document.getElementById('item-select');
   items.forEach(it => {
     const option = document.createElement('option');

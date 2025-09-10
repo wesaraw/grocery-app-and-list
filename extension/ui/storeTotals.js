@@ -22,7 +22,7 @@ export function computeStoreTotals(items = []) {
 }
 
 async function renderTotals() {
-  const items = await storageGet('items', []);
+  const items = await storageGet('items');
   const totals = computeStoreTotals(items);
   const host = document.getElementById('totals');
   Object.entries(totals).forEach(([store, data]) => {

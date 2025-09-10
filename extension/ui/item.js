@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const backBtn = document.getElementById('back');
   backBtn.addEventListener('click', () => window.close());
 
-  const items = await storageGet('items', []);
+  const items = await storageGet('items');
   const stores = await storageGet('stores', []);
   const item = items.find(it => it.id === itemParam || it.name === itemParam);
   const itemName = item?.name || itemParam;

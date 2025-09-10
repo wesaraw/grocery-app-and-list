@@ -29,7 +29,7 @@ function addRow(week = '', qty = '') {
 }
 
 async function populateItems() {
-  const items = await storageGet('items', []);
+  const items = await storageGet('items');
   const select = document.getElementById('item-select');
   items.forEach(it => {
     const opt = document.createElement('option');

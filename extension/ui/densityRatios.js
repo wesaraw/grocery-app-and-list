@@ -3,7 +3,7 @@ import { get as storageGet, updateItemById } from '../storageService.js';
 const CURRENT = 1;
 
 async function populate() {
-  const items = await storageGet('items', []);
+  const items = await storageGet('items');
   const table = document.getElementById('ratio-table');
   items.forEach(item => {
     const row = document.createElement('tr');

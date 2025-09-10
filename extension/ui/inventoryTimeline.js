@@ -27,7 +27,7 @@ export function computeTimeline(item) {
 }
 
 async function render() {
-  const items = await storageGet('items', []);
+  const items = await storageGet('items');
   const container = document.getElementById('timeline');
   container.innerHTML = '';
   const table = document.createElement('table');

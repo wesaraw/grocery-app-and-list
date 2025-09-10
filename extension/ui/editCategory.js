@@ -3,7 +3,7 @@ import { get as storageGet, updateItemById } from '../storageService.js';
 const CURRENT = 1;
 
 async function populate() {
-  const items = await storageGet('items', []);
+  const items = await storageGet('items');
   const itemSelect = document.getElementById('item-select');
   const categorySelect = document.getElementById('category-select');
   const categories = new Set();

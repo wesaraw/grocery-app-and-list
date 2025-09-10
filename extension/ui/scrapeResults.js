@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const title = document.getElementById('title');
   title.textContent = store ? `${store} results` : 'Results';
 
-  const items = await storageGet('items', []);
+  const items = await storageGet('items');
   const item = items.find(it => it.id === itemParam || it.name === itemParam);
   const scraped = item?.options?.scraped || [];
   const rec = scraped.find(s => s.store === store);

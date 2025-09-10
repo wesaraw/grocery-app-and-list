@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const storeTotalsBtn = document.getElementById('storeTotalsBtn');
 
   const [storedItems, commitItems] = await Promise.all([
-    storageGet('items', []),
+    storageGet('items'),
     storageGet('lastCommitItems', [])
   ]);
   items = storedItems;

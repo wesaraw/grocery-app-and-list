@@ -123,7 +123,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.close();
         return;
       }
-      const items = await storageGet('items', []);
+      const items = await storageGet('items');
       for (const entry of commitItems) {
         const target = items.find(
           it => it.name === entry.item || it.id === entry.item

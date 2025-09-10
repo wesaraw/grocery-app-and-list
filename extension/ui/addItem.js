@@ -35,7 +35,7 @@ document.getElementById('commit').addEventListener('click', async () => {
     return;
   }
 
-  const items = await storageGet('items', []);
+  const items = await storageGet('items');
   const id = crypto.randomUUID();
   const week = getCurrentWeek();
   const stockQty = qty * conversion;
