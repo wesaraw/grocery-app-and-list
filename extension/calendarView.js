@@ -3,6 +3,7 @@ import { MEAL_CATEGORIES } from './constants.js';
 import './meals.js';
 import './users.js';
 import './cookingDays.js';
+import './validators.js';
 
 const COLUMN_KEY = 'calendar-column-order';
 const ORDER_VERSION = 1;
@@ -19,7 +20,7 @@ function buildSlotIds(order) {
 }
 
 async function renderCalendarView(root) {
-  const [users = [], meals = [], calendarObj = { }, orderObj = { } ] = await Promise.all([
+  const [users = [], meals = [], calendarObj = { calendar: {} }, orderObj = { version: ORDER_VERSION, order: {} } ] = await Promise.all([
     get('users', []),
     get('meals', []),
     get('what-to-eat-calendar', { calendar: {}, version: 1 }),

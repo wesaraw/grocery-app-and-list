@@ -1,11 +1,11 @@
 import { get, set } from './storageService.js';
 import { DEFAULT_MEALS_PER_DAY, MEAL_CATEGORIES } from './constants.js';
-import { DOMParser as DOMParser$1 } from '@xmldom/xmldom';
 export { renderCalendarView } from './calendarView.js';
 export { renderCookScheduleView } from './cookScheduleView.js';
 import './meals.js';
 import './users.js';
 import './cookingDays.js';
+import './validators.js';
 
 function getCurrentWeek() {
   const start = new Date(new Date().getFullYear(), 0, 1);
@@ -49,8 +49,7 @@ async function readAsDataURL(file) {
 }
 
 function parseMealsFromXml(text) {
-  const Parser = typeof DOMParser !== 'undefined' ? DOMParser : DOMParser$1;
-  const parser = new Parser();
+  const parser = new DOMParser();
   const doc = parser.parseFromString(text, 'application/xml');
   const meals = [];
   const mealEls = doc.getElementsByTagName('meal');

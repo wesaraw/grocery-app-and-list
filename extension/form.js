@@ -3,6 +3,7 @@ import './constants.js';
 import './meals.js';
 import './users.js';
 import './cookingDays.js';
+import './validators.js';
 
 const UNITS = ['', 'g', 'kg', 'oz', 'lb', 'ml', 'l', 'cup', 'tbsp', 'tsp', 'pc'];
 

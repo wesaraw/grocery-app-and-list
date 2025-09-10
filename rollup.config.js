@@ -6,13 +6,13 @@ import json from '@rollup/plugin-json';
 
 const commonPlugins = [nodeResolve(), commonjs(), json(), typescript()];
 
-const generalFiles = globSync('src/**/*.{js,ts}', { ignore: 'src/scrapers/**' });
+const generalFiles = globSync('src/**/*.{js,ts}', { ignore: ['src/scrapers/**', 'src/services/storageSchemas.js'] });
 const scraperFiles = globSync('src/scrapers/**/*.ts');
 
 export default [
   {
     input: generalFiles,
-    external: ['@xmldom/xmldom'],
+    external: [],
     output: {
       dir: 'extension',
       format: 'esm',
@@ -23,7 +23,7 @@ export default [
   },
   {
     input: scraperFiles,
-    external: ['@xmldom/xmldom'],
+    external: [],
     output: {
       dir: 'extension/scrapers/generated',
       format: 'esm',

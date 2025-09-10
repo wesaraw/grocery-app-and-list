@@ -4,7 +4,7 @@ import { calculateMealNeeds } from './index4.js';
 import './meals.js';
 import './users.js';
 import './cookingDays.js';
-import '@xmldom/xmldom';
+import './validators.js';
 import './calendarView.js';
 import './cookScheduleView.js';
 

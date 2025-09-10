@@ -3,13 +3,14 @@ import './constants.js';
 import './meals.js';
 import './users.js';
 import './cookingDays.js';
+import './validators.js';
 
 async function renderCookScheduleView(root) {
   const [
     users = [],
     meals = [],
-    calendarObj = { },
-    cookingDays = { }
+    calendarObj = { calendar: {}, version: 1 },
+    cookingDays = { categories: {}, prepDay: null, version: 1 }
   ] = await Promise.all([
     get('users', []),
     get('meals', []),

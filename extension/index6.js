@@ -3,6 +3,7 @@ import { DEFAULT_MEALS_PER_DAY, MEAL_CATEGORIES } from './constants.js';
 import './meals.js';
 import './users.js';
 import './cookingDays.js';
+import './validators.js';
 
 function getCurrentWeek() {
   const start = new Date(new Date().getFullYear(), 0, 1);

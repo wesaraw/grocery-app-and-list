@@ -4,6 +4,7 @@ import { renderMealForm } from './form.js';
 import './meals.js';
 import './users.js';
 import './cookingDays.js';
+import './validators.js';
 
 async function renderMealList(root, { category } = {}) {
   const meals = await get('meals', []);
