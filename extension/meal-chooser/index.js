@@ -1,4 +1,4 @@
-import { get, set } from '../services/storageService.js';
+import { get, set } from '../storageService.js';
 import { DEFAULT_MEALS_PER_DAY, MEAL_CATEGORIES } from '../meal-multiplier/constants.js';
 
 function getCurrentWeek() {

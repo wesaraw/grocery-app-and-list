@@ -5,6 +5,8 @@ import { scrapeShaws } from './shaws.js';
 import { scrapeStopAndShop } from './stopandshop.js';
 import { scrapeWalmart } from './walmart.js';
 import './config.js';
+import './generic.js';
+import './common.js';
 
 const scrapers = {
     amazon: scrapeAmazon,

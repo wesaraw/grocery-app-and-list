@@ -1,4 +1,4 @@
-import { get, set } from '../services/storageService.js';
+import { get, set } from '../storageService.js';
 import { DEFAULT_MEALS_PER_DAY, MEAL_CATEGORIES } from '../meal-multiplier/constants.js';
 import { DOMParser as DOMParser$1 } from '@xmldom/xmldom';
 export { renderCalendarView } from './calendarView.js';

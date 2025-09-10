@@ -1,4 +1,4 @@
-import { get as storageGet, set as storageSet } from '../services/storageService.js';
+import { get as storageGet, set as storageSet } from '../storageService.js';
 import { calculatePackUnits } from '../utils/pack.js';
 
 const WEEKS_PER_MONTH = 4.33;

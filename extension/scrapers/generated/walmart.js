@@ -1,4 +1,5 @@
 import { scrapeWithStrategy } from './generic.js';
+import './common.js';
 
 /**
  * Scrape Walmart search results using the shared generic scraper.

@@ -1,4 +1,4 @@
-import { get } from '../services/storageService.js';
+import { get } from '../storageService.js';
 
 async function renderCookScheduleView(root) {
   const [

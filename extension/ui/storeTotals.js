@@ -1,4 +1,4 @@
-import { get as storageGet } from '../services/storageService.js';
+import { get as storageGet } from '../storageService.js';
 
 export function computeStoreTotals(items = []) {
   const totals = {};

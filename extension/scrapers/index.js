@@ -1,5 +1,5 @@
 import { scrape } from './generated/index.js';
-import { get as storageGet, set as storageSet } from '../services/storageService.js';
+import { get as storageGet, set as storageSet } from '../storageService.js';
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type !== 'triggerScrape') return;

@@ -2,8 +2,10 @@ import globals from "globals";
 
 export default [
   {
+    ignores: ["node_modules/**", "**/*.ts", "extension/**"],
+  },
+  {
     files: ["**/*.js"],
-    ignores: ["node_modules/**", "**/*.ts"],
     languageOptions: {
       globals: {
         ...globals.node,

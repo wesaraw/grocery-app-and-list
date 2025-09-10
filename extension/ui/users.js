@@ -1,4 +1,4 @@
-import { get, set, updateItemById } from '../services/storageService.js';
+import { get, set, updateItemById } from '../storageService.js';
 
 let users = [];
 let schedules = [];

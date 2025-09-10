@@ -1,4 +1,4 @@
-import { get, set } from '../services/storageService.js';
+import { get, set } from '../storageService.js';
 import { MEAL_CATEGORIES, DEFAULT_MEALS_PER_DAY } from './constants.js';
 import { calculateMealNeeds } from '../meal-planner/index.js';
 

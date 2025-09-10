@@ -1,4 +1,4 @@
-import { get, set, updateItemById } from '../services/storageService.js';
+import { get, set, updateItemById } from '../storageService.js';
 
 const UNITS = ['', 'g', 'kg', 'oz', 'lb', 'ml', 'l', 'cup', 'tbsp', 'tsp', 'pc'];
 

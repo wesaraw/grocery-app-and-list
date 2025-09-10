@@ -1,4 +1,4 @@
-import { get, set } from '../services/storageService.js';
+import { get, set } from '../storageService.js';
 import { MEAL_CATEGORIES } from '../meal-multiplier/constants.js';
 
 const COLUMN_KEY = 'calendar-column-order';

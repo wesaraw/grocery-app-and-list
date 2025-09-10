@@ -1,4 +1,4 @@
-import { get as storageGet, set as storageSet } from '../services/storageService.js';
+import { get as storageGet, set as storageSet } from '../storageService.js';
 import { renderItemsWithCategoryHeaders } from './components.js';
 import { rebuildCalendars } from '../meal-planner/index.js';
 

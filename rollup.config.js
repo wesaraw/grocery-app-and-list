@@ -17,8 +17,7 @@ export default [
       dir: 'extension',
       format: 'esm',
       sourcemap: true,
-      preserveModules: true,
-      preserveModulesRoot: 'src'
+      preserveModules: false
     },
     plugins: commonPlugins
   },
@@ -29,8 +28,7 @@ export default [
       dir: 'extension/scrapers/generated',
       format: 'esm',
       sourcemap: true,
-      preserveModules: true,
-      preserveModulesRoot: 'src/scrapers'
+      preserveModules: false
     },
     plugins: commonPlugins
   }

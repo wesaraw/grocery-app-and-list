@@ -1,4 +1,5 @@
 import { scrapeWithStrategy } from './generic.js';
+import './common.js';
 
 /**
  * Scrape Amazon search results.

@@ -6,7 +6,7 @@ import {
 import {
   get as storageGet,
   set as storageSet
-} from '../services/storageService.js';
+} from '../storageService.js';
 
 const root = document.getElementById('mealList');
 renderMealList(root);

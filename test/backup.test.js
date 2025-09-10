@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { set, get, init } from '../extension/services/storageService.js';
+import { set, get, init } from '../extension/storageService.js';
 import { exportAll, importAll } from '../extension/ui/backup.js';
 
 function mockChrome() {

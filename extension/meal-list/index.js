@@ -1,4 +1,4 @@
-import { get, set, updateItemById } from '../services/storageService.js';
+import { get, set, updateItemById } from '../storageService.js';
 import { MEAL_CATEGORIES } from '../meal-multiplier/constants.js';
 import { renderMealForm } from './form.js';
 
