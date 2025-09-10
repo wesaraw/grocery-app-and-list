@@ -1,0 +1,2890 @@
+[
+  {
+    "id": "1",
+    "name": "Air Fryer Vegetables Seasoned Frozen Foods",
+    "unit": "each",
+    "category": "Freezer",
+    "treatAsWholeUnit": true,
+    "shelfLifeWeeks": 48,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 4.33,
+      "yearly": 52
+    },
+    "version": 1
+  },
+  {
+    "id": "2",
+    "name": "Bagels 6 count Bakery & Bread",
+    "unit": "each",
+    "category": "Other",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 4,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 15.5,
+      "yearly": 186
+    },
+    "version": 1
+  },
+  {
+    "id": "3",
+    "name": "Bags Freezer",
+    "unit": "each",
+    "category": "Other",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 48,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 77.94,
+      "yearly": 936
+    },
+    "version": 1
+  },
+  {
+    "id": "4",
+    "name": "Bags Quart",
+    "unit": "each",
+    "category": "Other",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 48,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 8.31,
+      "yearly": 100
+    },
+    "version": 1
+  },
+  {
+    "id": "5",
+    "name": "Kraft Macaroni & Cheese Original Flavor Packaged Meals",
+    "unit": "each",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 12,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 2.51,
+      "yearly": 30
+    },
+    "version": 1
+  },
+  {
+    "id": "6",
+    "name": "Minute Rice White Side Dishes",
+    "unit": "each",
+    "category": "Freezer",
+    "treatAsWholeUnit": true,
+    "shelfLifeWeeks": 96,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 2.16,
+      "yearly": 26
+    },
+    "version": 1
+  },
+  {
+    "id": "7",
+    "name": "Cream of Wheat Instant Maple Brown Sugar Breakfast Cereals",
+    "unit": "each",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 4.98,
+      "yearly": 60
+    },
+    "version": 1
+  },
+  {
+    "id": "8",
+    "name": "Bread Sandwich Bakery & Bread",
+    "unit": "slice",
+    "category": "Other",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 4,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 25.98,
+      "yearly": 312
+    },
+    "version": 1
+  },
+  {
+    "id": "9",
+    "name": "Pedigree DentaStix  Pet Supplies",
+    "unit": "each",
+    "category": "Pet",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 60.79,
+      "yearly": 730
+    },
+    "version": 1
+  },
+  {
+    "id": "10",
+    "name": "Cilantro  Produce",
+    "unit": "each",
+    "category": "Produce",
+    "treatAsWholeUnit": true,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 0.26,
+      "yearly": 3
+    },
+    "version": 1
+  },
+  {
+    "id": "11",
+    "name": "Brown Sugar  Baking & Cooking",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 8.01,
+      "yearly": 96
+    },
+    "version": 1
+  },
+  {
+    "id": "12",
+    "name": "Bob Evans Macaroni & Cheese  Packaged Meals",
+    "unit": "each",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 12,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 4.33,
+      "yearly": 52
+    },
+    "version": 1
+  },
+  {
+    "id": "13",
+    "name": "Cheese Shredded Cheddar Dairy",
+    "unit": "oz",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 12,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 17.32,
+      "yearly": 208
+    },
+    "version": 1
+  },
+  {
+    "id": "14",
+    "name": "Purell Hand Sanitizer  Health & Beauty",
+    "unit": "oz",
+    "category": "Other",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 17.97,
+      "yearly": 216
+    },
+    "version": 1
+  },
+  {
+    "id": "15",
+    "name": "Cheese White Sharp, Shredded Dairy",
+    "unit": "oz",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 12,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 11.99,
+      "yearly": 144
+    },
+    "version": 1
+  },
+  {
+    "id": "16",
+    "name": "Beef Strip Steak Meat",
+    "unit": "oz",
+    "category": "Freezer",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1,
+      "yearly": 12
+    },
+    "version": 1
+  },
+  {
+    "id": "17",
+    "name": "Cottage Cheese Small Curd Dairy",
+    "unit": "oz",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 12,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 47.98,
+      "yearly": 576
+    },
+    "version": 1
+  },
+  {
+    "id": "18",
+    "name": "Flour  Baking & Cooking",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1.65,
+      "yearly": 20
+    },
+    "version": 1
+  },
+  {
+    "id": "19",
+    "name": "Bell Peppers  Produce",
+    "unit": "each",
+    "category": "Produce",
+    "treatAsWholeUnit": true,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1.99,
+      "yearly": 24
+    },
+    "version": 1
+  },
+  {
+    "id": "20",
+    "name": "Garlic  Produce",
+    "unit": "each",
+    "category": "Produce",
+    "treatAsWholeUnit": true,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 0.26,
+      "yearly": 3
+    },
+    "version": 1
+  },
+  {
+    "id": "21",
+    "name": "Ginger  Produce",
+    "unit": "each",
+    "category": "Produce",
+    "treatAsWholeUnit": true,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 0.26,
+      "yearly": 3
+    },
+    "version": 1
+  },
+  {
+    "id": "22",
+    "name": "Cheese Muenster, Sliced Dairy",
+    "unit": "slices",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 12,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 24.64,
+      "yearly": 296
+    },
+    "version": 1
+  },
+  {
+    "id": "23",
+    "name": "Heavy Cream  Dairy",
+    "unit": "oz",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 0.52,
+      "yearly": 6
+    },
+    "version": 1
+  },
+  {
+    "id": "24",
+    "name": "Cheese String Dairy",
+    "unit": "each",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 12,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 51.96,
+      "yearly": 624
+    },
+    "version": 1
+  },
+  {
+    "id": "25",
+    "name": "Ground Beef Angus Sirloin Meat",
+    "unit": "oz",
+    "category": "Freezer",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1.99,
+      "yearly": 24
+    },
+    "version": 1
+  },
+  {
+    "id": "26",
+    "name": "Kale  Produce",
+    "unit": "each",
+    "category": "Produce",
+    "treatAsWholeUnit": true,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 0.17,
+      "yearly": 2
+    },
+    "version": 1
+  },
+  {
+    "id": "27",
+    "name": "Lime Juice  Beverages",
+    "unit": "oz",
+    "category": "Freezer",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 2.51,
+      "yearly": 30
+    },
+    "version": 1
+  },
+  {
+    "id": "28",
+    "name": "Milk Gallon 1 Dairy",
+    "unit": "gallon",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 4,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 4.33,
+      "yearly": 52
+    },
+    "version": 1
+  },
+  {
+    "id": "29",
+    "name": "Mushrooms Shiitake Produce",
+    "unit": "oz",
+    "category": "Produce",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 29.96,
+      "yearly": 360
+    },
+    "version": 1
+  },
+  {
+    "id": "30",
+    "name": "Imitation Crab  Seafood",
+    "unit": "oz",
+    "category": "Other",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 60.62,
+      "yearly": 728
+    },
+    "version": 1
+  },
+  {
+    "id": "31",
+    "name": "Paper Bowl 20 oz",
+    "unit": "each",
+    "category": "Household",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 35.98,
+      "yearly": 432
+    },
+    "version": 1
+  },
+  {
+    "id": "32",
+    "name": "Paper Plate Everyday 10.06",
+    "unit": "each",
+    "category": "Household",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 62.44,
+      "yearly": 750
+    },
+    "version": 1
+  },
+  {
+    "id": "33",
+    "name": "Paper Plate Everyday 6.87",
+    "unit": "each",
+    "category": "Household",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 63.95,
+      "yearly": 768
+    },
+    "version": 1
+  },
+  {
+    "id": "34",
+    "name": "Potatoes Baby Produce",
+    "unit": "oz",
+    "category": "Produce",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 5.98,
+      "yearly": 72
+    },
+    "version": 1
+  },
+  {
+    "id": "35",
+    "name": "Pet Treats Pill Pockets Pet Supplies",
+    "unit": "each",
+    "category": "Pet",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 60.79,
+      "yearly": 730
+    },
+    "version": 1
+  },
+  {
+    "id": "36",
+    "name": "Sausage Sweet Meat",
+    "unit": "oz",
+    "category": "Freezer",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 23.99,
+      "yearly": 288
+    },
+    "version": 1
+  },
+  {
+    "id": "37",
+    "name": "Potatoes Red Produce",
+    "unit": "oz",
+    "category": "Produce",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 20,
+      "yearly": 240
+    },
+    "version": 1
+  },
+  {
+    "id": "38",
+    "name": "Potatoes Russet Produce",
+    "unit": "oz",
+    "category": "Produce",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 42.65,
+      "yearly": 512
+    },
+    "version": 1
+  },
+  {
+    "id": "39",
+    "name": "Potatoes Yams Produce",
+    "unit": "oz",
+    "category": "Produce",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 3.98,
+      "yearly": 48
+    },
+    "version": 1
+  },
+  {
+    "id": "40",
+    "name": "Pretzel Frozen Frozen Foods",
+    "unit": "each",
+    "category": "Freezer",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 48,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 12.99,
+      "yearly": 156
+    },
+    "version": 1
+  },
+  {
+    "id": "41",
+    "name": "Sugar Snap Peas  Produce",
+    "unit": "oz",
+    "category": "Produce",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 7.49,
+      "yearly": 90
+    },
+    "version": 1
+  },
+  {
+    "id": "42",
+    "name": "Sriracha Hot Chili Sauce,  Condiments Sauces",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 72,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1.43,
+      "yearly": 17
+    },
+    "version": 1
+  },
+  {
+    "id": "43",
+    "name": "Birds Eye Skillet Meals  Frozen Foods",
+    "unit": "each",
+    "category": "Freezer",
+    "treatAsWholeUnit": true,
+    "shelfLifeWeeks": 48,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 2.16,
+      "yearly": 26
+    },
+    "version": 1
+  },
+  {
+    "id": "44",
+    "name": "Tortillas  Bakery & Bread",
+    "unit": "each",
+    "category": "Other",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 4,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 4.98,
+      "yearly": 60
+    },
+    "version": 1
+  },
+  {
+    "id": "45",
+    "name": "Aleia's Bread Crumbs Italian, Gluten Free Baking Supplies",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 4,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 12.99,
+      "yearly": 156
+    },
+    "version": 1
+  },
+  {
+    "id": "46",
+    "name": "Argo Corn Starch 100 Pure Baking Supplies",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 2.68,
+      "yearly": 32
+    },
+    "version": 1
+  },
+  {
+    "id": "47",
+    "name": "Arm & Hammer Baking Soda Pure Baking Supplies",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 5.33,
+      "yearly": 64
+    },
+    "version": 1
+  },
+  {
+    "id": "48",
+    "name": "Barilla Pasta Fettuccine Pasta",
+    "unit": "each",
+    "category": "Pantry",
+    "treatAsWholeUnit": true,
+    "shelfLifeWeeks": 96,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1.34,
+      "yearly": 16
+    },
+    "version": 1
+  },
+  {
+    "id": "49",
+    "name": "Bertolli Vinegar Balsamic Vinegars",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 0.69,
+      "yearly": 8.5
+    },
+    "version": 1
+  },
+  {
+    "id": "50",
+    "name": "Betty Crocker Cookie Mix Snickerdoodle Baking Supplies",
+    "unit": "each",
+    "category": "Pantry",
+    "treatAsWholeUnit": true,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1,
+      "yearly": 12
+    },
+    "version": 1
+  },
+  {
+    "id": "51",
+    "name": "Foxy Romaine Hearts  Fresh Produce",
+    "unit": "each",
+    "category": "Produce",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 3.98,
+      "yearly": 48
+    },
+    "version": 1
+  },
+  {
+    "id": "52",
+    "name": "Botticelli Pasta Sauce Traditional Premium Pasta Sauce",
+    "unit": "each",
+    "category": "Freezer",
+    "treatAsWholeUnit": true,
+    "shelfLifeWeeks": 96,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1.99,
+      "yearly": 24
+    },
+    "version": 1
+  },
+  {
+    "id": "53",
+    "name": "Bounty Paper Towels",
+    "unit": "sheets",
+    "category": "Household",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 14.98,
+      "yearly": 180
+    },
+    "version": 1
+  },
+  {
+    "id": "54",
+    "name": "Bragg Apple Cider Vinegar Organic Vinegars",
+    "unit": "oz",
+    "category": "Produce",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1.34,
+      "yearly": 16
+    },
+    "version": 1
+  },
+  {
+    "id": "55",
+    "name": "Bumble Bee Canned Tuna Albacore Light Canned Seafood",
+    "unit": "each",
+    "category": "Pantry",
+    "treatAsWholeUnit": true,
+    "shelfLifeWeeks": 96,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1,
+      "yearly": 12
+    },
+    "version": 1
+  },
+  {
+    "id": "56",
+    "name": "Cabot Butter Salted Dairy",
+    "unit": "oz",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 15.98,
+      "yearly": 192
+    },
+    "version": 1
+  },
+  {
+    "id": "57",
+    "name": "Campbell's Soup Chicken Noodle Soup",
+    "unit": "each",
+    "category": "Freezer",
+    "treatAsWholeUnit": true,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1,
+      "yearly": 12
+    },
+    "version": 1
+  },
+  {
+    "id": "58",
+    "name": "Cascade Dishwasher Detergent Platinum",
+    "unit": "oz",
+    "category": "Household",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 15.5,
+      "yearly": 186
+    },
+    "version": 1
+  },
+  {
+    "id": "59",
+    "name": "Cheerios Cereal Strawberry Banana Breakfast Cereals",
+    "unit": "oz",
+    "category": "Produce",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 7.49,
+      "yearly": 90
+    },
+    "version": 1
+  },
+  {
+    "id": "60",
+    "name": "Chex Cereal Corn Breakfast Cereals",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 5.98,
+      "yearly": 72
+    },
+    "version": 1
+  },
+  {
+    "id": "61",
+    "name": "Chips Ahoy Cookies Chocolate Chip Snacks",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 48,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 78.81,
+      "yearly": 946.4
+    },
+    "version": 1
+  },
+  {
+    "id": "62",
+    "name": "Chosen Foods Oil Organic Avocado, Coconut & Safflower Cooking Oils",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1.43,
+      "yearly": 16.9
+    },
+    "version": 1
+  },
+  {
+    "id": "63",
+    "name": "Coffee-mate Iced Coffee French Vanilla Beverages",
+    "unit": "oz",
+    "category": "Freezer",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 22,
+      "yearly": 264
+    },
+    "version": 1
+  },
+  {
+    "id": "64",
+    "name": "Heinz Ketchup Tomato Condiments",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 48,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 16.8,
+      "yearly": 202
+    },
+    "version": 1
+  },
+  {
+    "id": "65",
+    "name": "Philadelphia Cream Cheese Spread Original Dairy",
+    "unit": "oz",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 12,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 8.01,
+      "yearly": 96
+    },
+    "version": 1
+  },
+  {
+    "id": "66",
+    "name": "Store brand Cheddar Cheese Medium Sliced,  Dairy",
+    "unit": "oz",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 12,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 30.83,
+      "yearly": 370
+    },
+    "version": 1
+  },
+  {
+    "id": "67",
+    "name": "Daisy Sour Cream  Dairy",
+    "unit": "oz",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 4.68,
+      "yearly": 56
+    },
+    "version": 1
+  },
+  {
+    "id": "68",
+    "name": "Dawn Dishwand Ultra Soap Dispensing Cleaning Supplies",
+    "unit": "oz",
+    "category": "Household",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 0.09,
+      "yearly": 1
+    },
+    "version": 1
+  },
+  {
+    "id": "69",
+    "name": "Dawn Dishwashing Liquid Platinum Refreshing Rain Cleaning Supplies",
+    "unit": "oz",
+    "category": "Household",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 71.45,
+      "yearly": 858
+    },
+    "version": 1
+  },
+  {
+    "id": "70",
+    "name": "Store brand Parmesan Cheese Grated,  Dairy",
+    "unit": "oz",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 12,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 3.98,
+      "yearly": 48
+    },
+    "version": 1
+  },
+  {
+    "id": "71",
+    "name": "Diamond of California Pecans Finely Diced Baking Nuts",
+    "unit": "oz",
+    "category": "Freezer",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 96,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 0.52,
+      "yearly": 6
+    },
+    "version": 1
+  },
+  {
+    "id": "72",
+    "name": "Domino Powdered Sugar Premium Cane Baking Supplies",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 96,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 2.68,
+      "yearly": 32
+    },
+    "version": 1
+  },
+  {
+    "id": "73",
+    "name": "Filippo Berio Olive Oil Extra Light Cooking Oils",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 4.16,
+      "yearly": 50
+    },
+    "version": 1
+  },
+  {
+    "id": "74",
+    "name": "Stouffer's Mac N Cheese Bites  Frozen Foods",
+    "unit": "oz",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 48,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 7.01,
+      "yearly": 84
+    },
+    "version": 1
+  },
+  {
+    "id": "75",
+    "name": "Frank's RedHot Sauce Original Condiments Sauces",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 72,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1.91,
+      "yearly": 23
+    },
+    "version": 1
+  },
+  {
+    "id": "76",
+    "name": "French's Mustard Classic Yellow Condiments",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 48,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 0.82,
+      "yearly": 10
+    },
+    "version": 1
+  },
+  {
+    "id": "77",
+    "name": "Frenches Fried Onions Crispy  Condiments",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 48,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1,
+      "yearly": 12
+    },
+    "version": 1
+  },
+  {
+    "id": "78",
+    "name": "Glad Trash Bags 13 Gallon, forceflex, fresh clean Cleaning",
+    "unit": "each",
+    "category": "Household",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 10,
+      "yearly": 120
+    },
+    "version": 1
+  },
+  {
+    "id": "79",
+    "name": "Broccoli Frozen Frozen Foods",
+    "unit": "each",
+    "category": "Freezer",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 48,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 4.33,
+      "yearly": 52
+    },
+    "version": 1
+  },
+  {
+    "id": "80",
+    "name": "Green Mountain Coffee K-Cup Pods Nantucket Blend, Medium Roast Coffee & Tea",
+    "unit": "each",
+    "category": "Beverages",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 30.4,
+      "yearly": 365
+    },
+    "version": 1
+  },
+  {
+    "id": "81",
+    "name": "Grey Poupon Mustard Dijon Condiments",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 48,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 2.68,
+      "yearly": 32
+    },
+    "version": 1
+  },
+  {
+    "id": "82",
+    "name": "Gulden's Mustard Spicy Brown Condiments",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 48,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1,
+      "yearly": 12
+    },
+    "version": 1
+  },
+  {
+    "id": "83",
+    "name": "Hamburger Helper Pasta Meal Deluxe Beef Stroganoff Packaged Meals",
+    "unit": "each",
+    "category": "Freezer",
+    "treatAsWholeUnit": true,
+    "shelfLifeWeeks": 96,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1.08,
+      "yearly": 13
+    },
+    "version": 1
+  },
+  {
+    "id": "84",
+    "name": "Hamburger Helper Pasta Meal Potatoes Stroganoff Packaged Meals",
+    "unit": "each",
+    "category": "Pantry",
+    "treatAsWholeUnit": true,
+    "shelfLifeWeeks": 96,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1.08,
+      "yearly": 13
+    },
+    "version": 1
+  },
+  {
+    "id": "85",
+    "name": "Hass Avocados 4 ct Fresh Produce",
+    "unit": "each",
+    "category": "Produce",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1,
+      "yearly": 12
+    },
+    "version": 1
+  },
+  {
+    "id": "86",
+    "name": "Ice Cream  Frozen Foods",
+    "unit": "pint",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 48,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 4.33,
+      "yearly": 52
+    },
+    "version": 1
+  },
+  {
+    "id": "87",
+    "name": "Hellmann's Mayonnaise Real Condiments Spreads",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 48,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 14.98,
+      "yearly": 180
+    },
+    "version": 1
+  },
+  {
+    "id": "88",
+    "name": "Hellmann's Mayonnaise Real Squeeze Bottle Condiments",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 48,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 6.67,
+      "yearly": 80
+    },
+    "version": 1
+  },
+  {
+    "id": "89",
+    "name": "Hellmann's Mayonnaise Spicy Condiments",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 48,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 0.95,
+      "yearly": 11.5
+    },
+    "version": 1
+  },
+  {
+    "id": "90",
+    "name": "Hershey's Cocoa  Baking Supplies",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 0.35,
+      "yearly": 4
+    },
+    "version": 1
+  },
+  {
+    "id": "91",
+    "name": "Hershey's Syrup Genuine Chocolate Flavor Condiments Syrups",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 48,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 23.99,
+      "yearly": 288
+    },
+    "version": 1
+  },
+  {
+    "id": "92",
+    "name": "Hormel Canned Chicken Breast  Canned Meats",
+    "unit": "each",
+    "category": "Freezer",
+    "treatAsWholeUnit": true,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 0.09,
+      "yearly": 1
+    },
+    "version": 1
+  },
+  {
+    "id": "93",
+    "name": "Del Monte Mixed Vegetables  Canned",
+    "unit": "each",
+    "category": "Produce",
+    "treatAsWholeUnit": true,
+    "shelfLifeWeeks": 96,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1.99,
+      "yearly": 24
+    },
+    "version": 1
+  },
+  {
+    "id": "94",
+    "name": "I Can't Believe It's Not Butter! Butter Spray Original Spreads",
+    "unit": "oz",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 96,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 8.01,
+      "yearly": 96
+    },
+    "version": 1
+  },
+  {
+    "id": "95",
+    "name": "I Can't Believe It's Not Butter! Butter Substitute  Spreads",
+    "unit": "oz",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 96,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 44.95,
+      "yearly": 540
+    },
+    "version": 1
+  },
+  {
+    "id": "96",
+    "name": "Idahoan Mashed Potatoes Loaded Baked Side Dishes",
+    "unit": "each",
+    "category": "Other",
+    "treatAsWholeUnit": true,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1.43,
+      "yearly": 17
+    },
+    "version": 1
+  },
+  {
+    "id": "97",
+    "name": "Jif Peanut Butter Creamy Spreads",
+    "unit": "oz",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 13.34,
+      "yearly": 160
+    },
+    "version": 1
+  },
+  {
+    "id": "98",
+    "name": "Ken's Steak House Blue Cheese Dressing Chunky Condiments Dressings",
+    "unit": "oz",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 12,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 2.68,
+      "yearly": 32
+    },
+    "version": 1
+  },
+  {
+    "id": "99",
+    "name": "Kerrygold Butter Pure Irish, Unsalted Dairy",
+    "unit": "oz",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 2.68,
+      "yearly": 32
+    },
+    "version": 1
+  },
+  {
+    "id": "100",
+    "name": "Kikkoman Marinade & Sauce Teriyaki Condiments Sauces",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 72,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1.26,
+      "yearly": 15
+    },
+    "version": 1
+  },
+  {
+    "id": "101",
+    "name": "Beef Steak Tips Meat",
+    "unit": "oz",
+    "category": "Freezer",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1,
+      "yearly": 12
+    },
+    "version": 1
+  },
+  {
+    "id": "102",
+    "name": "Kozy Shack Rice Pudding Original Recipe, Gluten Free Dairy",
+    "unit": "oz",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 96,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 25.98,
+      "yearly": 312
+    },
+    "version": 1
+  },
+  {
+    "id": "103",
+    "name": "Lindy Italian Ice  Frozen Foods",
+    "unit": "oz",
+    "category": "Freezer",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 48,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 45.98,
+      "yearly": 552
+    },
+    "version": 1
+  },
+  {
+    "id": "104",
+    "name": "Krusteaz Muffin Mix Cranberry Baking Supplies",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 0.09,
+      "yearly": 1
+    },
+    "version": 1
+  },
+  {
+    "id": "105",
+    "name": "Lea & Perrins Worcestershire Sauce The Original Condiments Sauces",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 72,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 0.43,
+      "yearly": 5
+    },
+    "version": 1
+  },
+  {
+    "id": "106",
+    "name": "Libbys Pumpkin 100 pure Canned",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 96,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1.26,
+      "yearly": 15
+    },
+    "version": 1
+  },
+  {
+    "id": "107",
+    "name": "Store Brand Mushrooms Stems and Pieces  Canned",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 96,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 15.98,
+      "yearly": 192
+    },
+    "version": 1
+  },
+  {
+    "id": "108",
+    "name": "McCormick Cream of Tartar  Baking Supplies",
+    "unit": "oz",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 0.13,
+      "yearly": 1.5
+    },
+    "version": 1
+  },
+  {
+    "id": "109",
+    "name": "Milk-Bone Flavor Snacks  Pet Supplies",
+    "unit": "oz",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 48,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 39.06,
+      "yearly": 469
+    },
+    "version": 1
+  },
+  {
+    "id": "110",
+    "name": "Bread Sour Dough Bakery & Bread",
+    "unit": "oz",
+    "category": "Other",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 4,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 69.28,
+      "yearly": 832
+    },
+    "version": 1
+  },
+  {
+    "id": "111",
+    "name": "Monster Energy Drink  Beverages",
+    "unit": "each",
+    "category": "Beverages",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 30.4,
+      "yearly": 365
+    },
+    "version": 1
+  },
+  {
+    "id": "112",
+    "name": "Mott's Applesauce  Snacks Fruits",
+    "unit": "oz",
+    "category": "Produce",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 72,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 17.32,
+      "yearly": 208
+    },
+    "version": 1
+  },
+  {
+    "id": "113",
+    "name": "Mrs. Butterworth's Syrup Extra Buttery Condiments Syrups",
+    "unit": "oz",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 48,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 3.98,
+      "yearly": 48
+    },
+    "version": 1
+  },
+  {
+    "id": "114",
+    "name": "Mt. Olive Pickles Bread & Butter Chips Condiments Pickles",
+    "unit": "oz",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 4,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1,
+      "yearly": 12
+    },
+    "version": 1
+  },
+  {
+    "id": "115",
+    "name": "Nature's Promise Garlic Minced Cooking Ingredients",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 5.33,
+      "yearly": 64
+    },
+    "version": 1
+  },
+  {
+    "id": "116",
+    "name": "Nestle Nesquik Chocolate Beverage Mixes",
+    "unit": "oz",
+    "category": "Beverages",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 37.97,
+      "yearly": 456
+    },
+    "version": 1
+  },
+  {
+    "id": "117",
+    "name": "Nudges Grillers  Pet Supplies",
+    "unit": "oz",
+    "category": "Pet",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 8.01,
+      "yearly": 96
+    },
+    "version": 1
+  },
+  {
+    "id": "118",
+    "name": "Ocean Spray Cranberry Sauce Jellied Canned Fruits",
+    "unit": "oz",
+    "category": "Produce",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 72,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 2.34,
+      "yearly": 28
+    },
+    "version": 1
+  },
+  {
+    "id": "119",
+    "name": "Pace Salsa Chunky Mild Condiments",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 48,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 23.99,
+      "yearly": 288
+    },
+    "version": 1
+  },
+  {
+    "id": "120",
+    "name": "College Inn Beef Stock  Broth & Bouillon",
+    "unit": "oz",
+    "category": "Freezer",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 5.33,
+      "yearly": 64
+    },
+    "version": 1
+  },
+  {
+    "id": "121",
+    "name": "Perdue Chicken Breast Cutlets  Meat & Poultry",
+    "unit": "oz",
+    "category": "Freezer",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 11.99,
+      "yearly": 144
+    },
+    "version": 1
+  },
+  {
+    "id": "122",
+    "name": "Hormel Corned Beef Hash Mary Kitchen Canned Meats",
+    "unit": "oz",
+    "category": "Freezer",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 0.61,
+      "yearly": 7.5
+    },
+    "version": 1
+  },
+  {
+    "id": "123",
+    "name": "Progresso Soup Traditional Chickarina Soup",
+    "unit": "each",
+    "category": "Other",
+    "treatAsWholeUnit": true,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 0.09,
+      "yearly": 1
+    },
+    "version": 1
+  },
+  {
+    "id": "124",
+    "name": "Progresso Soup Traditional Chicken & Wild Rice Soup",
+    "unit": "each",
+    "category": "Freezer",
+    "treatAsWholeUnit": true,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 0.17,
+      "yearly": 2
+    },
+    "version": 1
+  },
+  {
+    "id": "125",
+    "name": "Planters Peanuts Cocktail Snacks",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 48,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1.34,
+      "yearly": 16
+    },
+    "version": 1
+  },
+  {
+    "id": "126",
+    "name": "Quaker Instant Oatmeal Strawberries n Cream Breakfast Cereals",
+    "unit": "each",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 4.68,
+      "yearly": 56
+    },
+    "version": 1
+  },
+  {
+    "id": "127",
+    "name": "Spectrum Sesame Oil Organic Toasted Cooking Oils",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1.34,
+      "yearly": 16
+    },
+    "version": 1
+  },
+  {
+    "id": "128",
+    "name": "Spice Islands Almond Extract Pure Baking Supplies",
+    "unit": "oz",
+    "category": "Freezer",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 0.17,
+      "yearly": 2
+    },
+    "version": 1
+  },
+  {
+    "id": "129",
+    "name": "Store brand Apple Cider Vinegar  Vinegars",
+    "unit": "oz",
+    "category": "Produce",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 5.33,
+      "yearly": 64
+    },
+    "version": 1
+  },
+  {
+    "id": "130",
+    "name": "Store brand Baking Powder Double Acting,  Baking Supplies",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1.34,
+      "yearly": 16
+    },
+    "version": 1
+  },
+  {
+    "id": "131",
+    "name": "Tuttorosso Tomatoes Diced, Canned Canned Goods",
+    "unit": "each",
+    "category": "Freezer",
+    "treatAsWholeUnit": true,
+    "shelfLifeWeeks": 96,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 0.52,
+      "yearly": 6
+    },
+    "version": 1
+  },
+  {
+    "id": "132",
+    "name": "College Inn Chicken Broth  Broth & Bouillon",
+    "unit": "oz",
+    "category": "Freezer",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 5.33,
+      "yearly": 64
+    },
+    "version": 1
+  },
+  {
+    "id": "133",
+    "name": "Kikkoman Soy Sauce Less Sodium Condiments Sauces",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 72,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 2.51,
+      "yearly": 30
+    },
+    "version": 1
+  },
+  {
+    "id": "134",
+    "name": "Store brand Parmesan Cheese Shredded Dairy",
+    "unit": "oz",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 12,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 2.99,
+      "yearly": 36
+    },
+    "version": 1
+  },
+  {
+    "id": "135",
+    "name": "Store brand Ricotta Cheese Brand  Sargento Dairy",
+    "unit": "oz",
+    "category": "Refrigerator",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 12,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 15.98,
+      "yearly": 192
+    },
+    "version": 1
+  },
+  {
+    "id": "136",
+    "name": "Store brand Spinach Washed Fresh Produce",
+    "unit": "oz",
+    "category": "Produce",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 8.01,
+      "yearly": 96
+    },
+    "version": 1
+  },
+  {
+    "id": "137",
+    "name": "Store brand Vanilla Extract Pure Baking Supplies",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 0.17,
+      "yearly": 2
+    },
+    "version": 1
+  },
+  {
+    "id": "138",
+    "name": "Store brand Vinegar White Vinegars",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 21.3,
+      "yearly": 256
+    },
+    "version": 1
+  },
+  {
+    "id": "139",
+    "name": "Frozen Vegetables Peas and Corn Frozen Foods",
+    "unit": "each",
+    "category": "Freezer",
+    "treatAsWholeUnit": true,
+    "shelfLifeWeeks": 48,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 0.35,
+      "yearly": 4
+    },
+    "version": 1
+  },
+  {
+    "id": "140",
+    "name": "Sweet Baby Ray's Barbecue Sauce  Condiments Sauces",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 72,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 3.33,
+      "yearly": 40
+    },
+    "version": 1
+  },
+  {
+    "id": "141",
+    "name": "Sweet Baby Ray's Sauce Sweet Teriyaki Condiments Sauces",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 72,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 0.74,
+      "yearly": 9
+    },
+    "version": 1
+  },
+  {
+    "id": "142",
+    "name": "Taste of Inspirations Gnocchi Potato, Made in Italy Pasta",
+    "unit": "each",
+    "category": "Pantry",
+    "treatAsWholeUnit": true,
+    "shelfLifeWeeks": 96,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 0.52,
+      "yearly": 6
+    },
+    "version": 1
+  },
+  {
+    "id": "143",
+    "name": "Tostitos Salsa Chunky Mild Snacks Condiments",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 48,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1.99,
+      "yearly": 24
+    },
+    "version": 1
+  },
+  {
+    "id": "144",
+    "name": "Paper Bowl 10 oz",
+    "unit": "each",
+    "category": "Household",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 17.49,
+      "yearly": 210
+    },
+    "version": 1
+  },
+  {
+    "id": "145",
+    "name": "Wilton Candy Melts Light Cocoa Baking Supplies",
+    "unit": "each",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 96,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 5.98,
+      "yearly": 72
+    },
+    "version": 1
+  },
+  {
+    "id": "146",
+    "name": "Wish-Bone Dressing House Italian Condiments Dressings",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 48,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1.52,
+      "yearly": 18
+    },
+    "version": 1
+  },
+  {
+    "id": "147",
+    "name": "Yoo-hoo Chocolate Drink",
+    "unit": "each",
+    "category": "Beverages",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 26.63,
+      "yearly": 320
+    },
+    "version": 1
+  },
+  {
+    "id": "148",
+    "name": "Cape Cod Chips",
+    "unit": "oz",
+    "category": "Pantry",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 121.24,
+      "yearly": 1454.9
+    },
+    "version": 1
+  },
+  {
+    "id": "149",
+    "name": "Charmin Toilet Paper Strong",
+    "unit": "sheets",
+    "category": "Household",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 239.8,
+      "yearly": 2877.6
+    },
+    "version": 1
+  },
+  {
+    "id": "150",
+    "name": "Gold Peak Tea Zero Sugar Beverages",
+    "unit": "oz",
+    "category": "Beverages",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 1027.29,
+      "yearly": 12327.5
+    },
+    "version": 1
+  },
+  {
+    "id": "151",
+    "name": "Paper Plate Everyday 8.5",
+    "unit": "each",
+    "category": "Household",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 106.6,
+      "yearly": 1279.2
+    },
+    "version": 1
+  },
+  {
+    "id": "152",
+    "name": "Pepsi Soda Zero Beverages",
+    "unit": "each",
+    "category": "Beverages",
+    "treatAsWholeUnit": false,
+    "shelfLifeWeeks": 24,
+    "stock": [
+      {
+        "week": 0,
+        "diff": 0
+      }
+    ],
+    "consumptionPlan": {
+      "monthly": 103.92,
+      "yearly": 1247
+    },
+    "version": 1
+  }
+]

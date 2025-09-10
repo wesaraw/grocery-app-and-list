@@ -1,8 +1,26 @@
 import { DEFAULT_MULTIPLIERS } from './constants.js';
+import defaultItems from './default-data/items.json' assert { type: 'json' };
+import defaultMeals from './default-data/meals.json' assert { type: 'json' };
+import defaultUsers from './default-data/users.json' assert { type: 'json' };
+import defaultUserCategoryDays from './default-data/user-category-days.json' assert { type: 'json' };
 import { runMealMigrations } from './meals.js';
 import { runUserMigrations, runUserCategoryDaysMigrations } from './users.js';
 import { runCookingDaysMigrations } from './cookingDays.js';
-import { metadata, manualMealOverrides, whatToEatCalendar, preparedMealsCalendar, mealPlan, mealPerDay, cookingDays, userCategoryDays, users, meals, stores, coupons, items } from './validators.js';
+import {
+  metadata,
+  manualMealOverrides,
+  whatToEatCalendar,
+  preparedMealsCalendar,
+  mealPlan,
+  mealPerDay,
+  cookingDays,
+  userCategoryDays,
+  users,
+  meals,
+  stores,
+  coupons,
+  items
+} from './validators.js';
 
 const CURRENT_VERSION = 3;
 
@@ -29,12 +47,12 @@ let cacheEnabled = true;
 const migrations = new Map();
 
 const DEFAULTS = {
-  items: [],
+  items: defaultItems,
   coupons: [],
   stores: [],
-  meals: [],
-  users: [],
-  'user-category-days': [],
+  meals: defaultMeals,
+  users: defaultUsers,
+  'user-category-days': defaultUserCategoryDays,
   'cooking-days': { categories: {}, prepDay: null, version: 1 },
   'meal-per-day': DEFAULT_MULTIPLIERS,
   'meal-plan': { monthly: [], yearly: [], version: 1 },

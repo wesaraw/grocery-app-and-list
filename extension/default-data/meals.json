@@ -1,0 +1,1061 @@
+[
+  {
+    "id": "1",
+    "name": "Lemon Herb Chicken",
+    "type": "lunchDinner",
+    "ingredients": [
+      {
+        "name": "Olive Oil",
+        "amount": 1,
+        "unit": "tbsp"
+      },
+      {
+        "name": "Lemon Juice",
+        "amount": 1,
+        "unit": "tsp"
+      },
+      {
+        "name": "Dried Thyme",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Garlic Powder",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Salt",
+        "amount": 0,
+        "unit": ""
+      },
+      {
+        "name": "Black Pepper",
+        "amount": 0,
+        "unit": ""
+      },
+      {
+        "name": "Baby Potatoes",
+        "amount": 1,
+        "unit": "cup"
+      },
+      {
+        "name": "Green Beans",
+        "amount": 1,
+        "unit": "cup"
+      },
+      {
+        "name": "Butter",
+        "amount": 1,
+        "unit": "tbsp"
+      },
+      {
+        "name": "Garlic",
+        "amount": 1,
+        "unit": "clove"
+      }
+    ],
+    "flags": {
+      "prepared": false,
+      "prepAhead": false,
+      "group": false
+    },
+    "weight": 1,
+    "recipeBook": null,
+    "users": [],
+    "image": null,
+    "totalCost": null,
+    "version": 1
+  },
+  {
+    "id": "2",
+    "name": "Honey Garlic Chicken",
+    "type": "lunchDinner",
+    "ingredients": [
+      {
+        "name": "Soy Sauce",
+        "amount": 1,
+        "unit": "tbsp"
+      },
+      {
+        "name": "Honey",
+        "amount": 1,
+        "unit": "tbsp"
+      },
+      {
+        "name": "Garlic Powder",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Chili Flakes",
+        "amount": 0,
+        "unit": ""
+      },
+      {
+        "name": "White Rice",
+        "amount": 0.5,
+        "unit": "cup"
+      },
+      {
+        "name": "Carrots",
+        "amount": 0.5,
+        "unit": "cup"
+      },
+      {
+        "name": "Sugar Snap Peas",
+        "amount": 0.5,
+        "unit": "cup"
+      },
+      {
+        "name": "Soy Sauce",
+        "amount": 1,
+        "unit": "tsp"
+      },
+      {
+        "name": "Oil",
+        "amount": 1,
+        "unit": "tsp"
+      }
+    ],
+    "flags": {
+      "prepared": false,
+      "prepAhead": false,
+      "group": false
+    },
+    "weight": 1,
+    "recipeBook": null,
+    "users": [],
+    "image": null,
+    "totalCost": null,
+    "version": 1
+  },
+  {
+    "id": "3",
+    "name": "Cajun-Spiced Chicken",
+    "type": "lunchDinner",
+    "ingredients": [
+      {
+        "name": "Cajun Seasoning",
+        "amount": 1,
+        "unit": "tsp"
+      },
+      {
+        "name": "Paprika",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Garlic Powder",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Oil",
+        "amount": 1,
+        "unit": "tsp"
+      },
+      {
+        "name": "Red Beans",
+        "amount": 0.5,
+        "unit": "cup"
+      },
+      {
+        "name": "Corn",
+        "amount": 1,
+        "unit": "ear"
+      },
+      {
+        "name": "Cumin",
+        "amount": 0.25,
+        "unit": "tsp"
+      },
+      {
+        "name": "Garlic",
+        "amount": 1,
+        "unit": "clove"
+      },
+      {
+        "name": "Oil",
+        "amount": 1,
+        "unit": "tsp"
+      }
+    ],
+    "flags": {
+      "prepared": false,
+      "prepAhead": false,
+      "group": false
+    },
+    "weight": 1,
+    "recipeBook": null,
+    "users": [],
+    "image": null,
+    "totalCost": null,
+    "version": 1
+  },
+  {
+    "id": "4",
+    "name": "BBQ Chicken",
+    "type": "lunchDinner",
+    "ingredients": [
+      {
+        "name": "BBQ Sauce",
+        "amount": 1,
+        "unit": "tbsp"
+      },
+      {
+        "name": "Smoked Paprika",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Garlic Powder",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Sweet Potato",
+        "amount": 1,
+        "unit": "medium"
+      },
+      {
+        "name": "Oil",
+        "amount": 1,
+        "unit": "tsp"
+      },
+      {
+        "name": "Coleslaw Mix",
+        "amount": 1,
+        "unit": "cup"
+      },
+      {
+        "name": "Mayonnaise",
+        "amount": 1,
+        "unit": "tbsp"
+      },
+      {
+        "name": "Vinegar",
+        "amount": 1,
+        "unit": "tsp"
+      }
+    ],
+    "flags": {
+      "prepared": false,
+      "prepAhead": false,
+      "group": false
+    },
+    "weight": 1,
+    "recipeBook": null,
+    "users": [],
+    "image": null,
+    "totalCost": null,
+    "version": 1
+  },
+  {
+    "id": "5",
+    "name": "Teriyaki Chicken",
+    "type": "lunchDinner",
+    "ingredients": [
+      {
+        "name": "Teriyaki Sauce",
+        "amount": 1,
+        "unit": "tbsp"
+      },
+      {
+        "name": "Sesame Oil",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Garlic",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Ginger",
+        "amount": 0,
+        "unit": ""
+      },
+      {
+        "name": "Cooked Rice",
+        "amount": 0.5,
+        "unit": "cup"
+      },
+      {
+        "name": "Egg",
+        "amount": 1,
+        "unit": ""
+      },
+      {
+        "name": "Frozen Peas",
+        "amount": 0.25,
+        "unit": "cup"
+      },
+      {
+        "name": "Soy Sauce",
+        "amount": 1,
+        "unit": "tbsp"
+      },
+      {
+        "name": "Sesame Oil",
+        "amount": 1,
+        "unit": "tsp"
+      }
+    ],
+    "flags": {
+      "prepared": false,
+      "prepAhead": false,
+      "group": false
+    },
+    "weight": 1,
+    "recipeBook": null,
+    "users": [],
+    "image": null,
+    "totalCost": null,
+    "version": 1
+  },
+  {
+    "id": "6",
+    "name": "Chicken Tikka",
+    "type": "lunchDinner",
+    "ingredients": [
+      {
+        "name": "Plain Yogurt",
+        "amount": 1,
+        "unit": "tbsp"
+      },
+      {
+        "name": "Garam Masala",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Paprika",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Turmeric",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Garlic Ginger Paste",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Salt",
+        "amount": 0,
+        "unit": ""
+      },
+      {
+        "name": "Red Lentils",
+        "amount": 0.5,
+        "unit": "cup"
+      },
+      {
+        "name": "Turmeric",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Cumin",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Onion",
+        "amount": 0.5,
+        "unit": ""
+      },
+      {
+        "name": "Garlic",
+        "amount": 1,
+        "unit": "clove"
+      },
+      {
+        "name": "Flatbread",
+        "amount": 1,
+        "unit": ""
+      }
+    ],
+    "flags": {
+      "prepared": false,
+      "prepAhead": false,
+      "group": false
+    },
+    "weight": 1,
+    "recipeBook": null,
+    "users": [],
+    "image": null,
+    "totalCost": null,
+    "version": 1
+  },
+  {
+    "id": "7",
+    "name": "Garlic Parmesan Chicken",
+    "type": "lunchDinner",
+    "ingredients": [
+      {
+        "name": "Olive Oil",
+        "amount": 1,
+        "unit": "tbsp"
+      },
+      {
+        "name": "Garlic Powder",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Parmesan Cheese",
+        "amount": 1,
+        "unit": "tbsp"
+      },
+      {
+        "name": "Parsley",
+        "amount": 0,
+        "unit": ""
+      },
+      {
+        "name": "Pasta",
+        "amount": 0.5,
+        "unit": "cup"
+      },
+      {
+        "name": "Butter",
+        "amount": 1,
+        "unit": "tbsp"
+      },
+      {
+        "name": "Lemon Juice",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Spinach",
+        "amount": 1,
+        "unit": "cup"
+      }
+    ],
+    "flags": {
+      "prepared": false,
+      "prepAhead": false,
+      "group": false
+    },
+    "weight": 1,
+    "recipeBook": null,
+    "users": [],
+    "image": null,
+    "totalCost": null,
+    "version": 1
+  },
+  {
+    "id": "8",
+    "name": "Buffalo Chicken",
+    "type": "lunchDinner",
+    "ingredients": [
+      {
+        "name": "Hot Sauce",
+        "amount": 1,
+        "unit": "tbsp"
+      },
+      {
+        "name": "Butter",
+        "amount": 0.5,
+        "unit": "tbsp"
+      },
+      {
+        "name": "Garlic Powder",
+        "amount": 0.25,
+        "unit": "tsp"
+      },
+      {
+        "name": "Cauliflower",
+        "amount": 0.5,
+        "unit": "cup"
+      },
+      {
+        "name": "Broccoli",
+        "amount": 0.5,
+        "unit": "cup"
+      },
+      {
+        "name": "Oil",
+        "amount": 1,
+        "unit": "tbsp"
+      },
+      {
+        "name": "Ranch Dressing",
+        "amount": 1,
+        "unit": "tbsp"
+      }
+    ],
+    "flags": {
+      "prepared": false,
+      "prepAhead": false,
+      "group": false
+    },
+    "weight": 1,
+    "recipeBook": null,
+    "users": [],
+    "image": null,
+    "totalCost": null,
+    "version": 1
+  },
+  {
+    "id": "9",
+    "name": "Greek Yogurt Chicken",
+    "type": "lunchDinner",
+    "ingredients": [
+      {
+        "name": "Greek Yogurt",
+        "amount": 1,
+        "unit": "tbsp"
+      },
+      {
+        "name": "Lemon Juice",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Oregano",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Garlic Powder",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Cucumber",
+        "amount": 0.5,
+        "unit": ""
+      },
+      {
+        "name": "Tomato",
+        "amount": 1,
+        "unit": ""
+      },
+      {
+        "name": "Red Onion",
+        "amount": 0.25,
+        "unit": ""
+      },
+      {
+        "name": "Vinegar",
+        "amount": 1,
+        "unit": "tsp"
+      },
+      {
+        "name": "Pita",
+        "amount": 1,
+        "unit": ""
+      }
+    ],
+    "flags": {
+      "prepared": false,
+      "prepAhead": false,
+      "group": false
+    },
+    "weight": 1,
+    "recipeBook": null,
+    "users": [],
+    "image": null,
+    "totalCost": null,
+    "version": 1
+  },
+  {
+    "id": "10",
+    "name": "Korean Gochujang Chicken",
+    "type": "lunchDinner",
+    "ingredients": [
+      {
+        "name": "Gochujang",
+        "amount": 1,
+        "unit": "tsp"
+      },
+      {
+        "name": "Soy Sauce",
+        "amount": 0.5,
+        "unit": "tbsp"
+      },
+      {
+        "name": "Honey",
+        "amount": 1,
+        "unit": "tsp"
+      },
+      {
+        "name": "Garlic",
+        "amount": 0.25,
+        "unit": "tsp"
+      },
+      {
+        "name": "Cooked Rice",
+        "amount": 0.5,
+        "unit": "cup"
+      },
+      {
+        "name": "Kimchi",
+        "amount": 0.25,
+        "unit": "cup"
+      },
+      {
+        "name": "Sesame Oil",
+        "amount": 1,
+        "unit": "tsp"
+      },
+      {
+        "name": "Egg",
+        "amount": 1,
+        "unit": ""
+      }
+    ],
+    "flags": {
+      "prepared": false,
+      "prepAhead": false,
+      "group": false
+    },
+    "weight": 1,
+    "recipeBook": null,
+    "users": [],
+    "image": null,
+    "totalCost": null,
+    "version": 1
+  },
+  {
+    "id": "11",
+    "name": "Chimichurri Chicken",
+    "type": "lunchDinner",
+    "ingredients": [
+      {
+        "name": "Parsley",
+        "amount": 1,
+        "unit": "tbsp"
+      },
+      {
+        "name": "Red Wine Vinegar",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Garlic",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Olive Oil",
+        "amount": 1,
+        "unit": "tbsp"
+      },
+      {
+        "name": "Chili Flakes",
+        "amount": 0,
+        "unit": ""
+      },
+      {
+        "name": "Black Beans",
+        "amount": 0.5,
+        "unit": "cup"
+      },
+      {
+        "name": "Bell Pepper",
+        "amount": 0.5,
+        "unit": ""
+      },
+      {
+        "name": "Lime Juice",
+        "amount": 1,
+        "unit": "tsp"
+      }
+    ],
+    "flags": {
+      "prepared": false,
+      "prepAhead": false,
+      "group": false
+    },
+    "weight": 1,
+    "recipeBook": null,
+    "users": [],
+    "image": null,
+    "totalCost": null,
+    "version": 1
+  },
+  {
+    "id": "12",
+    "name": "Italian Balsamic Chicken",
+    "type": "lunchDinner",
+    "ingredients": [
+      {
+        "name": "Balsamic Vinegar",
+        "amount": 1,
+        "unit": "tbsp"
+      },
+      {
+        "name": "Olive Oil",
+        "amount": 1,
+        "unit": "tsp"
+      },
+      {
+        "name": "Italian Seasoning",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Garlic Powder",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Zucchini",
+        "amount": 1,
+        "unit": "small"
+      },
+      {
+        "name": "Orzo",
+        "amount": 0.5,
+        "unit": "cup"
+      },
+      {
+        "name": "Olive Oil",
+        "amount": 1,
+        "unit": "tbsp"
+      }
+    ],
+    "flags": {
+      "prepared": false,
+      "prepAhead": false,
+      "group": false
+    },
+    "weight": 1,
+    "recipeBook": null,
+    "users": [],
+    "image": null,
+    "totalCost": null,
+    "version": 1
+  },
+  {
+    "id": "13",
+    "name": "Pineapple Soy Chicken",
+    "type": "lunchDinner",
+    "ingredients": [
+      {
+        "name": "Pineapple Juice",
+        "amount": 1,
+        "unit": "tbsp"
+      },
+      {
+        "name": "Soy Sauce",
+        "amount": 1,
+        "unit": "tsp"
+      },
+      {
+        "name": "Garlic",
+        "amount": 0.25,
+        "unit": "tsp"
+      },
+      {
+        "name": "Ginger Powder",
+        "amount": 0.25,
+        "unit": "tsp"
+      },
+      {
+        "name": "Rice",
+        "amount": 0.5,
+        "unit": "cup"
+      },
+      {
+        "name": "Coconut Milk",
+        "amount": 0.25,
+        "unit": "cup"
+      },
+      {
+        "name": "Bok Choy",
+        "amount": 1,
+        "unit": "cup"
+      }
+    ],
+    "flags": {
+      "prepared": false,
+      "prepAhead": false,
+      "group": false
+    },
+    "weight": 1,
+    "recipeBook": null,
+    "users": [],
+    "image": null,
+    "totalCost": null,
+    "version": 1
+  },
+  {
+    "id": "14",
+    "name": "Moroccan-Spiced Chicken",
+    "type": "lunchDinner",
+    "ingredients": [
+      {
+        "name": "Olive Oil",
+        "amount": 1,
+        "unit": "tsp"
+      },
+      {
+        "name": "Cinnamon",
+        "amount": 0.25,
+        "unit": "tsp"
+      },
+      {
+        "name": "Cumin",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Paprika",
+        "amount": 0.25,
+        "unit": "tsp"
+      },
+      {
+        "name": "Salt",
+        "amount": 0,
+        "unit": ""
+      },
+      {
+        "name": "Couscous",
+        "amount": 0.5,
+        "unit": "cup"
+      },
+      {
+        "name": "Raisins",
+        "amount": 1,
+        "unit": "tbsp"
+      },
+      {
+        "name": "Carrots",
+        "amount": 0.5,
+        "unit": "cup"
+      },
+      {
+        "name": "Honey",
+        "amount": 1,
+        "unit": "tsp"
+      }
+    ],
+    "flags": {
+      "prepared": false,
+      "prepAhead": false,
+      "group": false
+    },
+    "weight": 1,
+    "recipeBook": null,
+    "users": [],
+    "image": null,
+    "totalCost": null,
+    "version": 1
+  },
+  {
+    "id": "15",
+    "name": "Ranch-Dusted Chicken",
+    "type": "lunchDinner",
+    "ingredients": [
+      {
+        "name": "Ranch Seasoning Mix",
+        "amount": 1,
+        "unit": "tsp"
+      },
+      {
+        "name": "Oil",
+        "amount": 1,
+        "unit": "tsp"
+      },
+      {
+        "name": "Potato",
+        "amount": 1,
+        "unit": "medium"
+      },
+      {
+        "name": "Butter",
+        "amount": 1,
+        "unit": "tbsp"
+      },
+      {
+        "name": "Frozen Peas & Corn",
+        "amount": 0.5,
+        "unit": "cup"
+      }
+    ],
+    "flags": {
+      "prepared": false,
+      "prepAhead": false,
+      "group": false
+    },
+    "weight": 1,
+    "recipeBook": null,
+    "users": [],
+    "image": null,
+    "totalCost": null,
+    "version": 1
+  },
+  {
+    "id": "16",
+    "name": "Jamaican Jerk Chicken",
+    "type": "lunchDinner",
+    "ingredients": [
+      {
+        "name": "Jerk Seasoning",
+        "amount": 1,
+        "unit": "tsp"
+      },
+      {
+        "name": "Brown Sugar",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Lime Juice",
+        "amount": 1,
+        "unit": "tsp"
+      },
+      {
+        "name": "Oil",
+        "amount": 1,
+        "unit": "tsp"
+      },
+      {
+        "name": "Rice",
+        "amount": 0.5,
+        "unit": "cup"
+      },
+      {
+        "name": "Kidney Beans",
+        "amount": 0.5,
+        "unit": "cup"
+      },
+      {
+        "name": "Plantain",
+        "amount": 1,
+        "unit": "small"
+      }
+    ],
+    "flags": {
+      "prepared": false,
+      "prepAhead": false,
+      "group": false
+    },
+    "weight": 1,
+    "recipeBook": null,
+    "users": [],
+    "image": null,
+    "totalCost": null,
+    "version": 1
+  },
+  {
+    "id": "17",
+    "name": "Mustard Dill Chicken",
+    "type": "lunchDinner",
+    "ingredients": [
+      {
+        "name": "Dijon Mustard",
+        "amount": 1,
+        "unit": "tsp"
+      },
+      {
+        "name": "Dill",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Vinegar",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Oil",
+        "amount": 1,
+        "unit": "tsp"
+      },
+      {
+        "name": "Egg Noodles",
+        "amount": 0.5,
+        "unit": "cup"
+      },
+      {
+        "name": "Brussels Sprouts",
+        "amount": 1,
+        "unit": "cup"
+      },
+      {
+        "name": "Butter",
+        "amount": 1,
+        "unit": "tbsp"
+      }
+    ],
+    "flags": {
+      "prepared": false,
+      "prepAhead": false,
+      "group": false
+    },
+    "weight": 1,
+    "recipeBook": null,
+    "users": [],
+    "image": null,
+    "totalCost": null,
+    "version": 1
+  },
+  {
+    "id": "18",
+    "name": "Coconut Curry Chicken",
+    "type": "lunchDinner",
+    "ingredients": [
+      {
+        "name": "Coconut Milk",
+        "amount": 1,
+        "unit": "tbsp"
+      },
+      {
+        "name": "Curry Powder",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Garlic",
+        "amount": 0.25,
+        "unit": "tsp"
+      },
+      {
+        "name": "Oil",
+        "amount": 0.5,
+        "unit": "tsp"
+      },
+      {
+        "name": "Basmati Rice",
+        "amount": 0.5,
+        "unit": "cup"
+      },
+      {
+        "name": "Chickpeas",
+        "amount": 0.5,
+        "unit": "cup"
+      },
+      {
+        "name": "Spinach",
+        "amount": 1,
+        "unit": "cup"
+      },
+      {
+        "name": "Cumin",
+        "amount": 0.5,
+        "unit": "tsp"
+      }
+    ],
+    "flags": {
+      "prepared": false,
+      "prepAhead": false,
+      "group": false
+    },
+    "weight": 1,
+    "recipeBook": null,
+    "users": [],
+    "image": null,
+    "totalCost": null,
+    "version": 1
+  }
+]
