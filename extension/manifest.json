@@ -3,7 +3,7 @@
   "name": "Grocery App",
   "version": "2.0",
   "action": {
-    "default_popup": "ui/priceChecker.html"
+    "default_popup": "ui/launcher.html"
   },
   "permissions": ["storage", "tabs"],
   "background": {

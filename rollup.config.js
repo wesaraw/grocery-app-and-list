@@ -12,7 +12,7 @@ const scraperFiles = globSync('src/scrapers/**/*.ts');
 export default [
   {
     input: generalFiles,
-    external: ['ajv', '@xmldom/xmldom'],
+    external: ['@xmldom/xmldom'],
     output: {
       dir: 'extension',
       format: 'esm',
@@ -24,7 +24,7 @@ export default [
   },
   {
     input: scraperFiles,
-    external: ['ajv', '@xmldom/xmldom'],
+    external: ['@xmldom/xmldom'],
     output: {
       dir: 'extension/scrapers/generated',
       format: 'esm',

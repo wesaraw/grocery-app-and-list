@@ -1,4 +1,4 @@
-import Ajv from 'ajv';
+import Ajv from '../_virtual/ajv.js';
 import { DEFAULT_MULTIPLIERS } from '../meal-multiplier/constants.js';
 import { runMealMigrations } from '../migrations/meals.js';
 import { runUserMigrations, runUserCategoryDaysMigrations } from '../migrations/users.js';
