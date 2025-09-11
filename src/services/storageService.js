@@ -3,6 +3,16 @@ import { runMealMigrations } from '../migrations/meals.js';
 import { runUserMigrations, runUserCategoryDaysMigrations } from '../migrations/users.js';
 import { runCookingDaysMigrations } from '../migrations/cookingDays.js';
 import * as validatorFns from './validators.js';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
+const baseDir = import.meta.url.includes('/extension/')
+  ? './default-data'
+  : '../../extension/default-data';
+const defaultItems = require(`${baseDir}/items.json`);
+const defaultMeals = require(`${baseDir}/meals.json`);
+const defaultUsers = require(`${baseDir}/users.json`);
+const defaultUserCategoryDays = require(`${baseDir}/user-category-days.json`);
 
 const CURRENT_VERSION = 3;
 
@@ -29,12 +39,12 @@ let cacheEnabled = true;
 const migrations = new Map();
 
 const DEFAULTS = {
-  items: [],
+  items: defaultItems,
   coupons: [],
   stores: [],
-  meals: [],
-  users: [],
-  'user-category-days': [],
+  meals: defaultMeals,
+  users: defaultUsers,
+  'user-category-days': defaultUserCategoryDays,
   'cooking-days': { categories: {}, prepDay: null, version: 1 },
   'meal-per-day': DEFAULT_MULTIPLIERS,
   'meal-plan': { monthly: [], yearly: [], version: 1 },
@@ -86,6 +96,9 @@ export async function get(key, defaultValue = DEFAULTS[key]) {
       chrome.storage.local.get(key, data => {
         let value = data[key];
         const validate = validators[key];
+        if (Array.isArray(value) && value.length === 0) {
+          value = undefined;
+        }
         if (value === undefined) {
           value = defaultValue;
         } else if (validate && !validate(value)) {
@@ -154,6 +167,77 @@ export async function remove(key) {
       reject(e);
     }
   });
+}
+
+export async function resetAll() {
+  cache.clear();
+  if (!hasChromeStorage()) return;
+  return new Promise((resolve, reject) => {
+    try {
+      chrome.storage.local.clear(() => resolve());
+    } catch (e) {
+      console.error('storageService resetAll error', e);
+      reject(e);
+    }
+  });
+}
+
+export async function seedDefaults() {
+  const [items, users, userCategoryDays] = await Promise.all([
+    get('items', []),
+    get('users', []),
+    get('user-category-days', [])
+  ]);
+
+  let addedItems = 0;
+  let addedUsers = 0;
+  let addedDays = 0;
+  const userIdMap = new Map();
+
+  // map existing users by default id
+  for (const du of defaultUsers) {
+    const existing = users.find(u => u.name === du.name);
+    if (existing) userIdMap.set(du.id, existing.id);
+  }
+
+  for (const di of defaultItems) {
+    if (!items.some(i => i.name === di.name)) {
+      items.push({ ...di, id: crypto.randomUUID() });
+      addedItems++;
+    }
+  }
+
+  for (const du of defaultUsers) {
+    if (!userIdMap.has(du.id)) {
+      const newId = crypto.randomUUID();
+      users.push({ ...du, id: newId });
+      userIdMap.set(du.id, newId);
+      addedUsers++;
+      const matchingDay = defaultUserCategoryDays.find(d => d.userId === du.id);
+      if (matchingDay) {
+        userCategoryDays.push({ ...matchingDay, userId: newId });
+        addedDays++;
+      }
+    }
+  }
+
+  for (const d of defaultUserCategoryDays) {
+    const userId = userIdMap.get(d.userId) ?? d.userId;
+    if (!userCategoryDays.some(u => u.userId === userId)) {
+      userCategoryDays.push({ ...d, userId });
+      addedDays++;
+    }
+  }
+
+  if (addedItems) await set('items', items);
+  if (addedUsers) await set('users', users);
+  if (addedDays) await set('user-category-days', userCategoryDays);
+
+  return { items: addedItems, users: addedUsers, userCategoryDays: addedDays };
+}
+
+if (typeof window !== 'undefined') {
+  window.resetAllStorage = resetAll;
 }
 
 export async function updateItemById(key, id, patch) {

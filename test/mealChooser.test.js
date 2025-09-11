@@ -68,6 +68,7 @@ describe('meal-chooser', () => {
     const dom = new JSDOM('<div id="root"></div>');
     global.window = dom.window;
     global.document = dom.window.document;
+    global.window.scrollTo = () => {};
     const root = document.getElementById('root');
     await renderMealChooser(root);
     const select = root.querySelector('#categorySelect');

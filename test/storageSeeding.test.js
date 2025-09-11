@@ -1,7 +1,10 @@
 import { expect } from 'chai';
-import { set, get, init } from '../extension/storageService.js';
+import { init, get } from '../extension/storageService.js';
+import { readFile } from 'fs/promises';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
 
-let changeUom;
+let defaultItems;
 
 function mockChrome() {
   let data = {};
@@ -39,43 +42,28 @@ function mockChrome() {
   };
 }
 
-describe('uom change utility', () => {
+describe('storageService default seeding', () => {
   const chromeMock = mockChrome();
+
+  before(async () => {
+    const __dirname = dirname(fileURLToPath(import.meta.url));
+    const json = await readFile(resolve(__dirname, '../extension/default-data/items.json'), 'utf8');
+    defaultItems = JSON.parse(json);
+  });
 
   beforeEach(async () => {
     global.chrome = chromeMock.api;
     chromeMock.reset();
+    chromeMock.store.items = [];
     await init({ useCache: false });
-    loadHtmlFixture('uomChange.html');
-    ({ changeUom } = await import('../extension/ui/uomChange.js'));
   });
 
   afterEach(() => {
     delete global.chrome;
   });
 
-  it('updates and normalizes the uom', async () => {
-    const items = [
-      {
-        id: 'i1',
-        name: 'Flour',
-        category: 'Misc',
-        uom: 'oz',
-        volumeWeightRatio: 1,
-        treatAsWholeUnit: false,
-        shelfLifeWeeks: 52,
-        seasonRanges: [],
-        currentStockByWeek: { 0: 0 },
-        consumptionPlan: { monthly: 0, yearly: 0 },
-        version: 1
-      }
-    ];
-    await set('items', items);
-
-    await changeUom('i1', 'LB');
-
-    const updated = await get('items');
-    expect(updated[0].uom).to.equal('lb');
-    expect(updated[0]).to.not.have.property('unit');
+  it('falls back to defaults when stored array is empty', async () => {
+    const items = await get('items');
+    expect(items).to.deep.equal(defaultItems);
   });
 });

@@ -58,14 +58,12 @@ describe('storageService', () => {
 
   it('validates data on set', async () => {
     const bad = [{ id: '1', unit: 'kg', version: 1 }];
-    await storage
-      .set('items', bad)
-      .then(() => {
-        throw new Error('should fail');
-      })
-      .catch(e => {
-        expect(e.message).to.match(/Invalid data/);
-      });
+    try {
+      await storage.set('items', bad);
+      throw new Error('should fail');
+    } catch (e) {
+      expect(e.message).to.match(/Invalid data/);
+    }
     expect(chromeMock.store.items).to.be.undefined;
   });
 
@@ -76,7 +74,7 @@ describe('storageService', () => {
     console.error = () => { logged = true; };
     const items = await storage.get('items');
     console.error = orig;
-    expect(items).to.deep.equal([]);
+    expect(items).to.be.an('array').that.is.not.empty;
     expect(logged).to.equal(true);
   });
 
@@ -85,20 +83,19 @@ describe('storageService', () => {
     chromeMock.store.selected_apple = { price: 1 };
     chromeMock.store.final_apple = 'StoreA';
     chromeMock.store.metadata = { storageVersion: 1 };
-    await storage.init();
-    expect(chromeMock.store.items).to.deep.equal([
-      {
-        id: 'apple',
-        name: 'apple',
-        unit: '',
-        version: 1,
-        options: {
-          scraped: [1],
-          selected: { price: 1 },
-          finalStore: 'StoreA'
-        }
+    await storage.init({ useCache: false });
+    expect(chromeMock.store.items).to.be.an('array');
+    expect(chromeMock.store.items).to.deep.include({
+      id: 'apple',
+      name: 'apple',
+      unit: '',
+      version: 1,
+      options: {
+        scraped: [1],
+        selected: { price: 1 },
+        finalStore: 'StoreA'
       }
-    ]);
+    });
     expect(chromeMock.store.scraped_apple).to.be.undefined;
     expect(chromeMock.store.metadata.storageVersion).to.equal(3);
   });

@@ -1,6 +1,7 @@
 import { expect } from 'chai';
-import { set, get } from '../src/services/storageService.js';
-import { saveCurrentStock } from '../extension/ui/expiration.js';
+import { set, get, init } from '../src/services/storageService.js';
+
+let saveCurrentStock;
 
 function mockChrome() {
   let data = {};
@@ -41,9 +42,12 @@ function mockChrome() {
 describe('expiration editor utility', () => {
   const chromeMock = mockChrome();
 
-  beforeEach(() => {
+  beforeEach(async () => {
     global.chrome = chromeMock.api;
     chromeMock.reset();
+    await init({ useCache: false });
+    loadHtmlFixture('expiration.html');
+    ({ saveCurrentStock } = await import('../extension/ui/expiration.js'));
   });
 
   afterEach(() => {
@@ -52,7 +56,19 @@ describe('expiration editor utility', () => {
 
   it('saves edited currentStockByWeek', async () => {
     const items = [
-      { id: 'i1', name: 'A', unit: 'ea', currentStockByWeek: { 1: 2 }, version: 1 }
+      {
+        id: 'i1',
+        name: 'A',
+        category: 'Misc',
+        uom: 'ea',
+        volumeWeightRatio: 1,
+        treatAsWholeUnit: true,
+        shelfLifeWeeks: 52,
+        seasonRanges: [],
+        currentStockByWeek: { 1: 2 },
+        consumptionPlan: { monthly: 0, yearly: 0 },
+        version: 1
+      }
     ];
     await set('items', items);
 

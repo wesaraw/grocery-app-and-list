@@ -81,6 +81,15 @@ All tests are offline-safe; fixtures are bundled.
 3. Choose **Load unpacked** and select the `extension/` directory from this repo.
 4. The Grocery App icon should appear in the toolbar once loaded.
 
+## ♻️ Seed default data on demand
+
+The **Load Seed Data** button on the extension's launcher merges the bundled defaults into storage. It compares by `name` and adds any missing items or user profiles, including related user-category-day schedules.
+
+To reload the defaults during development:
+
+1. Open the launcher page and click **Load Seed Data**. Existing records remain untouched; only missing entries are created.
+2. To start from a blank slate, call `resetAllStorage()` in the DevTools console, then click **Load Seed Data** again.
+
 ## 🚀 Roadmap
 - Phase 1: Analysis ✅
 - Phase 2: Core Rewrite ✅

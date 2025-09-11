@@ -52,7 +52,7 @@ describe('users configuration', () => {
 
   it('adds and edits users', async () => {
     const initial = await storage.get('users');
-    expect(initial).to.deep.equal([]);
+    expect(initial).to.be.an('array').that.is.not.empty;
     await storage.set('users', [{ id: 'u1', name: 'Alice', version: 1 }]);
     let users = await storage.get('users');
     expect(users[0].name).to.equal('Alice');

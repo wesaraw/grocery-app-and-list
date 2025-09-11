@@ -4,50 +4,58 @@ export const schemas = {
     type: 'array',
     items: {
       type: 'object',
-      required: ['id', 'name', 'unit', 'version'],
+      required: [
+        'id',
+        'name',
+        'category',
+        'uom',
+        'volumeWeightRatio',
+        'treatAsWholeUnit',
+        'shelfLifeWeeks',
+        'seasonRanges',
+        'currentStockByWeek',
+        'consumptionPlan',
+        'version'
+      ],
       properties: {
         id: { type: 'string' },
         name: { type: 'string' },
-        unit: { type: 'string' },
-        brand: { type: 'string', nullable: true },
-        density: { type: 'number', nullable: true },
-        version: { type: 'integer' },
-        options: {
-          type: 'object',
-          properties: {
-            scraped: { type: 'array', nullable: true },
-            selected: { type: 'object', nullable: true },
-            finalStore: { type: 'string', nullable: true }
-          },
-          additionalProperties: true
-        },
-        stock: { type: 'array', nullable: true },
-        consumption: {
+        category: { type: 'string' },
+        uom: { type: 'string' },
+        volumeWeightRatio: { type: 'number' },
+        treatAsWholeUnit: { type: 'boolean' },
+        shelfLifeWeeks: { type: 'number' },
+        seasonRanges: {
           type: 'array',
-          nullable: true,
           items: {
             type: 'object',
-            required: ['week', 'diff'],
+            required: ['start', 'end'],
             properties: {
-              week: { type: 'integer' },
-              diff: { type: 'number' },
-              date: { type: 'string', nullable: true }
+              start: { type: 'number' },
+              end: { type: 'number' }
             },
             additionalProperties: false
           }
         },
-        consumptionPlan: {
+        currentStockByWeek: {
           type: 'object',
-          nullable: true,
-          properties: {
-            monthly: { type: 'number', nullable: true },
-            yearly: { type: 'number', nullable: true }
+          patternProperties: {
+            '^\\d+$': { type: 'number' }
           },
           additionalProperties: false
         },
-        purchases: { type: 'array', nullable: true }
+        consumptionPlan: {
+          type: 'object',
+          required: ['monthly', 'yearly'],
+          properties: {
+            monthly: { type: 'number' },
+            yearly: { type: 'number' }
+          },
+          additionalProperties: false
+        },
+        version: { type: 'integer' }
       },
-      additionalProperties: true
+      additionalProperties: false
     }
   },
   coupons: {

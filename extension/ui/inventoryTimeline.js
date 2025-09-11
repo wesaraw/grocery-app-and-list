@@ -1,4 +1,4 @@
-import { get as storageGet } from '../storageService.js';
+import { get as storageGet, seedDefaults } from '../storageService.js';
 
 export function computeTimeline(item) {
   const stockByWeek = item.currentStockByWeek || {};
@@ -63,5 +63,12 @@ async function render() {
 
 if (typeof document !== 'undefined') {
   document.getElementById('back').addEventListener('click', () => window.close());
+  const seedBtn = document.getElementById('seedDefaults');
+  if (seedBtn) {
+    seedBtn.addEventListener('click', async () => {
+      await seedDefaults();
+      render();
+    });
+  }
   render();
 }

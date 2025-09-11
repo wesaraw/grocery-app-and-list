@@ -16,7 +16,7 @@ async function populate() {
 
 export async function changeUom(id, uom) {
   const normalized = unitNormalize(uom);
-  await updateItemById('items', id, { uom: normalized, unit: normalized, version: CURRENT });
+  await updateItemById('items', id, { uom: normalized, version: CURRENT });
 }
 
 if (typeof document !== 'undefined') {

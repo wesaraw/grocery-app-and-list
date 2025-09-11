@@ -1,6 +1,8 @@
 import { expect } from 'chai';
 import { set, get, init } from '../extension/storageService.js';
-import { exportAll, importAll } from '../extension/ui/backup.js';
+
+let exportAll;
+let importAll;
 
 function mockChrome() {
   let data = {};
@@ -45,6 +47,8 @@ describe('backup utility', () => {
     global.chrome = chromeMock.api;
     chromeMock.reset();
     await init({ useCache: false });
+    loadHtmlFixture('backup.html');
+    ({ exportAll, importAll } = await import('../extension/ui/backup.js'));
   });
 
   afterEach(() => {
@@ -52,7 +56,19 @@ describe('backup utility', () => {
   });
 
   it('exports and imports storage data', async () => {
-    const items = [{ id: 'i1', name: 'A', unit: 'ea', version: 1 }];
+    const items = [{
+      id: 'i1',
+      name: 'A',
+      category: 'Misc',
+      uom: 'ea',
+      volumeWeightRatio: 1,
+      treatAsWholeUnit: true,
+      shelfLifeWeeks: 52,
+      seasonRanges: [],
+      currentStockByWeek: { 0: 0 },
+      consumptionPlan: { monthly: 0, yearly: 0 },
+      version: 1
+    }];
     await set('items', items);
 
     const exported = await exportAll();

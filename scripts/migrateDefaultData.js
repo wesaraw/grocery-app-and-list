@@ -36,14 +36,18 @@ function buildItems() {
     const s = stock.get(y.name) || {};
     const e = exp.get(y.name) || {};
     const shelfLifeWeeks = e.shelf_life_months != null ? e.shelf_life_months * 4 : null;
+    const currentStockByWeek = {};
+    if (s.amount != null) currentStockByWeek[0] = s.amount;
     return {
       id: String(idx + 1),
       name: y.name,
-      unit: y.home_unit || m.unit || s.unit || '',
+      uom: y.home_unit || m.unit || s.unit || '',
       category: y.category || null,
+      volumeWeightRatio: 1,
       treatAsWholeUnit: Boolean(y.treat_as_whole_unit),
       shelfLifeWeeks,
-      stock: s.amount != null ? [{ week: 0, diff: s.amount }] : [],
+      seasonRanges: [],
+      currentStockByWeek,
       consumptionPlan: {
         monthly: m.monthly_consumption ?? null,
         yearly: y.total_needed_year ?? null

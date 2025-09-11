@@ -1,6 +1,7 @@
 import { expect } from 'chai';
-import { set, get } from '../src/services/storageService.js';
-import { renameItem } from '../extension/ui/renameItem.js';
+import { set, get, init } from '../src/services/storageService.js';
+
+let renameItem;
 
 function mockChrome() {
   let data = {};
@@ -41,9 +42,12 @@ function mockChrome() {
 describe('rename item utility', () => {
   const chromeMock = mockChrome();
 
-  beforeEach(() => {
+  beforeEach(async () => {
     global.chrome = chromeMock.api;
     chromeMock.reset();
+    await init({ useCache: false });
+    loadHtmlFixture('renameItem.html');
+    ({ renameItem } = await import('../extension/ui/renameItem.js'));
   });
 
   afterEach(() => {
@@ -52,7 +56,19 @@ describe('rename item utility', () => {
 
   it('updates the name of the selected item', async () => {
     const items = [
-      { id: 'i1', name: 'Old', unit: 'ea', version: 1 }
+      {
+        id: 'i1',
+        name: 'Old',
+        category: 'Misc',
+        uom: 'ea',
+        volumeWeightRatio: 1,
+        treatAsWholeUnit: true,
+        shelfLifeWeeks: 52,
+        seasonRanges: [],
+        currentStockByWeek: { 0: 0 },
+        consumptionPlan: { monthly: 0, yearly: 0 },
+        version: 1
+      }
     ];
     await set('items', items);
 

@@ -1,6 +1,7 @@
 import { expect } from 'chai';
-import { set, get } from '../src/services/storageService.js';
-import { saveSeasonRanges } from '../extension/ui/editSeason.js';
+import { set, get, init } from '../src/services/storageService.js';
+
+let saveSeasonRanges;
 
 function mockChrome() {
   let data = {};
@@ -41,9 +42,12 @@ function mockChrome() {
 describe('edit season ranges utility', () => {
   const chromeMock = mockChrome();
 
-  beforeEach(() => {
+  beforeEach(async () => {
     global.chrome = chromeMock.api;
     chromeMock.reset();
+    await init({ useCache: false });
+    loadHtmlFixture('editSeason.html');
+    ({ saveSeasonRanges } = await import('../extension/ui/editSeason.js'));
   });
 
   afterEach(() => {
@@ -52,7 +56,19 @@ describe('edit season ranges utility', () => {
 
   it('saves edited seasonRanges', async () => {
     const items = [
-      { id: 'i1', name: 'A', unit: 'ea', seasonRanges: [{ start: 1, end: 4 }], version: 1 }
+      {
+        id: 'i1',
+        name: 'A',
+        category: 'Misc',
+        uom: 'ea',
+        volumeWeightRatio: 1,
+        treatAsWholeUnit: true,
+        shelfLifeWeeks: 52,
+        seasonRanges: [{ start: 1, end: 4 }],
+        currentStockByWeek: { 0: 0 },
+        consumptionPlan: { monthly: 0, yearly: 0 },
+        version: 1
+      }
     ];
     await set('items', items);
 

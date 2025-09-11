@@ -34,3 +34,12 @@ import { init } from '../src/services/storageService.js';
 // Disable caching for tests or low-memory contexts
 await init({ useCache: false });
 ```
+
+## Seed default data on demand
+
+Click the **Load Seed Data** button on the launcher's dev page to merge bundled defaults into storage. The helper checks each item and user by `name` and creates records that are missing; existing entries remain untouched.
+
+To refresh defaults during development:
+
+1. Open the launcher page and click **Load Seed Data**.
+2. To wipe storage first, run `resetAllStorage()` in the DevTools console and then click the button again.

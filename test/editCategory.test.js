@@ -1,6 +1,7 @@
 import { expect } from 'chai';
-import { set, get } from '../src/services/storageService.js';
-import { updateCategory } from '../extension/ui/editCategory.js';
+import { set, get, init } from '../src/services/storageService.js';
+
+let updateCategory;
 
 function mockChrome() {
   let data = {};
@@ -41,9 +42,12 @@ function mockChrome() {
 describe('edit category utility', () => {
   const chromeMock = mockChrome();
 
-  beforeEach(() => {
+  beforeEach(async () => {
     global.chrome = chromeMock.api;
     chromeMock.reset();
+    await init({ useCache: false });
+    loadHtmlFixture('editCategory.html');
+    ({ updateCategory } = await import('../extension/ui/editCategory.js'));
   });
 
   afterEach(() => {
@@ -52,7 +56,19 @@ describe('edit category utility', () => {
 
   it('updates category of selected item', async () => {
     const items = [
-      { id: 'i1', name: 'A', category: 'Old', unit: 'ea', version: 1 }
+      {
+        id: 'i1',
+        name: 'A',
+        category: 'Old',
+        uom: 'ea',
+        volumeWeightRatio: 1,
+        treatAsWholeUnit: true,
+        shelfLifeWeeks: 52,
+        seasonRanges: [],
+        currentStockByWeek: { 0: 0 },
+        consumptionPlan: { monthly: 0, yearly: 0 },
+        version: 1
+      }
     ];
     await set('items', items);
 

@@ -62,8 +62,8 @@ describe('meal import', () => {
 
     const items = await storage.get('items');
     expect(items).to.have.length(1);
-    expect(items[0]).to.include({ name: 'Sample Item', category: 'Mass Import', version: 1 });
-    expect(items[0].stock).to.deep.equal([]);
+    expect(items[0]).to.include({ name: 'Sample Item', category: 'Mass Import', uom: 'kg', version: 1 });
+    expect(items[0].currentStockByWeek).to.deep.equal({ 0: 0 });
 
     const meals = await storage.get('meals');
     expect(meals).to.have.length(1);

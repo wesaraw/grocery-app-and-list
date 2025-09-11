@@ -112,10 +112,13 @@ export async function importMealsFromFiles(files) {
         items.push({
           id,
           name: ing.name,
-          unit: ing.unit,
           category: 'Mass Import',
-          stock: [],
-          consumption: [],
+          uom: ing.unit,
+          volumeWeightRatio: 1,
+          treatAsWholeUnit: true,
+          shelfLifeWeeks: 52,
+          seasonRanges: [],
+          currentStockByWeek: { 0: 0 },
           consumptionPlan: { monthly: 0, yearly: 0 },
           version: 1,
         });

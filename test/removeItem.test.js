@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { set, get, init } from '../extension/storageService.js';
-import { removeItem } from '../extension/ui/removeItem.js';
+
+let removeItem;
 
 function mockChrome() {
   let data = {};
@@ -45,6 +46,8 @@ describe('remove item utility', () => {
     global.chrome = chromeMock.api;
     chromeMock.reset();
     await init({ useCache: false });
+    loadHtmlFixture('removeItem.html');
+    ({ removeItem } = await import('../extension/ui/removeItem.js'));
   });
 
   afterEach(() => {
@@ -53,8 +56,32 @@ describe('remove item utility', () => {
 
   it('removes item and related store products', async () => {
     const items = [
-      { id: 'i1', name: 'A', unit: 'ea', version: 1 },
-      { id: 'i2', name: 'B', unit: 'ea', version: 1 }
+      {
+        id: 'i1',
+        name: 'A',
+        category: 'Misc',
+        uom: 'ea',
+        volumeWeightRatio: 1,
+        treatAsWholeUnit: true,
+        shelfLifeWeeks: 52,
+        seasonRanges: [],
+        currentStockByWeek: { 0: 0 },
+        consumptionPlan: { monthly: 0, yearly: 0 },
+        version: 1
+      },
+      {
+        id: 'i2',
+        name: 'B',
+        category: 'Misc',
+        uom: 'ea',
+        volumeWeightRatio: 1,
+        treatAsWholeUnit: true,
+        shelfLifeWeeks: 52,
+        seasonRanges: [],
+        currentStockByWeek: { 0: 0 },
+        consumptionPlan: { monthly: 0, yearly: 0 },
+        version: 1
+      }
     ];
     const products = [
       { itemId: 'i1', store: 'S1', url: '', price: 1, unitCost: 1, image: '', scrapedAt: 0, version: 1 },
