@@ -3,8 +3,7 @@ import { Item } from '../models/index';
 export type Migration<T> = (entity: T) => T;
 
 export function v1ToV2(item: Item): Item {
-  // Example migration: ensure density defaults to 1
-  return { ...item, density: item.density ?? 1, version: 2 };
+  return { ...item, version: 2 };
 }
 
 export const migrations: Record<number, Migration<any>> = {

@@ -1,4 +1,12 @@
 import Ajv from 'ajv';
+/**
+ * @typedef {import('../models').AppSchema} AppSchema
+ * @typedef {import('../models').Item} Item
+ * @typedef {import('../models').Store} Store
+ * @typedef {import('../models').Meal} Meal
+ * @typedef {import('../models').User} User
+ */
+
 
 const ajv = new Ajv({ allErrors: true });
 

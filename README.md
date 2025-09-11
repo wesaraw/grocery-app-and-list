@@ -48,6 +48,17 @@ Run `./scripts/run-tests.sh` to execute tests and lint; output is saved to `logs
 - open a separate issue or task for complex or unrelated failures.
 All tests are offline-safe; fixtures are bundled.
 
+## 📐 Schema Conventions
+- Persistent data must conform to `SCHEMA_VERSION` from `src/models`.
+- Modules that read or write storage must import the relevant interfaces instead of defining ad-hoc shapes.
+- Linting forbids interface declarations outside the schema.
+### Updating `SCHEMA_VERSION`
+1. Add fields to the interfaces in `src/models/`.
+2. Create a migration under `src/migrations/` to upgrade existing records.
+3. Update exports and bump `SCHEMA_VERSION` in `src/models/index.ts`.
+4. Document the change in `docs/migrations.md`.
+5. Run `./scripts/run-tests.sh` and commit.
+
 ## 🚀 Roadmap
 - Phase 1: Analysis ✅
 - Phase 2: Core Rewrite  

@@ -1,4 +1,5 @@
 import globals from "globals";
+import tsParser from "@typescript-eslint/parser";
 
 export default [
   {
@@ -13,5 +14,29 @@ export default [
       },
     },
     rules: {},
+  },
+  {
+    files: ["**/*.ts"],
+    ignores: ["node_modules/**"],
+    languageOptions: {
+      parser: tsParser,
+    },
+    rules: {},
+  },
+  {
+    files: ["src/**/*.ts"],
+    ignores: ["src/models/**", "src/scrapers/**"],
+    languageOptions: {
+      parser: tsParser,
+    },
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "TSInterfaceDeclaration",
+          message: "Use schema interfaces from src/models; avoid ad-hoc interfaces.",
+        },
+      ],
+    },
   },
 ];

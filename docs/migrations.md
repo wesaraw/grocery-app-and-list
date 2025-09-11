@@ -1,5 +1,16 @@
 # Schema Migrations
 
+Use this file to track every schema change. Copy the template below when introducing a new version.
+
+## Migration Template
+
+### vCurrent -> vNext
+- fields changed:
+- migration script:
+- notes:
+
+---
+
 The v1 app stored item names using an incrementing ID map (`itemNameMap`) and converted arrays by replacing `name` with `id` while preserving other fields.
 
 > "const NAME_ID_KEY = 'itemNameMap';" — `Version Old/utils/itemStorage.js`
