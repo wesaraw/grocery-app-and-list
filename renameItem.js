@@ -5,6 +5,7 @@ import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { loadItemSeasons, saveItemSeasons } from './utils/seasonData.js';
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
+import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -38,17 +39,11 @@ const headerState = {};
 let allItems = [];
 let container;
 
-function loadArray(key, path) {
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      if (data[key]) {
-        resolve(data[key]);
-      } else {
-        const arr = await loadJSON(path);
-        resolve(arr);
-      }
-    });
-  });
+async function loadArray(key, path) {
+  const arr = await loadItemArray(key);
+  if (arr.length > 0) return arr;
+  const fromJson = await loadJSON(path);
+  return await convertArrayToNames(fromJson);
 }
 
 const loadNeeds = () => loadArray('yearlyNeeds', YEARLY_NEEDS_PATH);

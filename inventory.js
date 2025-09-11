@@ -7,7 +7,7 @@ import {
   renderItemsWithCategoryHeaders
 } from './utils/sortByCategory.js';
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
-import { loadArray as loadItemArray } from './utils/itemStorage.js';
+import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -26,7 +26,7 @@ async function loadArray(key, path) {
   const arr = await loadItemArray(key);
   if (arr.length > 0) return arr;
   const fromJson = await loadJSON(path);
-  return fromJson;
+  return await convertArrayToNames(fromJson);
 }
 
 function loadStoredArray(key) {

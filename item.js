@@ -3,6 +3,7 @@ import { initUomTable, convert } from './utils/uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
+import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
 
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
 const STORE_SELECTION_KEY = 'storeSelections';
@@ -43,17 +44,11 @@ async function loadStoreSelections() {
   });
 }
 
-function loadArray(key, path) {
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      if (data[key]) {
-        resolve(data[key]);
-      } else {
-        const arr = await loadJSON(path);
-        resolve(arr);
-      }
-    });
-  });
+async function loadArray(key, path) {
+  const arr = await loadItemArray(key);
+  if (arr.length > 0) return arr;
+  const fromJson = await loadJSON(path);
+  return await convertArrayToNames(fromJson);
 }
 
 function loadStoredArray(key) {

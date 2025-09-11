@@ -10,6 +10,7 @@ import {
 } from './utils/sortByCategory.js';
 import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from "./utils/priceUtils.js";
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
+import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
@@ -19,25 +20,17 @@ const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
 const CONSUMED_PATH = 'consumedThisYear';
 
-
-function loadArray(key, path) {
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      if (data[key]) {
-        resolve(data[key]);
-      } else {
-        const arr = await loadJSON(path);
-        resolve(arr);
-      }
-    });
-  });
+async function loadArray(key, path) {
+  const arr = await loadItemArray(key);
+  if (arr.length > 0) return arr;
+  const fromJson = await loadJSON(path);
+  return await convertArrayToNames(fromJson);
 }
 
 const loadNeeds = () => loadArray('yearlyNeeds', YEARLY_NEEDS_PATH);
 const loadMonthlyConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
 const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
-const loadStoreSelections = () =>
-  loadArray(STORE_SELECTION_KEY, STORE_SELECTION_PATH);
+const loadStoreSelections = () => loadArray(STORE_SELECTION_KEY, STORE_SELECTION_PATH);
 
 async function loadStock() {
   return new Promise(async resolve => {

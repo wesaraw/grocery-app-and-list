@@ -7,6 +7,7 @@ import {
   renderItemsWithCategoryHeaders
 } from './utils/sortByCategory.js';
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
+import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -15,29 +16,17 @@ const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json
 
 
 async function loadStock() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get('currentStock', async data => {
-      if (data.currentStock) {
-        resolve(data.currentStock);
-      } else {
-        const stock = await loadJSON(STOCK_PATH);
-        resolve(stock);
-      }
-    });
-  });
+  const arr = await loadItemArray('currentStock');
+  if (arr.length > 0) return arr;
+  const stock = await loadJSON(STOCK_PATH);
+  return await convertArrayToNames(stock);
 }
 
-function loadArray(key, path) {
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      if (data[key]) {
-        resolve(data[key]);
-      } else {
-        const arr = await loadJSON(path);
-        resolve(arr);
-      }
-    });
-  });
+async function loadArray(key, path) {
+  const arr = await loadItemArray(key);
+  if (arr.length > 0) return arr;
+  const fromJson = await loadJSON(path);
+  return await convertArrayToNames(fromJson);
 }
 
 function loadStoredArray(key) {

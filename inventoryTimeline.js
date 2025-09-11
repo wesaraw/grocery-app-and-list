@@ -2,6 +2,7 @@ import { WEEKS_PER_MONTH } from './utils/constants.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 import { canonicalName } from './utils/nameUtils.js';
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
+import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
 
 async function loadJSON(path) {
   const url = chrome.runtime.getURL(path);
@@ -40,22 +41,11 @@ async function loadFinalProducts(names) {
 }
 
 
-function loadArray(key, path) {
-  return new Promise(async resolve => {
-    try {
-      chrome.storage.local.get(key, async data => {
-        if (data[key]) {
-          resolve(data[key]);
-        } else {
-          const arr = await loadJSON(path);
-          resolve(arr);
-        }
-      });
-    } catch (e) {
-      const arr = await loadJSON(path);
-      resolve(arr);
-    }
-  });
+async function loadArray(key, path) {
+  const arr = await loadItemArray(key);
+  if (arr.length > 0) return arr;
+  const fromJson = await loadJSON(path);
+  return await convertArrayToNames(fromJson);
 }
 
 function sortItemsByCategory(arr) {
