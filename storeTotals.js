@@ -28,16 +28,10 @@ const loadMonthlyConsumption = () => loadArray('monthlyConsumption', CONSUMPTION
 const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
 
 async function loadStock() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get('currentStock', async data => {
-      if (data.currentStock) {
-        resolve(data.currentStock);
-      } else {
-        const stock = await loadJSON(STOCK_PATH);
-        resolve(stock);
-      }
-    });
-  });
+  const arr = await loadItemArray('currentStock');
+  if (arr.length > 0) return arr;
+  const stock = await loadJSON(STOCK_PATH);
+  return await convertArrayToNames(stock);
 }
 
 function getCurrentWeek() {
@@ -47,16 +41,10 @@ function getCurrentWeek() {
 }
 
 async function loadConsumed() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get(CONSUMED_PATH, async data => {
-      if (data[CONSUMED_PATH]) {
-        resolve(data[CONSUMED_PATH]);
-      } else {
-        const needs = await loadNeeds();
-        resolve(needs.map(n => ({ name: n.name, amount: 0, unit: n.home_unit })));
-      }
-    });
-  });
+  const arr = await loadItemArray(CONSUMED_PATH);
+  if (arr.length > 0) return arr;
+  const needs = await loadNeeds();
+  return needs.map(n => ({ name: n.name, amount: 0, unit: n.home_unit }));
 }
 
 function loadStoredArray(key) {
@@ -72,16 +60,10 @@ function key(type, item, store) {
 }
 
 async function loadStoreSelections() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get(STORE_SELECTION_KEY, async data => {
-      if (data[STORE_SELECTION_KEY]) {
-        resolve(data[STORE_SELECTION_KEY]);
-      } else {
-        const arr = await loadJSON(STORE_SELECTION_PATH);
-        resolve(arr);
-      }
-    });
-  });
+  const arr = await loadItemArray(STORE_SELECTION_KEY);
+  if (arr.length > 0) return arr;
+  const fromJson = await loadJSON(STORE_SELECTION_PATH);
+  return await convertArrayToNames(fromJson);
 }
 
 function loadSelected(item, store) {

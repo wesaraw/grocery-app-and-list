@@ -32,16 +32,10 @@ function setStorage(obj) {
 }
 
 async function loadStoreSelections() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get(STORE_SELECTION_KEY, async data => {
-      if (data[STORE_SELECTION_KEY]) {
-        resolve(data[STORE_SELECTION_KEY]);
-      } else {
-        const arr = await loadJSON(STORE_SELECTION_PATH);
-        resolve(arr);
-      }
-    });
-  });
+  const arr = await loadItemArray(STORE_SELECTION_KEY);
+  if (arr.length > 0) return arr;
+  const fromJson = await loadJSON(STORE_SELECTION_PATH);
+  return await convertArrayToNames(fromJson);
 }
 
 async function loadArray(key, path) {
