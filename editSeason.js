@@ -1,15 +1,16 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { loadItemSeasons, saveItemSeasons } from './utils/seasonData.js';
 import { sortItemsByCategory, renderItemsWithCategoryHeaders } from './utils/sortByCategory.js';
+import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
+const NEEDS_KEY = 'yearlyNeeds';
 
-function loadNeeds() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get('yearlyNeeds', async data => {
-      resolve(data.yearlyNeeds || (await loadJSON(NEEDS_PATH)));
-    });
-  });
+async function loadNeeds() {
+  const arr = await loadItemArray(NEEDS_KEY);
+  if (arr.length > 0) return arr;
+  const needs = await loadJSON(NEEDS_PATH);
+  return await convertArrayToNames(needs);
 }
 
 function parseMonthVal(v) {

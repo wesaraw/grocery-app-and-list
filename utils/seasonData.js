@@ -1,15 +1,11 @@
+import { loadObject as loadItemObject, saveObject as saveItemObject } from './itemStorage.js';
+
 export function loadItemSeasons() {
-  return new Promise(resolve => {
-    chrome.storage.local.get('itemSeasons', data => {
-      resolve(data.itemSeasons || {});
-    });
-  });
+  return loadItemObject('itemSeasons');
 }
 
 export function saveItemSeasons(map) {
-  return new Promise(resolve => {
-    chrome.storage.local.set({ itemSeasons: map }, () => resolve());
-  });
+  return saveItemObject('itemSeasons', map);
 }
 
 function parseMonth(str) {

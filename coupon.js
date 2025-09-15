@@ -3,8 +3,16 @@ import {
   sortItemsByCategory,
   renderItemsWithCategoryHeaders
 } from './utils/sortByCategory.js';
+import {
+  loadArray as loadItemArray,
+  loadObject as loadItemObject,
+  saveObject as saveItemObject,
+  convertArrayToNames
+} from './utils/itemStorage.js';
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
+const NEEDS_KEY = 'yearlyNeeds';
+const COUPONS_KEY = 'coupons';
 
 let filterText = '';
 const headerState = {};
@@ -12,31 +20,19 @@ let allNeeds = [];
 let container;
 let couponsMap;
 
-function loadNeeds() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get('yearlyNeeds', async data => {
-      if (data.yearlyNeeds) {
-        resolve(data.yearlyNeeds);
-      } else {
-        const needs = await loadJSON(NEEDS_PATH);
-        resolve(needs);
-      }
-    });
-  });
+async function loadNeeds() {
+  const arr = await loadItemArray(NEEDS_KEY);
+  if (arr.length > 0) return arr;
+  const needs = await loadJSON(NEEDS_PATH);
+  return await convertArrayToNames(needs);
 }
 
 function loadCoupons() {
-  return new Promise(resolve => {
-    chrome.storage.local.get('coupons', data => {
-      resolve(data.coupons || {});
-    });
-  });
+  return loadItemObject(COUPONS_KEY);
 }
 
 function saveCoupons(map) {
-  return new Promise(resolve => {
-    chrome.storage.local.set({ coupons: map }, () => resolve());
-  });
+  return saveItemObject(COUPONS_KEY, map);
 }
 
 const STORES = ['Stop & Shop', 'Walmart', 'Amazon', 'Shaws', 'Roche Bros', 'Hannaford'];
