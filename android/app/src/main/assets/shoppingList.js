@@ -1,11 +1,100 @@
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
+import { getItemName } from './utils/itemStorage.js';
 
-function loadCommitItems() {
+function storageGet(keys) {
   return new Promise(resolve => {
-    chrome.storage.local.get('lastCommitItems', data => {
-      resolve(data.lastCommitItems || []);
+    chrome.storage.local.get(keys, data => resolve(data));
+  });
+}
+
+async function fetchFinalInfo(itemName) {
+  const storeKey = `final_${encodeURIComponent(itemName)}`;
+  const productKey = `final_product_${encodeURIComponent(itemName)}`;
+  const data = await storageGet([storeKey, productKey]);
+  return { store: data[storeKey], product: data[productKey] };
+}
+
+async function resolveItemName(entry) {
+  if (!entry) return null;
+  if (entry.item != null && entry.item !== '') {
+    return await getItemName(String(entry.item));
+  }
+  if (entry.itemId != null) {
+    return await getItemName(String(entry.itemId));
+  }
+  if (entry.id != null) {
+    return await getItemName(String(entry.id));
+  }
+  if (entry.name != null && entry.name !== '') {
+    return await getItemName(String(entry.name));
+  }
+  return null;
+}
+
+function productNeedsExpansion(product) {
+  if (!product || typeof product !== 'object' || Array.isArray(product)) return true;
+  const keys = Object.keys(product);
+  if (keys.length === 0) return true;
+  if (
+    product.name ||
+    product.price ||
+    product.priceNumber != null ||
+    product.size ||
+    product.convertedQty != null
+  ) {
+    return false;
+  }
+  return true;
+}
+
+async function expandCommitEntry(entry) {
+  if (!entry) return null;
+  const itemName = await resolveItemName(entry);
+  if (!itemName) return null;
+  let store = entry.store;
+  let product = entry.product;
+
+  let finalInfo = null;
+  const needsFinalStore =
+    !store ||
+    (typeof store === 'string' && (!store.trim() || /^\d+$/.test(store.trim())));
+  const needsFinalProduct = productNeedsExpansion(product);
+
+  if (needsFinalStore || needsFinalProduct) {
+    finalInfo = await fetchFinalInfo(itemName);
+  }
+
+  if (needsFinalStore && finalInfo && finalInfo.store) {
+    store = finalInfo.store;
+  }
+
+  if (needsFinalProduct && finalInfo && finalInfo.product) {
+    product = finalInfo.product;
+  }
+
+  const unit = entry.unit || entry.home_unit || null;
+
+  return {
+    ...entry,
+    item: itemName,
+    store,
+    product,
+    unit
+  };
+}
+
+async function expandCommitItems(entries = []) {
+  const expanded = await Promise.all(entries.map(expandCommitEntry));
+  return expanded.filter(it => it && it.item);
+}
+
+async function loadCommitItems() {
+  const data = await new Promise(resolve => {
+    chrome.storage.local.get('lastCommitItems', result => {
+      resolve(result.lastCommitItems || []);
     });
   });
+  return expandCommitItems(data);
 }
 
 function getCurrentWeek() {
@@ -129,7 +218,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.close();
         return;
       }
-      for (const it of lastCommitItems) {
+      const expandedItems = await expandCommitItems(lastCommitItems);
+      for (const it of expandedItems) {
+        if (!it.item) continue;
         if (!purchases[it.item]) purchases[it.item] = [];
         purchases[it.item].push({
           purchase_week: pendingCommitWeek,

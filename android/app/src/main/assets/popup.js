@@ -9,8 +9,8 @@ import {
   renderItemsWithCategoryHeaders
 } from './utils/sortByCategory.js';
 import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from "./utils/priceUtils.js";
-import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
-import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
+import { loadPurchases } from './utils/purchaseStorage.js';
+import { loadArray as loadItemArray, convertArrayToNames, getItemId } from './utils/itemStorage.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
@@ -889,7 +889,6 @@ async function loadCommitData(itemName) {
 
 
 async function commitSelections() {
-  const purchases = await loadPurchases();
   const commitItems = [];
   const currentWeek = getCurrentWeek();
 
@@ -950,14 +949,10 @@ async function commitSelections() {
     const packsToBuy = Math.ceil(needRecord.toBuy / perPackHomeQty);
     const amount = perPackHomeQty * packsToBuy;
 
-    if (!purchases[item.name]) purchases[item.name] = [];
-    purchases[item.name].push({
-      purchase_week: currentWeek,
-      quantity_purchased: amount
-    });
-
+    const itemId = await getItemId(item.name);
     commitItems.push({
       item: item.name,
+      itemId,
       store,
       product,
       amount,
@@ -965,8 +960,6 @@ async function commitSelections() {
       packs: packsToBuy
     });
   }
-  await savePurchases(purchases);
-
   chrome.storage.local.set({
     lastCommitItems: commitItems,
     pendingCommitWeek: currentWeek
