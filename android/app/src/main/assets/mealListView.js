@@ -8,6 +8,11 @@ import { parseQuantity } from './utils/calendarUtils.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
+import {
+  loadArray as loadItemArray,
+  saveArray as saveItemArray,
+  convertArrayToNames
+} from './utils/itemStorage.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -60,80 +65,72 @@ function createAddButton(name) {
   return btn;
 }
 
-function loadMeals() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      let arr = data[key];
-      if (!arr) arr = await loadJSON(path);
-      if (Array.isArray(arr)) {
-        arr.forEach(m => {
-          if (m.prepared === undefined) m.prepared = false;
-          if (m.prepAhead === undefined) m.prepAhead = false;
-          if (m.recipeBook === undefined) m.recipeBook = '';
-        });
-      }
-      resolve(arr || []);
+async function loadMeals() {
+  const arr = await loadItemArray(key);
+  if (arr.length > 0) {
+    arr.forEach(m => {
+      if (m.prepared === undefined) m.prepared = false;
+      if (m.prepAhead === undefined) m.prepAhead = false;
+      if (m.recipeBook === undefined) m.recipeBook = '';
     });
+    return arr;
+  }
+  const fromJson = await loadJSON(path);
+  const withNames = await convertArrayToNames(fromJson);
+  withNames.forEach(m => {
+    if (m.prepared === undefined) m.prepared = false;
+    if (m.prepAhead === undefined) m.prepAhead = false;
+    if (m.recipeBook === undefined) m.recipeBook = '';
   });
+  return withNames;
 }
 
-function loadStock() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get('currentStock', async data => {
-      if (data.currentStock) {
-        resolve(data.currentStock);
-      } else {
-        const stock = await loadJSON(STOCK_PATH);
-        resolve(stock);
-      }
-    });
-  });
+async function loadStock() {
+  const arr = await loadItemArray('currentStock');
+  if (arr.length > 0) return arr;
+  const stock = await loadJSON(STOCK_PATH);
+  return await convertArrayToNames(stock);
 }
 
-function loadNeeds() {
-  return new Promise(async resolve => {
-    chrome.storage.local.get('yearlyNeeds', async data => {
-      if (data.yearlyNeeds) {
-        resolve(data.yearlyNeeds);
-      } else {
-        const arr = await loadJSON(NEEDS_PATH);
-        resolve(arr);
-      }
-    });
-  });
+async function loadNeeds() {
+  const arr = await loadItemArray('yearlyNeeds');
+  if (arr.length > 0) return arr;
+  const fromJson = await loadJSON(NEEDS_PATH);
+  return await convertArrayToNames(fromJson);
 }
 
 function saveMeals(arr) {
-  return new Promise(resolve => {
-    chrome.storage.local.set({ [key]: arr }, () => resolve());
-  });
+  return saveItemArray(key, arr);
 }
 
 function loadMealsForType(cat) {
   const info = MEAL_TYPES[cat];
   if (!info) return Promise.resolve([]);
-  return new Promise(async resolve => {
-    chrome.storage.local.get(info.key, async data => {
-      let arr = data[info.key];
-      if (!arr) arr = await loadJSON(info.path);
-      if (Array.isArray(arr)) {
-        arr.forEach(m => {
-          if (m.prepared === undefined) m.prepared = false;
-          if (m.prepAhead === undefined) m.prepAhead = false;
-          if (m.recipeBook === undefined) m.recipeBook = '';
-        });
-      }
-      resolve(arr || []);
+  return (async () => {
+    const arr = await loadItemArray(info.key);
+    if (arr.length > 0) {
+      arr.forEach(m => {
+        if (m.prepared === undefined) m.prepared = false;
+        if (m.prepAhead === undefined) m.prepAhead = false;
+        if (m.recipeBook === undefined) m.recipeBook = '';
+      });
+      return arr;
+    }
+    const fromJson = await loadJSON(info.path);
+    const withNames = await convertArrayToNames(fromJson);
+    withNames.forEach(m => {
+      if (m.prepared === undefined) m.prepared = false;
+      if (m.prepAhead === undefined) m.prepAhead = false;
+      if (m.recipeBook === undefined) m.recipeBook = '';
     });
-  });
+    return withNames;
+  })();
 }
 
 function saveMealsForType(cat, arr) {
   const info = MEAL_TYPES[cat];
   if (!info) return Promise.resolve();
-  return new Promise(resolve => {
-    chrome.storage.local.set({ [info.key]: arr }, () => resolve());
-  });
+  return saveItemArray(info.key, arr);
 }
 
 function pricePerHomeUnit(itemName, product) {
