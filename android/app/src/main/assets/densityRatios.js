@@ -8,6 +8,7 @@ let allNeeds = [];
 let densityMap = {};
 let tbody;
 let filterText = '';
+const headerState = {};
 
 function parseRatio(str) {
   const m1 = str.match(/^([0-9.]+)\s*:\s*1$/);
@@ -88,10 +89,54 @@ function render() {
   const arr = filterText
     ? allNeeds.filter(n => n.name.toLowerCase().includes(filterText))
     : allNeeds;
+
+  let lastCat = null;
+  let headerRow = null;
+  let itemRows = [];
+
+  function addCategoryRow(cat) {
+    const tr = document.createElement('tr');
+    const th = document.createElement('th');
+    th.colSpan = 5;
+    th.className = 'category-header';
+    th.textContent = cat;
+    tr.appendChild(th);
+    tbody.appendChild(tr);
+    return tr;
+  }
+
+  function finalizeHeader(cat, row, rowsArr) {
+    if (!row) return;
+    const hidden = headerState[cat] !== undefined ? headerState[cat] : true;
+    row.dataset.hidden = hidden ? 'true' : 'false';
+    rowsArr.forEach(r => {
+      r.style.display = hidden ? 'none' : '';
+    });
+    const th = row.querySelector('.category-header');
+    th.style.cursor = 'pointer';
+    th.addEventListener('click', () => {
+      const isHidden = row.dataset.hidden === 'true';
+      row.dataset.hidden = isHidden ? 'false' : 'true';
+      rowsArr.forEach(r => {
+        r.style.display = isHidden ? '' : 'none';
+      });
+      headerState[cat] = !isHidden;
+    });
+  }
+
   arr.forEach(item => {
+    const cat = item.category || 'Other';
+    if (cat !== lastCat) {
+      finalizeHeader(lastCat, headerRow, itemRows);
+      lastCat = cat;
+      headerRow = addCategoryRow(cat);
+      itemRows = [];
+    }
     const row = buildRow(item);
+    itemRows.push(row);
     tbody.appendChild(row);
   });
+  finalizeHeader(lastCat, headerRow, itemRows);
 }
 
 document.addEventListener('DOMContentLoaded', init);
