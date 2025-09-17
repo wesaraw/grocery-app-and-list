@@ -13,6 +13,7 @@ export function generateWhatToEatCalendar(
   const nonPrepState = {};
   const sharedNonPrepState = {};
   const sharedDailyPick = {};
+  const overrideSlotKeyCache = {};
 
   const subCount = {};
   Object.values(subscriptions).forEach(prefs => {
@@ -55,10 +56,43 @@ export function generateWhatToEatCalendar(
     return chosen;
   }
 
+  function computeOverrideSlotKeys(dayName) {
+    const perCategory = {};
+    users.forEach(user => {
+      const dayOverrides = slotOverrides[user]?.[dayName] || {};
+      Object.entries(dayOverrides).forEach(([sourceCategoryId, slotMap = {}]) => {
+        Object.entries(slotMap || {}).forEach(([slotIndex, targetCategoryId]) => {
+          if (!targetCategoryId) return;
+          const categoryEntry =
+            perCategory[targetCategoryId] ||
+            (perCategory[targetCategoryId] = {
+              baseSlots: mealsPerDay[targetCategoryId] || 1,
+              nextOffset: 0,
+              map: {}
+            });
+          const comboKey = `${sourceCategoryId}:${slotIndex}`;
+          if (categoryEntry.map[comboKey] == null) {
+            categoryEntry.map[comboKey] =
+              categoryEntry.baseSlots + categoryEntry.nextOffset;
+            categoryEntry.nextOffset += 1;
+          }
+        });
+      });
+    });
+    const result = {};
+    Object.entries(perCategory).forEach(([categoryId, data]) => {
+      result[categoryId] = data.map;
+    });
+    return result;
+  }
+
   for (let i = 0; i < weeks * 7; i++) {
     const dateStr = date.toISOString().split('T')[0];
     const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
     sharedDailyPick[dateStr] = sharedDailyPick[dateStr] || {};
+    const dayOverrideSlotKeys =
+      overrideSlotKeyCache[dayName] ||
+      (overrideSlotKeyCache[dayName] = computeOverrideSlotKeys(dayName));
     users.forEach(user => {
       calendar[user][dateStr] = calendar[user][dateStr] || {};
       const prefs = subscriptions[user] || {};
@@ -110,14 +144,21 @@ export function generateWhatToEatCalendar(
         return context;
       }
 
-      function attemptPick(categoryId, slotIndex) {
+      function attemptPick(categoryId, slotKey, normalizedSlotOverride) {
         const context = getContext(categoryId);
         if (!context) return null;
-        const targetSlots = context.numSlots || 1;
-        const normalizedSlot = Math.max(
-          0,
-          Math.min(slotIndex, targetSlots - 1)
-        );
+        const targetSlots = Math.max(1, context.numSlots || 1);
+        const slotKeyNumber =
+          typeof slotKey === 'number'
+            ? slotKey
+            : slotKey != null && !Number.isNaN(Number(slotKey))
+            ? Number(slotKey)
+            : 0;
+        const normalizedSlot =
+          normalizedSlotOverride != null
+            ? normalizedSlotOverride
+            : Math.max(0, Math.min(slotKeyNumber, targetSlots - 1));
+        const sharedSlotKey = slotKey != null ? slotKey : normalizedSlot;
         const meals = context.meals;
         const prepMeal = meals.find(
           m => (m.id || m.name) === context.prepMealId
@@ -136,15 +177,15 @@ export function generateWhatToEatCalendar(
           if (!sharedDailyPick[dateStr][categoryId]) {
             sharedDailyPick[dateStr][categoryId] = {};
           }
-          if (!sharedDailyPick[dateStr][categoryId][normalizedSlot]) {
+          if (!sharedDailyPick[dateStr][categoryId][sharedSlotKey]) {
             const sharedState =
               sharedNonPrepState[categoryId] || (sharedNonPrepState[categoryId] = {});
             const meal = pickWeighted(context.weightedShared, sharedState);
             if (!meal) return null;
-            sharedDailyPick[dateStr][categoryId][normalizedSlot] =
+            sharedDailyPick[dateStr][categoryId][sharedSlotKey] =
               meal.id || meal.name;
           }
-          chosenId = sharedDailyPick[dateStr][categoryId][normalizedSlot];
+          chosenId = sharedDailyPick[dateStr][categoryId][sharedSlotKey];
         } else if (context.chooseList.length) {
           const state = stateRec[categoryId] || (stateRec[categoryId] = {});
           const meal = pickWeighted(context.chooseList, state);
@@ -156,13 +197,13 @@ export function generateWhatToEatCalendar(
             if (!sharedDailyPick[dateStr][categoryId]) {
               sharedDailyPick[dateStr][categoryId] = {};
             }
-            if (!sharedDailyPick[dateStr][categoryId][normalizedSlot]) {
+            if (!sharedDailyPick[dateStr][categoryId][sharedSlotKey]) {
               const sharedState =
                 sharedNonPrepState[categoryId] ||
                 (sharedNonPrepState[categoryId] = {});
               const meal = pickWeighted(context.weightedShared, sharedState);
               if (meal) {
-                sharedDailyPick[dateStr][categoryId][normalizedSlot] =
+                sharedDailyPick[dateStr][categoryId][sharedSlotKey] =
                   meal.id || meal.name;
               }
             }
@@ -187,7 +228,26 @@ export function generateWhatToEatCalendar(
           let chosenId = null;
           const overrideCategory = slotOverridesForCat[s];
           if (overrideCategory) {
-            const overridePick = attemptPick(overrideCategory, s);
+            const overrideContext = getContext(overrideCategory);
+            const overrideSlotCount = overrideContext
+              ? Math.max(1, overrideContext.numSlots || 1)
+              : 1;
+            const normalizedOverrideSlot = Math.max(
+              0,
+              Math.min(s, overrideSlotCount - 1)
+            );
+            const overrideKeyMap =
+              dayOverrideSlotKeys[overrideCategory] || {};
+            const overrideComboKey = `${cat}:${s}`;
+            const overrideSlotKey =
+              overrideKeyMap[overrideComboKey] != null
+                ? overrideKeyMap[overrideComboKey]
+                : undefined;
+            const overridePick = attemptPick(
+              overrideCategory,
+              overrideSlotKey != null ? overrideSlotKey : normalizedOverrideSlot,
+              normalizedOverrideSlot
+            );
             if (overridePick) {
               chosenId = overridePick.chosenId;
             }

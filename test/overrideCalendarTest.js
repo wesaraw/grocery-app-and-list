@@ -69,4 +69,85 @@ if (monday.breakfast !== 'B1') {
   throw new Error(`Breakfast slot should keep breakfast meal: ${monday.breakfast}`);
 }
 
-console.log('meal slot override calendar test passed');
+// Scenario: Two users override the same lunch slot to breakfast, and the breakfast
+// category exposes two group meals. The override slot should schedule the second
+// shared meal independently of the base breakfast rotation so both shared meals
+// appear on the calendar.
+const multiUsers = ['Alice', 'Bob'];
+const sharedPrepared = {};
+const breakfastGroupMeals = [
+  { id: 'GB1', name: 'Group Pancakes', weight: 1, groupMeal: true },
+  { id: 'GB2', name: 'Group Waffles', weight: 1, groupMeal: true }
+];
+const sharedSubscriptions = {
+  Alice: {
+    breakfast: breakfastGroupMeals,
+    lunchDinner: lunchMeals
+  },
+  Bob: {
+    breakfast: breakfastGroupMeals,
+    lunchDinner: lunchMeals
+  }
+};
+const sharedEatingDays = {
+  Alice: {
+    breakfast: ['Monday']
+  },
+  Bob: {
+    breakfast: ['Monday']
+  }
+};
+const sharedMealsPerDay = {
+  breakfast: 1,
+  lunchDinner: 1
+};
+const sharedOverrides = {
+  Alice: {
+    Monday: {
+      lunchDinner: {
+        0: 'breakfast'
+      }
+    }
+  },
+  Bob: {
+    Monday: {
+      lunchDinner: {
+        0: 'breakfast'
+      }
+    }
+  }
+};
+
+const sharedCalendar = generateWhatToEatCalendar(
+  multiUsers,
+  sharedPrepared,
+  sharedSubscriptions,
+  sharedEatingDays,
+  sharedMealsPerDay,
+  startDate,
+  1,
+  {},
+  {},
+  sharedOverrides
+);
+
+const aliceMonday = sharedCalendar.Alice['2024-01-01'];
+const bobMonday = sharedCalendar.Bob['2024-01-01'];
+if (!aliceMonday || !bobMonday) {
+  throw new Error('Missing Monday entries for override participants');
+}
+if (aliceMonday.breakfast !== 'GB1' || bobMonday.breakfast !== 'GB1') {
+  throw new Error('Base breakfast slot should schedule the first group meal');
+}
+if (aliceMonday.lunchDinner !== 'GB2') {
+  throw new Error(
+    `Alice override slot should schedule the second group meal, received ${aliceMonday.lunchDinner}`
+  );
+}
+if (bobMonday.lunchDinner !== 'GB2') {
+  throw new Error(
+    `Bob override slot should schedule the second group meal, received ${bobMonday.lunchDinner}`
+  );
+}
+
+console.log('meal slot override calendar tests passed');
