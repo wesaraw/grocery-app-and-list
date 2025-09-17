@@ -18,6 +18,10 @@ import {
   loadUserPriceThresholds
 } from './userData.js';
 import { loadItemSeasons } from './seasonData.js';
+import {
+  loadMealSlotOverrides,
+  MEAL_SLOT_OVERRIDE_DAYS
+} from './mealSlotOverrides.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 
@@ -78,8 +82,188 @@ export async function calculateAndSaveMealNeeds() {
   const userDays = await loadUserCategoryDays();
   const priceThresholds = await loadUserPriceThresholds();
   const itemSeasons = await loadItemSeasons();
+  const overrides = await loadMealSlotOverrides();
 
   while (userDays.length < users.length) userDays.push({});
+
+  const labelToCategory = {};
+  Object.entries(MEAL_TYPES).forEach(([id, info]) => {
+    if (info && info.label) {
+      labelToCategory[info.label] = id;
+    }
+  });
+
+  const validDayOrder = new Map(
+    MEAL_SLOT_OVERRIDE_DAYS.map((day, idx) => [day, idx])
+  );
+  const validDaySet = new Set(MEAL_SLOT_OVERRIDE_DAYS);
+
+  function sortDays(list) {
+    return Array.from(new Set(list.filter(day => validDaySet.has(day))))
+      .sort((a, b) => (validDayOrder.get(a) || 0) - (validDayOrder.get(b) || 0));
+  }
+
+  const perDayCache = {};
+  function getSlotsPerDay(categoryId) {
+    if (perDayCache[categoryId] !== undefined) {
+      return perDayCache[categoryId];
+    }
+    const raw = mealsPerDay[categoryId];
+    let value;
+    if (typeof raw === 'number') {
+      value = raw;
+    } else if (raw !== undefined && raw !== null) {
+      const parsed = Number(raw);
+      value = Number.isFinite(parsed) ? parsed : undefined;
+    }
+    if (value === undefined) {
+      value = DEFAULT_MEALS_PER_DAY[categoryId];
+    }
+    if (!Number.isFinite(value)) {
+      value = 0;
+    }
+    perDayCache[categoryId] = value;
+    return value;
+  }
+
+  const userCategoryDayLists = users.map(() => ({}));
+  userDays.forEach((rec, idx) => {
+    const map = userCategoryDayLists[idx];
+    Object.entries(rec || {}).forEach(([label, days]) => {
+      let categoryId = labelToCategory[label];
+      if (!categoryId && MEAL_TYPES[label]) {
+        categoryId = label;
+      }
+      if (!categoryId) return;
+      const list = Array.isArray(days)
+        ? days
+        : [];
+      map[categoryId] = sortDays(list);
+    });
+  });
+
+  const slotOverridesByUserIndex = {};
+  overrides.forEach(override => {
+    if (!override || typeof override !== 'object') return;
+    const userIndex = override.userIndex;
+    if (!Number.isInteger(userIndex) || userIndex < 0 || userIndex >= users.length) {
+      return;
+    }
+    const days = Array.isArray(override.days) ? override.days : [];
+    if (!days.length) return;
+    const source = override.sourceCategoryId;
+    const target = override.overrideCategoryId;
+    if (!source || !target) return;
+    const slotIndex = override.slotIndex;
+    if (!Number.isInteger(slotIndex)) return;
+    const userMap = slotOverridesByUserIndex[userIndex] || (slotOverridesByUserIndex[userIndex] = {});
+    days.forEach(day => {
+      if (!validDaySet.has(day)) return;
+      const dayMap = userMap[day] || (userMap[day] = {});
+      const catMap = dayMap[source] || (dayMap[source] = {});
+      catMap[slotIndex] = target;
+    });
+  });
+
+  const overrideSourceCounts = {};
+  const overrideTargetCounts = {};
+  const overrideSourceDaySets = {};
+  const overrideTargetDaySets = {};
+  Object.entries(slotOverridesByUserIndex).forEach(([idxStr, dayMap]) => {
+    const idx = Number(idxStr);
+    Object.entries(dayMap).forEach(([day, sourceMap]) => {
+      Object.entries(sourceMap).forEach(([sourceCat, slotMap]) => {
+        const slotIndices = Object.keys(slotMap);
+        if (!slotIndices.length) return;
+        const sourceCounts = overrideSourceCounts[idx] || (overrideSourceCounts[idx] = {});
+        const sourceByDay = sourceCounts[sourceCat] || (sourceCounts[sourceCat] = {});
+        sourceByDay[day] = (sourceByDay[day] || 0) + slotIndices.length;
+        const sourceDaySets = overrideSourceDaySets[idx] || (overrideSourceDaySets[idx] = {});
+        const srcSet = sourceDaySets[sourceCat] || (sourceDaySets[sourceCat] = new Set());
+        srcSet.add(day);
+        slotIndices.forEach(slotIdx => {
+          const targetCat = slotMap[slotIdx];
+          if (!targetCat) return;
+          const targetCounts = overrideTargetCounts[idx] || (overrideTargetCounts[idx] = {});
+          const targetByDay = targetCounts[targetCat] || (targetCounts[targetCat] = {});
+          targetByDay[day] = (targetByDay[day] || 0) + 1;
+          const targetDaySets = overrideTargetDaySets[idx] || (overrideTargetDaySets[idx] = {});
+          const tgtSet = targetDaySets[targetCat] || (targetDaySets[targetCat] = new Set());
+          tgtSet.add(day);
+        });
+      });
+    });
+  });
+
+  function computeWeeklySlotsForUser(userIndex, categoryId) {
+    const perDay = getSlotsPerDay(categoryId);
+    const baseDays = userCategoryDayLists[userIndex]?.[categoryId] || [];
+    const baseSlots = (perDay || 0) * baseDays.length;
+    let reductions = 0;
+    const sourceCounts = overrideSourceCounts[userIndex]?.[categoryId] || {};
+    Object.values(sourceCounts).forEach(count => {
+      if (perDay > 0) {
+        reductions += Math.min(count, perDay);
+      }
+    });
+    let additions = 0;
+    const targetCounts = overrideTargetCounts[userIndex]?.[categoryId] || {};
+    Object.values(targetCounts).forEach(count => {
+      additions += count;
+    });
+    const total = baseSlots - reductions + additions;
+    return total > 0 ? total : 0;
+  }
+
+  const eatingDaySets = users.map((_, idx) => {
+    const map = {};
+    const categoryDays = userCategoryDayLists[idx] || {};
+    Object.entries(categoryDays).forEach(([cat, days]) => {
+      if (Array.isArray(days) && days.length) {
+        map[cat] = new Set(days);
+      }
+    });
+    return map;
+  });
+
+  Object.entries(slotOverridesByUserIndex).forEach(([idxStr, dayMap]) => {
+    const idx = Number(idxStr);
+    const setMap = eatingDaySets[idx] || (eatingDaySets[idx] = {});
+    Object.entries(dayMap).forEach(([day, sourceMap]) => {
+      if (!validDaySet.has(day)) return;
+      Object.entries(sourceMap).forEach(([sourceCat, slotMap]) => {
+        const sourceSet = setMap[sourceCat] || (setMap[sourceCat] = new Set());
+        sourceSet.add(day);
+        Object.values(slotMap).forEach(targetCat => {
+          if (!targetCat) return;
+          const targetSet = setMap[targetCat] || (setMap[targetCat] = new Set());
+          targetSet.add(day);
+        });
+      });
+    });
+  });
+
+  const eatingDaysByUser = {};
+  users.forEach((user, idx) => {
+    const prefs = {};
+    const sets = eatingDaySets[idx] || {};
+    Object.entries(sets).forEach(([cat, daySet]) => {
+      if (daySet && daySet.size) {
+        prefs[cat] = Array.from(daySet).sort(
+          (a, b) => (validDayOrder.get(a) || 0) - (validDayOrder.get(b) || 0)
+        );
+      }
+    });
+    eatingDaysByUser[user] = prefs;
+  });
+
+  const slotOverridesByUserName = {};
+  Object.entries(slotOverridesByUserIndex).forEach(([idxStr, map]) => {
+    const idx = Number(idxStr);
+    const user = users[idx];
+    if (!user) return;
+    slotOverridesByUserName[user] = map;
+  });
 
   for (const type of Object.keys(MEAL_TYPES)) {
     const label = MEAL_TYPES[type].label;
@@ -89,7 +273,7 @@ export async function calculateAndSaveMealNeeds() {
       return (m.people ?? m.multiplier ?? 1) > 0;
     });
     if (!active.length) continue;
-    const perDay = mealsPerDay[type] ?? DEFAULT_MEALS_PER_DAY[type];
+    const perDay = getSlotsPerDay(type);
 
     // Count how many meals each user has in this category
     const userMealCounts = users.map(() => 0);
@@ -111,32 +295,25 @@ export async function calculateAndSaveMealNeeds() {
       if (Array.isArray(meal.users)) {
         meal.users.forEach((use, idx) => {
           if (!use) return;
-          let val = userDays[idx]?.[label];
-          let days = 0;
-          if (Array.isArray(val)) days = val.length;
-          else {
-            const num = parseFloat(val);
-            days = isNaN(num) ? 0 : num;
-          }
+          const slotsPerWeek = computeWeeklySlotsForUser(idx, type);
           const count = userMealCounts[idx] || 1;
-          details.factors.push({ people: 1, days });
-          monthlySpots += (perDay * days * 52) / count / 12;
+          const dayEquivalent = perDay > 0 ? slotsPerWeek / perDay : slotsPerWeek;
+          details.factors.push({ people: 1, days: dayEquivalent });
+          monthlySpots += (slotsPerWeek * 52) / count / 12;
         });
       } else {
         const people = meal.people ?? meal.multiplier ?? 1;
         if (people <= 0) return;
-        const avgDays =
+        const slotsTotal =
           users.length > 0
-            ?
-                users.reduce((sum, _u, idx) => {
-                  const val = userDays[idx]?.[label];
-                  if (Array.isArray(val)) return sum + val.length;
-                  const num = parseFloat(val);
-                  return sum + (isNaN(num) ? 0 : num);
-                }, 0) / users.length
+            ? users.reduce(
+                (sum, _u, idx) => sum + computeWeeklySlotsForUser(idx, type),
+                0
+              ) / users.length
             : 0;
-        details.factors.push({ people, days: avgDays });
-        monthlySpots = (perDay * people * avgDays * 52) / active.length / 12;
+        const dayEquivalent = perDay > 0 ? slotsTotal / perDay : slotsTotal;
+        details.factors.push({ people, days: dayEquivalent });
+        monthlySpots = (slotsTotal * people * 52) / active.length / 12;
       }
 
       if (monthlySpots <= 0) return;
@@ -219,15 +396,8 @@ export async function calculateAndSaveMealNeeds() {
   });
 
   const eatingDays = {};
-  users.forEach((u, idx) => {
-    const rec = userDays[idx] || {};
-    eatingDays[u] = {};
-    Object.entries(rec).forEach(([label, days]) => {
-      const cat = Object.keys(MEAL_TYPES).find(
-        k => MEAL_TYPES[k].label === label
-      );
-      if (cat) eatingDays[u][cat] = Array.isArray(days) ? days : [];
-    });
+  Object.entries(eatingDaysByUser).forEach(([user, prefs]) => {
+    eatingDays[user] = prefs;
   });
 
   const whatCal = generateWhatToEatCalendar(
@@ -239,7 +409,8 @@ export async function calculateAndSaveMealNeeds() {
     startDate,
     4,
     priceThresholds,
-    itemSeasons
+    itemSeasons,
+    slotOverridesByUserName
   );
 
   await new Promise(resolve => {

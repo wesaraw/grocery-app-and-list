@@ -8,11 +8,20 @@ import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 import { loadJSON } from './utils/dataLoader.js';
 import { sortItemsByCategory } from './utils/sortByCategory.js';
+import { openOrFocusWindow } from './utils/windowUtils.js';
+import { loadMealSlotOverrides } from './utils/mealSlotOverrides.js';
 
 const btnContainer = document.getElementById('userButtons');
 const mealList = document.getElementById('mealList');
 const editBtn = document.getElementById('editNamesBtn');
 const saveNamesBtn = document.getElementById('saveNamesBtn');
+const overrideBtn = document.getElementById('mealSlotOverrideBtn');
+
+if (overrideBtn) {
+  overrideBtn.addEventListener('click', () => {
+    openOrFocusWindow('mealSlotOverride.html', 960, 720);
+  });
+}
 
 let users = [];
 let userDays = [];
@@ -235,6 +244,7 @@ async function showMeals(userIndex) {
 
 async function init() {
   await initializeMealCategories();
+  await loadMealSlotOverrides();
   users = await loadUsers();
   userDays = await loadUserCategoryDays();
   while (userDays.length < users.length) userDays.push({});
