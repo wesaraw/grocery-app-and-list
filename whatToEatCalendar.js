@@ -6,6 +6,10 @@ import {
 import { loadUsers } from './utils/userData.js';
 import { loadJSON } from './utils/dataLoader.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
+import {
+  loadArray as loadItemArray,
+  convertArrayToNames
+} from './utils/itemStorage.js';
 
 function loadCalendar() {
   return new Promise(resolve => {
@@ -76,21 +80,26 @@ function setMealImage(imgEl, meal) {
   });
 }
 
-function loadMeals(type) {
+async function loadMeals(type) {
   const { key, path } = MEAL_TYPES[type];
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      let arr = data[key];
-      if (!arr) arr = await loadJSON(path);
-      if (Array.isArray(arr)) {
-        arr.forEach(m => {
-          if (m.prepared === undefined) m.prepared = false;
-          if (m.recipeBook === undefined) m.recipeBook = '';
-        });
-      }
-      resolve(arr || []);
+  let arr = await loadItemArray(key);
+
+  if (!Array.isArray(arr) || arr.length === 0) {
+    let fallback = await loadJSON(path);
+    if (!Array.isArray(fallback)) {
+      fallback = [];
+    }
+    arr = await convertArrayToNames(fallback);
+  }
+
+  if (Array.isArray(arr)) {
+    arr.forEach(m => {
+      if (m.prepared === undefined) m.prepared = false;
+      if (m.recipeBook === undefined) m.recipeBook = '';
     });
-  });
+  }
+
+  return arr || [];
 }
 
 async function loadAllMeals() {
