@@ -5,6 +5,7 @@ import {
 } from './utils/mealData.js';
 import { loadUsers } from './utils/userData.js';
 import { loadJSON } from './utils/dataLoader.js';
+import { loadArray } from './utils/itemStorage.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 
 function loadCalendar() {
@@ -49,6 +50,25 @@ let columnOrder = {};
 let editMode = false;
 const mealMap = {};
 
+function hasStoredValue(key) {
+  return new Promise(resolve => {
+    try {
+      if (
+        typeof chrome === 'undefined' ||
+        !chrome.storage ||
+        !chrome.storage.local ||
+        !chrome.storage.local.getBytesInUse
+      ) {
+        resolve(false);
+        return;
+      }
+      chrome.storage.local.getBytesInUse(key, bytes => resolve(bytes > 0));
+    } catch (e) {
+      resolve(false);
+    }
+  });
+}
+
 function loadFinalProduct(item) {
   return new Promise(resolve => {
     const key = `final_product_${encodeURIComponent(item)}`;
@@ -76,21 +96,24 @@ function setMealImage(imgEl, meal) {
   });
 }
 
-function loadMeals(type) {
+async function loadMeals(type) {
   const { key, path } = MEAL_TYPES[type];
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      let arr = data[key];
-      if (!arr) arr = await loadJSON(path);
-      if (Array.isArray(arr)) {
-        arr.forEach(m => {
-          if (m.prepared === undefined) m.prepared = false;
-          if (m.recipeBook === undefined) m.recipeBook = '';
-        });
-      }
-      resolve(arr || []);
-    });
+  let arr = await loadArray(key);
+  const hasStored = await hasStoredValue(key);
+  if ((!arr || arr.length === 0) && !hasStored) {
+    try {
+      const fallback = await loadJSON(path);
+      arr = Array.isArray(fallback) ? fallback : [];
+    } catch (e) {
+      arr = Array.isArray(arr) ? arr : [];
+    }
+  }
+  if (!Array.isArray(arr)) arr = [];
+  arr.forEach(m => {
+    if (m.prepared === undefined) m.prepared = false;
+    if (m.recipeBook === undefined) m.recipeBook = '';
   });
+  return arr;
 }
 
 async function loadAllMeals() {

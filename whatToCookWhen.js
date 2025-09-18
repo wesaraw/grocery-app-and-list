@@ -1,5 +1,7 @@
 import { MEAL_TYPES, initializeMealCategories, loadCookingDays } from './utils/mealData.js';
 import { loadUsers } from './utils/userData.js';
+import { loadJSON } from './utils/dataLoader.js';
+import { loadArray } from './utils/itemStorage.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 
 function loadCalendar() {
@@ -14,26 +16,44 @@ function loadCalendar() {
   });
 }
 
+function hasStoredValue(key) {
+  return new Promise(resolve => {
+    try {
+      if (
+        typeof chrome === 'undefined' ||
+        !chrome.storage ||
+        !chrome.storage.local ||
+        !chrome.storage.local.getBytesInUse
+      ) {
+        resolve(false);
+        return;
+      }
+      chrome.storage.local.getBytesInUse(key, bytes => resolve(bytes > 0));
+    } catch (e) {
+      resolve(false);
+    }
+  });
+}
+
 async function loadAllMeals() {
   const map = {};
   for (const type of Object.keys(MEAL_TYPES)) {
     const { key, path } = MEAL_TYPES[type];
-    await new Promise(res => {
-      chrome.storage.local.get(key, async data => {
-        let arr = data[key];
-        if (!arr) {
-          const resp = await fetch(path).catch(() => null);
-          arr = resp ? await resp.json().catch(() => []) : [];
-        }
-        if (Array.isArray(arr)) {
-          arr.forEach(m => {
-            if (m.prepared === undefined) m.prepared = false;
-            if (m.prepAhead === undefined) m.prepAhead = false;
-            map[m.id || m.name] = m;
-          });
-        }
-        res();
-      });
+    let arr = await loadArray(key);
+    const hasStored = await hasStoredValue(key);
+    if ((!arr || arr.length === 0) && !hasStored) {
+      try {
+        const fallback = await loadJSON(path);
+        arr = Array.isArray(fallback) ? fallback : [];
+      } catch (e) {
+        arr = Array.isArray(arr) ? arr : [];
+      }
+    }
+    if (!Array.isArray(arr)) arr = [];
+    arr.forEach(m => {
+      if (m.prepared === undefined) m.prepared = false;
+      if (m.prepAhead === undefined) m.prepAhead = false;
+      map[m.id || m.name] = m;
     });
   }
   return map;
