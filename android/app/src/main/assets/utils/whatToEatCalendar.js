@@ -249,8 +249,18 @@ export function generateWhatToEatCalendar(
         const hasOverride = Object.keys(slotOverridesForCat).length > 0;
         if (!validDays.includes(dayName) && !hasOverride) return;
         const numSlots = resolveSlotCount(cat);
+        const highestOverrideIndex = Object.keys(slotOverridesForCat).reduce(
+          (max, key) => {
+            const numeric = Number(key);
+            if (!Number.isFinite(numeric)) return max;
+            const floored = Math.floor(numeric);
+            return floored >= 0 ? Math.max(max, floored) : max;
+          },
+          -1
+        );
+        const iterationSlots = Math.max(numSlots, highestOverrideIndex + 1, 0);
         const choices = [];
-        for (let s = 0; s < numSlots; s++) {
+        for (let s = 0; s < iterationSlots; s++) {
           let chosenId = null;
           const overrideCategory = slotOverridesForCat[s];
           if (overrideCategory) {
@@ -289,7 +299,8 @@ export function generateWhatToEatCalendar(
         if (numSlots === 0 && !choices.some(id => id != null)) {
           return;
         }
-        calendar[user][dateStr][cat] = numSlots === 1 ? choices[0] : choices;
+        calendar[user][dateStr][cat] =
+          iterationSlots === 1 ? choices[0] : choices;
       });
     });
     date.setDate(date.getDate() + 1);

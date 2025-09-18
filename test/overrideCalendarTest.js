@@ -203,4 +203,65 @@ if (zeroMonday.dinner !== 'T1') {
   throw new Error(`Override did not pull treat meal into dinner slot: ${zeroMonday.dinner}`);
 }
 
+// Scenario: A category with zero automatic slots still processes its override map
+// so the override meal is scheduled even though the base loop would otherwise skip
+// the category entirely.
+const zeroOverrideSourceUsers = ['Dana'];
+const zeroOverrideSourceSubscriptions = {
+  Dana: {
+    lunch: [
+      { id: 'LUNCH_BASE', name: 'Override Lunch Base', weight: 1 },
+      { id: 'LUNCH_OVERRIDE', name: 'Override Lunch Alt', weight: 1 }
+    ],
+    snack: []
+  }
+};
+const zeroOverrideSourceEatingDays = {
+  Dana: {
+    lunch: ['Monday'],
+    snack: ['Monday']
+  }
+};
+const zeroOverrideSourceMealsPerDay = {
+  lunch: 1,
+  snack: 0
+};
+const zeroOverrideSourceOverrides = {
+  Dana: {
+    Monday: {
+      snack: {
+        0: 'lunch'
+      }
+    }
+  }
+};
+
+const zeroOverrideSourceCalendar = generateWhatToEatCalendar(
+  zeroOverrideSourceUsers,
+  {},
+  zeroOverrideSourceSubscriptions,
+  zeroOverrideSourceEatingDays,
+  zeroOverrideSourceMealsPerDay,
+  startDate,
+  1,
+  {},
+  {},
+  zeroOverrideSourceOverrides
+);
+
+const zeroOverrideSourceMonday = zeroOverrideSourceCalendar.Dana['2024-01-01'];
+if (!zeroOverrideSourceMonday) {
+  throw new Error('Missing Monday entry for Dana in zero override source test');
+}
+if (zeroOverrideSourceMonday.lunch !== 'LUNCH_BASE') {
+  throw new Error(
+    `Base lunch slot should keep its own meal: ${zeroOverrideSourceMonday.lunch}`
+  );
+}
+if (zeroOverrideSourceMonday.snack !== 'LUNCH_OVERRIDE') {
+  throw new Error(
+    `Override slot for zero-multiplier category did not schedule the alternate lunch meal: ${zeroOverrideSourceMonday.snack}`
+  );
+}
+
 console.log('meal slot override calendar tests passed');
