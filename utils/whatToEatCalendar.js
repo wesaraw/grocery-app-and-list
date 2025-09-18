@@ -31,6 +31,24 @@ export function generateWhatToEatCalendar(
   const date = new Date(startDate);
   for (const u of users) calendar[u] = {};
 
+  function resolveSlotCount(categoryId) {
+    const raw = mealsPerDay ? mealsPerDay[categoryId] : undefined;
+    if (raw == null) {
+      return 1;
+    }
+    const numeric =
+      typeof raw === 'number'
+        ? raw
+        : typeof raw === 'string'
+        ? Number(raw.trim() === '' ? 0 : raw)
+        : Number(raw);
+    if (!Number.isFinite(numeric)) {
+      return 0;
+    }
+    const floored = Math.floor(numeric);
+    return floored < 0 ? 0 : floored;
+  }
+
   function weightMeals(list) {
     return list
       .map(m => ({ meal: m, weight: m && m.weight != null ? m.weight : 1 }))
@@ -66,10 +84,11 @@ export function generateWhatToEatCalendar(
       Object.entries(dayOverrides).forEach(([sourceCategoryId, slotMap = {}]) => {
         Object.entries(slotMap || {}).forEach(([slotIndex, targetCategoryId]) => {
           if (!targetCategoryId) return;
+          const baseSlots = resolveSlotCount(targetCategoryId);
           const categoryEntry =
             perCategory[targetCategoryId] ||
             (perCategory[targetCategoryId] = {
-              baseSlots: mealsPerDay[targetCategoryId] || 1,
+              baseSlots,
               nextOffset: 0,
               map: {}
             });
@@ -114,7 +133,7 @@ export function generateWhatToEatCalendar(
             isItemInSeason(itemSeasons, ing.name, date)
           )
         );
-        const numSlots = mealsPerDay[categoryId] || 1;
+        const numSlots = resolveSlotCount(categoryId);
         const prepMealId = preparedCal[dateStr]?.[categoryId];
         const nonPrepMeals = meals.filter(
           m => !m.prepared && (m.totalCost == null || m.totalCost <= maxPrice)
@@ -156,7 +175,14 @@ export function generateWhatToEatCalendar(
       function attemptPick(categoryId, slotKey, normalizedSlotOverride) {
         const context = getContext(categoryId);
         if (!context) return null;
-        const targetSlots = Math.max(1, context.numSlots || 1);
+        const normalizedCount = context.numSlots ?? 0;
+        const hasOverrideIndex = normalizedSlotOverride != null;
+        const slotLimit = hasOverrideIndex
+          ? Math.max(1, normalizedCount)
+          : normalizedCount;
+        if (!hasOverrideIndex && slotLimit <= 0) {
+          return null;
+        }
         const slotKeyNumber =
           typeof slotKey === 'number'
             ? slotKey
@@ -166,7 +192,7 @@ export function generateWhatToEatCalendar(
         const normalizedSlot =
           normalizedSlotOverride != null
             ? normalizedSlotOverride
-            : Math.max(0, Math.min(slotKeyNumber, targetSlots - 1));
+            : Math.max(0, Math.min(slotKeyNumber, slotLimit - 1));
         const sharedSlotKey = slotKey != null ? slotKey : normalizedSlot;
         const meals = context.meals;
         const prepMeal = meals.find(
@@ -231,7 +257,7 @@ export function generateWhatToEatCalendar(
         const slotOverridesForCat = overridesForDay[cat] || {};
         const hasOverride = Object.keys(slotOverridesForCat).length > 0;
         if (!validDays.includes(dayName) && !hasOverride) return;
-        const numSlots = mealsPerDay[cat] || 1;
+        const numSlots = resolveSlotCount(cat);
         const choices = [];
         for (let s = 0; s < numSlots; s++) {
           let chosenId = null;
@@ -239,7 +265,7 @@ export function generateWhatToEatCalendar(
           if (overrideCategory) {
             const overrideContext = getContext(overrideCategory);
             const overrideSlotCount = overrideContext
-              ? Math.max(1, overrideContext.numSlots || 1)
+              ? Math.max(1, overrideContext.numSlots ?? 0)
               : 1;
             const normalizedOverrideSlot = Math.max(
               0,
@@ -268,6 +294,9 @@ export function generateWhatToEatCalendar(
             }
           }
           choices.push(chosenId);
+        }
+        if (numSlots === 0 && !choices.some(id => id != null)) {
+          return;
         }
         calendar[user][dateStr][cat] = numSlots === 1 ? choices[0] : choices;
       });

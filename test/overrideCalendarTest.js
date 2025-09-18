@@ -150,4 +150,57 @@ if (bobMonday.lunchDinner !== 'GB2') {
   );
 }
 
+// Scenario: A category with a multiplier of 0 should not create an automatic slot
+// but can still be used as an override target from another category.
+const zeroUsers = ['Casey'];
+const zeroSubscriptions = {
+  Casey: {
+    dinner: [{ id: 'D1', name: 'Dinner Default', weight: 1 }],
+    treat: [{ id: 'T1', name: 'Treat Meal', weight: 1 }]
+  }
+};
+const zeroEatingDays = {
+  Casey: {
+    dinner: ['Monday'],
+    treat: ['Monday']
+  }
+};
+const zeroMealsPerDay = {
+  dinner: 1,
+  treat: 0
+};
+const zeroOverrides = {
+  Casey: {
+    Monday: {
+      dinner: {
+        0: 'treat'
+      }
+    }
+  }
+};
+
+const zeroCalendar = generateWhatToEatCalendar(
+  zeroUsers,
+  {},
+  zeroSubscriptions,
+  zeroEatingDays,
+  zeroMealsPerDay,
+  startDate,
+  1,
+  {},
+  {},
+  zeroOverrides
+);
+
+const zeroMonday = zeroCalendar.Casey['2024-01-01'];
+if (!zeroMonday) {
+  throw new Error('Missing Monday entry for Casey in zero-multiplier test');
+}
+if ('treat' in zeroMonday) {
+  throw new Error('Treat category should not create a calendar entry when multiplier is 0');
+}
+if (zeroMonday.dinner !== 'T1') {
+  throw new Error(`Override did not pull treat meal into dinner slot: ${zeroMonday.dinner}`);
+}
+
 console.log('meal slot override calendar tests passed');
