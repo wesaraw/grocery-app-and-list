@@ -81,12 +81,23 @@ function setMealImage(imgEl, meal) {
 }
 
 async function loadMeals(type) {
-  const { key, path } = MEAL_TYPES[type];
+  const meta = MEAL_TYPES[type];
+  if (!meta) return [];
+  const { key, path } = meta;
   let arr = await loadItemArray(key);
   if (!Array.isArray(arr) || arr.length === 0) {
-    const fromJson = await loadJSON(path);
-    if (Array.isArray(fromJson)) {
-      arr = await convertArrayToNames(fromJson);
+    if (path) {
+      try {
+        const fromJson = await loadJSON(path);
+        if (Array.isArray(fromJson)) {
+          arr = await convertArrayToNames(fromJson);
+        } else {
+          arr = [];
+        }
+      } catch (e) {
+        console.warn('Failed to load default meals from JSON for type', type, e);
+        arr = [];
+      }
     } else {
       arr = [];
     }
