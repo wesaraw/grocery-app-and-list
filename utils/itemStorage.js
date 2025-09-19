@@ -65,8 +65,8 @@ export async function convertArrayToNames(arr) {
   const reverse = buildReverseMap(map);
   return arr.map(item => {
     if (item && item.id != null && item.name == null) {
-      const { id, ...rest } = item;
-      return { ...rest, name: reverse[id] || id };
+      const id = item.id;
+      return { ...item, name: reverse[id] || id };
     }
     return item;
   });
