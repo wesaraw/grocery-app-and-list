@@ -54,3 +54,25 @@ export function saveUserPriceThresholds(obj) {
     chrome.storage.local.set({ userPriceThresholds: obj }, () => resolve());
   });
 }
+
+export function loadUserPortionMultipliers() {
+  return new Promise(resolve => {
+    chrome.storage.local.get('userPortionMultipliers', data => {
+      const arr = Array.isArray(data.userPortionMultipliers)
+        ? data.userPortionMultipliers.map(val =>
+            typeof val === 'number' && Number.isFinite(val) ? val : 1
+          )
+        : [];
+      resolve(arr);
+    });
+  });
+}
+
+export function saveUserPortionMultipliers(arr) {
+  const sanitized = Array.isArray(arr)
+    ? arr.map(val => (typeof val === 'number' && Number.isFinite(val) ? val : 1))
+    : [];
+  return new Promise(resolve => {
+    chrome.storage.local.set({ userPortionMultipliers: sanitized }, () => resolve());
+  });
+}

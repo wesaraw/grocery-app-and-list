@@ -532,7 +532,7 @@ async function init() {
   calendarData = calendar;
   mealsByCategoryData = mealsByCategory;
   const week = getCurrentWeek();
-  const purchaseInfo = calculatePurchaseNeeds(
+  const purchaseInfo = await calculatePurchaseNeeds(
     needs,
     consumption,
     stock,
@@ -653,7 +653,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 async function refreshNeeds(stock = stockData, consumed = consumedYearData) {
   stockData = stock;
   const hasCalendar = calendarData && Object.keys(calendarData).length > 0;
-  const purchaseInfo = calculatePurchaseNeeds(
+  const purchaseInfo = await calculatePurchaseNeeds(
     needsData,
     consumptionData,
     stock,
@@ -739,7 +739,7 @@ async function rerenderAll() {
   calendarData = calendar;
   mealsByCategoryData = mealsByCategory;
   const week = getCurrentWeek();
-  const purchaseInfo = calculatePurchaseNeeds(
+  const purchaseInfo = await calculatePurchaseNeeds(
     needs,
     consumption,
     stock,
@@ -893,7 +893,7 @@ async function commitSelections() {
   const currentWeek = getCurrentWeek();
 
   const hasCalendar = calendarData && Object.keys(calendarData).length > 0;
-  const purchaseInfo = calculatePurchaseNeeds(
+  const purchaseInfo = await calculatePurchaseNeeds(
     needsData,
     consumptionData,
     stockData,

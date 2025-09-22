@@ -305,7 +305,7 @@ async function renderTotals() {
   consumptionMap = consMap;
 
   const week = getCurrentWeek();
-  const purchaseInfo = calculatePurchaseNeeds(
+  const purchaseInfo = await calculatePurchaseNeeds(
     needs,
     Array.from(consMap.values()),
     stock,

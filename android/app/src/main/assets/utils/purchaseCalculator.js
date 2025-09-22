@@ -6,6 +6,7 @@ import {
   aggregateCalendar
 } from './calendarUtils.js';
 import { loadDensityMap } from './unitNormalize.js';
+import { loadUsers, loadUserPortionMultipliers } from './userData.js';
 
 
 function sumRange(arr, start, end) {
@@ -60,7 +61,7 @@ function simulateBeforeWeekVar(item, weeklyArr, week) {
   return active.reduce((sum, b) => sum + b.qty, 0);
 }
 
-export function calculatePurchaseNeeds(
+export async function calculatePurchaseNeeds(
   needs,
   consumption,
   stock,
@@ -86,12 +87,32 @@ export function calculatePurchaseNeeds(
   }));
 
   const needsMap = new Map(needs.map(n => [n.name, n.home_unit]));
+  let users = [];
+  let rawMultipliers = [];
+  try {
+    [users, rawMultipliers] = await Promise.all([
+      loadUsers(),
+      loadUserPortionMultipliers()
+    ]);
+  } catch (_err) {
+    users = [];
+    rawMultipliers = [];
+  }
+  const multiplierMap = new Map();
+  if (Array.isArray(users)) {
+    users.forEach((user, idx) => {
+      const val = Array.isArray(rawMultipliers) ? rawMultipliers[idx] : undefined;
+      const numeric = typeof val === 'number' && Number.isFinite(val) ? val : 1;
+      multiplierMap.set(user, numeric);
+    });
+  }
   const calendarNeeds = aggregateCalendar(
     calendar,
     mealsByCategory,
     needsMap,
     densityMap,
-    true
+    true,
+    multiplierMap
   );
 
   const weeklyNeedMap = new Map();

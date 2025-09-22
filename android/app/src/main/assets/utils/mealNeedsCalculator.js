@@ -15,7 +15,8 @@ import { loadDensityMap, convertWithDensity } from './unitNormalize.js';
 import {
   loadUsers,
   loadUserCategoryDays,
-  loadUserPriceThresholds
+  loadUserPriceThresholds,
+  loadUserPortionMultipliers
 } from './userData.js';
 import {
   loadMealSlotOverrides,
@@ -78,10 +79,16 @@ export async function calculateAndSaveMealNeeds() {
   const mealsPerDay = await loadMealsPerDay();
   const users = await loadUsers();
   const userDays = await loadUserCategoryDays();
+  const rawMultipliers = await loadUserPortionMultipliers();
   const priceThresholds = await loadUserPriceThresholds();
   const overrides = await loadMealSlotOverrides();
 
   while (userDays.length < users.length) userDays.push({});
+
+  const userMultipliers = users.map((_, idx) => {
+    const val = Array.isArray(rawMultipliers) ? rawMultipliers[idx] : undefined;
+    return typeof val === 'number' && Number.isFinite(val) ? val : 1;
+  });
 
   const labelToCategory = {};
   Object.entries(MEAL_TYPES).forEach(([id, info]) => {
@@ -293,22 +300,32 @@ export async function calculateAndSaveMealNeeds() {
           const slotsPerWeek = computeWeeklySlotsForUser(idx, type);
           const count = userMealCounts[idx] || 1;
           const dayEquivalent = perDay > 0 ? slotsPerWeek / perDay : slotsPerWeek;
-          details.factors.push({ people: 1, days: dayEquivalent });
-          monthlySpots += (slotsPerWeek * 52) / count / 12;
+          const multiplier = userMultipliers[idx] ?? 1;
+          details.factors.push({ people: multiplier, days: dayEquivalent });
+          const normalizedCount = count > 0 ? count : 1;
+          monthlySpots += (slotsPerWeek * multiplier * 52) / normalizedCount / 12;
         });
       } else {
         const people = meal.people ?? meal.multiplier ?? 1;
         if (people <= 0) return;
-        const slotsTotal =
-          users.length > 0
-            ? users.reduce(
-                (sum, _u, idx) => sum + computeWeeklySlotsForUser(idx, type),
-                0
-              ) / users.length
-            : 0;
+        const totalMultiplier = userMultipliers.reduce(
+          (sum, mult) => sum + mult,
+          0
+        );
+        let weightedSlotsSum = 0;
+        users.forEach((_, idx) => {
+          const multiplier = userMultipliers[idx] ?? 1;
+          const slotsPerWeek = computeWeeklySlotsForUser(idx, type);
+          weightedSlotsSum += slotsPerWeek * multiplier;
+        });
+        if (totalMultiplier <= 0 || weightedSlotsSum <= 0) {
+          return;
+        }
+        const slotsTotal = weightedSlotsSum / totalMultiplier;
         const dayEquivalent = perDay > 0 ? slotsTotal / perDay : slotsTotal;
         details.factors.push({ people, days: dayEquivalent });
-        monthlySpots = (slotsTotal * people * 52) / active.length / 12;
+        monthlySpots =
+          (weightedSlotsSum * people * 52) / totalMultiplier / active.length / 12;
       }
 
       if (monthlySpots <= 0) return;

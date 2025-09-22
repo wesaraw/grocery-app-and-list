@@ -48,11 +48,32 @@ export function aggregateCalendar(
   mealsByCategory = {},
   needsMap = new Map(),
   densityMap = {},
-  perUser = false
+  perUser = false,
+  userMultipliers = []
 ) {
   const mealMap = buildMealMap(mealsByCategory);
   const result = new Map();
-  Object.values(calendar).forEach(days => {
+
+  function resolveMultiplier(key) {
+    if (userMultipliers == null) return 1;
+    if (userMultipliers instanceof Map) {
+      const val = userMultipliers.get(key);
+      if (typeof val === 'number' && Number.isFinite(val)) return val;
+    } else if (Array.isArray(userMultipliers)) {
+      const idx = Number(key);
+      if (Number.isInteger(idx)) {
+        const val = userMultipliers[idx];
+        if (typeof val === 'number' && Number.isFinite(val)) return val;
+      }
+    } else if (typeof userMultipliers === 'object') {
+      const val = userMultipliers[key];
+      if (typeof val === 'number' && Number.isFinite(val)) return val;
+    }
+    return 1;
+  }
+
+  Object.entries(calendar).forEach(([userKey, days]) => {
+    const userMultiplier = resolveMultiplier(userKey);
     Object.entries(days || {}).forEach(([dateStr, rec]) => {
       const week = weekNumber(dateStr);
       Object.values(rec || {}).forEach(val => {
@@ -78,7 +99,7 @@ export function aggregateCalendar(
               arr = Array(53).fill(0);
               result.set(ing.name, arr);
             }
-            arr[week] += qty * mult;
+            arr[week] += qty * mult * userMultiplier;
           });
         });
       });

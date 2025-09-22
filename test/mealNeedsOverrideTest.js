@@ -4,13 +4,17 @@ const storage = {
     breakfast: 1,
     lunchDinner: 1
   },
-  users: ['Alice'],
+  users: ['Alice', 'Bob'],
   userCategoryDays: [
     {
       breakfast: ['Monday'],
       lunchDinner: ['Monday']
+    },
+    {
+      breakfast: ['Monday']
     }
   ],
+  userPortionMultipliers: [1, 1.5],
   userPriceThresholds: {},
   itemSeasons: {},
   breakfastMeals: [
@@ -18,7 +22,7 @@ const storage = {
       id: 'B1',
       name: 'Override Breakfast',
       ingredients: [{ name: 'Egg', amount: '1 ea' }],
-      users: [true]
+      users: [true, true]
     }
   ],
   lunchDinnerMeals: [
@@ -26,7 +30,7 @@ const storage = {
       id: 'L1',
       name: 'Regular Lunch',
       ingredients: [{ name: 'Lettuce', amount: '1 ea' }],
-      users: [true]
+      users: [true, false]
     }
   ],
   snackMeals: [],
@@ -105,7 +109,7 @@ const eggEntry = monthlyArr.find(item => item.name === 'Egg');
 if (!eggEntry) {
   throw new Error('Expected Egg entry in monthly needs after override');
 }
-const expectedEgg = (2 * 52) / 12; // two weekly slots after override
+const expectedEgg = ((2 * 1 + 1 * 1.5) * 52) / 12; // weighted weekly slots after override
 if (Math.abs(eggEntry.monthly_consumption - expectedEgg) > 1e-6) {
   throw new Error(
     `Egg consumption mismatch: ${eggEntry.monthly_consumption} vs expected ${expectedEgg}`

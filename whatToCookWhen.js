@@ -1,6 +1,7 @@
 import { MEAL_TYPES, initializeMealCategories, loadCookingDays } from './utils/mealData.js';
-import { loadUsers } from './utils/userData.js';
+import { loadUsers, loadUserPortionMultipliers } from './utils/userData.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
+import { parseQuantity } from './utils/calendarUtils.js';
 
 function loadCalendar() {
   return new Promise(resolve => {
@@ -39,6 +40,53 @@ async function loadAllMeals() {
   return map;
 }
 
+function sanitizeMultiplier(value) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 1;
+}
+
+function pushUnique(arr, value) {
+  if (!arr.some(item => item === value)) {
+    arr.push(value);
+  }
+}
+
+function buildUserEntries(users = [], multipliers = [], calendar = {}) {
+  const entries = [];
+  const seen = new Set();
+  users.forEach((name, idx) => {
+    const keys = [];
+    if (name !== undefined && name !== null) {
+      pushUnique(keys, name);
+      seen.add(String(name));
+    }
+    const idxKey = String(idx);
+    pushUnique(keys, idxKey);
+    seen.add(idxKey);
+    pushUnique(keys, idx);
+    entries.push({ keys, multiplier: sanitizeMultiplier(multipliers[idx]) });
+  });
+  Object.keys(calendar || {}).forEach(key => {
+    const strKey = String(key);
+    if (seen.has(strKey)) return;
+    entries.push({ keys: [key], multiplier: 1 });
+    seen.add(strKey);
+  });
+  return entries;
+}
+
+function getDayRecord(calendar, entry, dateStr) {
+  for (const key of entry.keys) {
+    const day = calendar?.[key]?.[dateStr];
+    if (day) return day;
+  }
+  return {};
+}
+
+function increment(map, key, amount) {
+  if (!amount) return;
+  map.set(key, (map.get(key) || 0) + amount);
+}
+
 function getParams() {
   const p = new URLSearchParams(location.search);
   return {
@@ -47,7 +95,88 @@ function getParams() {
   };
 }
 
-function buildData(cal, users, mealMap, start, days, prepDay) {
+function formatNumber(value) {
+  if (!Number.isFinite(value)) return '';
+  let rounded = Math.round(value * 1000) / 1000;
+  if (Object.is(rounded, -0)) rounded = 0;
+  let str = rounded.toFixed(3);
+  str = str.replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+  return str;
+}
+
+function extractUnitText(raw) {
+  const trimmed = raw.trim();
+  const match = trimmed.match(/^([\d\s./+-]+)(.*)$/);
+  if (match) {
+    return match[2].trim();
+  }
+  return trimmed;
+}
+
+function formatIngredientAmount(ingredient, multiplier) {
+  if (!ingredient) return '';
+  const raw = (ingredient.serving_size || ingredient.amount || '').trim();
+  if (!raw) return '';
+  const { value } = parseQuantity(raw);
+  if (!value) {
+    return raw;
+  }
+  const total = value * multiplier;
+  const formatted = formatNumber(total);
+  if (!formatted) {
+    return raw;
+  }
+  const unitText = extractUnitText(raw);
+  if (!unitText) return formatted;
+  return `${formatted} ${unitText}`;
+}
+
+function formatPortions(multiplier) {
+  const formatted = formatNumber(multiplier);
+  if (!formatted) return '';
+  return `${formatted} ${formatted === '1' ? 'portion' : 'portions'}`;
+}
+
+function renderMealColumn(container, entries, mealMap) {
+  container.innerHTML = '';
+  if (!entries?.length) {
+    return;
+  }
+  entries.forEach(([id, totalMultiplier]) => {
+    const meal = mealMap[id];
+    const block = document.createElement('div');
+    block.className = 'meal-block';
+    const title = document.createElement('div');
+    title.className = 'meal-title';
+    const name = meal?.name || id;
+    const portionText = formatPortions(totalMultiplier);
+    title.textContent = portionText ? `${name} (${portionText})` : name;
+    block.appendChild(title);
+
+    const ingredients = Array.isArray(meal?.ingredients) ? meal.ingredients : [];
+    if (ingredients.length) {
+      const list = document.createElement('ul');
+      list.className = 'ingredient-list';
+      ingredients.forEach(ing => {
+        const li = document.createElement('li');
+        const ingName = ing?.name?.trim() || 'Unnamed ingredient';
+        const amountText = formatIngredientAmount(ing, totalMultiplier);
+        li.textContent = amountText ? `${ingName}: ${amountText}` : ingName;
+        list.appendChild(li);
+      });
+      block.appendChild(list);
+    } else {
+      const placeholder = document.createElement('div');
+      placeholder.className = 'no-ingredients';
+      placeholder.textContent = 'No ingredient details available';
+      block.appendChild(placeholder);
+    }
+
+    container.appendChild(block);
+  });
+}
+
+function buildData(calendar, userEntries, mealMap, start, days, prepDay) {
   const date = start ? new Date(start) : new Date();
 
   let calcDays = days;
@@ -66,16 +195,17 @@ function buildData(cal, users, mealMap, start, days, prepDay) {
   for (let i = 0; i < calcDays; i++) {
     const dStr = date.toISOString().split('T')[0];
     const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
-    const counts = {};
-    const ahead = {};
-    users.forEach(u => {
-      const rec = cal[u]?.[dStr] || {};
+    const counts = new Map();
+    const ahead = new Map();
+    userEntries.forEach(entry => {
+      const rec = getDayRecord(calendar, entry, dStr) || {};
       Object.values(rec).forEach(val => {
         const meals = Array.isArray(val) ? val : [val];
         meals.forEach(id => {
           const meal = mealMap[id];
-          if (meal?.prepared) counts[id] = (counts[id] || 0) + 1;
-          if (meal?.prepAhead) ahead[id] = (ahead[id] || 0) + 1;
+          if (!meal) return;
+          if (meal.prepared) increment(counts, id, entry.multiplier);
+          if (meal.prepAhead) increment(ahead, id, entry.multiplier);
         });
       });
     });
@@ -83,49 +213,41 @@ function buildData(cal, users, mealMap, start, days, prepDay) {
     date.setDate(date.getDate() + 1);
   }
 
-  // compute prep ahead lists for prep days
-  for (let i = 0; i < rows.length; i++) {
-    if (prepDay && rows[i].dayName === prepDay) {
-      const next = rows.slice(i + 1).findIndex(r => r.dayName === prepDay);
-      const end = next === -1 ? rows.length : i + 1 + next;
-      const totals = {};
-      for (let j = i + 1; j < end; j++) {
-        Object.entries(rows[j].ahead).forEach(([id, c]) => {
-          totals[id] = (totals[id] || 0) + c;
+  if (prepDay) {
+    for (let i = 0; i < rows.length; i++) {
+      if (rows[i].dayName !== prepDay) continue;
+      const totals = new Map();
+      for (let j = i + 1; j < rows.length; j++) {
+        if (rows[j].dayName === prepDay) break;
+        rows[j].ahead.forEach((value, id) => {
+          increment(totals, id, value);
         });
       }
       rows[i].prepList = totals;
     }
   }
 
-  return rows.slice(0, days);
+  return rows.slice(0, days).map(row => ({
+    date: row.date,
+    dayName: row.dayName,
+    meals: Array.from(row.counts.entries()),
+    prepList: row.prepList ? Array.from(row.prepList.entries()) : []
+  }));
 }
 
 function renderRows(data, mealMap) {
   const tbody = document.getElementById('cookBody');
   tbody.innerHTML = '';
-  data.forEach(({ date, counts, prepList }) => {
+  data.forEach(({ date, dayName, meals, prepList }) => {
     const row = document.createElement('tr');
     const dtd = document.createElement('td');
-    dtd.textContent = date;
+    dtd.textContent = dayName ? `${date} (${dayName})` : date;
     row.appendChild(dtd);
     const mealsTd = document.createElement('td');
-    Object.entries(counts).forEach(([id, cnt]) => {
-      const div = document.createElement('div');
-      const name = mealMap[id]?.name || id;
-      div.textContent = `${name} (${cnt})`;
-      mealsTd.appendChild(div);
-    });
+    renderMealColumn(mealsTd, meals, mealMap);
     row.appendChild(mealsTd);
     const prepTd = document.createElement('td');
-    if (prepList) {
-      Object.entries(prepList).forEach(([id, cnt]) => {
-        const div = document.createElement('div');
-        const name = mealMap[id]?.name || id;
-        div.textContent = `${name} (${cnt})`;
-        prepTd.appendChild(div);
-      });
-    }
+    renderMealColumn(prepTd, prepList, mealMap);
     row.appendChild(prepTd);
     tbody.appendChild(row);
   });
@@ -149,6 +271,8 @@ async function init() {
   await initializeMealCategories();
   const users = await loadUsers();
   const calendar = await loadCalendar();
+  const multipliers = await loadUserPortionMultipliers();
+  const userEntries = buildUserEntries(users, multipliers, calendar);
   const mealMap = await loadAllMeals();
   const cookingDays = await loadCookingDays();
   const prepDay = Array.isArray(cookingDays.prepDay) ? cookingDays.prepDay[0] : null;
@@ -159,7 +283,7 @@ async function init() {
   function update() {
     const startVal = document.getElementById('startDate').value;
     const daysVal = parseInt(document.getElementById('numDays').value, 10) || 7;
-    const data = buildData(calendar, users, mealMap, startVal, daysVal, prepDay);
+    const data = buildData(calendar, userEntries, mealMap, startVal, daysVal, prepDay);
     renderRows(data, mealMap);
   }
 

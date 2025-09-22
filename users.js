@@ -2,7 +2,9 @@ import {
   loadUsers,
   saveUsers,
   loadUserCategoryDays,
-  saveUserCategoryDays
+  saveUserCategoryDays,
+  loadUserPortionMultipliers,
+  saveUserPortionMultipliers
 } from './utils/userData.js';
 import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
@@ -12,6 +14,7 @@ import { openOrFocusWindow } from './utils/windowUtils.js';
 import { loadMealSlotOverrides } from './utils/mealSlotOverrides.js';
 
 const btnContainer = document.getElementById('userButtons');
+const portionContainer = document.getElementById('portionMultiplierContainer');
 const mealList = document.getElementById('mealList');
 const editBtn = document.getElementById('editNamesBtn');
 const saveNamesBtn = document.getElementById('saveNamesBtn');
@@ -25,19 +28,124 @@ if (overrideBtn) {
 
 let users = [];
 let userDays = [];
+let userPortionMultipliers = [];
 let addInput = null;
 let saveBtn = null;
 let addBtn = null;
 let editInputs = [];
 let editing = false;
+let currentUserIndex = null;
 const headerState = {};
+
+function clearPortionMultiplier() {
+  if (!portionContainer) return;
+  portionContainer.innerHTML = '';
+  portionContainer.classList.remove('active');
+}
+
+function formatMultiplier(val) {
+  if (typeof val === 'number' && Number.isFinite(val)) {
+    return Number(val).toString();
+  }
+  return '1';
+}
+
+function renderPortionMultiplier(userIndex) {
+  if (!portionContainer) return;
+  const baseValue =
+    typeof userPortionMultipliers[userIndex] === 'number' &&
+    Number.isFinite(userPortionMultipliers[userIndex])
+      ? userPortionMultipliers[userIndex]
+      : 1;
+
+  portionContainer.innerHTML = '';
+  portionContainer.classList.add('active');
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'portion-multiplier';
+
+  const inputId = `portion-multiplier-${userIndex}`;
+  const label = document.createElement('label');
+  label.setAttribute('for', inputId);
+  label.textContent = 'Portion Size Multiplier';
+
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.id = inputId;
+  input.step = 'any';
+  input.value = formatMultiplier(baseValue);
+
+  wrapper.appendChild(label);
+  wrapper.appendChild(input);
+  portionContainer.appendChild(wrapper);
+
+  let currentValue = baseValue;
+  let isSaving = false;
+  let queuedValue = null;
+
+  async function persist(value) {
+    if (isSaving) {
+      queuedValue = value;
+      return;
+    }
+    isSaving = true;
+    try {
+      userPortionMultipliers[userIndex] = value;
+      await saveUserPortionMultipliers(userPortionMultipliers);
+      await calculateAndSaveMealNeeds();
+      try {
+        chrome.runtime.sendMessage({ type: 'inventory-updated' });
+      } catch (_) {}
+    } finally {
+      isSaving = false;
+      if (queuedValue !== null) {
+        const next = queuedValue;
+        queuedValue = null;
+        await persist(next);
+      }
+    }
+  }
+
+  async function commit() {
+    const raw = input.value.trim();
+    let nextValue;
+    if (!raw) {
+      nextValue = 1;
+    } else {
+      const parsed = Number(raw);
+      if (!Number.isFinite(parsed)) {
+        input.value = formatMultiplier(currentValue);
+        return;
+      }
+      nextValue = parsed;
+    }
+    if (nextValue === currentValue) {
+      input.value = formatMultiplier(currentValue);
+      return;
+    }
+    currentValue = nextValue;
+    input.value = formatMultiplier(currentValue);
+    await persist(currentValue);
+  }
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commit();
+    }
+  });
+  input.addEventListener('blur', commit);
+}
 
 function renderButtons() {
   btnContainer.innerHTML = '';
   users.forEach((name, idx) => {
     const btn = document.createElement('button');
     btn.textContent = name;
-    btn.addEventListener('click', () => showMeals(idx));
+    btn.addEventListener('click', () => {
+      currentUserIndex = idx;
+      showMeals(idx);
+    });
     btnContainer.appendChild(btn);
   });
   addBtn = document.createElement('button');
@@ -47,6 +155,16 @@ function renderButtons() {
 
   if (editing) {
     startEditInputs();
+  }
+
+  if (
+    typeof currentUserIndex === 'number' &&
+    currentUserIndex >= 0 &&
+    currentUserIndex < users.length
+  ) {
+    showMeals(currentUserIndex);
+  } else {
+    clearPortionMultiplier();
   }
 }
 
@@ -71,7 +189,12 @@ async function saveNewUser() {
   if (!val) return;
   users.push(val);
   userDays.push({});
-  await Promise.all([saveUsers(users), saveUserCategoryDays(userDays)]);
+  userPortionMultipliers.push(1);
+  await Promise.all([
+    saveUsers(users),
+    saveUserCategoryDays(userDays),
+    saveUserPortionMultipliers(userPortionMultipliers)
+  ]);
   addInput.remove();
   saveBtn.remove();
   addInput = null;
@@ -139,6 +262,8 @@ async function loadAllMeals() {
 }
 
 async function showMeals(userIndex) {
+  currentUserIndex = userIndex;
+  renderPortionMultiplier(userIndex);
   const meals = await loadAllMeals();
   const usedMeals = [];
   meals.forEach(m => {
@@ -248,6 +373,19 @@ async function init() {
   users = await loadUsers();
   userDays = await loadUserCategoryDays();
   while (userDays.length < users.length) userDays.push({});
+  userPortionMultipliers = await loadUserPortionMultipliers();
+  let changed = false;
+  if (userPortionMultipliers.length > users.length) {
+    userPortionMultipliers = userPortionMultipliers.slice(0, users.length);
+    changed = true;
+  }
+  while (userPortionMultipliers.length < users.length) {
+    userPortionMultipliers.push(1);
+    changed = true;
+  }
+  if (changed) {
+    await saveUserPortionMultipliers(userPortionMultipliers);
+  }
   renderButtons();
   editBtn.addEventListener('click', () => {
     if (editing) return;

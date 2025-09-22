@@ -6,6 +6,14 @@
   <style>
     body { font-family: Arial, sans-serif; width: 300px; }
     button { width: 100%; margin: 5px 0; }
+    #portionMultiplierContainer { margin-top: 10px; display: none; }
+    #portionMultiplierContainer.active { display: block; }
+    #portionMultiplierContainer label { display: block; font-weight: bold; margin-bottom: 4px; }
+    #portionMultiplierContainer input[type="number"] {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 4px 6px;
+    }
     #mealList { margin-top: 10px; }
     .category-header {
       border-top: 1px solid #ccc;
@@ -13,7 +21,6 @@
       cursor: pointer;
     }
     .hidden { display: none; }
-    input[type="number"] { width: 60px; }
   </style>
 </head>
 <body>
@@ -22,6 +29,7 @@
   <button id="mealSlotOverrideBtn">Meal Slot Override</button>
   <button id="editNamesBtn">Edit User Names</button>
   <button id="saveNamesBtn" style="display:none;">Save</button>
+  <div id="portionMultiplierContainer"></div>
   <ul id="mealList"></ul>
   <script type="module" src="users.js"></script>
 </body>

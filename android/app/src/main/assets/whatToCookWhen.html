@@ -4,25 +4,107 @@
   <meta charset="utf-8">
   <title>What To Cook</title>
   <style>
-    body { font-family: Arial, sans-serif; width: 350px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { padding: 4px; border-bottom: 1px solid #ccc; vertical-align: top; }
+    body {
+      font-family: Arial, sans-serif;
+      width: 420px;
+      margin: 0 auto;
+      padding: 10px 14px 20px;
+      box-sizing: border-box;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      align-items: flex-end;
+    }
+
+    .controls label {
+      display: flex;
+      flex-direction: column;
+      font-size: 0.9rem;
+      gap: 4px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 14px;
+    }
+
+    th,
+    td {
+      padding: 6px;
+      border-bottom: 1px solid #ccc;
+      vertical-align: top;
+    }
+
+    th {
+      text-align: left;
+      background-color: #f5f5f5;
+    }
+
+    .meal-block {
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed #e0e0e0;
+    }
+
+    .meal-block:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+      margin-bottom: 0;
+    }
+
+    .meal-title {
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+
+    .ingredient-list {
+      margin: 0 0 6px 18px;
+      padding: 0;
+      list-style: disc;
+    }
+
+    .ingredient-list li {
+      margin-bottom: 2px;
+    }
+
+    .ingredient-list li:last-child {
+      margin-bottom: 0;
+    }
+
+    .no-ingredients {
+      font-size: 0.85rem;
+      color: #666;
+    }
   </style>
 </head>
 <body>
   <h1>What To Cook</h1>
-  <div>
-    <label>Start:
+  <div class="controls">
+    <label>Start
       <input type="date" id="startDate">
     </label>
-    <label>Days:
+    <label>Days
       <input type="number" id="numDays" value="7" min="1" max="365">
     </label>
     <button id="showBtn">Show</button>
     <button id="eatViewBtn">What To Eat When</button>
   </div>
   <table>
-    <thead><tr><th>Date</th><th>Meals</th><th>Prep Ahead Meals</th></tr></thead>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Cook Today</th>
+        <th>Prep Ahead</th>
+      </tr>
+    </thead>
     <tbody id="cookBody"></tbody>
   </table>
   <script src="bridge.js"></script>
