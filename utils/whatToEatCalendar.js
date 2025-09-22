@@ -14,8 +14,7 @@ export function generateWhatToEatCalendar(
 ) {
   const calendar = {};
   const nonPrepState = {};
-  const sharedNonPrepState = {};
-  const sharedDailyPick = {};
+  const sharedGroupState = {};
   const overrideSlotKeyCache = {};
 
   const subCount = {};
@@ -109,67 +108,268 @@ export function generateWhatToEatCalendar(
   }
 
   for (let i = 0; i < weeks * 7; i++) {
-    const dateStr = date.toISOString().split('T')[0];
-    const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
-    sharedDailyPick[dateStr] = sharedDailyPick[dateStr] || {};
+    const currentDate = new Date(date);
+    const dateStr = currentDate.toISOString().split('T')[0];
+    const dayName = currentDate.toLocaleDateString('en-US', { weekday: 'long' });
     const dayOverrideSlotKeys =
       overrideSlotKeyCache[dayName] ||
       (overrideSlotKeyCache[dayName] = computeOverrideSlotKeys(dayName));
+
+    const perUserData = {};
     users.forEach(user => {
-      calendar[user][dateStr] = calendar[user][dateStr] || {};
       const prefs = subscriptions[user] || {};
       const dayPrefs = eatingDays[user] || {};
       const overridesForUser = slotOverrides[user] || {};
       const overridesForDay = overridesForUser[dayName] || {};
-      const stateRec = nonPrepState[user] || (nonPrepState[user] = {});
-      const maxPrice =
-        priceThresholds[user] !== undefined ? priceThresholds[user] : Infinity;
-      const contextCache = {};
+      perUserData[user] = {
+        prefs,
+        dayPrefs,
+        overridesForDay,
+        overridesForUser,
+        stateRec: nonPrepState[user] || (nonPrepState[user] = {}),
+        maxPrice:
+          priceThresholds[user] !== undefined ? priceThresholds[user] : Infinity,
+        contextCache: {}
+      };
+    });
+
+    const daySharedPlan = {};
+
+    function ensureContext(user, categoryId) {
+      const userData = perUserData[user];
+      if (!userData) return null;
+      if (userData.contextCache[categoryId]) {
+        return userData.contextCache[categoryId];
+      }
+      const prefs = userData.prefs || {};
+      const meals = (prefs[categoryId] || []).filter(m =>
+        (m.ingredients || []).every(ing =>
+          isItemInSeason(itemSeasons, ing.name, currentDate)
+        )
+      );
+      const numSlots = resolveSlotCount(categoryId);
+      const prepMealId = preparedCal[dateStr]?.[categoryId];
+      const nonPrepMeals = meals.filter(
+        m => !m.prepared && (m.totalCost == null || m.totalCost <= userData.maxPrice)
+      );
+      const sharedMeals = nonPrepMeals.filter(
+        m => m.groupMeal && (subCount[categoryId]?.[m.id || m.name] || 0) > 1
+      );
+      const affordableAll = meals.filter(
+        m => m.totalCost == null || m.totalCost <= userData.maxPrice
+      );
+      const nonPrepFallback = meals.filter(m => !m.prepared);
+      const weightedNonPrep = weightMeals(nonPrepMeals);
+      const weightedShared = weightMeals(sharedMeals);
+      const weightedAffordable = weightMeals(
+        affordableAll.filter(m => !m.prepared)
+      );
+      const weightedFallback = weightMeals(nonPrepFallback);
+      const weightedAvail = weightMeals(meals);
+      const chooseList =
+        weightedNonPrep.length
+          ? weightedNonPrep
+          : weightedAffordable.length
+          ? weightedAffordable
+          : weightedFallback.length
+          ? weightedFallback
+          : weightedAvail;
+      const context = {
+        categoryId,
+        meals,
+        numSlots,
+        prepMealId,
+        weightedShared,
+        chooseList
+      };
+      userData.contextCache[categoryId] = context;
+      return context;
+    }
+
+    function registerSharedOption(user, categoryId, sharedSlotKey) {
+      if (sharedSlotKey == null) return;
+      const context = ensureContext(user, categoryId);
+      if (!context || !context.weightedShared.length) return;
+      const slotKeyId = String(sharedSlotKey);
+      const categoryEntry =
+        daySharedPlan[categoryId] || (daySharedPlan[categoryId] = {});
+      let slotEntry = categoryEntry[slotKeyId];
+      if (!slotEntry) {
+        slotEntry = categoryEntry[slotKeyId] = {
+          candidates: new Map(),
+          userMealPairs: new Set(),
+          participatingUsers: new Set()
+        };
+      }
+      slotEntry.participatingUsers.add(user);
+      context.weightedShared.forEach(entry => {
+        const meal = entry.meal;
+        if (!meal) return;
+        const mealId = meal.id || meal.name;
+        if (mealId == null) return;
+        const pairKey = `${user}||${mealId}`;
+        if (slotEntry.userMealPairs.has(pairKey)) return;
+        slotEntry.userMealPairs.add(pairKey);
+        let candidate = slotEntry.candidates.get(mealId);
+        if (!candidate) {
+          candidate = {
+            meal,
+            mealId,
+            weight: entry.weight || 1,
+            users: [],
+            userSet: new Set(),
+            weighted: null,
+            disabled: false
+          };
+          slotEntry.candidates.set(mealId, candidate);
+        }
+        if (!candidate.userSet.has(user)) {
+          candidate.userSet.add(user);
+          candidate.users.push(user);
+        }
+      });
+    }
+
+    users.forEach(user => {
+      const userData = perUserData[user];
+      const categories = new Set([
+        ...Object.keys(userData.prefs || {}),
+        ...Object.keys(userData.overridesForDay || {})
+      ]);
+      Object.values(userData.overridesForDay || {}).forEach(slotMap => {
+        Object.values(slotMap || {}).forEach(targetCategoryId => {
+          if (targetCategoryId) categories.add(targetCategoryId);
+        });
+      });
+      categories.forEach(categoryId => {
+        const slotOverridesForCat = userData.overridesForDay[categoryId] || {};
+        const validDays = userData.dayPrefs[categoryId] || [];
+        const hasOverride = Object.keys(slotOverridesForCat).length > 0;
+        const participatesInBase = validDays.includes(dayName) || hasOverride;
+        const numSlots = resolveSlotCount(categoryId);
+        const highestOverrideIndex = Object.keys(slotOverridesForCat).reduce(
+          (max, key) => {
+            const numeric = Number(key);
+            if (!Number.isFinite(numeric)) return max;
+            const floored = Math.floor(numeric);
+            return floored >= 0 ? Math.max(max, floored) : max;
+          },
+          -1
+        );
+        const iterationSlots = Math.max(numSlots, highestOverrideIndex + 1, 0);
+        for (let s = 0; s < iterationSlots; s++) {
+          const overrideCategory = slotOverridesForCat[s];
+          if (overrideCategory) {
+            const overrideContext = ensureContext(user, overrideCategory);
+            const overrideSlotCount = overrideContext
+              ? Math.max(1, overrideContext.numSlots ?? 0)
+              : 1;
+            const normalizedOverrideSlot = Math.max(
+              0,
+              Math.min(s, overrideSlotCount - 1)
+            );
+            const overrideKeyMap = dayOverrideSlotKeys[overrideCategory] || {};
+            const overrideComboKey = `${categoryId}:${s}`;
+            const overrideSlotKey =
+              overrideKeyMap[overrideComboKey] != null
+                ? overrideKeyMap[overrideComboKey]
+                : undefined;
+            const targetSharedSlotKey =
+              overrideSlotKey != null ? overrideSlotKey : normalizedOverrideSlot;
+            registerSharedOption(user, overrideCategory, targetSharedSlotKey);
+          }
+          if (participatesInBase) {
+            registerSharedOption(user, categoryId, s);
+          }
+        }
+      });
+    });
+
+    Object.entries(daySharedPlan).forEach(([categoryId, slots]) => {
+      Object.entries(slots).forEach(([slotKey, slotEntry]) => {
+        const bySize = {};
+        slotEntry.candidates.forEach(candidate => {
+          candidate.disabled = false;
+          candidate.weighted = { meal: candidate.meal, weight: candidate.weight };
+          const size = candidate.users.length;
+          if (size <= 0) return;
+          const bucket =
+            bySize[size] ||
+            (bySize[size] = { entries: [], map: new Map() });
+          bucket.entries.push(candidate);
+          bucket.map.set(candidate.mealId, candidate);
+        });
+        slotEntry.sizeOrder = Object.keys(bySize)
+          .map(n => Number(n))
+          .sort((a, b) => b - a);
+        slotEntry.bySize = bySize;
+        slotEntry.assigned = {};
+      });
+    });
+
+    function resolveSharedAssignment(categoryId, sharedSlotKey, user) {
+      if (sharedSlotKey == null) return null;
+      const slotKeyId = String(sharedSlotKey);
+      const categoryPlan = daySharedPlan[categoryId];
+      if (!categoryPlan) return null;
+      const slotPlan = categoryPlan[slotKeyId];
+      if (!slotPlan) return null;
+      if (slotPlan.participatingUsers && !slotPlan.participatingUsers.has(user)) {
+        return null;
+      }
+      if (slotPlan.assigned[user]) {
+        return slotPlan.assigned[user];
+      }
+      for (const size of slotPlan.sizeOrder || []) {
+        const bucket = slotPlan.bySize[size];
+        if (!bucket) continue;
+        const stateBucket =
+          sharedGroupState[categoryId] || (sharedGroupState[categoryId] = {});
+        const sizeState = stateBucket[size] || (stateBucket[size] = {});
+        while (true) {
+          const activeCandidates = bucket.entries.filter(
+            candidate => !candidate.disabled && candidate.userSet.has(user)
+          );
+          if (!activeCandidates.length) break;
+          const weightedList = activeCandidates.map(candidate => candidate.weighted);
+          const meal = pickWeighted(weightedList, sizeState);
+          if (!meal) break;
+          const mealId = meal.id || meal.name;
+          const candidate = bucket.map.get(mealId);
+          if (!candidate || candidate.disabled || !candidate.userSet.has(user)) {
+            if (candidate) candidate.disabled = true;
+            continue;
+          }
+          const conflict = candidate.users.some(
+            u => slotPlan.assigned[u] && slotPlan.assigned[u] !== mealId
+          );
+          if (conflict) {
+            candidate.disabled = true;
+            continue;
+          }
+          candidate.users.forEach(u => {
+            slotPlan.assigned[u] = mealId;
+          });
+          candidate.disabled = true;
+          return mealId;
+        }
+      }
+      return null;
+    }
+
+    users.forEach(user => {
+      calendar[user][dateStr] = calendar[user][dateStr] || {};
+      const userData = perUserData[user];
+      const prefs = userData.prefs || {};
+      const dayPrefs = userData.dayPrefs || {};
+      const overridesForDay = userData.overridesForDay || {};
+      const stateRec = userData.stateRec;
+      const maxPrice = userData.maxPrice;
+      const contextCache = userData.contextCache;
 
       function getContext(categoryId) {
         if (contextCache[categoryId]) return contextCache[categoryId];
-        const meals = (prefs[categoryId] || []).filter(m =>
-          (m.ingredients || []).every(ing =>
-            isItemInSeason(itemSeasons, ing.name, date)
-          )
-        );
-        const numSlots = resolveSlotCount(categoryId);
-        const prepMealId = preparedCal[dateStr]?.[categoryId];
-        const nonPrepMeals = meals.filter(
-          m => !m.prepared && (m.totalCost == null || m.totalCost <= maxPrice)
-        );
-        const sharedMeals = nonPrepMeals.filter(
-          m => m.groupMeal && (subCount[categoryId]?.[m.id || m.name] || 0) > 1
-        );
-        const affordableAll = meals.filter(
-          m => m.totalCost == null || m.totalCost <= maxPrice
-        );
-        const nonPrepFallback = meals.filter(m => !m.prepared);
-        const weightedNonPrep = weightMeals(nonPrepMeals);
-        const weightedShared = weightMeals(sharedMeals);
-        const weightedAffordable = weightMeals(
-          affordableAll.filter(m => !m.prepared)
-        );
-        const weightedFallback = weightMeals(nonPrepFallback);
-        const weightedAvail = weightMeals(meals);
-        const chooseList =
-          weightedNonPrep.length
-            ? weightedNonPrep
-            : weightedAffordable.length
-            ? weightedAffordable
-            : weightedFallback.length
-            ? weightedFallback
-            : weightedAvail;
-        const context = {
-          categoryId,
-          meals,
-          numSlots,
-          prepMealId,
-          weightedShared,
-          chooseList
-        };
-        contextCache[categoryId] = context;
-        return context;
+        return ensureContext(user, categoryId);
       }
 
       function attemptPick(categoryId, slotKey, normalizedSlotOverride) {
@@ -209,39 +409,25 @@ export function generateWhatToEatCalendar(
         if (prepOk) {
           chosenId = context.prepMealId;
         } else if (context.weightedShared.length) {
-          if (!sharedDailyPick[dateStr][categoryId]) {
-            sharedDailyPick[dateStr][categoryId] = {};
+          const sharedChoice = resolveSharedAssignment(
+            categoryId,
+            sharedSlotKey,
+            user
+          );
+          if (sharedChoice != null) {
+            chosenId = sharedChoice;
           }
-          if (!sharedDailyPick[dateStr][categoryId][sharedSlotKey]) {
-            const sharedState =
-              sharedNonPrepState[categoryId] || (sharedNonPrepState[categoryId] = {});
-            const meal = pickWeighted(context.weightedShared, sharedState);
-            if (!meal) return null;
-            sharedDailyPick[dateStr][categoryId][sharedSlotKey] =
-              meal.id || meal.name;
-          }
-          chosenId = sharedDailyPick[dateStr][categoryId][sharedSlotKey];
-        } else if (context.chooseList.length) {
+        }
+        if (chosenId == null && context.chooseList.length) {
           const state = stateRec[categoryId] || (stateRec[categoryId] = {});
           const meal = pickWeighted(context.chooseList, state);
-          if (!meal) return null;
-          chosenId = meal.id || meal.name;
+          if (meal) {
+            chosenId = meal.id || meal.name;
+          }
         }
         if (normalizedSlot === 0 && prepOk) {
           if (context.weightedShared.length) {
-            if (!sharedDailyPick[dateStr][categoryId]) {
-              sharedDailyPick[dateStr][categoryId] = {};
-            }
-            if (!sharedDailyPick[dateStr][categoryId][sharedSlotKey]) {
-              const sharedState =
-                sharedNonPrepState[categoryId] ||
-                (sharedNonPrepState[categoryId] = {});
-              const meal = pickWeighted(context.weightedShared, sharedState);
-              if (meal) {
-                sharedDailyPick[dateStr][categoryId][sharedSlotKey] =
-                  meal.id || meal.name;
-              }
-            }
+            resolveSharedAssignment(categoryId, sharedSlotKey, user);
           } else if (context.chooseList.length) {
             const state = stateRec[categoryId] || (stateRec[categoryId] = {});
             pickWeighted(context.chooseList, state);
@@ -281,8 +467,7 @@ export function generateWhatToEatCalendar(
               0,
               Math.min(s, overrideSlotCount - 1)
             );
-            const overrideKeyMap =
-              dayOverrideSlotKeys[overrideCategory] || {};
+            const overrideKeyMap = dayOverrideSlotKeys[overrideCategory] || {};
             const overrideComboKey = `${cat}:${s}`;
             const overrideSlotKey =
               overrideKeyMap[overrideComboKey] != null
@@ -312,6 +497,7 @@ export function generateWhatToEatCalendar(
           iterationSlots === 1 ? choices[0] : choices;
       });
     });
+
     date.setDate(date.getDate() + 1);
   }
 

@@ -264,4 +264,121 @@ if (zeroOverrideSourceMonday.snack !== 'LUNCH_OVERRIDE') {
   );
 }
 
+// Scenario: three users share one triple-overlap snack and separate pair overlaps.
+// Each user should see their multi-user snacks before their solo snack day occurs.
+const intersectionUsers = ['Uma', 'Victor', 'Wendy'];
+const tripleSnack = {
+  id: 'SNACK_ALL',
+  name: 'All Hands Snack',
+  weight: 1,
+  groupMeal: true
+};
+const pairUV = { id: 'SNACK_UV', name: 'UV Trail Mix', weight: 1, groupMeal: true };
+const pairUW = { id: 'SNACK_UW', name: 'UW Pretzels', weight: 1, groupMeal: true };
+const soloU = { id: 'SOLO_U', name: 'Uma Solo Snack', weight: 1 };
+const soloV = { id: 'SOLO_V', name: 'Victor Solo Snack', weight: 1 };
+const soloW = { id: 'SOLO_W', name: 'Wendy Solo Snack', weight: 1 };
+
+const intersectionSubscriptions = {
+  Uma: {
+    shared: [tripleSnack],
+    pair: [pairUV, pairUW],
+    solo: [soloU]
+  },
+  Victor: {
+    shared: [tripleSnack],
+    pair: [pairUV],
+    solo: [soloV]
+  },
+  Wendy: {
+    shared: [tripleSnack],
+    pair: [pairUW],
+    solo: [soloW]
+  }
+};
+
+const intersectionEatingDays = {
+  Uma: { shared: ['Monday'], pair: ['Tuesday', 'Wednesday'], solo: ['Friday'] },
+  Victor: { shared: ['Monday'], pair: ['Tuesday'], solo: ['Saturday'] },
+  Wendy: { shared: ['Monday'], pair: ['Wednesday'], solo: ['Sunday'] }
+};
+
+const intersectionMealsPerDay = { shared: 1, pair: 1, solo: 1 };
+
+const intersectionCalendar = generateWhatToEatCalendar(
+  intersectionUsers,
+  {},
+  intersectionSubscriptions,
+  intersectionEatingDays,
+  intersectionMealsPerDay,
+  startDate,
+  1,
+  {},
+  {},
+  {}
+);
+
+const orderedIntersectionDays = Object.keys(intersectionCalendar.Uma || {}).sort();
+if (!orderedIntersectionDays.length) {
+  throw new Error('Expected intersection scenario to generate shared snack days');
+}
+
+if (intersectionCalendar.Uma['2024-01-01']?.shared !== 'SNACK_ALL') {
+  throw new Error('Uma should receive the triple-overlap snack on Monday');
+}
+if (intersectionCalendar.Victor['2024-01-01']?.shared !== 'SNACK_ALL') {
+  throw new Error('Victor should receive the triple-overlap snack on Monday');
+}
+if (intersectionCalendar.Wendy['2024-01-01']?.shared !== 'SNACK_ALL') {
+  throw new Error('Wendy should receive the triple-overlap snack on Monday');
+}
+if (intersectionCalendar.Uma['2024-01-02']?.pair !== 'SNACK_UV') {
+  throw new Error('Uma should receive the UV pair snack on Tuesday');
+}
+if (intersectionCalendar.Victor['2024-01-02']?.pair !== 'SNACK_UV') {
+  throw new Error('Victor should receive the UV pair snack on Tuesday');
+}
+if (intersectionCalendar.Uma['2024-01-03']?.pair !== 'SNACK_UW') {
+  throw new Error('Uma should receive the UW pair snack on Wednesday');
+}
+if (intersectionCalendar.Wendy['2024-01-03']?.pair !== 'SNACK_UW') {
+  throw new Error('Wendy should receive the UW pair snack on Wednesday');
+}
+
+function ensureSharedBeforeSolo(user, soloId, requiredSharedIds) {
+  const timeline = [];
+  orderedIntersectionDays.forEach(day => {
+    const entry = intersectionCalendar[user]?.[day] || {};
+    ['shared', 'pair', 'solo'].forEach(category => {
+      const value = entry[category];
+      if (Array.isArray(value)) {
+        value.forEach(v => {
+          if (v != null) timeline.push({ id: v, category });
+        });
+      } else if (value != null) {
+        timeline.push({ id: value, category });
+      }
+    });
+  });
+  const soloIndex = timeline.findIndex(t => t.id === soloId);
+  if (soloIndex === -1) {
+    throw new Error(`${user} never received solo snack ${soloId}`);
+  }
+  requiredSharedIds.forEach(sharedId => {
+    const idx = timeline.findIndex(t => t.id === sharedId);
+    if (idx === -1) {
+      throw new Error(`${user} never received shared snack ${sharedId}`);
+    }
+    if (idx > soloIndex) {
+      throw new Error(
+        `${user} received solo snack ${soloId} before shared snack ${sharedId}`
+      );
+    }
+  });
+}
+
+ensureSharedBeforeSolo('Uma', 'SOLO_U', ['SNACK_ALL', 'SNACK_UV', 'SNACK_UW']);
+ensureSharedBeforeSolo('Victor', 'SOLO_V', ['SNACK_ALL', 'SNACK_UV']);
+ensureSharedBeforeSolo('Wendy', 'SOLO_W', ['SNACK_ALL', 'SNACK_UW']);
+
 console.log('meal slot override calendar tests passed');
