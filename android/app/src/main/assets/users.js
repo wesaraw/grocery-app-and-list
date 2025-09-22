@@ -9,6 +9,10 @@ import {
 import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 import { loadJSON } from './utils/dataLoader.js';
+import {
+  loadArray as loadItemArray,
+  convertArrayToNames
+} from './utils/itemStorage.js';
 import { sortItemsByCategory } from './utils/sortByCategory.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 import { loadMealSlotOverrides } from './utils/mealSlotOverrides.js';
@@ -235,20 +239,21 @@ async function saveNameEdits() {
   renderButtons();
 }
 
-function loadMeals(type) {
+async function loadMeals(type) {
   const info = MEAL_TYPES[type];
   const { key, path } = info;
-  return new Promise(async resolve => {
-    chrome.storage.local.get(key, async data => {
-      let arr = data[key];
-      if (!arr) arr = await loadJSON(path);
-      arr.forEach(m => {
-        if (!m.category) m.category = info.label;
-        if (m.prepared === undefined) m.prepared = false;
-      });
-      resolve(arr);
-    });
+  let arr = await loadItemArray(key);
+  if (!Array.isArray(arr) || arr.length === 0) {
+    const fallback = await loadJSON(path);
+    const fallbackArray = Array.isArray(fallback) ? fallback : [];
+    arr = await convertArrayToNames(fallbackArray);
+  }
+  arr.forEach(m => {
+    if (!m.category) m.category = info.label;
+    if (m.prepared === undefined) m.prepared = false;
+    if (m.recipeBook === undefined) m.recipeBook = '';
   });
+  return arr;
 }
 
 async function loadAllMeals() {
