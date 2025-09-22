@@ -49,7 +49,8 @@ export function aggregateCalendar(
   needsMap = new Map(),
   densityMap = {},
   perUser = false,
-  userMultipliers = []
+  userMultipliers = [],
+  userIndexLookup = null
 ) {
   const mealMap = buildMealMap(mealsByCategory);
   const result = new Map();
@@ -72,8 +73,30 @@ export function aggregateCalendar(
     return 1;
   }
 
+  function resolveUserIndex(key) {
+    if (userIndexLookup instanceof Map) {
+      const idx = userIndexLookup.get(key);
+      return Number.isInteger(idx) ? idx : undefined;
+    }
+    if (userIndexLookup && typeof userIndexLookup === 'object') {
+      const idx = userIndexLookup[key];
+      if (Number.isInteger(idx)) return idx;
+    }
+    const numeric = Number(key);
+    return Number.isInteger(numeric) ? numeric : undefined;
+  }
+
+  function resolveMealMultiplier(meal, idx, base) {
+    if (!Number.isInteger(idx) || !meal || !Array.isArray(meal.userPortionOverrides)) {
+      return base;
+    }
+    const override = meal.userPortionOverrides[idx];
+    return typeof override === 'number' && Number.isFinite(override) ? override : base;
+  }
+
   Object.entries(calendar).forEach(([userKey, days]) => {
-    const userMultiplier = resolveMultiplier(userKey);
+    const baseMultiplier = resolveMultiplier(userKey);
+    const userIndex = resolveUserIndex(userKey);
     Object.entries(days || {}).forEach(([dateStr, rec]) => {
       const week = weekNumber(dateStr);
       Object.values(rec || {}).forEach(val => {
@@ -81,6 +104,7 @@ export function aggregateCalendar(
         meals.forEach(id => {
           const meal = mealMap.get(id);
           if (!meal) return;
+          const userMultiplier = resolveMealMultiplier(meal, userIndex, baseMultiplier);
           const mult = perUser ? meal.multiplier ?? 1 : meal.people ?? meal.multiplier ?? 1;
           (meal.ingredients || []).forEach(ing => {
             const { value, unit } = parseQuantity(ing.serving_size || ing.amount);

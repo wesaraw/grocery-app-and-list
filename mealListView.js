@@ -2,7 +2,7 @@ import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { loadJSON } from './utils/dataLoader.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
-import { loadUsers } from './utils/userData.js';
+import { loadUsers, loadUserPortionMultipliers } from './utils/userData.js';
 import { canonicalName } from './utils/nameUtils.js';
 import { parseQuantity } from './utils/calendarUtils.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
@@ -24,12 +24,67 @@ let key, path, label;
 let inventorySet = new Set();
 const ingredientCells = {};
 let userNames = [];
+let userPortionDefaults = [];
 let deleteMode = false;
 const deleteButtons = [];
 let needsMap = new Map();
 let densityMap = {};
 const UOM_PATH = 'Required for grocery app/uom_conversion_table.json';
 let units = [];
+
+function sanitizeOverrides(source, userCount) {
+  if (!Array.isArray(source) || userCount <= 0) return [];
+  const sanitized = [];
+  const limit = Math.min(source.length, userCount);
+  for (let i = 0; i < limit; i++) {
+    const val = source[i];
+    let normalized;
+    if (typeof val === 'number' && Number.isFinite(val)) {
+      normalized = val;
+    } else if (typeof val === 'string' && val.trim() !== '') {
+      const parsed = Number(val);
+      normalized = Number.isFinite(parsed) ? parsed : undefined;
+    } else {
+      normalized = undefined;
+    }
+    sanitized[i] = normalized;
+  }
+  let end = sanitized.length;
+  while (end > 0 && sanitized[end - 1] === undefined) end--;
+  return sanitized.slice(0, end);
+}
+
+function overridesEqual(a, b) {
+  const arrA = Array.isArray(a) ? a : [];
+  const arrB = Array.isArray(b) ? b : [];
+  if (arrA.length !== arrB.length) return false;
+  for (let i = 0; i < arrA.length; i++) {
+    if (!Object.is(arrA[i], arrB[i])) return false;
+  }
+  return true;
+}
+
+function normalizeMealOverrides(meal) {
+  const hasArray = Array.isArray(meal.userPortionOverrides);
+  const sanitized = sanitizeOverrides(meal.userPortionOverrides, userNames.length);
+  if (!hasArray && sanitized.length === 0 && meal.userPortionOverrides === undefined) {
+    return false;
+  }
+  if (!hasArray || !overridesEqual(sanitized, meal.userPortionOverrides)) {
+    meal.userPortionOverrides = sanitized;
+    return true;
+  }
+  return false;
+}
+
+function defaultPortionFor(index) {
+  const val = userPortionDefaults[index];
+  return typeof val === 'number' && Number.isFinite(val) ? val : 1;
+}
+
+function sameMultiplier(a, b) {
+  return Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) < 1e-9;
+}
 
 function loadFinalProduct(item) {
   return new Promise(resolve => {
@@ -259,6 +314,14 @@ function createRows(meal, arr) {
   const costPromises = [];
   let firstTotalTd = null;
 
+  async function persistMealChange() {
+    await saveMeals(arr);
+    await calculateAndSaveMealNeeds();
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+      chrome.runtime.sendMessage({ type: 'inventory-updated' });
+    }
+  }
+
   ingredients.forEach((ing, idx) => {
     const tr = document.createElement('tr');
     if (idx === 0) {
@@ -274,12 +337,66 @@ function createRows(meal, arr) {
           meal.users[i] = chk.checked;
           meal.people = meal.users.filter(Boolean).length;
           meal.active = meal.people > 0;
-          await saveMeals(arr);
-          await calculateAndSaveMealNeeds();
+          await persistMealChange();
         });
         chks.push(chk);
         lbl.appendChild(chk);
         lbl.appendChild(document.createTextNode(` ${u} `));
+        const portionInput = document.createElement('input');
+        portionInput.type = 'number';
+        portionInput.step = '0.01';
+        portionInput.className = 'portion-input';
+        portionInput.value = String(
+          (Array.isArray(meal.userPortionOverrides)
+            ? meal.userPortionOverrides[i]
+            : undefined) ?? defaultPortionFor(i)
+        );
+        portionInput.addEventListener('keydown', e => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            portionInput.blur();
+          }
+        });
+        portionInput.addEventListener('blur', async () => {
+          const base = defaultPortionFor(i);
+          const current = Array.isArray(meal.userPortionOverrides)
+            ? meal.userPortionOverrides
+            : [];
+          const previous = current.slice();
+          const prevValue = previous[i];
+          const raw = portionInput.value.trim();
+          if (raw === '') {
+            if (previous.length > i) {
+              previous[i] = undefined;
+            }
+            const sanitized = sanitizeOverrides(previous, userNames.length);
+            if (!overridesEqual(sanitized, current)) {
+              meal.userPortionOverrides = sanitized;
+              await persistMealChange();
+            }
+            portionInput.value = String(base);
+            return;
+          }
+          const num = Number(raw);
+          if (!Number.isFinite(num)) {
+            const fallback = prevValue !== undefined ? prevValue : base;
+            portionInput.value = String(fallback);
+            return;
+          }
+          const newOverrides = previous.slice();
+          if (sameMultiplier(num, base)) {
+            if (newOverrides.length > i) newOverrides[i] = undefined;
+          } else {
+            newOverrides[i] = num;
+          }
+          const sanitized = sanitizeOverrides(newOverrides, userNames.length);
+          if (!overridesEqual(sanitized, current)) {
+            meal.userPortionOverrides = sanitized;
+            await persistMealChange();
+          }
+          portionInput.value = String(sameMultiplier(num, base) ? base : num);
+        });
+        lbl.appendChild(portionInput);
         useTd.appendChild(lbl);
       });
       if (ingredients.length > 1) useTd.rowSpan = ingredients.length;
@@ -453,12 +570,66 @@ function createRows(meal, arr) {
         meal.users[i] = chk.checked;
         meal.people = meal.users.filter(Boolean).length;
         meal.active = meal.people > 0;
-        await saveMeals(arr);
-        await calculateAndSaveMealNeeds();
+        await persistMealChange();
       });
       chks.push(chk);
       lbl.appendChild(chk);
       lbl.appendChild(document.createTextNode(` ${u} `));
+      const portionInput = document.createElement('input');
+      portionInput.type = 'number';
+      portionInput.step = '0.01';
+      portionInput.className = 'portion-input';
+      portionInput.value = String(
+        (Array.isArray(meal.userPortionOverrides)
+          ? meal.userPortionOverrides[i]
+          : undefined) ?? defaultPortionFor(i)
+      );
+      portionInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          portionInput.blur();
+        }
+      });
+      portionInput.addEventListener('blur', async () => {
+        const base = defaultPortionFor(i);
+        const current = Array.isArray(meal.userPortionOverrides)
+          ? meal.userPortionOverrides
+          : [];
+        const previous = current.slice();
+        const prevValue = previous[i];
+        const raw = portionInput.value.trim();
+        if (raw === '') {
+          if (previous.length > i) {
+            previous[i] = undefined;
+          }
+          const sanitized = sanitizeOverrides(previous, userNames.length);
+          if (!overridesEqual(sanitized, current)) {
+            meal.userPortionOverrides = sanitized;
+            await persistMealChange();
+          }
+          portionInput.value = String(base);
+          return;
+        }
+        const num = Number(raw);
+        if (!Number.isFinite(num)) {
+          const fallback = prevValue !== undefined ? prevValue : base;
+          portionInput.value = String(fallback);
+          return;
+        }
+        const newOverrides = previous.slice();
+        if (sameMultiplier(num, base)) {
+          if (newOverrides.length > i) newOverrides[i] = undefined;
+        } else {
+          newOverrides[i] = num;
+        }
+        const sanitized = sanitizeOverrides(newOverrides, userNames.length);
+        if (!overridesEqual(sanitized, current)) {
+          meal.userPortionOverrides = sanitized;
+          await persistMealChange();
+        }
+        portionInput.value = String(sameMultiplier(num, base) ? base : num);
+      });
+      lbl.appendChild(portionInput);
       useTd.appendChild(lbl);
     });
     imageTd = document.createElement('td');
@@ -876,12 +1047,24 @@ async function loadAndRender() {
   tbody.innerHTML = '';
   deleteButtons.length = 0;
   Object.keys(ingredientCells).forEach(k => delete ingredientCells[k]);
-  const [meals, stock, users] = await Promise.all([
+  const [meals, stock, users, portionMultipliers] = await Promise.all([
     loadMeals(),
     loadStock(),
-    loadUsers()
+    loadUsers(),
+    loadUserPortionMultipliers()
   ]);
   userNames = users;
+  userPortionDefaults = users.map((_, idx) => {
+    const val = portionMultipliers[idx];
+    return typeof val === 'number' && Number.isFinite(val) ? val : 1;
+  });
+  let overridesChanged = false;
+  meals.forEach(meal => {
+    if (normalizeMealOverrides(meal)) overridesChanged = true;
+  });
+  if (overridesChanged) {
+    await saveMeals(meals);
+  }
   inventorySet = new Set(stock.map(s => canonicalName(s.name)));
   const bookMap = {};
   meals.forEach(m => {

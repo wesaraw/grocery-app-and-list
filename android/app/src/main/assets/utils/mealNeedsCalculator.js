@@ -90,6 +90,15 @@ export async function calculateAndSaveMealNeeds() {
     return typeof val === 'number' && Number.isFinite(val) ? val : 1;
   });
 
+  function resolveMealMultiplier(meal, userIndex) {
+    const base = userMultipliers[userIndex] ?? 1;
+    if (!meal || !Array.isArray(meal.userPortionOverrides)) {
+      return base;
+    }
+    const override = meal.userPortionOverrides[userIndex];
+    return typeof override === 'number' && Number.isFinite(override) ? override : base;
+  }
+
   const labelToCategory = {};
   Object.entries(MEAL_TYPES).forEach(([id, info]) => {
     if (info && info.label) {
@@ -300,7 +309,7 @@ export async function calculateAndSaveMealNeeds() {
           const slotsPerWeek = computeWeeklySlotsForUser(idx, type);
           const count = userMealCounts[idx] || 1;
           const dayEquivalent = perDay > 0 ? slotsPerWeek / perDay : slotsPerWeek;
-          const multiplier = userMultipliers[idx] ?? 1;
+          const multiplier = resolveMealMultiplier(meal, idx);
           details.factors.push({ people: multiplier, days: dayEquivalent });
           const normalizedCount = count > 0 ? count : 1;
           monthlySpots += (slotsPerWeek * multiplier * 52) / normalizedCount / 12;
@@ -308,13 +317,13 @@ export async function calculateAndSaveMealNeeds() {
       } else {
         const people = meal.people ?? meal.multiplier ?? 1;
         if (people <= 0) return;
-        const totalMultiplier = userMultipliers.reduce(
-          (sum, mult) => sum + mult,
+        const totalMultiplier = users.reduce(
+          (sum, _user, idx) => sum + resolveMealMultiplier(meal, idx),
           0
         );
         let weightedSlotsSum = 0;
         users.forEach((_, idx) => {
-          const multiplier = userMultipliers[idx] ?? 1;
+          const multiplier = resolveMealMultiplier(meal, idx);
           const slotsPerWeek = computeWeeklySlotsForUser(idx, type);
           weightedSlotsSum += slotsPerWeek * multiplier;
         });

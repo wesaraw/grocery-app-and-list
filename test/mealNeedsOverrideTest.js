@@ -22,7 +22,8 @@ const storage = {
       id: 'B1',
       name: 'Override Breakfast',
       ingredients: [{ name: 'Egg', amount: '1 ea' }],
-      users: [true, true]
+      users: [true, true],
+      userPortionOverrides: [undefined, 2]
     }
   ],
   lunchDinnerMeals: [
@@ -109,7 +110,7 @@ const eggEntry = monthlyArr.find(item => item.name === 'Egg');
 if (!eggEntry) {
   throw new Error('Expected Egg entry in monthly needs after override');
 }
-const expectedEgg = ((2 * 1 + 1 * 1.5) * 52) / 12; // weighted weekly slots after override
+const expectedEgg = ((2 * 1 + 1 * 2) * 52) / 12; // Alice default multiplier, Bob override of 2
 if (Math.abs(eggEntry.monthly_consumption - expectedEgg) > 1e-6) {
   throw new Error(
     `Egg consumption mismatch: ${eggEntry.monthly_consumption} vs expected ${expectedEgg}`

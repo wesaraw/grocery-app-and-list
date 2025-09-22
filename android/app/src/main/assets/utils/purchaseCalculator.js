@@ -99,11 +99,13 @@ export async function calculatePurchaseNeeds(
     rawMultipliers = [];
   }
   const multiplierMap = new Map();
+  const userIndexLookup = new Map();
   if (Array.isArray(users)) {
     users.forEach((user, idx) => {
       const val = Array.isArray(rawMultipliers) ? rawMultipliers[idx] : undefined;
       const numeric = typeof val === 'number' && Number.isFinite(val) ? val : 1;
       multiplierMap.set(user, numeric);
+      userIndexLookup.set(user, idx);
     });
   }
   const calendarNeeds = aggregateCalendar(
@@ -112,7 +114,8 @@ export async function calculatePurchaseNeeds(
     needsMap,
     densityMap,
     true,
-    multiplierMap
+    multiplierMap,
+    userIndexLookup
   );
 
   const weeklyNeedMap = new Map();
