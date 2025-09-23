@@ -15,7 +15,15 @@ const eatingDays = {
   u: { lunchDinner: { days: ['Monday'], slots: [['Monday']] } }
 };
 const mealsPerDay = { lunchDinner: 1 };
-const what = generateWhatToEatCalendar(users, prepared, subscriptions, eatingDays, mealsPerDay, startDate, 3);
+const { calendar: what } = generateWhatToEatCalendar(
+  users,
+  prepared,
+  subscriptions,
+  eatingDays,
+  mealsPerDay,
+  startDate,
+  3
+);
 
 const picks = Object.values(prepared).map(d => d.lunchDinner);
 const countA = picks.filter(p => p === 'A').length;

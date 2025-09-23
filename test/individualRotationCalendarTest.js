@@ -23,7 +23,7 @@ const eatingDays = {
 const mealsPerDay = { breakfast: 1 };
 const startDate = '2023-01-02'; // Monday
 
-const cal = generateWhatToEatCalendar(
+const { calendar: cal } = generateWhatToEatCalendar(
   users,
   preparedCal,
   subscriptions,

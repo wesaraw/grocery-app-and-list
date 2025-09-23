@@ -11,7 +11,7 @@ const eatingDays = {
 const mealsPerDay = { snack: 2 };
 const startDate = new Date('2024-01-01');
 
-const cal = generateWhatToEatCalendar(
+const { calendar: cal } = generateWhatToEatCalendar(
   users,
   prepared,
   subscriptions,
@@ -43,7 +43,7 @@ const soloEatingDays = {
   solo: { snack: { days: ['Monday'], slots: [[], ['Monday']] } }
 };
 
-const soloCal = generateWhatToEatCalendar(
+const { calendar: soloCal } = generateWhatToEatCalendar(
   soloUsers,
   prepared,
   soloSubscriptions,

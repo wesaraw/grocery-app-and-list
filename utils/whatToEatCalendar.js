@@ -1,4 +1,48 @@
 import { isItemInSeason } from './seasonData.js';
+import { normalizeCalendarEntry } from './calendarUtils.js';
+
+function cloneValue(value) {
+  if (Array.isArray(value)) {
+    return value.map(item => cloneValue(item));
+  }
+  if (value && typeof value === 'object') {
+    const result = {};
+    Object.entries(value).forEach(([key, val]) => {
+      result[key] = cloneValue(val);
+    });
+    return result;
+  }
+  return value;
+}
+
+function toISODateString(date) {
+  return date.toISOString().split('T')[0];
+}
+
+function normalizeForcedDay(dayValue) {
+  const result = {};
+  if (!dayValue || typeof dayValue !== 'object') return result;
+  Object.entries(dayValue).forEach(([categoryId, slotValue]) => {
+    if (Array.isArray(slotValue)) {
+      result[categoryId] = slotValue.map(item =>
+        item == null ? null : normalizeCalendarEntry(item)
+      );
+    } else if (slotValue == null) {
+      result[categoryId] = [null];
+    } else {
+      result[categoryId] = [normalizeCalendarEntry(slotValue)];
+    }
+  });
+  return result;
+}
+
+function incrementDateStr(dateStr) {
+  if (!dateStr) return null;
+  const dt = new Date(dateStr);
+  if (Number.isNaN(dt.getTime())) return null;
+  dt.setDate(dt.getDate() + 1);
+  return toISODateString(dt);
+}
 
 export function generateWhatToEatCalendar(
   users,
@@ -10,13 +54,90 @@ export function generateWhatToEatCalendar(
   weeks = 4,
   priceThresholds = {},
   itemSeasons = {},
-  slotOverrides = {}
+  slotOverrides = {},
+  options = {}
 ) {
+  const {
+    previousCalendar = null,
+    freezeBefore = null,
+    initialState = null
+  } = options || {};
+
+  const freezeBeforeStr =
+    typeof freezeBefore === 'string' && freezeBefore ? freezeBefore : null;
+
+  let snapshotBase = null;
+  if (initialState && typeof initialState === 'object') {
+    if (
+      initialState.freezeSnapshot &&
+      initialState.freezeSnapshot.asOfDate === freezeBeforeStr
+    ) {
+      snapshotBase = initialState.freezeSnapshot;
+    } else if (initialState.asOfDate === freezeBeforeStr) {
+      snapshotBase = initialState;
+    }
+  }
+
+  let nonPrepState = cloneValue(snapshotBase?.nonPrepState || {});
+  let sharedGroupState = cloneValue(snapshotBase?.sharedGroupState || {});
+  let leftoverCarry = cloneValue(snapshotBase?.leftoverCarry || {});
+  let recencyState = cloneValue(snapshotBase?.recencyState || {});
+  const snapshotStartDate = snapshotBase?.asOfDate || null;
+
   const calendar = {};
-  const nonPrepState = {};
-  const sharedGroupState = {};
-  const overrideSlotKeyCache = {};
-  let leftoverCarry = {};
+  users.forEach(user => {
+    calendar[user] = {};
+  });
+
+  const forcedByDate = new Map();
+  const preservedDates = new Set();
+
+  if (previousCalendar && typeof previousCalendar === 'object') {
+    users.forEach(user => {
+      const prevUser = previousCalendar[user] || {};
+      const targetUser = calendar[user];
+      Object.entries(prevUser).forEach(([dateStr, dayValue]) => {
+        if (freezeBeforeStr && dateStr >= freezeBeforeStr) return;
+        targetUser[dateStr] = cloneValue(dayValue);
+        preservedDates.add(dateStr);
+        const forcedDay = forcedByDate.get(dateStr) || {};
+        forcedDay[user] = normalizeForcedDay(dayValue);
+        forcedByDate.set(dateStr, forcedDay);
+      });
+    });
+  }
+
+  const preservedDateList = Array.from(preservedDates).sort();
+  const effectiveSeedingDates = preservedDateList.filter(dateStr => {
+    if (freezeBeforeStr && dateStr >= freezeBeforeStr) return false;
+    if (snapshotStartDate && dateStr < snapshotStartDate) return false;
+    return true;
+  });
+
+  function buildTimeline() {
+    const items = [];
+    effectiveSeedingDates.forEach(dateStr => {
+      items.push({
+        date: new Date(dateStr + 'T00:00:00'),
+        dateStr,
+        forced: forcedByDate.get(dateStr) || null,
+        write: false
+      });
+    });
+
+    const start = new Date(startDate);
+    for (let i = 0; i < weeks * 7; i++) {
+      const current = new Date(start);
+      current.setDate(start.getDate() + i);
+      const dateStr = toISODateString(current);
+      if (freezeBeforeStr && dateStr < freezeBeforeStr) continue;
+      items.push({ date: current, dateStr, forced: null, write: true });
+    }
+    items.sort((a, b) => (a.dateStr < b.dateStr ? -1 : a.dateStr > b.dateStr ? 1 : 0));
+    return items;
+  }
+
+  const timeline = buildTimeline();
 
   const subCount = {};
   Object.values(subscriptions).forEach(prefs => {
@@ -28,8 +149,6 @@ export function generateWhatToEatCalendar(
       });
     });
   });
-  const date = new Date(startDate);
-  for (const u of users) calendar[u] = {};
 
   function resolveSlotCount(categoryId) {
     const raw = mealsPerDay ? mealsPerDay[categoryId] : undefined;
@@ -55,26 +174,37 @@ export function generateWhatToEatCalendar(
       .filter(w => w.weight > 0);
   }
 
-  function pickWeighted(list, state) {
+  function pickWeighted(list, state, forcedId = null) {
     const total = list.reduce((s, i) => s + i.weight, 0);
     if (!total) return null;
-    for (const it of list) {
-      const id = it.meal.id || it.meal.name;
-      state[id] = (state[id] || 0) + it.weight;
-    }
-    let chosen = list[0].meal;
-    let chosenId = list[0].meal.id || list[0].meal.name;
-    let max = state[chosenId];
-    for (const it of list) {
-      const id = it.meal.id || it.meal.name;
-      if (state[id] > max) {
-        max = state[id];
-        chosen = it.meal;
-        chosenId = id;
+    let chosenItem = null;
+    list.forEach(it => {
+      const id = it.meal?.id || it.meal?.name;
+      if (id == null) return;
+      state[id] = (state[id] || 0) + (it.weight || 0);
+      if (forcedId != null && id === forcedId && !chosenItem) {
+        chosenItem = it;
       }
+    });
+    if (!chosenItem) {
+      let maxEntry = null;
+      let maxValue = -Infinity;
+      list.forEach(it => {
+        const id = it.meal?.id || it.meal?.name;
+        if (id == null) return;
+        const value = state[id];
+        if (maxEntry == null || value > maxValue) {
+          maxEntry = it;
+          maxValue = value;
+        }
+      });
+      chosenItem = maxEntry;
     }
+    if (!chosenItem) return null;
+    const chosenId = chosenItem.meal?.id || chosenItem.meal?.name;
+    if (chosenId == null) return null;
     state[chosenId] -= total;
-    return chosen;
+    return chosenItem.meal;
   }
 
   function createCookEntry(mealId) {
@@ -82,7 +212,7 @@ export function generateWhatToEatCalendar(
   }
 
   function createLeftoverEntry(mealId, source) {
-    return { type: 'leftover', mealId, leftoverSource: source };
+    return { type: 'leftover', mealId, leftoverSource: source || null };
   }
 
   function serializeEntry(entry) {
@@ -107,18 +237,84 @@ export function generateWhatToEatCalendar(
     };
   }
 
-  function updateStoredEntry(user, dateStr, categoryId, slotIndex, entry) {
-    const day = calendar[user]?.[dateStr];
-    if (!day) return;
-    const current = day[categoryId];
-    if (Array.isArray(current)) {
-      if (slotIndex == null || slotIndex < 0 || slotIndex >= current.length) return;
-      const copy = current.slice();
-      copy[slotIndex] = serializeEntry(entry);
-      day[categoryId] = copy;
-    } else if (slotIndex == null || slotIndex === 0) {
-      day[categoryId] = serializeEntry(entry);
+  function rotateArray(arr, seed) {
+    if (!Array.isArray(arr) || !arr.length) return arr;
+    const offset = ((seed % arr.length) + arr.length) % arr.length;
+    if (!offset) return arr.slice();
+    return arr.slice(offset).concat(arr.slice(0, offset));
+  }
+
+  function computeSeed(...parts) {
+    const joined = parts.filter(Boolean).join('|');
+    let hash = 0;
+    for (let i = 0; i < joined.length; i++) {
+      hash = (hash * 33 + joined.charCodeAt(i)) >>> 0;
     }
+    return hash;
+  }
+
+  function prioritizePickList(list, user, categoryId, dateStr) {
+    const empty = { primary: [], secondary: [], lookup: new Map() };
+    if (!Array.isArray(list) || !list.length) return empty;
+    const recencyForUser = recencyState[user]?.[categoryId] || {};
+    const today = new Date(dateStr + 'T00:00:00');
+    const info = list.map(entry => {
+      const mealId = entry.meal?.id || entry.meal?.name || null;
+      if (!mealId) {
+        return { entry, mealId: null, daysSince: Infinity };
+      }
+      const last = recencyForUser[mealId];
+      if (!last) {
+        return { entry, mealId, daysSince: Infinity };
+      }
+      const diffMs = today - new Date(last + 'T00:00:00');
+      const daysSince = Number.isFinite(diffMs) ? Math.floor(diffMs / 86400000) : Infinity;
+      return { entry, mealId, daysSince };
+    });
+    const threshold = 7;
+    let primaryInfo = info.filter(item => item.daysSince >= threshold);
+    if (!primaryInfo.length) {
+      let maxGap = -Infinity;
+      info.forEach(item => {
+        if (item.daysSince > maxGap) maxGap = item.daysSince;
+      });
+      primaryInfo = info.filter(item => item.daysSince === maxGap);
+    }
+    const primarySet = new Set(primaryInfo);
+    const secondaryInfo = info.filter(item => !primarySet.has(item));
+    const lookup = new Map();
+    info.forEach(item => {
+      if (item.mealId) {
+        lookup.set(item.mealId, item.entry);
+      }
+    });
+
+    function orderEntries(source, salt) {
+      if (!source.length) return [];
+      const seed = computeSeed(dateStr, categoryId, salt || '');
+      const sorted = source
+        .slice()
+        .sort((a, b) => {
+          if (a.daysSince !== b.daysSince) {
+            return b.daysSince - a.daysSince;
+          }
+          const idA = a.mealId || '';
+          const idB = b.mealId || '';
+          if (idA === idB) return 0;
+          const scoreA = computeSeed(seed, idA);
+          const scoreB = computeSeed(seed, idB);
+          if (scoreA === scoreB) return idA.localeCompare(idB);
+          return scoreA - scoreB;
+        })
+        .map(item => item.entry);
+      return rotateArray(sorted, seed);
+    }
+
+    return {
+      primary: orderEntries(primaryInfo, 'primary'),
+      secondary: orderEntries(secondaryInfo, 'secondary'),
+      lookup
+    };
   }
 
   function registerNextLeftover(store, user, categoryId, slotIndex, dateStr, entry) {
@@ -135,6 +331,8 @@ export function generateWhatToEatCalendar(
     });
     store[user][categoryId][slotIndex] = slotPool;
   }
+
+  const overrideSlotKeyCache = {};
 
   function computeOverrideSlotKeys(dayName) {
     const perCategory = {};
@@ -260,9 +458,34 @@ export function generateWhatToEatCalendar(
     };
   }
 
-  for (let i = 0; i < weeks * 7; i++) {
-    const currentDate = new Date(date);
-    const dateStr = currentDate.toISOString().split('T')[0];
+  function updateStoredEntry(user, dateStr, categoryId, slotIndex, entry) {
+    const day = calendar[user]?.[dateStr];
+    if (!day) return;
+    const current = day[categoryId];
+    if (Array.isArray(current)) {
+      if (slotIndex == null || slotIndex < 0 || slotIndex >= current.length) return;
+      const copy = current.slice();
+      copy[slotIndex] = serializeEntry(entry);
+      day[categoryId] = copy;
+    } else if (slotIndex == null || slotIndex === 0) {
+      day[categoryId] = serializeEntry(entry);
+    }
+  }
+
+  let freezeSnapshot = null;
+  if (!effectiveSeedingDates.length && freezeBeforeStr) {
+    freezeSnapshot = {
+      asOfDate: freezeBeforeStr,
+      nonPrepState: cloneValue(nonPrepState),
+      sharedGroupState: cloneValue(sharedGroupState),
+      leftoverCarry: cloneValue(leftoverCarry),
+      recencyState: cloneValue(recencyState)
+    };
+  }
+
+  for (let idx = 0; idx < timeline.length; idx++) {
+    const { date, dateStr, forced, write } = timeline[idx];
+    const currentDate = date;
     const dayName = currentDate.toLocaleDateString('en-US', { weekday: 'long' });
     const dayOverrideSlotKeys =
       overrideSlotKeyCache[dayName] ||
@@ -280,16 +503,20 @@ export function generateWhatToEatCalendar(
       });
       const overridesForUser = slotOverrides[user] || {};
       const overridesForDay = overridesForUser[dayName] || {};
+      const stateRec = nonPrepState[user] || (nonPrepState[user] = {});
       perUserData[user] = {
         prefs,
         dayPrefs,
         overridesForDay,
         overridesForUser,
-        stateRec: nonPrepState[user] || (nonPrepState[user] = {}),
+        stateRec,
         maxPrice:
           priceThresholds[user] !== undefined ? priceThresholds[user] : Infinity,
         contextCache: {}
       };
+      if (!recencyState[user]) {
+        recencyState[user] = {};
+      }
     });
 
     const daySharedPlan = {};
@@ -484,7 +711,7 @@ export function generateWhatToEatCalendar(
       });
     });
 
-    function resolveSharedAssignment(categoryId, sharedSlotKey, user) {
+    function resolveSharedAssignment(categoryId, sharedSlotKey, user, forcedEntry = null) {
       if (sharedSlotKey == null) return null;
       const slotKeyId = String(sharedSlotKey);
       const categoryPlan = daySharedPlan[categoryId];
@@ -497,6 +724,8 @@ export function generateWhatToEatCalendar(
       if (slotPlan.assigned[user]) {
         return slotPlan.assigned[user];
       }
+      const forcedMealId =
+        forcedEntry && forcedEntry.type === 'cook' ? forcedEntry.mealId : null;
       for (const size of slotPlan.sizeOrder || []) {
         const bucket = slotPlan.bySize[size];
         if (!bucket) continue;
@@ -508,8 +737,32 @@ export function generateWhatToEatCalendar(
             candidate => !candidate.disabled && candidate.userSet.has(user)
           );
           if (!activeCandidates.length) break;
-          const weightedList = activeCandidates.map(candidate => candidate.weighted);
-          const meal = pickWeighted(weightedList, sizeState);
+          const prioritized = prioritizeSharedCandidates(
+            activeCandidates,
+            categoryId,
+            dateStr
+          );
+          let candidateList = prioritized.primary.slice();
+          function hasCandidate(listEntries, mealId) {
+            if (mealId == null) return false;
+            return listEntries.some(entry => entry?.mealId === mealId);
+          }
+          if (forcedMealId != null) {
+            const forcedCandidate =
+              prioritized.lookup.get(forcedMealId) ||
+              activeCandidates.find(item => item.mealId === forcedMealId);
+            if (forcedCandidate && !hasCandidate(candidateList, forcedMealId)) {
+              candidateList = candidateList.concat([forcedCandidate]);
+            }
+          }
+          if (!candidateList.length) {
+            candidateList = prioritized.secondary.slice();
+          }
+          if (!candidateList.length) {
+            candidateList = activeCandidates.slice();
+          }
+          const weightedList = candidateList.map(candidate => candidate.weighted);
+          const meal = pickWeighted(weightedList, sizeState, forcedMealId);
           if (!meal) break;
           const mealId = meal.id || meal.name;
           const candidate = bucket.map.get(mealId);
@@ -534,6 +787,70 @@ export function generateWhatToEatCalendar(
       return null;
     }
 
+    function prioritizeSharedCandidates(candidates, categoryId, dateStr) {
+      const empty = { primary: [], secondary: [], lookup: new Map() };
+      if (!Array.isArray(candidates) || !candidates.length) return empty;
+      const enriched = candidates.map(candidate => {
+        let minDays = Infinity;
+        candidate.users.forEach(user => {
+          const userRecency = recencyState[user]?.[categoryId] || {};
+          const last = userRecency[candidate.mealId];
+          if (!last) return;
+          const diff =
+            new Date(dateStr + 'T00:00:00') - new Date(last + 'T00:00:00');
+          const days = Number.isFinite(diff) ? Math.floor(diff / 86400000) : Infinity;
+          if (days < minDays) minDays = days;
+        });
+        return { candidate, daysSince: minDays };
+      });
+      const threshold = 7;
+      let primaryInfo = enriched.filter(item => item.daysSince >= threshold);
+      if (!primaryInfo.length) {
+        let maxGap = -Infinity;
+        enriched.forEach(item => {
+          if (item.daysSince > maxGap) maxGap = item.daysSince;
+        });
+        primaryInfo = enriched.filter(item => item.daysSince === maxGap);
+      }
+      const primarySet = new Set(primaryInfo);
+      const secondaryInfo = enriched.filter(item => !primarySet.has(item));
+      const lookup = new Map();
+      enriched.forEach(item => {
+        if (item.candidate?.mealId) {
+          lookup.set(item.candidate.mealId, item.candidate);
+        }
+      });
+
+      function orderCandidates(source, salt) {
+        if (!source.length) return [];
+        const seed = computeSeed(dateStr, categoryId, 'shared', salt || '');
+        const sorted = source
+          .slice()
+          .sort((a, b) => {
+            if (a.daysSince !== b.daysSince) {
+              return b.daysSince - a.daysSince;
+            }
+            const idA = a.candidate.mealId || '';
+            const idB = b.candidate.mealId || '';
+            if (idA === idB) return 0;
+            const scoreA = computeSeed(seed, idA);
+            const scoreB = computeSeed(seed, idB);
+            if (scoreA === scoreB) {
+              return idA.localeCompare(idB);
+            }
+            return scoreA - scoreB;
+          })
+          .map(item => item.candidate);
+        return rotateArray(sorted, seed);
+      }
+
+      return {
+        primary: orderCandidates(primaryInfo, 'primary'),
+        secondary: orderCandidates(secondaryInfo, 'secondary'),
+        lookup
+      };
+    }
+
     users.forEach(user => {
       calendar[user][dateStr] = calendar[user][dateStr] || {};
       const userData = perUserData[user];
@@ -543,19 +860,20 @@ export function generateWhatToEatCalendar(
       const stateRec = userData.stateRec;
       const maxPrice = userData.maxPrice;
       const contextCache = userData.contextCache;
+      const forcedForUser = forced ? forced[user] || {} : null;
 
       function getContext(categoryId) {
         if (contextCache[categoryId]) return contextCache[categoryId];
         return ensureContext(user, categoryId);
       }
 
-    function attemptPick(categoryId, slotKey, normalizedSlotOverride, options = {}) {
-      const { requirePrepared = false } = options;
-      const context = getContext(categoryId);
-      if (!context) return null;
-      const normalizedCount = context.numSlots ?? 0;
-      const hasOverrideIndex = normalizedSlotOverride != null;
-      const slotLimit = hasOverrideIndex
+      function attemptPick(categoryId, slotKey, normalizedSlotOverride, options = {}) {
+        const { requirePrepared = false, forcedMealId = null, forcedEntry = null } = options;
+        const context = getContext(categoryId);
+        if (!context) return null;
+        const normalizedCount = context.numSlots ?? 0;
+        const hasOverrideIndex = normalizedSlotOverride != null;
+        const slotLimit = hasOverrideIndex
           ? Math.max(1, normalizedCount)
           : normalizedCount;
         if (!hasOverrideIndex && slotLimit <= 0) {
@@ -580,29 +898,19 @@ export function generateWhatToEatCalendar(
           normalizedSlot === 0 &&
           prepMeal &&
           (prepMeal.totalCost == null || prepMeal.totalCost <= maxPrice);
-        if (
-          !prepOk &&
-          !requirePrepared &&
-          !context.weightedShared.length &&
-          !context.chooseList.length
-        ) {
-          return null;
-        }
-        if (requirePrepared && !prepOk && !context.preparedChooseList.length) {
-          if (!context.chooseList.length) {
-            return null;
-          }
-        }
+        const forcedMatchesPrep =
+          forcedMealId != null && forcedMealId === context.prepMealId;
         let chosenId = null;
         let chosenMeal = null;
-        if (prepOk) {
+        if (prepOk && (!forcedMealId || forcedMatchesPrep)) {
           chosenId = context.prepMealId;
           chosenMeal = prepMeal || null;
         } else if (!requirePrepared && context.weightedShared.length) {
           const sharedChoice = resolveSharedAssignment(
             categoryId,
             sharedSlotKey,
-            user
+            user,
+            forcedEntry
           );
           if (sharedChoice != null) {
             chosenId = sharedChoice;
@@ -617,9 +925,40 @@ export function generateWhatToEatCalendar(
               ? context.preparedChooseList
               : context.chooseList
             : context.chooseList;
-          if (pickList.length) {
-            const state = stateRec[categoryId] || (stateRec[categoryId] = {});
-            const meal = pickWeighted(pickList, state);
+          const prioritized = prioritizePickList(
+            pickList,
+            user,
+            categoryId,
+            dateStr
+          );
+          const state = stateRec[categoryId] || (stateRec[categoryId] = {});
+          let candidateList = prioritized.primary.slice();
+          function includesMeal(listEntries, mealId) {
+            if (mealId == null) return false;
+            return listEntries.some(entry => {
+              const id = entry?.meal?.id || entry?.meal?.name;
+              return id != null && id === mealId;
+            });
+          }
+          if (forcedMealId != null) {
+            const forcedEntry =
+              prioritized.lookup.get(forcedMealId) ||
+              pickList.find(entry => {
+                const id = entry.meal?.id || entry.meal?.name;
+                return id != null && id === forcedMealId;
+              });
+            if (forcedEntry && !includesMeal(candidateList, forcedMealId)) {
+              candidateList = candidateList.concat([forcedEntry]);
+            }
+          }
+          if (!candidateList.length) {
+            candidateList = prioritized.secondary.slice();
+          }
+          if (!candidateList.length) {
+            candidateList = pickList;
+          }
+          if (candidateList.length) {
+            const meal = pickWeighted(candidateList, state, forcedMealId);
             if (meal) {
               chosenId = meal.id || meal.name;
               chosenMeal = meal;
@@ -628,10 +967,10 @@ export function generateWhatToEatCalendar(
         }
         if (normalizedSlot === 0 && prepOk && !requirePrepared) {
           if (context.weightedShared.length) {
-            resolveSharedAssignment(categoryId, sharedSlotKey, user);
+            resolveSharedAssignment(categoryId, sharedSlotKey, user, forcedEntry);
           } else if (context.chooseList.length) {
             const state = stateRec[categoryId] || (stateRec[categoryId] = {});
-            pickWeighted(context.chooseList, state);
+            pickWeighted(context.chooseList, state, forcedMealId);
           }
         }
         return chosenId != null ? { chosenId, meal: chosenMeal || prepMeal || null } : null;
@@ -701,30 +1040,152 @@ export function generateWhatToEatCalendar(
           if (iterationSlots <= 0) {
             return;
           }
-          calendar[user][dateStr][cat] = iterationSlots === 1 ? null : [];
+          if (write) {
+            calendar[user][dateStr][cat] = iterationSlots === 1 ? null : [];
+          }
           return;
         }
         const slotResults = new Array(iterationSlots).fill(null);
         const pendingPrep = [];
 
-        function assignPickForDescriptor(descriptor, requirePrepared) {
-          const { slotIndex, overrideCategory, normalizedOverrideSlot, overrideSlotKey, baseSlotActive } = descriptor;
+        function updateRecencyForEntry(entry) {
+          if (!entry || !entry.mealId) return;
+          const userState = recencyState[user] || (recencyState[user] = {});
+          const categoryState = userState[cat] || (userState[cat] = {});
+          categoryState[entry.mealId] = dateStr;
+        }
+
+        function assignLeftoverFromPool(slotIndex, forcedEntry) {
+          const pool = prevLeftovers[user]?.[cat]?.[slotIndex];
+          if (Array.isArray(pool) && pool.length) {
+            let matchIndex = -1;
+            if (forcedEntry && forcedEntry.leftoverSource) {
+              matchIndex = pool.findIndex(item => {
+                if (!item || !item.entry) return false;
+                return (
+                  item.entry.mealId === forcedEntry.mealId &&
+                  item.date === forcedEntry.leftoverSource.date &&
+                  item.categoryId === forcedEntry.leftoverSource.categoryId &&
+                  item.slotIndex === forcedEntry.leftoverSource.slot
+                );
+              });
+            }
+            const sourceInfo =
+              matchIndex >= 0 ? pool.splice(matchIndex, 1)[0] : pool.shift();
+            if (sourceInfo && sourceInfo.entry) {
+              if (write) {
+                sourceInfo.entry.leftoverTargets = Array.isArray(
+                  sourceInfo.entry.leftoverTargets
+                )
+                  ? sourceInfo.entry.leftoverTargets
+                  : [];
+                sourceInfo.entry.leftoverTargets.push({
+                  date: dateStr,
+                  categoryId: cat,
+                  slot: slotIndex
+                });
+                updateStoredEntry(
+                  sourceInfo.user,
+                  sourceInfo.date,
+                  sourceInfo.categoryId,
+                  sourceInfo.slotIndex,
+                  sourceInfo.entry
+                );
+              }
+              slotResults[slotIndex] = createLeftoverEntry(
+                sourceInfo.entry.mealId,
+                {
+                  date: sourceInfo.date,
+                  categoryId: sourceInfo.categoryId,
+                  slot: sourceInfo.slotIndex
+                }
+              );
+              updateRecencyForEntry(slotResults[slotIndex]);
+              return true;
+            }
+          }
+          if (forcedEntry) {
+            slotResults[slotIndex] = createLeftoverEntry(
+              forcedEntry.mealId,
+              forcedEntry.leftoverSource || null
+            );
+            updateRecencyForEntry(slotResults[slotIndex]);
+            return true;
+          }
+          return false;
+        }
+
+        function assignPickForDescriptor(descriptor, requirePrepared, forcedEntry) {
+          const {
+            slotIndex,
+            overrideCategory,
+            normalizedOverrideSlot,
+            overrideSlotKey,
+            baseSlotActive
+          } = descriptor;
+          if (forcedEntry && forcedEntry.type === 'leftover') {
+            return assignLeftoverFromPool(slotIndex, forcedEntry);
+          }
+          const forcedMealId =
+            forcedEntry && forcedEntry.type === 'cook' ? forcedEntry.mealId : null;
           let pick = null;
+          const pickOptions = {
+            requirePrepared,
+            forcedMealId,
+            forcedEntry
+          };
           if (overrideCategory) {
             pick = attemptPick(
               overrideCategory,
               overrideSlotKey != null ? overrideSlotKey : normalizedOverrideSlot,
               normalizedOverrideSlot,
-              { requirePrepared }
+              pickOptions
             );
           }
           if (!pick && baseSlotActive) {
-            pick = attemptPick(cat, slotIndex, undefined, { requirePrepared });
+            pick = attemptPick(cat, slotIndex, undefined, pickOptions);
+          }
+          if (!pick && forcedMealId) {
+            const entry = createCookEntry(forcedMealId);
+            slotResults[slotIndex] = entry;
+            let fallbackMeal = null;
+            if (overrideCategory) {
+              const overrideContext = getContext(overrideCategory);
+              fallbackMeal =
+                overrideContext?.meals.find(
+                  m => (m.id || m.name) === forcedMealId
+                ) || null;
+            }
+            if (!fallbackMeal) {
+              const baseContext = getContext(cat);
+              fallbackMeal =
+                baseContext?.meals.find(
+                  m => (m.id || m.name) === forcedMealId
+                ) || null;
+            }
+            if (
+              (fallbackMeal && fallbackMeal.leftoverOk) ||
+              (forcedEntry &&
+                Array.isArray(forcedEntry.leftoverTargets) &&
+                forcedEntry.leftoverTargets.length)
+            ) {
+              registerNextLeftover(
+                nextLeftovers,
+                user,
+                cat,
+                slotIndex,
+                dateStr,
+                entry
+              );
+            }
+            updateRecencyForEntry(entry);
+            return true;
           }
           if (!pick) return false;
           const entry = createCookEntry(pick.chosenId);
           slotResults[slotIndex] = entry;
-          if (pick.meal && pick.meal.leftoverOk) {
+          const meal = pick.meal;
+          if (meal && meal.leftoverOk) {
             registerNextLeftover(
               nextLeftovers,
               user,
@@ -734,54 +1195,28 @@ export function generateWhatToEatCalendar(
               entry
             );
           }
+          updateRecencyForEntry(entry);
           return true;
         }
 
         descriptors.forEach(descriptor => {
+          const forcedEntry = forcedForUser ? forcedForUser[cat]?.[descriptor.slotIndex] : null;
           if (descriptor.needsPrep) {
-            pendingPrep.push(descriptor);
+            pendingPrep.push({ descriptor, forcedEntry });
             return;
           }
-          assignPickForDescriptor(descriptor, false);
+          assignPickForDescriptor(descriptor, false, forcedEntry);
         });
 
-        pendingPrep.forEach(descriptor => {
-          const { slotIndex } = descriptor;
-          const pool =
-            prevLeftovers[user]?.[cat]?.[slotIndex];
-          if (Array.isArray(pool) && pool.length) {
-            const sourceInfo = pool.shift();
-            if (sourceInfo && sourceInfo.entry) {
-              sourceInfo.entry.leftoverTargets = Array.isArray(
-                sourceInfo.entry.leftoverTargets
-              )
-                ? sourceInfo.entry.leftoverTargets
-                : [];
-              sourceInfo.entry.leftoverTargets.push({
-                date: dateStr,
-                categoryId: cat,
-                slot: slotIndex
-              });
-              updateStoredEntry(
-                sourceInfo.user,
-                sourceInfo.date,
-                sourceInfo.categoryId,
-                sourceInfo.slotIndex,
-                sourceInfo.entry
-              );
-              slotResults[slotIndex] = createLeftoverEntry(
-                sourceInfo.entry.mealId,
-                {
-                  date: sourceInfo.date,
-                  categoryId: sourceInfo.categoryId,
-                  slot: sourceInfo.slotIndex
-                }
-              );
-              return;
-            }
+        pendingPrep.forEach(({ descriptor, forcedEntry }) => {
+          if (!assignLeftoverFromPool(descriptor.slotIndex, forcedEntry)) {
+            assignPickForDescriptor(descriptor, true, forcedEntry);
           }
-          assignPickForDescriptor(descriptor, true);
         });
+
+        if (!write) {
+          return;
+        }
 
         if (numSlots === 0 && !slotResults.some(entry => entry != null)) {
           return;
@@ -794,8 +1229,42 @@ export function generateWhatToEatCalendar(
     });
 
     leftoverCarry = nextLeftovers;
-    date.setDate(date.getDate() + 1);
+
+    const lastSeedingIndex = effectiveSeedingDates.length - 1;
+    if (freezeSnapshot == null && idx === lastSeedingIndex) {
+      freezeSnapshot = {
+        asOfDate:
+          freezeBeforeStr || incrementDateStr(timeline[idx].dateStr),
+        nonPrepState: cloneValue(nonPrepState),
+        sharedGroupState: cloneValue(sharedGroupState),
+        leftoverCarry: cloneValue(leftoverCarry),
+        recencyState: cloneValue(recencyState)
+      };
+    }
   }
 
-  return calendar;
+  if (freezeSnapshot == null && freezeBeforeStr) {
+    freezeSnapshot = {
+      asOfDate: freezeBeforeStr,
+      nonPrepState: cloneValue(nonPrepState),
+      sharedGroupState: cloneValue(sharedGroupState),
+      leftoverCarry: cloneValue(leftoverCarry),
+      recencyState: cloneValue(recencyState)
+    };
+  }
+
+  const lastGeneratedDate = timeline.length
+    ? timeline[timeline.length - 1].dateStr
+    : null;
+
+  const metadata = {
+    asOfDate: incrementDateStr(lastGeneratedDate),
+    nonPrepState: cloneValue(nonPrepState),
+    sharedGroupState: cloneValue(sharedGroupState),
+    leftoverCarry: cloneValue(leftoverCarry),
+    recencyState: cloneValue(recencyState),
+    freezeSnapshot
+  };
+
+  return { calendar, metadata };
 }

@@ -13,7 +13,7 @@ const eatingDays = {
 };
 const mealsPerDay = { dinner: 1 };
 const startDate = new Date('2024-01-01');
-const cal = generateWhatToEatCalendar(
+const { calendar: cal } = generateWhatToEatCalendar(
   users,
   prepared,
   subscriptions,

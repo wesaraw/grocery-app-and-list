@@ -38,7 +38,7 @@ const overrides = {
   }
 };
 
-const calendar = generateWhatToEatCalendar(
+const { calendar } = generateWhatToEatCalendar(
   users,
   prepared,
   subscriptions,
@@ -120,7 +120,7 @@ const sharedOverrides = {
   }
 };
 
-const sharedCalendar = generateWhatToEatCalendar(
+const { calendar: sharedCalendar } = generateWhatToEatCalendar(
   multiUsers,
   sharedPrepared,
   sharedSubscriptions,
@@ -181,7 +181,7 @@ const zeroOverrides = {
   }
 };
 
-const zeroCalendar = generateWhatToEatCalendar(
+const { calendar: zeroCalendar } = generateWhatToEatCalendar(
   zeroUsers,
   {},
   zeroSubscriptions,
@@ -238,7 +238,7 @@ const zeroOverrideSourceOverrides = {
   }
 };
 
-const zeroOverrideSourceCalendar = generateWhatToEatCalendar(
+const { calendar: zeroOverrideSourceCalendar } = generateWhatToEatCalendar(
   zeroOverrideSourceUsers,
   {},
   zeroOverrideSourceSubscriptions,
@@ -319,7 +319,7 @@ const intersectionEatingDays = {
 
 const intersectionMealsPerDay = { shared: 1, pair: 1, solo: 1 };
 
-const intersectionCalendar = generateWhatToEatCalendar(
+const { calendar: intersectionCalendar } = generateWhatToEatCalendar(
   intersectionUsers,
   {},
   intersectionSubscriptions,

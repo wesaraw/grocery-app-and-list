@@ -22,7 +22,7 @@ const leftoverEatingDays = {
 
 const mealsPerDay = { lunchDinner: 1 };
 
-const leftoverCalendar = generateWhatToEatCalendar(
+const { calendar: leftoverCalendar } = generateWhatToEatCalendar(
   users,
   preparedCal,
   leftoverSubscriptions,
@@ -81,7 +81,7 @@ const fallbackEatingDays = {
   }
 };
 
-const fallbackCalendar = generateWhatToEatCalendar(
+const { calendar: fallbackCalendar } = generateWhatToEatCalendar(
   users,
   preparedCal,
   fallbackSubscriptions,

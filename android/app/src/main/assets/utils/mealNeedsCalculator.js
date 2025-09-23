@@ -523,7 +523,24 @@ export async function calculateAndSaveMealNeeds() {
     eatingDays[user] = prefs;
   });
 
-  const whatCal = generateWhatToEatCalendar(
+  const { whatToEatCalendar: prevCalendar, whatToEatCalendarMeta: prevMeta } = await new Promise(
+    resolve => {
+      chrome.storage.local.get(
+        ['whatToEatCalendar', 'whatToEatCalendarMeta'],
+        data => {
+          resolve({
+            whatToEatCalendar: data.whatToEatCalendar || {},
+            whatToEatCalendarMeta: data.whatToEatCalendarMeta || null
+          });
+        }
+      );
+    }
+  );
+
+  const freezeBefore = new Date();
+  const freezeBeforeStr = freezeBefore.toISOString().split('T')[0];
+
+  const whatCalResult = generateWhatToEatCalendar(
     users,
     preparedCal,
     subscriptions,
@@ -533,14 +550,22 @@ export async function calculateAndSaveMealNeeds() {
     4,
     priceThresholds,
     itemSeasons,
-    slotOverridesByUserName
+    slotOverridesByUserName,
+    {
+      previousCalendar: prevCalendar,
+      freezeBefore: freezeBeforeStr,
+      initialState: prevMeta || null
+    }
   );
+
+  const { calendar: whatCal, metadata: whatCalMeta } = whatCalResult;
 
   await new Promise(resolve => {
     chrome.storage.local.set(
       {
         preparedMealsCalendar: preparedCal,
-        whatToEatCalendar: whatCal
+        whatToEatCalendar: whatCal,
+        whatToEatCalendarMeta: whatCalMeta
       },
       () => resolve()
     );
