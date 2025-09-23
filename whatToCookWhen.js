@@ -1,4 +1,5 @@
 import { MEAL_TYPES, initializeMealCategories, loadCookingDays } from './utils/mealData.js';
+import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
 import { loadUsers, loadUserPortionMultipliers } from './utils/userData.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 import { parseQuantity, expandCalendarValue } from './utils/calendarUtils.js';
@@ -19,23 +20,18 @@ async function loadAllMeals() {
   const map = {};
   for (const type of Object.keys(MEAL_TYPES)) {
     const { key, path } = MEAL_TYPES[type];
-    await new Promise(res => {
-      chrome.storage.local.get(key, async data => {
-        let arr = data[key];
-        if (!arr) {
-          const resp = await fetch(path).catch(() => null);
-          arr = resp ? await resp.json().catch(() => []) : [];
-        }
-        if (Array.isArray(arr)) {
-          arr.forEach(m => {
-            if (m.prepared === undefined) m.prepared = false;
-            if (m.prepAhead === undefined) m.prepAhead = false;
-            if (m.leftoverOk === undefined) m.leftoverOk = false;
-            map[m.id || m.name] = m;
-          });
-        }
-        res();
-      });
+    let meals = await loadItemArray(key);
+    if (!Array.isArray(meals) || meals.length === 0) {
+      const resp = await fetch(path).catch(() => null);
+      const fallback = resp ? await resp.json().catch(() => []) : [];
+      meals = await convertArrayToNames(Array.isArray(fallback) ? fallback : []);
+    }
+    if (!Array.isArray(meals)) continue;
+    meals.forEach(meal => {
+      if (meal.prepared === undefined) meal.prepared = false;
+      if (meal.prepAhead === undefined) meal.prepAhead = false;
+      if (meal.leftoverOk === undefined) meal.leftoverOk = false;
+      map[meal.id || meal.name] = meal;
     });
   }
   return map;
