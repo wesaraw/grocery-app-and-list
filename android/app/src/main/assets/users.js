@@ -15,7 +15,11 @@ import {
 } from './utils/itemStorage.js';
 import { sortItemsByCategory } from './utils/sortByCategory.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
-import { loadMealSlotOverrides } from './utils/mealSlotOverrides.js';
+import {
+  loadMealSlotOverrides,
+  loadMealSlotDescriptors,
+  MEAL_SLOT_OVERRIDE_DAYS
+} from './utils/mealSlotOverrides.js';
 
 const btnContainer = document.getElementById('userButtons');
 const portionContainer = document.getElementById('portionMultiplierContainer');
@@ -40,6 +44,124 @@ let editInputs = [];
 let editing = false;
 let currentUserIndex = null;
 const headerState = {};
+const labelToCategoryId = new Map();
+let slotDescriptorsByCategory = {};
+
+const VALID_DAYS = Array.isArray(MEAL_SLOT_OVERRIDE_DAYS) && MEAL_SLOT_OVERRIDE_DAYS.length
+  ? MEAL_SLOT_OVERRIDE_DAYS
+  : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const VALID_DAY_SET = new Set(VALID_DAYS);
+const DAY_ORDER = new Map(VALID_DAYS.map((day, idx) => [day, idx]));
+
+function refreshCategoryLabelMap() {
+  labelToCategoryId.clear();
+  Object.entries(MEAL_TYPES).forEach(([id, info]) => {
+    const label = info && info.label ? info.label : id;
+    if (label && !labelToCategoryId.has(label)) {
+      labelToCategoryId.set(label, id);
+    }
+  });
+}
+
+function normalizeDayList(list) {
+  const normalized = [];
+  const seen = new Set();
+  if (Array.isArray(list)) {
+    list.forEach(day => {
+      if (VALID_DAY_SET.has(day) && !seen.has(day)) {
+        seen.add(day);
+        normalized.push(day);
+      }
+    });
+  }
+  normalized.sort((a, b) => (DAY_ORDER.get(a) || 0) - (DAY_ORDER.get(b) || 0));
+  return normalized;
+}
+
+function arraysEqual(a, b) {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
+function buildDecoratedSlotValue(slotLists, slotCount) {
+  const normalizedSlots = [];
+  for (let i = 0; i < slotCount; i += 1) {
+    const slot = Array.isArray(slotLists[i]) ? slotLists[i] : [];
+    normalizedSlots.push(normalizeDayList(slot));
+  }
+  const unionSet = new Set();
+  normalizedSlots.forEach(slot => {
+    slot.forEach(day => unionSet.add(day));
+  });
+  const union = normalizeDayList(Array.from(unionSet));
+  union.slots = normalizedSlots.map(slot => slot.slice());
+  return { decorated: union, slots: normalizedSlots };
+}
+
+function readSlotLists(value) {
+  if (!value || typeof value !== 'object') {
+    return [];
+  }
+  if (Array.isArray(value.slots)) {
+    return value.slots.map(slot => (Array.isArray(slot) ? slot.slice() : []));
+  }
+  if (Array.isArray(value)) {
+    return [value.slice()];
+  }
+  if (Array.isArray(value.days)) {
+    return [value.days.slice()];
+  }
+  return [];
+}
+
+function getCategoryIdForLabel(label) {
+  if (!label) return null;
+  if (labelToCategoryId.has(label)) {
+    return labelToCategoryId.get(label);
+  }
+  if (MEAL_TYPES[label]) {
+    return label;
+  }
+  return null;
+}
+
+function formatSlotHeaderLabel(descriptor, fallbackLabel, index, totalSlots) {
+  const categoryLabel = descriptor?.categoryLabel || fallbackLabel;
+  if (descriptor) {
+    if (totalSlots > 1) {
+      if (descriptor.roleLabel && descriptor.roleLabel !== descriptor.categoryLabel) {
+        return `${categoryLabel} – ${descriptor.roleLabel} Slot`;
+      }
+      return `${categoryLabel} – Slot ${index + 1}`;
+    }
+    return categoryLabel;
+  }
+  if (totalSlots > 1) {
+    return `${fallbackLabel} – Slot ${index + 1}`;
+  }
+  return fallbackLabel;
+}
+
+function attachHeader(key, header, nodes) {
+  if (!header) return;
+  const hidden = headerState[key] !== undefined ? headerState[key] : true;
+  header.dataset.hidden = hidden ? 'true' : 'false';
+  nodes.forEach(node => {
+    node.style.display = hidden ? 'none' : '';
+  });
+  header.style.cursor = 'pointer';
+  header.addEventListener('click', () => {
+    const isHidden = header.dataset.hidden === 'true';
+    header.dataset.hidden = isHidden ? 'false' : 'true';
+    nodes.forEach(node => {
+      node.style.display = isHidden ? '' : 'none';
+    });
+    headerState[key] = !isHidden;
+  });
+}
 
 function clearPortionMultiplier() {
   if (!portionContainer) return;
@@ -248,8 +370,10 @@ async function loadMeals(type) {
     const fallbackArray = Array.isArray(fallback) ? fallback : [];
     arr = await convertArrayToNames(fallbackArray);
   }
+  const categoryId = info && info.id ? info.id : type;
   arr.forEach(m => {
-    if (!m.category) m.category = info.label;
+    if (!m.categoryId) m.categoryId = categoryId;
+    if (!m.category) m.category = info && info.label ? info.label : categoryId;
     if (m.prepared === undefined) m.prepared = false;
     if (m.recipeBook === undefined) m.recipeBook = '';
   });
@@ -263,6 +387,97 @@ async function loadAllMeals() {
     all.push(...meals);
   }
   return all;
+}
+
+function createSlotController(initialDays, onSave) {
+  const section = document.createElement('div');
+  section.className = 'slot-section';
+
+  const row = document.createElement('div');
+  row.className = 'slot-days';
+
+  const label = document.createElement('span');
+  label.className = 'slot-days-label';
+  label.textContent = 'Days:';
+  row.appendChild(label);
+
+  const checkboxContainer = document.createElement('div');
+  checkboxContainer.className = 'slot-day-options';
+  row.appendChild(checkboxContainer);
+
+  const checkboxes = [];
+  VALID_DAYS.forEach(day => {
+    const lbl = document.createElement('label');
+    lbl.className = 'slot-day-option';
+    const chk = document.createElement('input');
+    chk.type = 'checkbox';
+    chk.value = day;
+    lbl.appendChild(chk);
+    lbl.appendChild(document.createTextNode(day.slice(0, 3)));
+    checkboxContainer.appendChild(lbl);
+    checkboxes.push({ chk, day });
+  });
+
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'button';
+  saveBtn.textContent = 'Save';
+  saveBtn.className = 'slot-save hidden';
+  row.appendChild(saveBtn);
+
+  section.appendChild(row);
+
+  let savedDays = normalizeDayList(initialDays || []);
+
+  function syncCheckboxes(days) {
+    const set = new Set(days);
+    checkboxes.forEach(({ chk, day }) => {
+      chk.checked = set.has(day);
+    });
+  }
+
+  function getSelectedDays() {
+    const selected = [];
+    checkboxes.forEach(({ chk, day }) => {
+      if (chk.checked) selected.push(day);
+    });
+    return normalizeDayList(selected);
+  }
+
+  function updateDirtyState() {
+    const current = getSelectedDays();
+    if (arraysEqual(current, savedDays)) {
+      saveBtn.classList.add('hidden');
+    } else {
+      saveBtn.classList.remove('hidden');
+    }
+  }
+
+  checkboxes.forEach(({ chk }) => {
+    chk.addEventListener('change', updateDirtyState);
+  });
+
+  saveBtn.addEventListener('click', async () => {
+    if (typeof onSave === 'function') {
+      await onSave();
+    }
+  });
+
+  syncCheckboxes(savedDays);
+  updateDirtyState();
+
+  return {
+    section,
+    saveButton: saveBtn,
+    getSelectedDays,
+    syncSavedDays(days) {
+      savedDays = normalizeDayList(days || []);
+      syncCheckboxes(savedDays);
+      updateDirtyState();
+    },
+    setSaving(isSaving) {
+      saveBtn.disabled = !!isSaving;
+    }
+  };
 }
 
 async function showMeals(userIndex) {
@@ -283,96 +498,109 @@ async function showMeals(userIndex) {
   const sorted = sortItemsByCategory(usedMeals);
   mealList.innerHTML = '';
 
-  let lastCat = null;
-  let header = null;
-  let nodes = [];
-
-  function finalizeHeader(cat, hdr, ns) {
-    if (!hdr) return;
-    const hidden = headerState[cat] !== undefined ? headerState[cat] : true;
-    hdr.dataset.hidden = hidden ? 'true' : 'false';
-    ns.forEach(n => {
-      n.style.display = hidden ? 'none' : '';
-    });
-    hdr.style.cursor = 'pointer';
-    hdr.addEventListener('click', () => {
-      const isHidden = hdr.dataset.hidden === 'true';
-      hdr.dataset.hidden = isHidden ? 'false' : 'true';
-      ns.forEach(n => {
-        n.style.display = isHidden ? '' : 'none';
-      });
-      headerState[cat] = !isHidden;
-    });
-  }
-
   const daysRec = userDays[userIndex] || {};
+  const groups = [];
+  const groupMap = new Map();
 
-  sorted.forEach(m => {
-    const cat = m.category || 'Other';
-    if (cat !== lastCat) {
-      finalizeHeader(lastCat, header, nodes);
-      lastCat = cat;
-      header = document.createElement('h3');
-      header.className = 'category-header';
-      header.textContent = cat;
-      mealList.appendChild(header);
+  sorted.forEach(meal => {
+    const label = meal.category || 'Other';
+    const categoryId = meal.categoryId || getCategoryIdForLabel(label);
+    const key = categoryId || `label:${label}`;
+    let group = groupMap.get(key);
+    if (!group) {
+      group = { id: categoryId, label, meals: [] };
+      groupMap.set(key, group);
+      groups.push(group);
+    }
+    group.meals.push(meal);
+  });
 
-      const div = document.createElement('div');
-      const label = document.createElement('span');
-      label.textContent = 'Days: ';
-      const save = document.createElement('button');
-      save.textContent = 'Save';
-      save.className = 'hidden';
-      const checkboxes = [];
-      const weekdays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-      const selected = Array.isArray(daysRec[cat]) ? daysRec[cat] : [];
-      function update() {
-        const vals = checkboxes.filter(c => c.chk.checked).map(c => c.day);
-        const cur = Array.isArray(daysRec[cat]) ? daysRec[cat] : [];
-        if (vals.join(',') !== cur.join(',')) {
-          save.classList.remove('hidden');
-        } else {
-          save.classList.add('hidden');
-        }
+  Object.keys(daysRec || {}).forEach(label => {
+    const categoryId = getCategoryIdForLabel(label);
+    const key = categoryId || `label:${label}`;
+    if (!groupMap.has(key)) {
+      const group = { id: categoryId, label, meals: [] };
+      groupMap.set(key, group);
+      groups.push(group);
+    }
+  });
+
+  groups.forEach(group => {
+    const categoryId = group.id;
+    const descriptorList = categoryId ? slotDescriptorsByCategory[categoryId] || [] : [];
+    const storedSlots = readSlotLists(daysRec[group.label]);
+    const slotCount = Math.max(descriptorList.length, storedSlots.length, 1);
+    const slotControllers = new Array(slotCount);
+
+    function collectSelections() {
+      const selections = [];
+      for (let i = 0; i < slotCount; i += 1) {
+        const ctrl = slotControllers[i];
+        selections.push(ctrl ? ctrl.getSelectedDays() : []);
       }
-      weekdays.forEach(day => {
-        const lbl = document.createElement('label');
-        lbl.style.marginRight = '4px';
-        const chk = document.createElement('input');
-        chk.type = 'checkbox';
-        chk.checked = selected.includes(day);
-        chk.addEventListener('change', update);
-        lbl.appendChild(chk);
-        lbl.appendChild(document.createTextNode(day.slice(0,3)));
-        div.appendChild(lbl);
-        checkboxes.push({ chk, day });
-      });
-      save.addEventListener('click', async () => {
-        const vals = checkboxes.filter(c => c.chk.checked).map(c => c.day);
+      return selections;
+    }
+
+    async function handleSave(slotIndex) {
+      const controller = slotControllers[slotIndex];
+      if (!controller) return;
+      controller.setSaving(true);
+      try {
+        const selections = collectSelections();
+        const { decorated, slots } = buildDecoratedSlotValue(selections, slotCount);
         if (!userDays[userIndex]) userDays[userIndex] = {};
-        userDays[userIndex][cat] = vals;
+        userDays[userIndex][group.label] = decorated;
         await saveUserCategoryDays(userDays);
         await calculateAndSaveMealNeeds();
-        save.classList.add('hidden');
+        slotControllers.forEach((ctrl, idx) => {
+          if (ctrl) {
+            ctrl.syncSavedDays(slots[idx] || []);
+          }
+        });
         try {
           chrome.runtime.sendMessage({ type: 'inventory-updated' });
         } catch (_) {}
-      });
-      div.insertBefore(label, div.firstChild);
-      div.appendChild(save);
-      mealList.appendChild(div);
-      nodes = [div];
+      } finally {
+        controller.setSaving(false);
+      }
     }
-    const li = document.createElement('li');
-    li.textContent = m.name || '';
-    mealList.appendChild(li);
-    nodes.push(li);
+
+    for (let i = 0; i < slotCount; i += 1) {
+      const descriptor = descriptorList[i];
+      const header = document.createElement('h3');
+      header.className = 'category-header';
+      header.textContent = formatSlotHeaderLabel(descriptor, group.label, i, slotCount);
+      mealList.appendChild(header);
+
+      const controller = createSlotController(storedSlots[i] || [], () => handleSave(i));
+      slotControllers[i] = controller;
+      mealList.appendChild(controller.section);
+
+      const nodes = [controller.section];
+      if (i === 0 && group.meals.length) {
+        const list = document.createElement('ul');
+        list.className = 'category-meals';
+        group.meals.forEach(meal => {
+          const li = document.createElement('li');
+          li.textContent = meal.name || '';
+          list.appendChild(li);
+        });
+        mealList.appendChild(list);
+        nodes.push(list);
+      }
+      const headerKey = descriptor
+        ? `slot:${descriptor.id}`
+        : `slot:${categoryId || group.label}:${i}`;
+      attachHeader(headerKey, header, nodes);
+    }
   });
-  finalizeHeader(lastCat, header, nodes);
 }
 
 async function init() {
   await initializeMealCategories();
+  refreshCategoryLabelMap();
+  const descriptorData = await loadMealSlotDescriptors();
+  slotDescriptorsByCategory = descriptorData?.byCategory || {};
   await loadMealSlotOverrides();
   users = await loadUsers();
   userDays = await loadUserCategoryDays();

@@ -105,6 +105,76 @@ export function generateWhatToEatCalendar(
     return result;
   }
 
+  function normalizeDayPreference(value) {
+    const normalizedSlots = [];
+    if (value && typeof value === 'object') {
+      if (Array.isArray(value.slots)) {
+        value.slots.forEach(slot => {
+          const seen = new Set();
+          const arr = [];
+          if (Array.isArray(slot)) {
+            slot.forEach(day => {
+              if (typeof day === 'string' && !seen.has(day)) {
+                seen.add(day);
+                arr.push(day);
+              }
+            });
+          }
+          normalizedSlots.push(arr);
+        });
+      } else if (Array.isArray(value.slotDays)) {
+        value.slotDays.forEach(slot => {
+          const seen = new Set();
+          const arr = [];
+          if (Array.isArray(slot)) {
+            slot.forEach(day => {
+              if (typeof day === 'string' && !seen.has(day)) {
+                seen.add(day);
+                arr.push(day);
+              }
+            });
+          }
+          normalizedSlots.push(arr);
+        });
+      }
+    }
+    if (!normalizedSlots.length && Array.isArray(value)) {
+      const seen = new Set();
+      const arr = [];
+      value.forEach(day => {
+        if (typeof day === 'string' && !seen.has(day)) {
+          seen.add(day);
+          arr.push(day);
+        }
+      });
+      normalizedSlots.push(arr);
+    }
+    let unionCandidates = Array.isArray(value?.days) ? value.days.slice() : [];
+    if (!unionCandidates.length && normalizedSlots.length) {
+      const unionSet = new Set();
+      normalizedSlots.forEach(slot => {
+        slot.forEach(day => {
+          if (typeof day === 'string' && !unionSet.has(day)) {
+            unionSet.add(day);
+          }
+        });
+      });
+      unionCandidates = Array.from(unionSet);
+    }
+    const daySet = new Set();
+    const normalizedDays = [];
+    if (Array.isArray(unionCandidates)) {
+      unionCandidates.forEach(day => {
+        if (typeof day === 'string' && !daySet.has(day)) {
+          daySet.add(day);
+          normalizedDays.push(day);
+        }
+      });
+    }
+    const slotSets = normalizedSlots.map(slot => new Set(slot));
+    return { days: normalizedDays, daySet, slots: normalizedSlots, slotSets };
+  }
+
   for (let i = 0; i < weeks * 7; i++) {
     const dateStr = date.toISOString().split('T')[0];
     const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
@@ -115,7 +185,11 @@ export function generateWhatToEatCalendar(
     users.forEach(user => {
       calendar[user][dateStr] = calendar[user][dateStr] || {};
       const prefs = subscriptions[user] || {};
-      const dayPrefs = eatingDays[user] || {};
+      const rawDayPrefs = eatingDays[user] || {};
+      const dayPrefs = {};
+      Object.entries(rawDayPrefs).forEach(([categoryId, value]) => {
+        dayPrefs[categoryId] = normalizeDayPreference(value);
+      });
       const overridesForUser = slotOverrides[user] || {};
       const overridesForDay = overridesForUser[dayName] || {};
       const stateRec = nonPrepState[user] || (nonPrepState[user] = {});
@@ -241,13 +315,18 @@ export function generateWhatToEatCalendar(
         return chosenId != null ? { chosenId } : null;
       }
 
-      const categories = new Set(Object.keys(prefs));
-      Object.keys(overridesForDay).forEach(cat => categories.add(cat));
+      const categories = new Set([
+        ...Object.keys(prefs),
+        ...Object.keys(overridesForDay),
+        ...Object.keys(dayPrefs || {})
+      ]);
       categories.forEach(cat => {
-        const validDays = dayPrefs[cat] || [];
+        const prefEntry = dayPrefs[cat];
+        const unionSet = prefEntry?.daySet;
         const slotOverridesForCat = overridesForDay[cat] || {};
         const hasOverride = Object.keys(slotOverridesForCat).length > 0;
-        if (!validDays.includes(dayName) && !hasOverride) return;
+        const participatesToday = unionSet ? unionSet.has(dayName) : false;
+        if (!participatesToday && !hasOverride) return;
         const numSlots = resolveSlotCount(cat);
         const highestOverrideIndex = Object.keys(slotOverridesForCat).reduce(
           (max, key) => {
@@ -259,6 +338,7 @@ export function generateWhatToEatCalendar(
           -1
         );
         const iterationSlots = Math.max(numSlots, highestOverrideIndex + 1, 0);
+        const slotSets = prefEntry?.slotSets || [];
         const choices = [];
         for (let s = 0; s < iterationSlots; s++) {
           let chosenId = null;
@@ -288,7 +368,8 @@ export function generateWhatToEatCalendar(
               chosenId = overridePick.chosenId;
             }
           }
-          if (chosenId == null) {
+          const baseSlotActive = slotSets[s] ? slotSets[s].has(dayName) : false;
+          if (chosenId == null && baseSlotActive) {
             const basePick = attemptPick(cat, s);
             if (basePick) {
               chosenId = basePick.chosenId;

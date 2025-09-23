@@ -119,6 +119,40 @@ export async function calculateAndSaveMealNeeds() {
       .sort((a, b) => (validDayOrder.get(a) || 0) - (validDayOrder.get(b) || 0));
   }
 
+  function normalizeCategoryPreference(value) {
+    let rawSlots = [];
+    if (value && typeof value === 'object') {
+      if (Array.isArray(value.slots)) {
+        rawSlots = value.slots.map(slot => (Array.isArray(slot) ? slot.slice() : []));
+      } else if (Array.isArray(value.slotDays)) {
+        rawSlots = value.slotDays.map(slot => (Array.isArray(slot) ? slot.slice() : []));
+      }
+    }
+    if (!rawSlots.length) {
+      if (Array.isArray(value)) {
+        rawSlots = [value.slice()];
+      } else if (value && typeof value === 'object' && Array.isArray(value.days)) {
+        rawSlots = [value.days.slice()];
+      } else {
+        const numeric = Number(value);
+        if (Number.isFinite(numeric) && numeric > 0) {
+          const count = Math.min(MEAL_SLOT_OVERRIDE_DAYS.length, Math.round(numeric));
+          if (count > 0) {
+            rawSlots = [MEAL_SLOT_OVERRIDE_DAYS.slice(0, count)];
+          }
+        }
+      }
+    }
+    const slots = rawSlots.map(slot => sortDays(Array.isArray(slot) ? slot : []));
+    const slotSets = slots.map(slot => new Set(slot));
+    const unionSet = new Set();
+    slots.forEach(slot => {
+      slot.forEach(day => unionSet.add(day));
+    });
+    const union = sortDays(Array.from(unionSet));
+    return { slots, slotSets, union, unionSet };
+  }
+
   const perDayCache = {};
   function getSlotsPerDay(categoryId) {
     if (perDayCache[categoryId] !== undefined) {
@@ -145,16 +179,14 @@ export async function calculateAndSaveMealNeeds() {
   const userCategoryDayLists = users.map(() => ({}));
   userDays.forEach((rec, idx) => {
     const map = userCategoryDayLists[idx];
-    Object.entries(rec || {}).forEach(([label, days]) => {
+    Object.entries(rec || {}).forEach(([label, pref]) => {
       let categoryId = labelToCategory[label];
       if (!categoryId && MEAL_TYPES[label]) {
         categoryId = label;
       }
       if (!categoryId) return;
-      const list = Array.isArray(days)
-        ? days
-        : [];
-      map[categoryId] = sortDays(list);
+      const normalized = normalizeCategoryPreference(pref);
+      map[categoryId] = normalized;
     });
   });
 
@@ -212,32 +244,40 @@ export async function calculateAndSaveMealNeeds() {
   });
 
   function computeWeeklySlotsForUser(userIndex, categoryId) {
-    const perDay = getSlotsPerDay(categoryId);
-    const baseDays = userCategoryDayLists[userIndex]?.[categoryId] || [];
-    const baseSlots = (perDay || 0) * baseDays.length;
-    let reductions = 0;
-    const sourceCounts = overrideSourceCounts[userIndex]?.[categoryId] || {};
-    Object.values(sourceCounts).forEach(count => {
-      if (perDay > 0) {
-        reductions += Math.min(count, perDay);
-      }
+    const entry = userCategoryDayLists[userIndex]?.[categoryId];
+    const slotSets = entry?.slotSets || [];
+    const baseByDay = {};
+    let baseSlots = 0;
+    slotSets.forEach(slotSet => {
+      slotSet.forEach(day => {
+        baseByDay[day] = (baseByDay[day] || 0) + 1;
+        baseSlots += 1;
+      });
     });
-    let additions = 0;
+    const sourceCounts = overrideSourceCounts[userIndex]?.[categoryId] || {};
+    Object.entries(sourceCounts).forEach(([day, count]) => {
+      if (!validDaySet.has(day)) return;
+      const available = baseByDay[day] || 0;
+      if (available <= 0) return;
+      const reduction = Math.min(count, available);
+      baseSlots -= reduction;
+      baseByDay[day] = available - reduction;
+    });
     const targetCounts = overrideTargetCounts[userIndex]?.[categoryId] || {};
+    let additions = 0;
     Object.values(targetCounts).forEach(count => {
       additions += count;
     });
-    const total = baseSlots - reductions + additions;
+    const total = baseSlots + additions;
     return total > 0 ? total : 0;
   }
 
   const eatingDaySets = users.map((_, idx) => {
     const map = {};
     const categoryDays = userCategoryDayLists[idx] || {};
-    Object.entries(categoryDays).forEach(([cat, days]) => {
-      if (Array.isArray(days) && days.length) {
-        map[cat] = new Set(days);
-      }
+    Object.entries(categoryDays).forEach(([cat, info]) => {
+      if (!info) return;
+      map[cat] = new Set(info.union || []);
     });
     return map;
   });
@@ -263,11 +303,22 @@ export async function calculateAndSaveMealNeeds() {
   users.forEach((user, idx) => {
     const prefs = {};
     const sets = eatingDaySets[idx] || {};
-    Object.entries(sets).forEach(([cat, daySet]) => {
-      if (daySet && daySet.size) {
-        prefs[cat] = Array.from(daySet).sort(
-          (a, b) => (validDayOrder.get(a) || 0) - (validDayOrder.get(b) || 0)
-        );
+    const slotMap = userCategoryDayLists[idx] || {};
+    const categories = new Set([
+      ...Object.keys(sets),
+      ...Object.keys(slotMap)
+    ]);
+    categories.forEach(cat => {
+      const daySet = sets[cat];
+      const info = slotMap[cat];
+      const days = daySet
+        ? sortDays(Array.from(daySet))
+        : info && Array.isArray(info.union)
+        ? info.union.slice()
+        : [];
+      const slots = info?.slots ? info.slots.map(slot => slot.slice()) : [];
+      if (days.length || slots.length) {
+        prefs[cat] = { days, slots };
       }
     });
     eatingDaysByUser[user] = prefs;
@@ -313,7 +364,9 @@ export async function calculateAndSaveMealNeeds() {
           if (!use) return;
           const slotsPerWeek = computeWeeklySlotsForUser(idx, type);
           const count = userMealCounts[idx] || 1;
-          const dayEquivalent = perDay > 0 ? slotsPerWeek / perDay : slotsPerWeek;
+          const unionCount = eatingDaySets[idx]?.[type]?.size || 0;
+          const dayEquivalent =
+            unionCount > 0 ? unionCount : perDay > 0 ? slotsPerWeek / perDay : slotsPerWeek;
           const multiplier = resolveMealMultiplier(meal, idx);
           details.factors.push({ people: multiplier, days: dayEquivalent });
           const normalizedCount = count > 0 ? count : 1;
@@ -336,7 +389,16 @@ export async function calculateAndSaveMealNeeds() {
           return;
         }
         const slotsTotal = weightedSlotsSum / totalMultiplier;
-        const dayEquivalent = perDay > 0 ? slotsTotal / perDay : slotsTotal;
+        const unionCounts = users.map((_, idx) => eatingDaySets[idx]?.[type]?.size || 0);
+        const averageUnion = unionCounts.length
+          ? unionCounts.reduce((sum, val) => sum + val, 0) / unionCounts.length
+          : 0;
+        const dayEquivalent =
+          averageUnion > 0
+            ? averageUnion
+            : perDay > 0
+            ? slotsTotal / perDay
+            : slotsTotal;
         details.factors.push({ people, days: dayEquivalent });
         monthlySpots =
           (weightedSlotsSum * people * 52) / totalMultiplier / active.length / 12;

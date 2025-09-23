@@ -19,8 +19,8 @@ const subscriptions = {
 };
 const eatingDays = {
   Alice: {
-    breakfast: ['Monday'],
-    lunchDinner: ['Monday']
+    breakfast: { days: ['Monday'], slots: [['Monday']] },
+    lunchDinner: { days: ['Monday'], slots: [['Monday'], ['Monday']] }
   }
 };
 const mealsPerDay = {
@@ -91,10 +91,10 @@ const sharedSubscriptions = {
 };
 const sharedEatingDays = {
   Alice: {
-    breakfast: ['Monday']
+    breakfast: { days: ['Monday'], slots: [['Monday']] }
   },
   Bob: {
-    breakfast: ['Monday']
+    breakfast: { days: ['Monday'], slots: [['Monday']] }
   }
 };
 const sharedMealsPerDay = {
@@ -161,8 +161,8 @@ const zeroSubscriptions = {
 };
 const zeroEatingDays = {
   Casey: {
-    dinner: ['Monday'],
-    treat: ['Monday']
+    dinner: { days: ['Monday'], slots: [['Monday']] },
+    treat: { days: ['Monday'], slots: [['Monday']] }
   }
 };
 const zeroMealsPerDay = {
@@ -218,8 +218,8 @@ const zeroOverrideSourceSubscriptions = {
 };
 const zeroOverrideSourceEatingDays = {
   Dana: {
-    lunch: ['Monday'],
-    snack: ['Monday']
+    lunch: { days: ['Monday'], slots: [['Monday']] },
+    snack: { days: ['Monday'], slots: [['Monday']] }
   }
 };
 const zeroOverrideSourceMealsPerDay = {
@@ -298,9 +298,21 @@ const intersectionSubscriptions = {
 };
 
 const intersectionEatingDays = {
-  Uma: { shared: ['Monday'], pair: ['Tuesday', 'Wednesday'], solo: ['Friday'] },
-  Victor: { shared: ['Monday'], pair: ['Tuesday'], solo: ['Saturday'] },
-  Wendy: { shared: ['Monday'], pair: ['Wednesday'], solo: ['Sunday'] }
+  Uma: {
+    shared: { days: ['Monday'], slots: [['Monday']] },
+    pair: { days: ['Tuesday', 'Wednesday'], slots: [['Tuesday', 'Wednesday']] },
+    solo: { days: ['Friday'], slots: [['Friday']] }
+  },
+  Victor: {
+    shared: { days: ['Monday'], slots: [['Monday']] },
+    pair: { days: ['Tuesday'], slots: [['Tuesday']] },
+    solo: { days: ['Saturday'], slots: [['Saturday']] }
+  },
+  Wendy: {
+    shared: { days: ['Monday'], slots: [['Monday']] },
+    pair: { days: ['Wednesday'], slots: [['Wednesday']] },
+    solo: { days: ['Sunday'], slots: [['Sunday']] }
+  }
 };
 
 const intersectionMealsPerDay = { shared: 1, pair: 1, solo: 1 };

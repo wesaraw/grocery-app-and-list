@@ -11,7 +11,9 @@ const mealsByCategory = { lunchDinner: meals };
 const startDate = new Date('2024-01-01');
 const prepared = generatePreparedMealsCalendar(cookingDays, mealsByCategory, startDate, 3);
 const subscriptions = { u: { lunchDinner: meals } };
-const eatingDays = { u: { lunchDinner: ['Monday'] } };
+const eatingDays = {
+  u: { lunchDinner: { days: ['Monday'], slots: [['Monday']] } }
+};
 const mealsPerDay = { lunchDinner: 1 };
 const what = generateWhatToEatCalendar(users, prepared, subscriptions, eatingDays, mealsPerDay, startDate, 3);
 

@@ -13,8 +13,18 @@ const subscriptions = {
   ] }
 };
 const eatingDays = {
-  Alice: { lunchDinner: ['Monday', 'Tuesday', 'Wednesday', 'Thursday'] },
-  Bob: { lunchDinner: ['Monday', 'Tuesday', 'Wednesday', 'Thursday'] }
+  Alice: {
+    lunchDinner: {
+      days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday'],
+      slots: [['Monday', 'Tuesday', 'Wednesday', 'Thursday']]
+    }
+  },
+  Bob: {
+    lunchDinner: {
+      days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday'],
+      slots: [['Monday', 'Tuesday', 'Wednesday', 'Thursday']]
+    }
+  }
 };
 const mealsPerDay = { lunchDinner: 1 };
 const startDate = '2023-01-02'; // Monday

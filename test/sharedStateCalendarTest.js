@@ -7,7 +7,10 @@ const meals = [
 ];
 const prepared = {};
 const subscriptions = { u1: { dinner: meals }, u2: { dinner: meals } };
-const eatingDays = { u1: { dinner: ['Monday'] }, u2: { dinner: ['Monday'] } };
+const eatingDays = {
+  u1: { dinner: { days: ['Monday'], slots: [['Monday']] } },
+  u2: { dinner: { days: ['Monday'], slots: [['Monday']] } }
+};
 const mealsPerDay = { dinner: 1 };
 const startDate = new Date('2024-01-01');
 const cal = generateWhatToEatCalendar(

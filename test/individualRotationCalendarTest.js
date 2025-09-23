@@ -7,8 +7,18 @@ const subscriptions = {
   Bob: { breakfast: [{ name: 'Eggs' }, { name: 'Cereal' }] }
 };
 const eatingDays = {
-  Alice: { breakfast: ['Monday', 'Tuesday', 'Wednesday', 'Thursday'] },
-  Bob: { breakfast: ['Monday', 'Tuesday', 'Wednesday', 'Thursday'] }
+  Alice: {
+    breakfast: {
+      days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday'],
+      slots: [['Monday', 'Tuesday', 'Wednesday', 'Thursday']]
+    }
+  },
+  Bob: {
+    breakfast: {
+      days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday'],
+      slots: [['Monday', 'Tuesday', 'Wednesday', 'Thursday']]
+    }
+  }
 };
 const mealsPerDay = { breakfast: 1 };
 const startDate = '2023-01-02'; // Monday
