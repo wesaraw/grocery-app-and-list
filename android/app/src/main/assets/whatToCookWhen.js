@@ -1,7 +1,7 @@
 import { MEAL_TYPES, initializeMealCategories, loadCookingDays } from './utils/mealData.js';
 import { loadUsers, loadUserPortionMultipliers } from './utils/userData.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
-import { parseQuantity } from './utils/calendarUtils.js';
+import { parseQuantity, expandCalendarValue } from './utils/calendarUtils.js';
 
 function loadCalendar() {
   return new Promise(resolve => {
@@ -30,6 +30,7 @@ async function loadAllMeals() {
           arr.forEach(m => {
             if (m.prepared === undefined) m.prepared = false;
             if (m.prepAhead === undefined) m.prepAhead = false;
+            if (m.leftoverOk === undefined) m.leftoverOk = false;
             map[m.id || m.name] = m;
           });
         }
@@ -142,16 +143,39 @@ function renderMealColumn(container, entries, mealMap) {
   if (!entries?.length) {
     return;
   }
-  entries.forEach(([id, totalMultiplier]) => {
-    const meal = mealMap[id];
+  entries.forEach(entry => {
+    let mealId = null;
+    let totalMultiplier = null;
+    let leftoverDates = [];
+    if (Array.isArray(entry)) {
+      mealId = entry[0];
+      totalMultiplier = entry[1];
+    } else if (entry && typeof entry === 'object') {
+      mealId = entry.id || entry.mealId || entry.name || null;
+      if (entry.total != null) totalMultiplier = entry.total;
+      if (Array.isArray(entry.leftoverDates)) {
+        leftoverDates = entry.leftoverDates.filter(Boolean);
+      }
+    } else if (entry) {
+      mealId = entry;
+    }
+    if (!mealId) return;
+    const meal = mealMap[mealId];
     const block = document.createElement('div');
     block.className = 'meal-block';
     const title = document.createElement('div');
     title.className = 'meal-title';
-    const name = meal?.name || id;
+    const name = meal?.name || mealId;
     const portionText = formatPortions(totalMultiplier);
     title.textContent = portionText ? `${name} (${portionText})` : name;
     block.appendChild(title);
+
+    if (leftoverDates.length) {
+      const detail = document.createElement('div');
+      detail.className = 'leftover-detail';
+      detail.textContent = `Includes leftovers for ${leftoverDates.join(', ')}`;
+      block.appendChild(detail);
+    }
 
     const ingredients = Array.isArray(meal?.ingredients) ? meal.ingredients : [];
     if (ingredients.length) {
@@ -197,15 +221,48 @@ function buildData(calendar, userEntries, mealMap, start, days, prepDay) {
     const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
     const counts = new Map();
     const ahead = new Map();
-    userEntries.forEach(entry => {
-      const rec = getDayRecord(calendar, entry, dStr) || {};
+    function addCookTotal(id, amount, leftovers, prepared) {
+      if (!id || !amount) return;
+      let record = counts.get(id);
+      if (!record) {
+        record = { total: 0, leftoverDates: new Set(), prepared: !!prepared };
+        counts.set(id, record);
+      }
+      record.total += amount;
+      if (prepared) record.prepared = true;
+      if (Array.isArray(leftovers)) {
+        leftovers.forEach(target => {
+          if (target?.date) {
+            record.leftoverDates.add(target.date);
+          }
+        });
+      }
+    }
+    userEntries.forEach(userEntry => {
+      const rec = getDayRecord(calendar, userEntry, dStr) || {};
       Object.values(rec).forEach(val => {
-        const meals = Array.isArray(val) ? val : [val];
-        meals.forEach(id => {
-          const meal = mealMap[id];
+        const entries = expandCalendarValue(val);
+        entries.forEach(calEntry => {
+          if (!calEntry) return;
+          const meal = mealMap[calEntry.mealId];
           if (!meal) return;
-          if (meal.prepared) increment(counts, id, entry.multiplier);
-          if (meal.prepAhead) increment(ahead, id, entry.multiplier);
+          if (calEntry.type === 'cook') {
+            const leftoverCount = Array.isArray(calEntry.leftoverTargets)
+              ? calEntry.leftoverTargets.length
+              : 0;
+            const totalMultiplier = userEntry.multiplier * (1 + leftoverCount);
+            if (totalMultiplier) {
+              addCookTotal(
+                calEntry.mealId,
+                totalMultiplier,
+                calEntry.leftoverTargets,
+                meal.prepared
+              );
+            }
+            if (meal.prepAhead) {
+              increment(ahead, calEntry.mealId, userEntry.multiplier);
+            }
+          }
         });
       });
     });
@@ -230,7 +287,11 @@ function buildData(calendar, userEntries, mealMap, start, days, prepDay) {
   return rows.slice(0, days).map(row => ({
     date: row.date,
     dayName: row.dayName,
-    meals: Array.from(row.counts.entries()),
+    meals: Array.from(row.counts.entries()).map(([id, info]) => ({
+      id,
+      total: info.total,
+      leftoverDates: Array.from(info.leftoverDates).sort()
+    })),
     prepList: row.prepList ? Array.from(row.prepList.entries()) : []
   }));
 }

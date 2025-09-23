@@ -16,6 +16,7 @@ export function generateWhatToEatCalendar(
   const nonPrepState = {};
   const sharedGroupState = {};
   const overrideSlotKeyCache = {};
+  let leftoverCarry = {};
 
   const subCount = {};
   Object.values(subscriptions).forEach(prefs => {
@@ -76,6 +77,65 @@ export function generateWhatToEatCalendar(
     return chosen;
   }
 
+  function createCookEntry(mealId) {
+    return { type: 'cook', mealId, leftoverTargets: [] };
+  }
+
+  function createLeftoverEntry(mealId, source) {
+    return { type: 'leftover', mealId, leftoverSource: source };
+  }
+
+  function serializeEntry(entry) {
+    if (entry == null) return null;
+    if (entry.type === 'leftover') {
+      return {
+        type: 'leftover',
+        mealId: entry.mealId,
+        leftoverSource: entry.leftoverSource ? { ...entry.leftoverSource } : null
+      };
+    }
+    const targets = Array.isArray(entry.leftoverTargets)
+      ? entry.leftoverTargets.map(t => ({ ...t }))
+      : [];
+    if (!targets.length) {
+      return entry.mealId;
+    }
+    return {
+      type: 'cook',
+      mealId: entry.mealId,
+      leftoverTargets: targets
+    };
+  }
+
+  function updateStoredEntry(user, dateStr, categoryId, slotIndex, entry) {
+    const day = calendar[user]?.[dateStr];
+    if (!day) return;
+    const current = day[categoryId];
+    if (Array.isArray(current)) {
+      if (slotIndex == null || slotIndex < 0 || slotIndex >= current.length) return;
+      const copy = current.slice();
+      copy[slotIndex] = serializeEntry(entry);
+      day[categoryId] = copy;
+    } else if (slotIndex == null || slotIndex === 0) {
+      day[categoryId] = serializeEntry(entry);
+    }
+  }
+
+  function registerNextLeftover(store, user, categoryId, slotIndex, dateStr, entry) {
+    if (!entry || typeof entry !== 'object') return;
+    if (!store[user]) store[user] = {};
+    if (!store[user][categoryId]) store[user][categoryId] = {};
+    const slotPool = store[user][categoryId][slotIndex] || [];
+    slotPool.push({
+      entry,
+      user,
+      categoryId,
+      slotIndex,
+      date: dateStr
+    });
+    store[user][categoryId][slotIndex] = slotPool;
+  }
+
   function computeOverrideSlotKeys(dayName) {
     const perCategory = {};
     users.forEach(user => {
@@ -109,47 +169,57 @@ export function generateWhatToEatCalendar(
 
   function normalizeDayPreference(value) {
     const normalizedSlots = [];
+    const normalizedPrep = [];
+    function pushSlot(slot, prep) {
+      const seen = new Set();
+      const arr = [];
+      if (Array.isArray(slot)) {
+        slot.forEach(day => {
+          if (typeof day === 'string' && !seen.has(day)) {
+            seen.add(day);
+            arr.push(day);
+          }
+        });
+      }
+      normalizedSlots.push(arr);
+      if (Array.isArray(prep)) {
+        const prepSeen = new Set();
+        const prepArr = [];
+        prep.forEach(day => {
+          if (typeof day === 'string' && !prepSeen.has(day)) {
+            prepSeen.add(day);
+            prepArr.push(day);
+          }
+        });
+        normalizedPrep.push(prepArr);
+      } else {
+        normalizedPrep.push([]);
+      }
+    }
+
     if (value && typeof value === 'object') {
       if (Array.isArray(value.slots)) {
-        value.slots.forEach(slot => {
-          const seen = new Set();
-          const arr = [];
-          if (Array.isArray(slot)) {
-            slot.forEach(day => {
-              if (typeof day === 'string' && !seen.has(day)) {
-                seen.add(day);
-                arr.push(day);
-              }
-            });
-          }
-          normalizedSlots.push(arr);
+        value.slots.forEach((slot, idx) => {
+          const prep = Array.isArray(value.prepSlots?.[idx])
+            ? value.prepSlots[idx]
+            : Array.isArray(value.prepDays)
+            ? value.prepDays
+            : [];
+          pushSlot(slot, prep);
         });
       } else if (Array.isArray(value.slotDays)) {
-        value.slotDays.forEach(slot => {
-          const seen = new Set();
-          const arr = [];
-          if (Array.isArray(slot)) {
-            slot.forEach(day => {
-              if (typeof day === 'string' && !seen.has(day)) {
-                seen.add(day);
-                arr.push(day);
-              }
-            });
-          }
-          normalizedSlots.push(arr);
+        value.slotDays.forEach((slot, idx) => {
+          const prep = Array.isArray(value.prepSlots?.[idx])
+            ? value.prepSlots[idx]
+            : Array.isArray(value.prepDays)
+            ? value.prepDays
+            : [];
+          pushSlot(slot, prep);
         });
       }
     }
     if (!normalizedSlots.length && Array.isArray(value)) {
-      const seen = new Set();
-      const arr = [];
-      value.forEach(day => {
-        if (typeof day === 'string' && !seen.has(day)) {
-          seen.add(day);
-          arr.push(day);
-        }
-      });
-      normalizedSlots.push(arr);
+      pushSlot(value, []);
     }
     let unionCandidates = Array.isArray(value?.days) ? value.days.slice() : [];
     if (!unionCandidates.length && normalizedSlots.length) {
@@ -174,7 +244,20 @@ export function generateWhatToEatCalendar(
       });
     }
     const slotSets = normalizedSlots.map(slot => new Set(slot));
-    return { days: normalizedDays, daySet, slots: normalizedSlots, slotSets };
+    const prepSlots = normalizedSlots.map((slot, idx) => {
+      const slotSet = slotSets[idx];
+      const prepSource = normalizedPrep[idx] || [];
+      return prepSource.filter(day => slotSet.has(day));
+    });
+    const prepSlotSets = prepSlots.map(prep => new Set(prep));
+    return {
+      days: normalizedDays,
+      daySet,
+      slots: normalizedSlots,
+      slotSets,
+      prepSlots,
+      prepSlotSets
+    };
   }
 
   for (let i = 0; i < weeks * 7; i++) {
@@ -184,6 +267,8 @@ export function generateWhatToEatCalendar(
     const dayOverrideSlotKeys =
       overrideSlotKeyCache[dayName] ||
       (overrideSlotKeyCache[dayName] = computeOverrideSlotKeys(dayName));
+    const prevLeftovers = leftoverCarry;
+    const nextLeftovers = {};
 
     const perUserData = {};
     users.forEach(user => {
@@ -233,12 +318,18 @@ export function generateWhatToEatCalendar(
         m => m.totalCost == null || m.totalCost <= userData.maxPrice
       );
       const nonPrepFallback = meals.filter(m => !m.prepared);
+      const preparedMeals = meals.filter(
+        m => m.prepared && (m.totalCost == null || m.totalCost <= userData.maxPrice)
+      );
+      const preparedFallback = meals.filter(m => m.prepared);
       const weightedNonPrep = weightMeals(nonPrepMeals);
       const weightedShared = weightMeals(sharedMeals);
       const weightedAffordable = weightMeals(
         affordableAll.filter(m => !m.prepared)
       );
       const weightedFallback = weightMeals(nonPrepFallback);
+      const weightedPrepared = weightMeals(preparedMeals);
+      const weightedPreparedFallback = weightMeals(preparedFallback);
       const weightedAvail = weightMeals(meals);
       const chooseList =
         weightedNonPrep.length
@@ -248,13 +339,20 @@ export function generateWhatToEatCalendar(
           : weightedFallback.length
           ? weightedFallback
           : weightedAvail;
+      const preparedChooseList =
+        weightedPrepared.length
+          ? weightedPrepared
+          : weightedPreparedFallback.length
+          ? weightedPreparedFallback
+          : [];
       const context = {
         categoryId,
         meals,
         numSlots,
         prepMealId,
         weightedShared,
-        chooseList
+        chooseList,
+        preparedChooseList
       };
       userData.contextCache[categoryId] = context;
       return context;
@@ -451,12 +549,13 @@ export function generateWhatToEatCalendar(
         return ensureContext(user, categoryId);
       }
 
-      function attemptPick(categoryId, slotKey, normalizedSlotOverride) {
-        const context = getContext(categoryId);
-        if (!context) return null;
-        const normalizedCount = context.numSlots ?? 0;
-        const hasOverrideIndex = normalizedSlotOverride != null;
-        const slotLimit = hasOverrideIndex
+    function attemptPick(categoryId, slotKey, normalizedSlotOverride, options = {}) {
+      const { requirePrepared = false } = options;
+      const context = getContext(categoryId);
+      if (!context) return null;
+      const normalizedCount = context.numSlots ?? 0;
+      const hasOverrideIndex = normalizedSlotOverride != null;
+      const slotLimit = hasOverrideIndex
           ? Math.max(1, normalizedCount)
           : normalizedCount;
         if (!hasOverrideIndex && slotLimit <= 0) {
@@ -481,13 +580,25 @@ export function generateWhatToEatCalendar(
           normalizedSlot === 0 &&
           prepMeal &&
           (prepMeal.totalCost == null || prepMeal.totalCost <= maxPrice);
-        if (!prepOk && !context.weightedShared.length && !context.chooseList.length) {
+        if (
+          !prepOk &&
+          !requirePrepared &&
+          !context.weightedShared.length &&
+          !context.chooseList.length
+        ) {
           return null;
         }
+        if (requirePrepared && !prepOk && !context.preparedChooseList.length) {
+          if (!context.chooseList.length) {
+            return null;
+          }
+        }
         let chosenId = null;
+        let chosenMeal = null;
         if (prepOk) {
           chosenId = context.prepMealId;
-        } else if (context.weightedShared.length) {
+          chosenMeal = prepMeal || null;
+        } else if (!requirePrepared && context.weightedShared.length) {
           const sharedChoice = resolveSharedAssignment(
             categoryId,
             sharedSlotKey,
@@ -495,16 +606,27 @@ export function generateWhatToEatCalendar(
           );
           if (sharedChoice != null) {
             chosenId = sharedChoice;
+            chosenMeal = meals.find(
+              m => (m.id || m.name) === sharedChoice
+            );
           }
         }
-        if (chosenId == null && context.chooseList.length) {
-          const state = stateRec[categoryId] || (stateRec[categoryId] = {});
-          const meal = pickWeighted(context.chooseList, state);
-          if (meal) {
-            chosenId = meal.id || meal.name;
+        if (chosenId == null) {
+          const pickList = requirePrepared
+            ? context.preparedChooseList.length
+              ? context.preparedChooseList
+              : context.chooseList
+            : context.chooseList;
+          if (pickList.length) {
+            const state = stateRec[categoryId] || (stateRec[categoryId] = {});
+            const meal = pickWeighted(pickList, state);
+            if (meal) {
+              chosenId = meal.id || meal.name;
+              chosenMeal = meal;
+            }
           }
         }
-        if (normalizedSlot === 0 && prepOk) {
+        if (normalizedSlot === 0 && prepOk && !requirePrepared) {
           if (context.weightedShared.length) {
             resolveSharedAssignment(categoryId, sharedSlotKey, user);
           } else if (context.chooseList.length) {
@@ -512,7 +634,7 @@ export function generateWhatToEatCalendar(
             pickWeighted(context.chooseList, state);
           }
         }
-        return chosenId != null ? { chosenId } : null;
+        return chosenId != null ? { chosenId, meal: chosenMeal || prepMeal || null } : null;
       }
 
       const categories = new Set([
@@ -539,51 +661,139 @@ export function generateWhatToEatCalendar(
         );
         const iterationSlots = Math.max(numSlots, highestOverrideIndex + 1, 0);
         const slotSets = prefEntry?.slotSets || [];
-        const choices = [];
+        const prepSlotSets = prefEntry?.prepSlotSets || [];
+        const descriptors = [];
         for (let s = 0; s < iterationSlots; s++) {
-          let chosenId = null;
           const overrideCategory = slotOverridesForCat[s];
+          let normalizedOverrideSlot = null;
+          let overrideSlotKey = null;
           if (overrideCategory) {
             const overrideContext = getContext(overrideCategory);
             const overrideSlotCount = overrideContext
               ? Math.max(1, overrideContext.numSlots ?? 0)
               : 1;
-            const normalizedOverrideSlot = Math.max(
+            normalizedOverrideSlot = Math.max(
               0,
               Math.min(s, overrideSlotCount - 1)
             );
             const overrideKeyMap = dayOverrideSlotKeys[overrideCategory] || {};
             const overrideComboKey = `${cat}:${s}`;
-            const overrideSlotKey =
-              overrideKeyMap[overrideComboKey] != null
-                ? overrideKeyMap[overrideComboKey]
-                : undefined;
-            const overridePick = attemptPick(
-              overrideCategory,
-              overrideSlotKey != null ? overrideSlotKey : normalizedOverrideSlot,
-              normalizedOverrideSlot
-            );
-            if (overridePick) {
-              chosenId = overridePick.chosenId;
+            if (overrideKeyMap[overrideComboKey] != null) {
+              overrideSlotKey = overrideKeyMap[overrideComboKey];
             }
           }
           const baseSlotActive = slotSets[s] ? slotSets[s].has(dayName) : false;
-          if (chosenId == null && baseSlotActive) {
-            const basePick = attemptPick(cat, s);
-            if (basePick) {
-              chosenId = basePick.chosenId;
-            }
-          }
-          choices.push(chosenId);
+          const needsPrep = baseSlotActive
+            ? prepSlotSets[s]
+              ? prepSlotSets[s].has(dayName)
+              : false
+            : false;
+          descriptors.push({
+            slotIndex: s,
+            overrideCategory,
+            normalizedOverrideSlot,
+            overrideSlotKey,
+            baseSlotActive,
+            needsPrep
+          });
         }
-        if (numSlots === 0 && !choices.some(id => id != null)) {
+        if (!descriptors.length) {
+          if (iterationSlots <= 0) {
+            return;
+          }
+          calendar[user][dateStr][cat] = iterationSlots === 1 ? null : [];
           return;
         }
+        const slotResults = new Array(iterationSlots).fill(null);
+        const pendingPrep = [];
+
+        function assignPickForDescriptor(descriptor, requirePrepared) {
+          const { slotIndex, overrideCategory, normalizedOverrideSlot, overrideSlotKey, baseSlotActive } = descriptor;
+          let pick = null;
+          if (overrideCategory) {
+            pick = attemptPick(
+              overrideCategory,
+              overrideSlotKey != null ? overrideSlotKey : normalizedOverrideSlot,
+              normalizedOverrideSlot,
+              { requirePrepared }
+            );
+          }
+          if (!pick && baseSlotActive) {
+            pick = attemptPick(cat, slotIndex, undefined, { requirePrepared });
+          }
+          if (!pick) return false;
+          const entry = createCookEntry(pick.chosenId);
+          slotResults[slotIndex] = entry;
+          if (pick.meal && pick.meal.leftoverOk) {
+            registerNextLeftover(
+              nextLeftovers,
+              user,
+              cat,
+              slotIndex,
+              dateStr,
+              entry
+            );
+          }
+          return true;
+        }
+
+        descriptors.forEach(descriptor => {
+          if (descriptor.needsPrep) {
+            pendingPrep.push(descriptor);
+            return;
+          }
+          assignPickForDescriptor(descriptor, false);
+        });
+
+        pendingPrep.forEach(descriptor => {
+          const { slotIndex } = descriptor;
+          const pool =
+            prevLeftovers[user]?.[cat]?.[slotIndex];
+          if (Array.isArray(pool) && pool.length) {
+            const sourceInfo = pool.shift();
+            if (sourceInfo && sourceInfo.entry) {
+              sourceInfo.entry.leftoverTargets = Array.isArray(
+                sourceInfo.entry.leftoverTargets
+              )
+                ? sourceInfo.entry.leftoverTargets
+                : [];
+              sourceInfo.entry.leftoverTargets.push({
+                date: dateStr,
+                categoryId: cat,
+                slot: slotIndex
+              });
+              updateStoredEntry(
+                sourceInfo.user,
+                sourceInfo.date,
+                sourceInfo.categoryId,
+                sourceInfo.slotIndex,
+                sourceInfo.entry
+              );
+              slotResults[slotIndex] = createLeftoverEntry(
+                sourceInfo.entry.mealId,
+                {
+                  date: sourceInfo.date,
+                  categoryId: sourceInfo.categoryId,
+                  slot: sourceInfo.slotIndex
+                }
+              );
+              return;
+            }
+          }
+          assignPickForDescriptor(descriptor, true);
+        });
+
+        if (numSlots === 0 && !slotResults.some(entry => entry != null)) {
+          return;
+        }
+
+        const serialized = slotResults.map(entry => serializeEntry(entry));
         calendar[user][dateStr][cat] =
-          iterationSlots === 1 ? choices[0] : choices;
+          serialized.length === 1 ? serialized[0] : serialized;
       });
     });
 
+    leftoverCarry = nextLeftovers;
     date.setDate(date.getDate() + 1);
   }
 

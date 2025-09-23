@@ -30,51 +30,103 @@ function normalizeDayList(list) {
 }
 
 function extractSlotSource(value) {
+  const result = { slots: [], prepSlots: [] };
   if (value && typeof value === 'object') {
     if (Array.isArray(value.slots)) {
-      return value.slots.map(slot => (Array.isArray(slot) ? slot.slice() : []));
+      result.slots = value.slots.map(slot => (Array.isArray(slot) ? slot.slice() : []));
+      if (Array.isArray(value.prepSlots)) {
+        result.prepSlots = value.prepSlots.map(prep => (Array.isArray(prep) ? prep.slice() : []));
+      } else if (Array.isArray(value.prepDays)) {
+        const prepDays = value.prepDays.slice();
+        result.prepSlots = result.slots.map(() => prepDays.slice());
+      }
+      return result;
     }
     if (Array.isArray(value.slotDays)) {
-      return value.slotDays.map(slot => (Array.isArray(slot) ? slot.slice() : []));
+      result.slots = value.slotDays.map(slot => (Array.isArray(slot) ? slot.slice() : []));
+      if (Array.isArray(value.prepSlots)) {
+        result.prepSlots = value.prepSlots.map(prep => (Array.isArray(prep) ? prep.slice() : []));
+      } else if (Array.isArray(value.prepDays)) {
+        const prepDays = value.prepDays.slice();
+        result.prepSlots = result.slots.map(() => prepDays.slice());
+      }
+      return result;
     }
   }
   if (Array.isArray(value)) {
-    return [value.slice()];
+    result.slots = [value.slice()];
+    return result;
   }
   if (value && typeof value === 'object' && Array.isArray(value.days)) {
-    return [value.days.slice()];
+    result.slots = [value.days.slice()];
+    if (Array.isArray(value.prepDays)) {
+      result.prepSlots = [value.prepDays.slice()];
+    }
+    return result;
   }
   const count = clampDayCount(value);
   if (count > 0) {
-    return [VALID_DAYS.slice(0, count)];
+    result.slots = [VALID_DAYS.slice(0, count)];
   }
-  return [];
+  return result;
 }
 
 function normalizeSlotEntry(value) {
-  const rawSlots = extractSlotSource(value);
-  if (!rawSlots.length) {
-    return { slots: [], union: [], slotSets: [], unionSet: new Set(), rawLength: 0 };
+  const source = extractSlotSource(value);
+  if (!source.slots.length) {
+    return {
+      slots: [],
+      prepSlots: [],
+      union: [],
+      prepUnion: [],
+      slotSets: [],
+      prepSlotSets: [],
+      unionSet: new Set(),
+      prepUnionSet: new Set(),
+      rawLength: 0
+    };
   }
-  const slots = rawSlots.map(slot => normalizeDayList(slot));
+  const slots = source.slots.map(slot => normalizeDayList(slot));
   const slotSets = slots.map(slot => new Set(slot));
+  const prepSlots = slots.map((slot, idx) => {
+    const slotSet = slotSets[idx];
+    const rawPrep = Array.isArray(source.prepSlots[idx]) ? source.prepSlots[idx] : [];
+    const normalizedPrep = normalizeDayList(rawPrep);
+    return normalizedPrep.filter(day => slotSet.has(day));
+  });
+  const prepSlotSets = prepSlots.map(prep => new Set(prep));
   const unionSet = new Set();
   slots.forEach(slot => {
     slot.forEach(day => unionSet.add(day));
   });
   const union = normalizeDayList(Array.from(unionSet));
+  const prepUnionSet = new Set();
+  prepSlots.forEach(prep => {
+    prep.forEach(day => {
+      if (unionSet.has(day)) {
+        prepUnionSet.add(day);
+      }
+    });
+  });
+  const prepUnion = normalizeDayList(Array.from(prepUnionSet));
   return {
     slots,
+    prepSlots,
     union,
+    prepUnion,
     slotSets,
+    prepSlotSets,
     unionSet,
-    rawLength: rawSlots.length
+    prepUnionSet,
+    rawLength: source.slots.length
   };
 }
 
 function buildDecoratedValue(entry) {
   const decorated = entry.union.slice();
   decorated.slots = entry.slots.map(slot => slot.slice());
+  decorated.prepSlots = entry.prepSlots.map(prep => prep.slice());
+  decorated.prepDays = entry.prepUnion.slice();
   return decorated;
 }
 
@@ -97,6 +149,25 @@ function isCanonicalValue(value, entry) {
       }
     }
   }
+  const storedPrepSlots = Array.isArray(value.prepSlots) ? value.prepSlots : null;
+  if (!storedPrepSlots) {
+    return entry.prepSlots.every(prep => prep.length === 0);
+  }
+  if (storedPrepSlots.length !== entry.prepSlots.length) {
+    return false;
+  }
+  for (let i = 0; i < entry.prepSlots.length; i += 1) {
+    const storedPrep = Array.isArray(storedPrepSlots[i]) ? storedPrepSlots[i] : [];
+    const normalizedPrep = entry.prepSlots[i];
+    if (storedPrep.length !== normalizedPrep.length) {
+      return false;
+    }
+    for (let j = 0; j < normalizedPrep.length; j += 1) {
+      if (storedPrep[j] !== normalizedPrep[j]) {
+        return false;
+      }
+    }
+  }
   return true;
 }
 
@@ -114,7 +185,8 @@ function normalizeRecord(record) {
       return;
     }
     canonical[category] = {
-      slots: normalized.slots.map(slot => slot.slice())
+      slots: normalized.slots.map(slot => slot.slice()),
+      prepSlots: normalized.prepSlots.map(prep => prep.slice())
     };
     decorated[category] = buildDecoratedValue(normalized);
     if (!isCanonicalValue(value, normalized)) {
@@ -138,7 +210,8 @@ function normalizeForSave(record) {
     const normalized = normalizeSlotEntry(value);
     if (!normalized.rawLength) return;
     canonical[category] = {
-      slots: normalized.slots.map(slot => slot.slice())
+      slots: normalized.slots.map(slot => slot.slice()),
+      prepSlots: normalized.prepSlots.map(prep => prep.slice())
     };
   });
   return canonical;

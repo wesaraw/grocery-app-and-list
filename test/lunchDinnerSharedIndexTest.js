@@ -42,8 +42,12 @@ const cal = generateWhatToEatCalendar(
 
 const days = ['2023-01-02', '2023-01-03', '2023-01-04', '2023-01-05'];
 
+const getId = value =>
+  value && typeof value === 'object' ? value.mealId || value.id || value.name || null : value;
+
 function expectEqual(a, b, msg) {
-  if (a !== b) throw new Error(msg + ` (expected ${b} got ${a})`);
+  const val = getId(a);
+  if (val !== b) throw new Error(msg + ` (expected ${b} got ${val})`);
 }
 
 expectEqual(cal.Alice[days[0]].lunchDinner, 'Chicken', 'day1 Alice');

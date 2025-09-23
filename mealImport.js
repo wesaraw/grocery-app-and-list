@@ -140,6 +140,7 @@ function loadMeals(category) {
         arr.forEach(m => {
           if (m.prepared === undefined) m.prepared = false;
           if (m.prepAhead === undefined) m.prepAhead = false;
+          if (m.leftoverOk === undefined) m.leftoverOk = false;
           if (m.recipeBook === undefined) m.recipeBook = '';
         });
       }

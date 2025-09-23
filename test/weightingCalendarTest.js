@@ -24,7 +24,14 @@ if (!(countA === 2 && countB === 1)) {
   throw new Error(`Prepared weighting failed: A ${countA} B ${countB}`);
 }
 
-const picks2 = Object.values(what.u).map(d => d.lunchDinner);
+const picks2 = Object.values(what.u).flatMap(d => {
+  const val = d.lunchDinner;
+  if (Array.isArray(val)) {
+    return val.map(v => (v && typeof v === 'object' ? v.mealId || v.id : v));
+  }
+  if (val && typeof val === 'object') return [val.mealId || val.id];
+  return [val];
+});
 const countA2 = picks2.filter(p => p === 'A').length;
 const countB2 = picks2.filter(p => p === 'B').length;
 if (!(countA2 === 2 && countB2 === 1)) {

@@ -43,6 +43,60 @@ export function buildMealMap(mealsByCategory) {
   return map;
 }
 
+export function normalizeCalendarEntry(value) {
+  if (value == null) return null;
+  if (typeof value === 'string') {
+    const id = value.trim();
+    if (!id) return null;
+    return { mealId: id, type: 'cook', leftoverTargets: [], leftoverSource: null };
+  }
+  if (typeof value === 'object') {
+    const mealId = value.mealId || value.id || value.name || null;
+    if (!mealId) return null;
+    const type = value.type === 'leftover' ? 'leftover' : 'cook';
+    const leftoverTargets = Array.isArray(value.leftoverTargets)
+      ? value.leftoverTargets
+          .map(target =>
+            target && typeof target === 'object'
+              ? {
+                  date: target.date || null,
+                  categoryId: target.categoryId || null,
+                  slot:
+                    target.slot != null && Number.isFinite(Number(target.slot))
+                      ? Number(target.slot)
+                      : null
+                }
+              : null
+          )
+          .filter(target => target && target.date)
+      : [];
+    const leftoverSource =
+      value.leftoverSource && typeof value.leftoverSource === 'object'
+        ? {
+            date: value.leftoverSource.date || null,
+            categoryId: value.leftoverSource.categoryId || null,
+            slot:
+              value.leftoverSource.slot != null &&
+              Number.isFinite(Number(value.leftoverSource.slot))
+                ? Number(value.leftoverSource.slot)
+                : null
+          }
+        : null;
+    return { mealId, type, leftoverTargets, leftoverSource };
+  }
+  return null;
+}
+
+export function expandCalendarValue(value) {
+  if (Array.isArray(value)) {
+    return value
+      .map(item => normalizeCalendarEntry(item))
+      .filter(entry => entry != null);
+  }
+  const entry = normalizeCalendarEntry(value);
+  return entry ? [entry] : [];
+}
+
 export function aggregateCalendar(
   calendar = {},
   mealsByCategory = {},
@@ -100,11 +154,19 @@ export function aggregateCalendar(
     Object.entries(days || {}).forEach(([dateStr, rec]) => {
       const week = weekNumber(dateStr);
       Object.values(rec || {}).forEach(val => {
-        const meals = Array.isArray(val) ? val : [val];
-        meals.forEach(id => {
-          const meal = mealMap.get(id);
+        const entries = expandCalendarValue(val);
+        entries.forEach(entry => {
+          if (!entry) return;
+          if (entry.type !== 'cook') return;
+          const meal = mealMap.get(entry.mealId);
           if (!meal) return;
           const userMultiplier = resolveMealMultiplier(meal, userIndex, baseMultiplier);
+          const leftoverCount = Array.isArray(entry.leftoverTargets)
+            ? entry.leftoverTargets.length
+            : 0;
+          const leftoverFactor = 1 + leftoverCount;
+          if (leftoverFactor <= 0) return;
+          const effectiveMultiplier = userMultiplier * leftoverFactor;
           const mult = perUser ? meal.multiplier ?? 1 : meal.people ?? meal.multiplier ?? 1;
           (meal.ingredients || []).forEach(ing => {
             const { value, unit } = parseQuantity(ing.serving_size || ing.amount);
@@ -123,7 +185,7 @@ export function aggregateCalendar(
               arr = Array(53).fill(0);
               result.set(ing.name, arr);
             }
-            arr[week] += qty * mult * userMultiplier;
+            arr[week] += qty * mult * effectiveMultiplier;
           });
         });
       });

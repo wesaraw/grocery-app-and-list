@@ -22,11 +22,13 @@ const cal = generateWhatToEatCalendar(
   startDate,
   3
 );
+const getId = value =>
+  value && typeof value === 'object' ? value.mealId || value.id || null : value;
 const picks1 = Object.values(cal.u1)
-  .map(d => d.dinner)
+  .map(d => getId(d.dinner))
   .filter(Boolean);
 const picks2 = Object.values(cal.u2)
-  .map(d => d.dinner)
+  .map(d => getId(d.dinner))
   .filter(Boolean);
 if (picks1.join(',') !== picks2.join(',')) {
   throw new Error(`Users received different meals: ${picks1.join(',')} vs ${picks2.join(',')}`);

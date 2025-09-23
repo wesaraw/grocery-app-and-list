@@ -126,6 +126,7 @@ async function loadMeals() {
     arr.forEach(m => {
       if (m.prepared === undefined) m.prepared = false;
       if (m.prepAhead === undefined) m.prepAhead = false;
+      if (m.leftoverOk === undefined) m.leftoverOk = false;
       if (m.recipeBook === undefined) m.recipeBook = '';
     });
     return arr;
@@ -135,6 +136,7 @@ async function loadMeals() {
   withNames.forEach(m => {
     if (m.prepared === undefined) m.prepared = false;
     if (m.prepAhead === undefined) m.prepAhead = false;
+    if (m.leftoverOk === undefined) m.leftoverOk = false;
     if (m.recipeBook === undefined) m.recipeBook = '';
   });
   return withNames;
@@ -167,6 +169,7 @@ function loadMealsForType(cat) {
       arr.forEach(m => {
         if (m.prepared === undefined) m.prepared = false;
         if (m.prepAhead === undefined) m.prepAhead = false;
+        if (m.leftoverOk === undefined) m.leftoverOk = false;
         if (m.recipeBook === undefined) m.recipeBook = '';
       });
       return arr;
@@ -176,6 +179,7 @@ function loadMealsForType(cat) {
     withNames.forEach(m => {
       if (m.prepared === undefined) m.prepared = false;
       if (m.prepAhead === undefined) m.prepAhead = false;
+      if (m.leftoverOk === undefined) m.leftoverOk = false;
       if (m.recipeBook === undefined) m.recipeBook = '';
     });
     return withNames;
@@ -424,6 +428,18 @@ function createRows(meal, arr) {
       prepTd.appendChild(prepAheadLabel);
       if (ingredients.length > 1) prepTd.rowSpan = ingredients.length;
 
+      const leftoverTd = document.createElement('td');
+      const leftoverChk = document.createElement('input');
+      leftoverChk.type = 'checkbox';
+      leftoverChk.checked = meal.leftoverOk || false;
+      leftoverChk.addEventListener('change', async () => {
+        meal.leftoverOk = leftoverChk.checked;
+        await saveMeals(arr);
+      });
+      leftoverTd.appendChild(leftoverChk);
+      leftoverTd.style.textAlign = 'center';
+      if (ingredients.length > 1) leftoverTd.rowSpan = ingredients.length;
+
       const groupTd = document.createElement('td');
       const groupChk = document.createElement('input');
       groupChk.type = 'checkbox';
@@ -433,6 +449,7 @@ function createRows(meal, arr) {
         await saveMeals(arr);
       });
       groupTd.appendChild(groupChk);
+      groupTd.style.textAlign = 'center';
       if (ingredients.length > 1) groupTd.rowSpan = ingredients.length;
 
       imageTd = document.createElement('td');
@@ -474,6 +491,7 @@ function createRows(meal, arr) {
       tr.appendChild(imageTd);
       tr.appendChild(nameTd);
       tr.appendChild(prepTd);
+      tr.appendChild(leftoverTd);
       tr.appendChild(groupTd);
     }
 
@@ -669,6 +687,28 @@ function createRows(meal, arr) {
     prepTd.appendChild(prepChk);
     prepTd.appendChild(prepAheadLabel);
 
+    const leftoverTd = document.createElement('td');
+    const leftoverChk = document.createElement('input');
+    leftoverChk.type = 'checkbox';
+    leftoverChk.checked = meal.leftoverOk || false;
+    leftoverChk.addEventListener('change', async () => {
+      meal.leftoverOk = leftoverChk.checked;
+      await saveMeals(arr);
+    });
+    leftoverTd.appendChild(leftoverChk);
+    leftoverTd.style.textAlign = 'center';
+
+    const groupTd = document.createElement('td');
+    const groupChk = document.createElement('input');
+    groupChk.type = 'checkbox';
+    groupChk.checked = meal.groupMeal || false;
+    groupChk.addEventListener('change', async () => {
+      meal.groupMeal = groupChk.checked;
+      await saveMeals(arr);
+    });
+    groupTd.appendChild(groupChk);
+    groupTd.style.textAlign = 'center';
+
     const ingTd = document.createElement('td');
     ingTds.push(ingTd);
     const amtTd = document.createElement('td');
@@ -679,6 +719,7 @@ function createRows(meal, arr) {
     tr.appendChild(imageTd);
     tr.appendChild(nameTd);
     tr.appendChild(prepTd);
+    tr.appendChild(leftoverTd);
     tr.appendChild(groupTd);
     tr.appendChild(ingTd);
     tr.appendChild(amtTd);

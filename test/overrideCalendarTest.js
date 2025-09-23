@@ -59,14 +59,16 @@ const lunch = monday.lunchDinner;
 if (!Array.isArray(lunch) || lunch.length !== 2) {
   throw new Error('Expected two lunch/dinner slots after override');
 }
-if (lunch[0] !== 'B1') {
-  throw new Error(`Override slot did not use breakfast meal: ${lunch[0]}`);
+const getId = value =>
+  value && typeof value === 'object' ? value.mealId || value.id || null : value;
+if (getId(lunch[0]) !== 'B1') {
+  throw new Error(`Override slot did not use breakfast meal: ${getId(lunch[0])}`);
 }
-if (lunch[1] !== 'L1') {
-  throw new Error(`Second lunch slot should remain lunch meal: ${lunch[1]}`);
+if (getId(lunch[1]) !== 'L1') {
+  throw new Error(`Second lunch slot should remain lunch meal: ${getId(lunch[1])}`);
 }
-if (monday.breakfast !== 'B1') {
-  throw new Error(`Breakfast slot should keep breakfast meal: ${monday.breakfast}`);
+if (getId(monday.breakfast) !== 'B1') {
+  throw new Error(`Breakfast slot should keep breakfast meal: ${getId(monday.breakfast)}`);
 }
 
 // Scenario: Two users override the same lunch slot to breakfast, and the breakfast
@@ -136,15 +138,15 @@ const bobMonday = sharedCalendar.Bob['2024-01-01'];
 if (!aliceMonday || !bobMonday) {
   throw new Error('Missing Monday entries for override participants');
 }
-if (aliceMonday.breakfast !== 'GB1' || bobMonday.breakfast !== 'GB1') {
+if (getId(aliceMonday.breakfast) !== 'GB1' || getId(bobMonday.breakfast) !== 'GB1') {
   throw new Error('Base breakfast slot should schedule the first group meal');
 }
-if (aliceMonday.lunchDinner !== 'GB2') {
+if (getId(aliceMonday.lunchDinner) !== 'GB2') {
   throw new Error(
     `Alice override slot should schedule the second group meal, received ${aliceMonday.lunchDinner}`
   );
 }
-if (bobMonday.lunchDinner !== 'GB2') {
+if (getId(bobMonday.lunchDinner) !== 'GB2') {
   throw new Error(
     `Bob override slot should schedule the second group meal, received ${bobMonday.lunchDinner}`
   );
@@ -199,8 +201,8 @@ if (!zeroMonday) {
 if ('treat' in zeroMonday) {
   throw new Error('Treat category should not create a calendar entry when multiplier is 0');
 }
-if (zeroMonday.dinner !== 'T1') {
-  throw new Error(`Override did not pull treat meal into dinner slot: ${zeroMonday.dinner}`);
+if (getId(zeroMonday.dinner) !== 'T1') {
+  throw new Error(`Override did not pull treat meal into dinner slot: ${getId(zeroMonday.dinner)}`);
 }
 
 // Scenario: A category with zero automatic slots still processes its override map
@@ -253,12 +255,12 @@ const zeroOverrideSourceMonday = zeroOverrideSourceCalendar.Dana['2024-01-01'];
 if (!zeroOverrideSourceMonday) {
   throw new Error('Missing Monday entry for Dana in zero override source test');
 }
-if (zeroOverrideSourceMonday.lunch !== 'LUNCH_BASE') {
+if (getId(zeroOverrideSourceMonday.lunch) !== 'LUNCH_BASE') {
   throw new Error(
     `Base lunch slot should keep its own meal: ${zeroOverrideSourceMonday.lunch}`
   );
 }
-if (zeroOverrideSourceMonday.snack !== 'LUNCH_OVERRIDE') {
+if (getId(zeroOverrideSourceMonday.snack) !== 'LUNCH_OVERRIDE') {
   throw new Error(
     `Override slot for zero-multiplier category did not schedule the alternate lunch meal: ${zeroOverrideSourceMonday.snack}`
   );
@@ -335,25 +337,25 @@ if (!orderedIntersectionDays.length) {
   throw new Error('Expected intersection scenario to generate shared snack days');
 }
 
-if (intersectionCalendar.Uma['2024-01-01']?.shared !== 'SNACK_ALL') {
+if (getId(intersectionCalendar.Uma['2024-01-01']?.shared) !== 'SNACK_ALL') {
   throw new Error('Uma should receive the triple-overlap snack on Monday');
 }
-if (intersectionCalendar.Victor['2024-01-01']?.shared !== 'SNACK_ALL') {
+if (getId(intersectionCalendar.Victor['2024-01-01']?.shared) !== 'SNACK_ALL') {
   throw new Error('Victor should receive the triple-overlap snack on Monday');
 }
-if (intersectionCalendar.Wendy['2024-01-01']?.shared !== 'SNACK_ALL') {
+if (getId(intersectionCalendar.Wendy['2024-01-01']?.shared) !== 'SNACK_ALL') {
   throw new Error('Wendy should receive the triple-overlap snack on Monday');
 }
-if (intersectionCalendar.Uma['2024-01-02']?.pair !== 'SNACK_UV') {
+if (getId(intersectionCalendar.Uma['2024-01-02']?.pair) !== 'SNACK_UV') {
   throw new Error('Uma should receive the UV pair snack on Tuesday');
 }
-if (intersectionCalendar.Victor['2024-01-02']?.pair !== 'SNACK_UV') {
+if (getId(intersectionCalendar.Victor['2024-01-02']?.pair) !== 'SNACK_UV') {
   throw new Error('Victor should receive the UV pair snack on Tuesday');
 }
-if (intersectionCalendar.Uma['2024-01-03']?.pair !== 'SNACK_UW') {
+if (getId(intersectionCalendar.Uma['2024-01-03']?.pair) !== 'SNACK_UW') {
   throw new Error('Uma should receive the UW pair snack on Wednesday');
 }
-if (intersectionCalendar.Wendy['2024-01-03']?.pair !== 'SNACK_UW') {
+if (getId(intersectionCalendar.Wendy['2024-01-03']?.pair) !== 'SNACK_UW') {
   throw new Error('Wendy should receive the UW pair snack on Wednesday');
 }
 
@@ -365,10 +367,12 @@ function ensureSharedBeforeSolo(user, soloId, requiredSharedIds) {
       const value = entry[category];
       if (Array.isArray(value)) {
         value.forEach(v => {
-          if (v != null) timeline.push({ id: v, category });
+          const id = getId(v);
+          if (id != null) timeline.push({ id, category });
         });
       } else if (value != null) {
-        timeline.push({ id: value, category });
+        const id = getId(value);
+        if (id != null) timeline.push({ id, category });
       }
     });
   });

@@ -10,6 +10,7 @@ import {
   loadArray as loadItemArray,
   convertArrayToNames
 } from './utils/itemStorage.js';
+import { normalizeCalendarEntry } from './utils/calendarUtils.js';
 
 function loadCalendar() {
   return new Promise(resolve => {
@@ -95,6 +96,7 @@ async function loadMeals(type) {
   if (Array.isArray(arr)) {
     arr.forEach(m => {
       if (m.prepared === undefined) m.prepared = false;
+      if (m.leftoverOk === undefined) m.leftoverOk = false;
       if (m.recipeBook === undefined) m.recipeBook = '';
     });
   }
@@ -265,16 +267,38 @@ function render() {
       slotOrder.forEach(cat => {
         const td = document.createElement('td');
         const idx = used[cat] || 0;
-        let val = rec[cat];
-        if (Array.isArray(val)) val = val[idx];
-        else if (idx > 0) val = '';
+        const rawVal = rec[cat];
+        let slotVal = null;
+        if (Array.isArray(rawVal)) {
+          slotVal = rawVal[idx];
+        } else if (idx === 0) {
+          slotVal = rawVal;
+        }
         used[cat] = idx + 1;
-        if (val) {
-          const meal = mealMap[val];
-          const name = meal ? meal.name || val : val;
-          const cost = meal && meal.totalCost != null ? ` - $${meal.totalCost.toFixed(2)}` : '';
+        const entry = normalizeCalendarEntry(slotVal);
+        if (entry) {
+          const meal = mealMap[entry.mealId];
+          const name = meal ? meal.name || entry.mealId : entry.mealId;
+          const cost =
+            meal && meal.totalCost != null ? ` - $${meal.totalCost.toFixed(2)}` : '';
           const nameDiv = document.createElement('div');
-          nameDiv.textContent = name + cost;
+          let label = name + cost;
+          if (entry.type === 'leftover') {
+            const srcDate = entry.leftoverSource?.date;
+            const leftoverNote = srcDate ? `Leftover from ${srcDate}` : 'Leftover';
+            label += ` (${leftoverNote})`;
+            td.classList.add('leftover-slot');
+          } else if (Array.isArray(entry.leftoverTargets) && entry.leftoverTargets.length) {
+            const dateSet = new Set();
+            entry.leftoverTargets.forEach(target => {
+              if (target?.date) dateSet.add(target.date);
+            });
+            if (dateSet.size) {
+              label += ` (Cook extra for ${Array.from(dateSet).join(', ')})`;
+            }
+            td.classList.add('cook-with-leftover');
+          }
+          nameDiv.textContent = label;
           td.appendChild(nameDiv);
           if (meal) {
             const img = document.createElement('img');

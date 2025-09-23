@@ -78,6 +78,31 @@ function normalizeDayList(list) {
   return normalized;
 }
 
+function normalizeSlotSelection(selection) {
+  if (selection && typeof selection === 'object' && !Array.isArray(selection)) {
+    const daysSource = Array.isArray(selection.days)
+      ? selection.days
+      : Array.isArray(selection.slots)
+      ? selection.slots
+      : [];
+    const days = normalizeDayList(daysSource);
+    const daySet = new Set(days);
+    let prepSource = [];
+    if (Array.isArray(selection.prep)) {
+      prepSource = selection.prep;
+    } else if (Array.isArray(selection.prepDays)) {
+      prepSource = selection.prepDays;
+    } else if (Array.isArray(selection.prepSlots)) {
+      const first = selection.prepSlots[0];
+      prepSource = Array.isArray(first) ? first : [];
+    }
+    const prep = normalizeDayList(prepSource).filter(day => daySet.has(day));
+    return { days, prep };
+  }
+  const days = normalizeDayList(Array.isArray(selection) ? selection : []);
+  return { days, prep: [] };
+}
+
 function arraysEqual(a, b) {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i += 1) {
@@ -88,17 +113,32 @@ function arraysEqual(a, b) {
 
 function buildDecoratedSlotValue(slotLists, slotCount) {
   const normalizedSlots = [];
+  const normalizedPrepSlots = [];
   for (let i = 0; i < slotCount; i += 1) {
-    const slot = Array.isArray(slotLists[i]) ? slotLists[i] : [];
-    normalizedSlots.push(normalizeDayList(slot));
+    const selection = normalizeSlotSelection(slotLists[i]);
+    normalizedSlots.push(selection.days);
+    normalizedPrepSlots.push(selection.prep);
   }
   const unionSet = new Set();
   normalizedSlots.forEach(slot => {
     slot.forEach(day => unionSet.add(day));
   });
   const union = normalizeDayList(Array.from(unionSet));
+  const unionPrepSet = new Set();
+  normalizedPrepSlots.forEach(prep => {
+    prep.forEach(day => {
+      if (unionSet.has(day)) unionPrepSet.add(day);
+    });
+  });
+  const unionPrep = normalizeDayList(Array.from(unionPrepSet));
   union.slots = normalizedSlots.map(slot => slot.slice());
-  return { decorated: union, slots: normalizedSlots };
+  union.prepSlots = normalizedPrepSlots.map(prep => prep.slice());
+  union.prepDays = unionPrep.slice();
+  return {
+    decorated: union,
+    slots: normalizedSlots,
+    prepSlots: normalizedPrepSlots
+  };
 }
 
 function readSlotLists(value) {
@@ -106,13 +146,33 @@ function readSlotLists(value) {
     return [];
   }
   if (Array.isArray(value.slots)) {
-    return value.slots.map(slot => (Array.isArray(slot) ? slot.slice() : []));
+    const prepSlots = Array.isArray(value.prepSlots) ? value.prepSlots : [];
+    return value.slots.map((slot, idx) =>
+      normalizeSlotSelection({
+        days: Array.isArray(slot) ? slot.slice() : [],
+        prep: Array.isArray(prepSlots[idx]) ? prepSlots[idx].slice() : []
+      })
+    );
+  }
+  if (Array.isArray(value.slotDays)) {
+    const prepSlots = Array.isArray(value.prepSlots) ? value.prepSlots : [];
+    return value.slotDays.map((slot, idx) =>
+      normalizeSlotSelection({
+        days: Array.isArray(slot) ? slot.slice() : [],
+        prep: Array.isArray(prepSlots[idx]) ? prepSlots[idx].slice() : []
+      })
+    );
   }
   if (Array.isArray(value)) {
-    return [value.slice()];
+    return [normalizeSlotSelection(value.slice())];
   }
   if (Array.isArray(value.days)) {
-    return [value.days.slice()];
+    return [
+      normalizeSlotSelection({
+        days: value.days.slice(),
+        prep: Array.isArray(value.prepDays) ? value.prepDays.slice() : []
+      })
+    ];
   }
   return [];
 }
@@ -375,6 +435,7 @@ async function loadMeals(type) {
     if (!m.categoryId) m.categoryId = categoryId;
     if (!m.category) m.category = info && info.label ? info.label : categoryId;
     if (m.prepared === undefined) m.prepared = false;
+    if (m.leftoverOk === undefined) m.leftoverOk = false;
     if (m.recipeBook === undefined) m.recipeBook = '';
   });
   return arr;
@@ -409,13 +470,26 @@ function createSlotController(initialDays, onSave) {
   VALID_DAYS.forEach(day => {
     const lbl = document.createElement('label');
     lbl.className = 'slot-day-option';
+
     const chk = document.createElement('input');
     chk.type = 'checkbox';
     chk.value = day;
     lbl.appendChild(chk);
     lbl.appendChild(document.createTextNode(day.slice(0, 3)));
+
+    const prepWrapper = document.createElement('span');
+    prepWrapper.className = 'slot-day-prep';
+    const prepChk = document.createElement('input');
+    prepChk.type = 'checkbox';
+    prepChk.className = 'slot-day-prep-checkbox';
+    prepChk.disabled = true;
+    prepChk.setAttribute('aria-label', 'Prep required');
+    prepWrapper.appendChild(prepChk);
+    prepWrapper.appendChild(document.createTextNode('Prep'));
+    lbl.appendChild(prepWrapper);
+
     checkboxContainer.appendChild(lbl);
-    checkboxes.push({ chk, day });
+    checkboxes.push({ chk, prepChk, day });
   });
 
   const saveBtn = document.createElement('button');
@@ -426,34 +500,57 @@ function createSlotController(initialDays, onSave) {
 
   section.appendChild(row);
 
-  let savedDays = normalizeDayList(initialDays || []);
+  let savedSelection = normalizeSlotSelection(initialDays || []);
 
-  function syncCheckboxes(days) {
-    const set = new Set(days);
-    checkboxes.forEach(({ chk, day }) => {
-      chk.checked = set.has(day);
+  function syncCheckboxes(selection) {
+    const daySet = new Set(selection.days);
+    const prepSet = new Set(selection.prep);
+    checkboxes.forEach(({ chk, prepChk, day }) => {
+      const checked = daySet.has(day);
+      chk.checked = checked;
+      prepChk.disabled = !checked;
+      if (!checked) {
+        prepChk.checked = false;
+      } else {
+        prepChk.checked = prepSet.has(day);
+      }
     });
   }
 
   function getSelectedDays() {
     const selected = [];
-    checkboxes.forEach(({ chk, day }) => {
-      if (chk.checked) selected.push(day);
+    const prepSelected = [];
+    checkboxes.forEach(({ chk, prepChk, day }) => {
+      if (chk.checked) {
+        selected.push(day);
+        if (prepChk.checked) {
+          prepSelected.push(day);
+        }
+      }
     });
-    return normalizeDayList(selected);
+    return normalizeSlotSelection({ days: selected, prep: prepSelected });
   }
 
   function updateDirtyState() {
     const current = getSelectedDays();
-    if (arraysEqual(current, savedDays)) {
+    if (arraysEqual(current.days, savedSelection.days) && arraysEqual(current.prep, savedSelection.prep)) {
       saveBtn.classList.add('hidden');
     } else {
       saveBtn.classList.remove('hidden');
     }
   }
 
-  checkboxes.forEach(({ chk }) => {
-    chk.addEventListener('change', updateDirtyState);
+  checkboxes.forEach(({ chk, prepChk }) => {
+    chk.addEventListener('change', () => {
+      if (!chk.checked) {
+        prepChk.checked = false;
+        prepChk.disabled = true;
+      } else {
+        prepChk.disabled = false;
+      }
+      updateDirtyState();
+    });
+    prepChk.addEventListener('change', updateDirtyState);
   });
 
   saveBtn.addEventListener('click', async () => {
@@ -462,16 +559,16 @@ function createSlotController(initialDays, onSave) {
     }
   });
 
-  syncCheckboxes(savedDays);
+  syncCheckboxes(savedSelection);
   updateDirtyState();
 
   return {
     section,
     saveButton: saveBtn,
     getSelectedDays,
-    syncSavedDays(days) {
-      savedDays = normalizeDayList(days || []);
-      syncCheckboxes(savedDays);
+    syncSavedDays(selection) {
+      savedSelection = normalizeSlotSelection(selection || []);
+      syncCheckboxes(savedSelection);
       updateDirtyState();
     },
     setSaving(isSaving) {
@@ -536,7 +633,7 @@ async function showMeals(userIndex) {
       const selections = [];
       for (let i = 0; i < slotCount; i += 1) {
         const ctrl = slotControllers[i];
-        selections.push(ctrl ? ctrl.getSelectedDays() : []);
+        selections.push(ctrl ? ctrl.getSelectedDays() : { days: [], prep: [] });
       }
       return selections;
     }
@@ -547,14 +644,17 @@ async function showMeals(userIndex) {
       controller.setSaving(true);
       try {
         const selections = collectSelections();
-        const { decorated, slots } = buildDecoratedSlotValue(selections, slotCount);
+        const { decorated, slots, prepSlots } = buildDecoratedSlotValue(selections, slotCount);
         if (!userDays[userIndex]) userDays[userIndex] = {};
         userDays[userIndex][group.label] = decorated;
         await saveUserCategoryDays(userDays);
         await calculateAndSaveMealNeeds();
         slotControllers.forEach((ctrl, idx) => {
           if (ctrl) {
-            ctrl.syncSavedDays(slots[idx] || []);
+            ctrl.syncSavedDays({
+              days: slots[idx] || [],
+              prep: prepSlots[idx] || []
+            });
           }
         });
         try {
@@ -572,7 +672,7 @@ async function showMeals(userIndex) {
       header.textContent = formatSlotHeaderLabel(descriptor, group.label, i, slotCount);
       mealList.appendChild(header);
 
-      const controller = createSlotController(storedSlots[i] || [], () => handleSave(i));
+      const controller = createSlotController(storedSlots[i] || { days: [], prep: [] }, () => handleSave(i));
       slotControllers[i] = controller;
       mealList.appendChild(controller.section);
 
