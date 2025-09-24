@@ -72,9 +72,9 @@ if (getId(monday.breakfast) !== 'B1') {
 }
 
 // Scenario: Two users override the same lunch slot to breakfast, and the breakfast
-// category exposes two group meals. The override slot should schedule the second
-// shared meal independently of the base breakfast rotation so both shared meals
-// appear on the calendar.
+// category exposes two group meals. The override slot should align with the
+// first shared breakfast meal so that all participants share the same initial
+// occurrence.
 const multiUsers = ['Alice', 'Bob'];
 const sharedPrepared = {};
 const breakfastGroupMeals = [
@@ -141,14 +141,14 @@ if (!aliceMonday || !bobMonday) {
 if (getId(aliceMonday.breakfast) !== 'GB1' || getId(bobMonday.breakfast) !== 'GB1') {
   throw new Error('Base breakfast slot should schedule the first group meal');
 }
-if (getId(aliceMonday.lunchDinner) !== 'GB2') {
+if (getId(aliceMonday.lunchDinner) !== 'GB1') {
   throw new Error(
-    `Alice override slot should schedule the second group meal, received ${aliceMonday.lunchDinner}`
+    `Alice override slot should align with the first group meal, received ${aliceMonday.lunchDinner}`
   );
 }
-if (getId(bobMonday.lunchDinner) !== 'GB2') {
+if (getId(bobMonday.lunchDinner) !== 'GB1') {
   throw new Error(
-    `Bob override slot should schedule the second group meal, received ${bobMonday.lunchDinner}`
+    `Bob override slot should align with the first group meal, received ${bobMonday.lunchDinner}`
   );
 }
 

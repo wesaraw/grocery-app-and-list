@@ -339,30 +339,29 @@ export function generateWhatToEatCalendar(
     users.forEach(user => {
       const dayOverrides = slotOverrides[user]?.[dayName] || {};
       Object.entries(dayOverrides).forEach(([sourceCategoryId, slotMap = {}]) => {
-        Object.entries(slotMap || {}).forEach(([slotIndex, targetCategoryId]) => {
+        Object.entries(slotMap || {}).forEach(([slotIndexKey, targetCategoryId]) => {
           if (!targetCategoryId) return;
+          const numericIndex = Number(slotIndexKey);
+          if (!Number.isFinite(numericIndex)) return;
+          const flooredIndex = Math.floor(numericIndex);
+          if (flooredIndex < 0) return;
           const baseSlots = resolveSlotCount(targetCategoryId);
-          const categoryEntry =
+          const slotLimit = Math.max(1, Number.isFinite(baseSlots) ? baseSlots : 0);
+          const normalizedIndex = Math.max(
+            0,
+            Math.min(flooredIndex, slotLimit - 1)
+          );
+          const map =
             perCategory[targetCategoryId] ||
-            (perCategory[targetCategoryId] = {
-              baseSlots,
-              nextOffset: 0,
-              map: {}
-            });
-          const comboKey = `${sourceCategoryId}:${slotIndex}`;
-          if (categoryEntry.map[comboKey] == null) {
-            categoryEntry.map[comboKey] =
-              categoryEntry.baseSlots + categoryEntry.nextOffset;
-            categoryEntry.nextOffset += 1;
+            (perCategory[targetCategoryId] = {});
+          const comboKey = `${sourceCategoryId}:${flooredIndex}`;
+          if (map[comboKey] == null) {
+            map[comboKey] = normalizedIndex;
           }
         });
       });
     });
-    const result = {};
-    Object.entries(perCategory).forEach(([categoryId, data]) => {
-      result[categoryId] = data.map;
-    });
-    return result;
+    return perCategory;
   }
 
   function normalizeDayPreference(value) {
