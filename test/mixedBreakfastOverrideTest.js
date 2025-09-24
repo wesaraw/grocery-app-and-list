@@ -5,8 +5,20 @@ const overrideUsers = new Set(['Wes', 'Merrilynn', 'Bella']);
 const startDate = new Date('2024-01-01');
 
 const breakfastMeals = [
-  { id: 'PARFAIT', name: 'Parfait', weight: 5, groupMeal: true },
-  { id: 'SMOOTHIE', name: 'Smoothie', weight: 1, groupMeal: true }
+  {
+    id: 'PARFAIT',
+    name: 'Parfait',
+    weight: 5,
+    groupMeal: true,
+    prepared: true
+  },
+  {
+    id: 'SMOOTHIE',
+    name: 'Smoothie',
+    weight: 1,
+    groupMeal: true,
+    prepared: true
+  }
 ];
 const lunchMeals = [
   { id: 'LUNCH_A', name: 'Lunch A', weight: 1 },
@@ -39,9 +51,15 @@ overrideUsers.forEach(user => {
 
 const mealsPerDay = { breakfast: 1, lunchDinner: 2 };
 
+const preparedCalendar = {
+  '2024-01-01': {
+    breakfast: 'PARFAIT'
+  }
+};
+
 const { calendar } = generateWhatToEatCalendar(
   users,
-  {},
+  preparedCalendar,
   subscriptions,
   eatingDays,
   mealsPerDay,

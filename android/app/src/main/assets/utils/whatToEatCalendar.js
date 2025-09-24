@@ -969,12 +969,43 @@ export function generateWhatToEatCalendar(
           (prepMeal.totalCost == null || prepMeal.totalCost <= maxPrice);
         const forcedMatchesPrep =
           forcedMealId != null && forcedMealId === context.prepMealId;
+        const preferPrepared = prepOk && (!forcedMealId || forcedMatchesPrep);
+        const sharedPreferredId =
+          preferPrepared && context.sharedPreparedMealId != null
+            ? context.sharedPreparedMealId
+            : null;
         let chosenId = null;
         let chosenMeal = null;
-        if (prepOk && (!forcedMealId || forcedMatchesPrep)) {
+        let usedSharedAssignment = false;
+        let attemptedShared = false;
+        if (
+          sharedSlotKey != null &&
+          (sharedPreferredId != null || (!requirePrepared && context.weightedShared.length))
+        ) {
+          attemptedShared = true;
+          const sharedChoice = resolveSharedAssignment(
+            categoryId,
+            sharedSlotKey,
+            user,
+            forcedEntry,
+            sharedPreferredId
+          );
+          if (sharedChoice != null) {
+            chosenId = sharedChoice;
+            chosenMeal =
+              meals.find(m => (m.id || m.name) === sharedChoice) || null;
+            usedSharedAssignment = true;
+          }
+        }
+        if (!usedSharedAssignment && preferPrepared) {
           chosenId = context.prepMealId;
           chosenMeal = prepMeal || null;
-        } else if (!requirePrepared && context.weightedShared.length) {
+        } else if (
+          !usedSharedAssignment &&
+          !attemptedShared &&
+          !requirePrepared &&
+          context.weightedShared.length
+        ) {
           const sharedChoice = resolveSharedAssignment(
             categoryId,
             sharedSlotKey,
@@ -983,9 +1014,9 @@ export function generateWhatToEatCalendar(
           );
           if (sharedChoice != null) {
             chosenId = sharedChoice;
-            chosenMeal = meals.find(
-              m => (m.id || m.name) === sharedChoice
-            );
+            chosenMeal =
+              meals.find(m => (m.id || m.name) === sharedChoice) || null;
+            usedSharedAssignment = true;
           }
         }
         if (chosenId == null) {
@@ -1034,20 +1065,20 @@ export function generateWhatToEatCalendar(
             }
           }
         }
-        if (normalizedSlot === 0 && prepOk && !requirePrepared) {
-          if (context.weightedShared.length) {
-            const preferredSharedId =
-              chosenId === context.prepMealId
-                ? context.sharedPreparedMealId
-                : null;
+        if (normalizedSlot === 0 && preferPrepared) {
+          if (
+            context.weightedShared.length &&
+            sharedSlotKey != null &&
+            !usedSharedAssignment
+          ) {
             resolveSharedAssignment(
               categoryId,
               sharedSlotKey,
               user,
               forcedEntry,
-              preferredSharedId
+              sharedPreferredId
             );
-          } else if (context.chooseList.length) {
+          } else if (!requirePrepared && context.chooseList.length) {
             const state = stateRec[categoryId] || (stateRec[categoryId] = {});
             pickWeighted(context.chooseList, state, forcedMealId);
           }
