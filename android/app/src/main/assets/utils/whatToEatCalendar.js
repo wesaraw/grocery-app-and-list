@@ -591,10 +591,16 @@ export function generateWhatToEatCalendar(
       if (!context || !context.weightedShared.length) return;
       const slotKeyId = String(sharedSlotKey);
       const categoryEntry =
-        daySharedPlan[categoryId] || (daySharedPlan[categoryId] = {});
-      let slotEntry = categoryEntry[slotKeyId];
+        daySharedPlan[categoryId] ||
+        (daySharedPlan[categoryId] = {
+          slots: {},
+          sharedCandidates: new Map(),
+          consumed: new Set()
+        });
+      const slots = categoryEntry.slots;
+      let slotEntry = slots[slotKeyId];
       if (!slotEntry) {
-        slotEntry = categoryEntry[slotKeyId] = {
+        slotEntry = slots[slotKeyId] = {
           candidates: new Map(),
           userMealPairs: new Set(),
           participatingUsers: new Set()
@@ -609,16 +615,28 @@ export function generateWhatToEatCalendar(
         const pairKey = `${user}||${mealId}`;
         if (slotEntry.userMealPairs.has(pairKey)) return;
         slotEntry.userMealPairs.add(pairKey);
-        let candidate = slotEntry.candidates.get(mealId);
-        if (!candidate) {
-          candidate = {
+        let sharedCandidate = categoryEntry.sharedCandidates.get(mealId);
+        if (!sharedCandidate) {
+          sharedCandidate = {
             meal,
             mealId,
             weight: entry.weight || 1,
+            weighted: null,
+            disabled: false
+          };
+          categoryEntry.sharedCandidates.set(mealId, sharedCandidate);
+        }
+        let candidate = slotEntry.candidates.get(mealId);
+        if (!candidate) {
+          candidate = {
+            meal: sharedCandidate.meal,
+            mealId: sharedCandidate.mealId,
+            weight: sharedCandidate.weight,
             users: [],
             userSet: new Set(),
             weighted: null,
-            disabled: false
+            disabled: false,
+            sharedParent: sharedCandidate
           };
           slotEntry.candidates.set(mealId, candidate);
         }
@@ -689,8 +707,11 @@ export function generateWhatToEatCalendar(
       });
     });
 
-    Object.entries(daySharedPlan).forEach(([categoryId, slots]) => {
-      Object.entries(slots).forEach(([slotKey, slotEntry]) => {
+    Object.entries(daySharedPlan).forEach(([categoryId, categoryEntry]) => {
+      categoryEntry?.sharedCandidates?.forEach(sharedCandidate => {
+        sharedCandidate.disabled = false;
+      });
+      Object.entries(categoryEntry?.slots || {}).forEach(([slotKey, slotEntry]) => {
         const bySize = {};
         slotEntry.candidates.forEach(candidate => {
           candidate.disabled = false;
@@ -716,7 +737,7 @@ export function generateWhatToEatCalendar(
       const slotKeyId = String(sharedSlotKey);
       const categoryPlan = daySharedPlan[categoryId];
       if (!categoryPlan) return null;
-      const slotPlan = categoryPlan[slotKeyId];
+      const slotPlan = categoryPlan.slots?.[slotKeyId];
       if (!slotPlan) return null;
       if (slotPlan.participatingUsers && !slotPlan.participatingUsers.has(user)) {
         return null;
@@ -726,6 +747,8 @@ export function generateWhatToEatCalendar(
       }
       const forcedMealId =
         forcedEntry && forcedEntry.type === 'cook' ? forcedEntry.mealId : null;
+      const consumedMeals =
+        categoryPlan.consumed || (categoryPlan.consumed = new Set());
       for (const size of slotPlan.sizeOrder || []) {
         const bucket = slotPlan.bySize[size];
         if (!bucket) continue;
@@ -733,9 +756,22 @@ export function generateWhatToEatCalendar(
           sharedGroupState[categoryId] || (sharedGroupState[categoryId] = {});
         const sizeState = stateBucket[size] || (stateBucket[size] = {});
         while (true) {
-          const activeCandidates = bucket.entries.filter(
-            candidate => !candidate.disabled && candidate.userSet.has(user)
-          );
+          const activeCandidates = bucket.entries.filter(candidate => {
+            if (!candidate) return false;
+            const isForced = forcedMealId != null && candidate.mealId === forcedMealId;
+            if (candidate.disabled && !isForced) return false;
+            if (
+              candidate.sharedParent &&
+              candidate.sharedParent.disabled &&
+              !isForced
+            ) {
+              return false;
+            }
+            if (consumedMeals.has(candidate.mealId) && !isForced) {
+              return false;
+            }
+            return candidate.userSet.has(user);
+          });
           if (!activeCandidates.length) break;
           const prioritized = prioritizeSharedCandidates(
             activeCandidates,
@@ -766,8 +802,16 @@ export function generateWhatToEatCalendar(
           if (!meal) break;
           const mealId = meal.id || meal.name;
           const candidate = bucket.map.get(mealId);
-          if (!candidate || candidate.disabled || !candidate.userSet.has(user)) {
-            if (candidate) candidate.disabled = true;
+          const isForcedPick = forcedMealId != null && forcedMealId === mealId;
+          if (
+            !candidate ||
+            (!isForcedPick &&
+              (candidate.disabled ||
+                (candidate.sharedParent && candidate.sharedParent.disabled) ||
+                consumedMeals.has(candidate.mealId))) ||
+            !candidate.userSet.has(user)
+          ) {
+            if (candidate && !isForcedPick) candidate.disabled = true;
             continue;
           }
           const conflict = candidate.users.some(
@@ -781,6 +825,10 @@ export function generateWhatToEatCalendar(
             slotPlan.assigned[u] = mealId;
           });
           candidate.disabled = true;
+          if (candidate.sharedParent) {
+            candidate.sharedParent.disabled = true;
+          }
+          consumedMeals.add(candidate.mealId);
           return mealId;
         }
       }
