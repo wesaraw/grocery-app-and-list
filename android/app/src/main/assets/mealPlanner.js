@@ -55,9 +55,29 @@ async function initThresholdControls() {
     await calculateAndSaveMealNeeds();
   });
 
-  document.getElementById('rebuildCalendarBtn').addEventListener('click', async () => {
-    await calculateAndSaveMealNeeds();
-  });
+  const rebuildBtn = document.getElementById('rebuildCalendarBtn');
+  const resyncBtn = document.getElementById('resyncCalendarBtn');
+
+  function setButtonsDisabled(disabled) {
+    rebuildBtn.disabled = disabled;
+    resyncBtn.disabled = disabled;
+  }
+
+  async function runCalendarBuild(options, button, loadingLabel) {
+    if (rebuildBtn.disabled || resyncBtn.disabled) return;
+    setButtonsDisabled(true);
+    const originalText = button.textContent;
+    button.textContent = loadingLabel;
+    try {
+      await calculateAndSaveMealNeeds(options);
+    } finally {
+      button.textContent = originalText;
+      setButtonsDisabled(false);
+    }
+  }
+
+  rebuildBtn.addEventListener('click', () => runCalendarBuild(undefined, rebuildBtn, 'Rebuilding…'));
+  resyncBtn.addEventListener('click', () => runCalendarBuild({ resync: true }, resyncBtn, 'Resyncing…'));
 }
 
 document.addEventListener('DOMContentLoaded', initThresholdControls);

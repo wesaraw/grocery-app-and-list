@@ -4,7 +4,7 @@
     "jsdom": "^26.1.0"
   },
   "scripts": {
-    "test": "node test/unitPriceTest.js && node test/unitNormalizeTest.js && node test/canOfSoupTest.js && node test/weightingCalendarTest.js && node test/sharedStateCalendarTest.js && node test/multiSnackSlotTest.js && node test/multiCategorySharedRegressionTest.js && node test/mixedBreakfastOverrideTest.js && node test/overrideCalendarTest.js && node test/mealNeedsOverrideTest.js && node test/calendarPortionOverrideTest.js && node test/regenerationContinuationTest.js"
+    "test": "node test/unitPriceTest.js && node test/unitNormalizeTest.js && node test/canOfSoupTest.js && node test/weightingCalendarTest.js && node test/sharedStateCalendarTest.js && node test/multiSnackSlotTest.js && node test/multiCategorySharedRegressionTest.js && node test/mixedBreakfastOverrideTest.js && node test/overrideCalendarTest.js && node test/mealNeedsOverrideTest.js && node test/calendarPortionOverrideTest.js && node test/regenerationContinuationTest.js && node test/whatToEatResyncTest.js"
   },
   "type": "module"
 }

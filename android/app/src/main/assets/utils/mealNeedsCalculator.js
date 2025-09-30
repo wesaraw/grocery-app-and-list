@@ -71,7 +71,7 @@ function loadMeals(type) {
   });
 }
 
-export async function calculateAndSaveMealNeeds() {
+export async function calculateAndSaveMealNeeds(options = {}) {
   await initializeMealCategories();
   await initUomTable();
   const densityMap = await loadDensityMap();
@@ -539,6 +539,7 @@ export async function calculateAndSaveMealNeeds() {
 
   const freezeBefore = new Date();
   const freezeBeforeStr = freezeBefore.toISOString().split('T')[0];
+  const resync = !!(options && options.resync);
 
   const whatCalResult = generateWhatToEatCalendar(
     users,
@@ -552,13 +553,47 @@ export async function calculateAndSaveMealNeeds() {
     itemSeasons,
     slotOverridesByUserName,
     {
-      previousCalendar: prevCalendar,
+      previousCalendar: resync ? {} : prevCalendar,
       freezeBefore: freezeBeforeStr,
-      initialState: prevMeta || null
+      initialState: resync ? null : prevMeta || null
     }
   );
 
-  const { calendar: whatCal, metadata: whatCalMeta } = whatCalResult;
+  let { calendar: whatCal, metadata: whatCalMeta } = whatCalResult;
+
+  if (resync && prevCalendar && typeof prevCalendar === 'object') {
+    const mergedCal = {};
+    users.forEach(user => {
+      const nextUserEntries = { ...(whatCal[user] || {}) };
+      const prevUserEntries = prevCalendar[user];
+      if (prevUserEntries && typeof prevUserEntries === 'object') {
+        Object.entries(prevUserEntries).forEach(([dateStr, dayValue]) => {
+          if (!freezeBeforeStr || dateStr < freezeBeforeStr) {
+            if (nextUserEntries[dateStr] === undefined) {
+              nextUserEntries[dateStr] = dayValue;
+            }
+          }
+        });
+      }
+      mergedCal[user] = nextUserEntries;
+    });
+
+    Object.keys(prevCalendar).forEach(prevUser => {
+      if (mergedCal[prevUser]) return;
+      const prevUserEntries = prevCalendar[prevUser];
+      const mergedEntries = {};
+      if (prevUserEntries && typeof prevUserEntries === 'object') {
+        Object.entries(prevUserEntries).forEach(([dateStr, dayValue]) => {
+          if (!freezeBeforeStr || dateStr < freezeBeforeStr) {
+            mergedEntries[dateStr] = dayValue;
+          }
+        });
+      }
+      mergedCal[prevUser] = mergedEntries;
+    });
+
+    whatCal = mergedCal;
+  }
 
   await new Promise(resolve => {
     chrome.storage.local.set(
