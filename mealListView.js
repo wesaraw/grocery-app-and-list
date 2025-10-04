@@ -16,6 +16,7 @@ import {
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
+const expandedBooks = new Map();
 
 const params = new URLSearchParams(location.search);
 let type = params.get('type') || 'breakfast';
@@ -1104,9 +1105,14 @@ async function loadAndRender() {
     bookMap[book].push(m);
   });
   const headerColspan = 11;
-  Object.keys(bookMap)
-    .sort((a, b) => a.localeCompare(b))
-    .forEach(book => {
+  const bookNames = Object.keys(bookMap).sort((a, b) => a.localeCompare(b));
+  const validBooks = new Set(bookNames);
+  expandedBooks.forEach((_, book) => {
+    if (!validBooks.has(book)) {
+      expandedBooks.delete(book);
+    }
+  });
+  bookNames.forEach(book => {
       const headerTr = document.createElement('tr');
       const th = document.createElement('th');
       th.className = 'book-header';
@@ -1115,18 +1121,25 @@ async function loadAndRender() {
       headerTr.appendChild(th);
       tbody.appendChild(headerTr);
       const rows = [];
+      let expanded = expandedBooks.get(book);
+      if (expanded === undefined) expanded = false;
       bookMap[book].forEach(meal => {
         const r = createRows(meal, meals);
         r.forEach(row => {
           row.dataset.book = book;
-          row.style.display = 'none';
+          row.style.display = expanded ? '' : 'none';
           rows.push(row);
           tbody.appendChild(row);
         });
       });
       th.addEventListener('click', () => {
-        const hidden = rows[0] && rows[0].style.display === 'none';
-        rows.forEach(r => (r.style.display = hidden ? '' : 'none'));
+        expanded = !expanded;
+        rows.forEach(r => (r.style.display = expanded ? '' : 'none'));
+        if (rows.length > 0) {
+          expandedBooks.set(book, expanded);
+        } else {
+          expandedBooks.delete(book);
+        }
       });
     });
   updateInventoryDisplay();
