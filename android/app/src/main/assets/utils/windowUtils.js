@@ -1,6 +1,13 @@
-export function openOrFocusWindow(path, width = 400, height = 600) {
+const DEFAULT_WIDTH = 1024;
+
+export function openOrFocusWindow(path, width = DEFAULT_WIDTH, height = 600) {
   try {
     const url = chrome.runtime.getURL(path);
+    const desiredWidth = typeof width === 'number' && width > 0 ? width : DEFAULT_WIDTH;
+    const screenWidth = typeof screen !== 'undefined' ? screen.availWidth : undefined;
+    const targetWidth = typeof screenWidth === 'number' && screenWidth > 0
+      ? Math.min(desiredWidth, screenWidth)
+      : desiredWidth;
     if (chrome.windows && chrome.windows.getAll) {
       chrome.windows.getAll({ populate: true }, wins => {
         const existing = wins.find(w =>
@@ -9,18 +16,18 @@ export function openOrFocusWindow(path, width = 400, height = 600) {
         if (existing) {
           const tab = existing.tabs.find(t => t.url === url);
           if (chrome.windows.update) {
-            chrome.windows.update(existing.id, { focused: true }, () => {
+            chrome.windows.update(existing.id, { focused: true, width: targetWidth }, () => {
               if (tab && chrome.tabs && chrome.tabs.update) {
                 chrome.tabs.update(tab.id, { active: true });
               }
             });
           }
         } else if (chrome.windows.create) {
-          chrome.windows.create({ url, type: 'popup', width, height });
+          chrome.windows.create({ url, type: 'popup', width: targetWidth, height });
         }
       });
     } else if (chrome.windows && chrome.windows.create) {
-      chrome.windows.create({ url, type: 'popup', width, height });
+      chrome.windows.create({ url, type: 'popup', width: targetWidth, height });
     } else {
       window.location.href = path;
     }
