@@ -321,7 +321,7 @@ function createRows(meal, arr) {
     const tr = document.createElement('tr');
     if (idx === 0) {
       const useTd = document.createElement('td');
-      useTd.style.whiteSpace = 'nowrap';
+      useTd.classList.add('use-cell');
       const chks = [];
       userNames.forEach((u, i) => {
         const lbl = document.createElement('label');
@@ -553,7 +553,7 @@ function createRows(meal, arr) {
   if (ingredients.length === 0) {
     const tr = document.createElement('tr');
     const useTd = document.createElement('td');
-    useTd.style.whiteSpace = 'nowrap';
+    useTd.classList.add('use-cell');
     const chks = [];
     userNames.forEach((u, i) => {
       const lbl = document.createElement('label');
