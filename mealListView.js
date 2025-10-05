@@ -341,6 +341,9 @@ function createRows(meal, arr) {
     if (idx === 0) {
       const useTd = document.createElement('td');
       useTd.classList.add('use-cell');
+      const useContainer = document.createElement('div');
+      useContainer.className = 'use-cell-content';
+      useTd.appendChild(useContainer);
       const chks = [];
       userNames.forEach((u, i) => {
         const lbl = document.createElement('label');
@@ -411,7 +414,7 @@ function createRows(meal, arr) {
           portionInput.value = String(sameMultiplier(num, base) ? base : num);
         });
         lbl.appendChild(portionInput);
-        useTd.appendChild(lbl);
+        useContainer.appendChild(lbl);
       });
       if (ingredients.length > 1) useTd.rowSpan = ingredients.length;
       spanCells.push(useTd);
@@ -591,6 +594,9 @@ function createRows(meal, arr) {
     }
     const useTd = document.createElement('td');
     useTd.classList.add('use-cell');
+    const useContainer = document.createElement('div');
+    useContainer.className = 'use-cell-content';
+    useTd.appendChild(useContainer);
     const chks = [];
     userNames.forEach((u, i) => {
       const lbl = document.createElement('label');
@@ -661,7 +667,7 @@ function createRows(meal, arr) {
         portionInput.value = String(sameMultiplier(num, base) ? base : num);
       });
       lbl.appendChild(portionInput);
-      useTd.appendChild(lbl);
+      useContainer.appendChild(lbl);
     });
     imageTd = document.createElement('td');
     const img = document.createElement('img');
