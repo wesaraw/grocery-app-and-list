@@ -831,12 +831,19 @@ function createRows(meal, arr) {
       if (saveBtn) saveBtn.style.display = any ? '' : 'none';
     }
 
+    function autoResize(el) {
+      el.style.height = 'auto';
+      el.style.height = `${el.scrollHeight}px`;
+    }
+
     function addInputs(cell, ing = {}) {
       const { ingTd, amtTd } = cell;
-      const nameInput = document.createElement('input');
+      const nameInput = document.createElement('textarea');
+      nameInput.rows = 1;
       nameInput.style.display = 'block';
       nameInput.style.marginTop = '2px';
-      nameInput.style.width = '95%';
+      nameInput.style.width = '98%';
+      nameInput.style.overflow = 'hidden';
       nameInput.value = ing.name || '';
       ingTd.innerHTML = '';
       ingTd.appendChild(nameInput);
@@ -859,12 +866,20 @@ function createRows(meal, arr) {
       amtTd.appendChild(qtyInput);
       amtTd.appendChild(select);
 
-      nameInput.addEventListener('input', checkSave);
+      autoResize(nameInput);
+
+      nameInput.addEventListener('input', () => {
+        autoResize(nameInput);
+        checkSave();
+      });
       qtyInput.addEventListener('input', checkSave);
       select.addEventListener('change', checkSave);
       [nameInput, qtyInput, select].forEach(el =>
         el.addEventListener('keydown', e => {
-          if (e.key === 'Enter') commit();
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            commit();
+          }
         })
       );
 
