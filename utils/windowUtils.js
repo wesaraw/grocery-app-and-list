@@ -2,33 +2,8 @@ const DEFAULT_WIDTH = 960;
 const DEFAULT_HEIGHT = 600;
 
 const WINDOW_SIZE_OVERRIDES = {
-  'addItem.html': { width: 420 },
-  'addMeal.html': { width: 480 },
   'backup.html': { width: 420, height: 420 },
-  'consumed.html': { width: 420 },
-  'cookingDays.html': { width: 420 },
-  'coupon.html': { width: 420 },
-  'densityRatios.html': { width: 480 },
-  'editCategory.html': { width: 420 },
-  'editPlan.html': { width: 420 },
-  'editSeason.html': { width: 420 },
-  'expiration.html': { width: 420 },
-  'inventory.html': { width: 420 },
-  'item.html': { width: 420 },
-  'mealChooser.html': { width: 420 },
-  'mealListSelect.html': { width: 420 },
-  'mealPlanner.html': { width: 420 },
-  'mealMultiplier.html': { width: 420 },
-  'popup.html': { width: 420 },
-  'removeItem.html': { width: 420 },
-  'renameItem.html': { width: 420 },
-  'scrapeResults.html': { width: 420 },
-  'shoppingList.html': { width: 420 },
-  'storeTotals.html': { width: 420 },
-  'uomChange.html': { width: 480 },
-  'users.html': { width: 420 },
-  'whatToCookWhen.html': { width: 500 },
-  'whatToEatCalendar.html': { width: 440 }
+  'uomChange.html': { width: 400 }
 };
 
 function resolveWindowSize(path, width, height) {
