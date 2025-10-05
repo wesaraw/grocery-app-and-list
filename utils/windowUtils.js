@@ -26,17 +26,62 @@ function executeResize(tabId, windowId, minWidth, padding) {
   const injection = chrome.scripting.executeScript({
     target: { tabId },
     func: () => {
-      const doc = document.documentElement;
-      const body = document.body;
-      const docWidth = doc ? doc.scrollWidth : 0;
-      const bodyWidth = body ? body.scrollWidth : 0;
-      return Math.max(docWidth, bodyWidth);
+      const measure = () => {
+        const doc = document.documentElement;
+        const body = document.body;
+        const targets = [
+          doc,
+          body,
+          ...Array.from(document.querySelectorAll('table, .grid'))
+        ].filter(Boolean);
+
+        const states = targets.map(el => ({
+          el,
+          style: el.getAttribute('style')
+        }));
+
+        try {
+          for (const { el } of states) {
+            el.style.setProperty('width', 'max-content', 'important');
+            el.style.setProperty('max-width', 'none', 'important');
+            el.style.setProperty('min-width', 'max-content', 'important');
+          }
+
+          const docWidth = doc ? doc.scrollWidth : 0;
+          const bodyWidth = body ? body.scrollWidth : 0;
+          return Math.max(docWidth, bodyWidth);
+        } finally {
+          for (const state of states) {
+            if (state.style === null) {
+              state.el.removeAttribute('style');
+            } else {
+              state.el.setAttribute('style', state.style);
+            }
+          }
+        }
+      };
+
+      const first = measure();
+      const scheduler = typeof requestAnimationFrame === 'function'
+        ? cb => requestAnimationFrame(() => cb())
+        : cb => setTimeout(cb, 50);
+
+      return new Promise(resolve => {
+        scheduler(() => {
+          try {
+            const second = measure();
+            resolve(Math.max(first, second));
+          } catch (_) {
+            resolve(first);
+          }
+        });
+      });
     }
   });
 
   const handleResult = results => {
     const width = Array.isArray(results) && results.length > 0 ? results[0].result : null;
-    if (typeof width === 'number') {
+    if (typeof width === 'number' && Number.isFinite(width) && width > 0) {
       applyWindowWidth(windowId, width, minWidth, padding);
     }
   };
