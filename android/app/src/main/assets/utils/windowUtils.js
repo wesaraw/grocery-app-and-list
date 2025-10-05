@@ -1,9 +1,10 @@
 const DEFAULT_WIDTH = 1024;
 
-export function openOrFocusWindow(path, width = DEFAULT_WIDTH, height = 600) {
+export function openOrFocusWindow(path, width, height = 600) {
   try {
     const url = chrome.runtime.getURL(path);
-    const desiredWidth = typeof width === 'number' && width > 0 ? width : DEFAULT_WIDTH;
+    const widthWasProvided = typeof width === 'number' && width > 0;
+    const desiredWidth = widthWasProvided ? width : DEFAULT_WIDTH;
     const screenWidth = typeof screen !== 'undefined' ? screen.availWidth : undefined;
     const targetWidth = typeof screenWidth === 'number' && screenWidth > 0
       ? Math.min(desiredWidth, screenWidth)
@@ -16,7 +17,12 @@ export function openOrFocusWindow(path, width = DEFAULT_WIDTH, height = 600) {
         if (existing) {
           const tab = existing.tabs.find(t => t.url === url);
           if (chrome.windows.update) {
-            chrome.windows.update(existing.id, { focused: true, width: targetWidth }, () => {
+            const existingWidth = typeof existing.width === 'number' ? existing.width : undefined;
+            const shouldApplyWidth = widthWasProvided || (typeof existingWidth === 'number' && existingWidth < targetWidth);
+            const updateOptions = shouldApplyWidth
+              ? { focused: true, width: targetWidth }
+              : { focused: true };
+            chrome.windows.update(existing.id, updateOptions, () => {
               if (tab && chrome.tabs && chrome.tabs.update) {
                 chrome.tabs.update(tab.id, { active: true });
               }
