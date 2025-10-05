@@ -20,6 +20,11 @@ const expandedBooks = new Map();
 
 const params = new URLSearchParams(location.search);
 let type = params.get('type') || 'breakfast';
+const focusMealParam = params.get('meal');
+const focusMealName = focusMealParam ? canonicalName(focusMealParam) : null;
+const focusBookParam = params.get('book');
+const focusBook = focusBookParam !== null ? focusBookParam : null;
+let focusHandled = false;
 let key, path, label;
 
 let inventorySet = new Set();
@@ -300,6 +305,7 @@ function createRows(meal, arr) {
   const ingredients = meal.ingredients || [];
   const ingCells = [];
   const spanCells = [];
+  const canonicalMeal = canonicalName(meal.name || '');
   let imageTd;
   let nameTd;
   let weightTd;
@@ -329,6 +335,9 @@ function createRows(meal, arr) {
 
   ingredients.forEach((ing, idx) => {
     const tr = document.createElement('tr');
+    if (idx === 0 && canonicalMeal) {
+      tr.dataset.mealName = canonicalMeal;
+    }
     if (idx === 0) {
       const useTd = document.createElement('td');
       useTd.style.whiteSpace = 'nowrap';
@@ -577,6 +586,9 @@ function createRows(meal, arr) {
 
   if (ingredients.length === 0) {
     const tr = document.createElement('tr');
+    if (canonicalMeal) {
+      tr.dataset.mealName = canonicalMeal;
+    }
     const useTd = document.createElement('td');
     useTd.style.whiteSpace = 'nowrap';
     const chks = [];
@@ -1107,43 +1119,72 @@ async function loadAndRender() {
   const headerColspan = 11;
   const bookNames = Object.keys(bookMap).sort((a, b) => a.localeCompare(b));
   const validBooks = new Set(bookNames);
+  if (focusBook !== null && validBooks.has(focusBook)) {
+    expandedBooks.set(focusBook, true);
+  }
   expandedBooks.forEach((_, book) => {
     if (!validBooks.has(book)) {
       expandedBooks.delete(book);
     }
   });
   bookNames.forEach(book => {
-      const headerTr = document.createElement('tr');
-      const th = document.createElement('th');
-      th.className = 'book-header';
-      th.colSpan = headerColspan;
-      th.textContent = book || 'Uncategorized';
-      headerTr.appendChild(th);
-      tbody.appendChild(headerTr);
-      const rows = [];
-      let expanded = expandedBooks.get(book);
-      if (expanded === undefined) expanded = false;
-      bookMap[book].forEach(meal => {
-        const r = createRows(meal, meals);
-        r.forEach(row => {
-          row.dataset.book = book;
-          row.style.display = expanded ? '' : 'none';
-          rows.push(row);
-          tbody.appendChild(row);
-        });
-      });
-      th.addEventListener('click', () => {
-        expanded = !expanded;
-        rows.forEach(r => (r.style.display = expanded ? '' : 'none'));
-        if (rows.length > 0) {
-          expandedBooks.set(book, expanded);
-        } else {
-          expandedBooks.delete(book);
-        }
+    const headerTr = document.createElement('tr');
+    const th = document.createElement('th');
+    th.className = 'book-header';
+    th.colSpan = headerColspan;
+    th.textContent = book || 'Uncategorized';
+    headerTr.appendChild(th);
+    tbody.appendChild(headerTr);
+    const rows = [];
+    let expanded = expandedBooks.get(book);
+    if (expanded === undefined) expanded = false;
+    bookMap[book].forEach(meal => {
+      const r = createRows(meal, meals);
+      r.forEach(row => {
+        row.dataset.book = book;
+        row.style.display = expanded ? '' : 'none';
+        rows.push(row);
+        tbody.appendChild(row);
       });
     });
+    th.addEventListener('click', () => {
+      expanded = !expanded;
+      rows.forEach(r => (r.style.display = expanded ? '' : 'none'));
+      if (rows.length > 0) {
+        expandedBooks.set(book, expanded);
+      } else {
+        expandedBooks.delete(book);
+      }
+    });
+  });
   updateInventoryDisplay();
   await calculateAndSaveMealNeeds();
+  if (!focusHandled) {
+    let targetRow = null;
+    if (focusMealName) {
+      const candidates = tbody.querySelectorAll('[data-meal-name]');
+      targetRow = Array.from(candidates).find(
+        row => row.dataset.mealName === focusMealName
+      );
+    }
+    if (focusMealName && targetRow) {
+      focusHandled = true;
+      const rect = targetRow.getBoundingClientRect();
+      const viewportHeight =
+        window.innerHeight || document.documentElement.clientHeight || 0;
+      const offset = rect.top + window.scrollY - Math.max((viewportHeight - rect.height) / 2, 0);
+      const clampedOffset = offset < 0 ? 0 : offset;
+      window.scrollTo({ top: clampedOffset });
+      targetRow.classList.add('focused-meal');
+      setTimeout(() => {
+        if (targetRow.isConnected) {
+          targetRow.classList.remove('focused-meal');
+        }
+      }, 2000);
+      return;
+    }
+    focusHandled = true;
+  }
   window.scrollTo(0, scrollTop);
 }
 

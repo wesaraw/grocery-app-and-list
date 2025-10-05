@@ -14,6 +14,48 @@
       text-align: left;
       cursor: pointer;
     }
+    .item-name-toggle {
+      background: none;
+      border: none;
+      padding: 0;
+      font: inherit;
+      color: #0066cc;
+      cursor: pointer;
+      text-align: left;
+    }
+    .item-name-toggle::after {
+      content: ' ▸';
+      font-size: 0.8em;
+      color: #555;
+    }
+    .item-name-toggle[aria-expanded="true"]::after {
+      content: ' ▾';
+    }
+    .usage-row td {
+      background: #f9f9f9;
+    }
+    .usage-list {
+      list-style: none;
+      margin: 4px 0 0 16px;
+      padding: 0;
+    }
+    .usage-list li {
+      margin: 4px 0;
+    }
+    .usage-link {
+      background: none;
+      border: none;
+      padding: 0;
+      font: inherit;
+      color: #0066cc;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .no-usage {
+      margin: 4px 0 0 16px;
+      color: #666;
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
