@@ -1,0 +1,18 @@
+:root {
+  color-scheme: light;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  min-inline-size: 320px;
+}
+
+@supports not (inline-size: fit-content) {
+  body {
+    width: max-content;
+    max-width: 100%;
+    min-width: 320px;
+  }
+}

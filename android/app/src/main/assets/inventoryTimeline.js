@@ -1,5 +1,5 @@
 import { WEEKS_PER_MONTH } from './utils/constants.js';
-import { openOrFocusWindow } from './utils/windowUtils.js';
+import { openOrFocusWindow, resizeWindowToContent } from './utils/windowUtils.js';
 import { canonicalName } from './utils/nameUtils.js';
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
 import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
@@ -428,24 +428,6 @@ async function refreshItems() {
   }
 }
 
-function resizeWindowToContent() {
-  try {
-    const width = Math.min(
-      screen.availWidth,
-      document.documentElement.scrollWidth + 20
-    );
-    const height = Math.min(
-      screen.availHeight,
-      document.documentElement.scrollHeight + 20
-    );
-    chrome.windows.getCurrent(win => {
-      chrome.windows.update(win.id, { width, height });
-    });
-  } catch (e) {
-    // ignore if chrome APIs are unavailable
-  }
-}
-
 let filterText = '';
 
 function showGrid(items = globalItems) {
@@ -454,7 +436,7 @@ function showGrid(items = globalItems) {
   gridContainer.innerHTML = '';
   const startWeek = currentOnly ? getCurrentWeek() : 1;
   gridContainer.appendChild(buildGrid(items, headerState, startWeek));
-  resizeWindowToContent();
+  resizeWindowToContent({ minWidth: 400 });
 }
 
 function showPurchaseHistory() {
@@ -462,7 +444,7 @@ function showPurchaseHistory() {
   document.getElementById('view-purchases').textContent = 'Timeline View';
   gridContainer.innerHTML = '';
   gridContainer.appendChild(buildPurchaseList(globalItems));
-  resizeWindowToContent();
+  resizeWindowToContent({ minWidth: 400 });
 }
 
 async function init() {
