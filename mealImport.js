@@ -78,9 +78,10 @@ const STORE_LINKS = {
     `https://www.hannaford.com/search/product?form_state=searchForm&keyword=${name.replace(/ /g, '+')}&ieDummyTextField=&productTypeId=P`
 };
 
-async function ensureItemExists(name) {
+async function ensureItemExists(name, unit) {
   const needs = await loadNeeds();
   if (needs.find(n => n.name === name)) return;
+  const normalizedUnit = unit?.trim() || DEFAULT_ITEM.unit;
   const [consumption, stock, expiration, consumed, storeSelections, purchases, densityMap, itemSeasons] = await Promise.all([
     loadConsumption(),
     loadStock(),
@@ -95,15 +96,15 @@ async function ensureItemExists(name) {
   needs.push({
     name,
     total_needed_year: DEFAULT_ITEM.yearly,
-    home_unit: DEFAULT_ITEM.unit,
+    home_unit: normalizedUnit,
     treat_as_whole_unit: false,
     category: DEFAULT_ITEM.category
   });
-  consumption.push({ name, monthly_consumption: DEFAULT_ITEM.monthly, unit: DEFAULT_ITEM.unit });
-  stock.push({ name, amount: 0, unit: DEFAULT_ITEM.unit });
+  consumption.push({ name, monthly_consumption: DEFAULT_ITEM.monthly, unit: normalizedUnit });
+  stock.push({ name, amount: 0, unit: normalizedUnit });
   const shelf = DEFAULT_ITEM.shelf / WEEKS_PER_MONTH;
   expiration.push({ name, shelf_life_months: shelf });
-  consumed.push({ name, amount: 0, unit: DEFAULT_ITEM.unit });
+  consumed.push({ name, amount: 0, unit: normalizedUnit });
   storeSelections.push(
     { name, store: 'Stop & Shop', price: null, convertedQty: null, pricePerUnit: null, link: STORE_LINKS['Stop & Shop'](name), image: null },
     { name, store: 'Walmart', price: null, convertedQty: null, pricePerUnit: null, link: STORE_LINKS['Walmart'](name), image: null },
@@ -156,7 +157,7 @@ function saveMeals(category, arr) {
   });
 }
 
-function parseMealsFromXml(text) {
+export function parseMealsFromXml(text) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(text, 'application/xml');
   const meals = [];
@@ -178,7 +179,7 @@ function parseMealsFromXml(text) {
       const amt = iEl.querySelector('amount')?.textContent.trim();
       const unit = iEl.querySelector('unit')?.textContent.trim();
       if (name && amt && unit) {
-        meal.ingredients.push({ name, amount: `${amt} ${unit}`, serving_size: `${amt} ${unit}` });
+        meal.ingredients.push({ name, amount: `${amt} ${unit}`, unit, serving_size: `${amt} ${unit}` });
       }
     });
     if (meal.name && meal.ingredients.length) {
@@ -190,7 +191,7 @@ function parseMealsFromXml(text) {
 
 async function addMeal(meal, userCount) {
   for (const ing of meal.ingredients) {
-    await ensureItemExists(ing.name);
+    await ensureItemExists(ing.name, ing.unit);
   }
   let usersArr = meal.users || [];
   if (usersArr.length < userCount) {
