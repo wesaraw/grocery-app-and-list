@@ -129,6 +129,61 @@ function normalizeUnitType(unit, sourceText = '') {
   return result || null;
 }
 
+const WEIGHT_UNITS = new Set(['oz', 'lb', 'g', 'kg', 'mg']);
+const VOLUME_UNITS = new Set([
+  'ml',
+  'l',
+  'fl oz',
+  'cup',
+  'tbsp',
+  'tsp',
+  'pt',
+  'qt',
+  'gal',
+  'dl',
+  'cl'
+]);
+const COUNT_UNITS = new Set([
+  'ea',
+  'bag',
+  'box',
+  'jar',
+  'bottle',
+  'stick',
+  'slice',
+  'sheet',
+  'dash',
+  'pinch',
+  'can',
+  'pack',
+  'pkg'
+]);
+
+function getUnitCategory(unit) {
+  if (!unit) return 'unknown';
+  if (WEIGHT_UNITS.has(unit)) return 'weight';
+  if (VOLUME_UNITS.has(unit)) return 'volume';
+  if (COUNT_UNITS.has(unit)) return 'count';
+  return 'unknown';
+}
+
+function areUnitsCompatible(a, b) {
+  if (!a || !b) return true;
+  if (a === b) return true;
+  const catA = getUnitCategory(a);
+  const catB = getUnitCategory(b);
+  if (catA === 'unknown' || catB === 'unknown') return false;
+  const isWeightOrVolume = category => category === 'weight' || category === 'volume';
+  if (isWeightOrVolume(catA) && isWeightOrVolume(catB)) {
+    return true;
+  }
+  if (catA === catB) {
+    // Only identical discrete units are compatible; handled above.
+    return false;
+  }
+  return false;
+}
+
 async function loadArray(key, path) {
   const arr = await loadItemArray(key);
   if (arr.length > 0) return arr;
@@ -266,34 +321,64 @@ function updateUnitWarning(row) {
   const mealUnitSet = itemMealUnitMap.get(canon);
   const mealUnits = mealUnitSet ? Array.from(mealUnitSet).sort() : [];
   const finalUnit = finalUnitMap.get(canon) || null;
-  const homeUnit = normalizeUnitType(row.item.home_unit, row.item.home_unit);
-  const reasons = [];
+  const rawHome = row.item.home_unit;
+  const homeUnit = normalizeUnitType(rawHome, rawHome);
+  const reasonSet = new Set();
 
   if (!homeUnit && (mealUnits.length > 0 || finalUnit)) {
-    reasons.push('Home unit is not set');
+    reasonSet.add('Home unit is not set');
   }
 
-  if (mealUnits.length > 0) {
-    const mismatched = mealUnits.filter(unit => !homeUnit || unit !== homeUnit);
-    if (mismatched.length > 0) {
-      const unique = [...new Set(mismatched)];
-      reasons.push(`Meals use ${unique.join(', ')}`);
-    }
-  }
+  const units = [];
+  if (homeUnit) units.push({ source: 'home', unit: homeUnit });
+  mealUnits.forEach(unit => {
+    units.push({ source: 'meal', unit });
+  });
+  if (finalUnit) units.push({ source: 'final', unit: finalUnit });
 
-  if (finalUnit) {
-    if (!homeUnit || finalUnit !== homeUnit) {
-      reasons.push(`Final selection is ${finalUnit}`);
+  const describe = (source, unit, capitalizeFirst = false) => {
+    let phrase;
+    if (source === 'meal') {
+      phrase = `meal uses ${unit}`;
+    } else if (source === 'home') {
+      phrase = `home ${unit}`;
+    } else if (source === 'final') {
+      phrase = `final selection ${unit}`;
+    } else {
+      phrase = `${source} ${unit}`;
     }
-    if (mealUnits.length > 0) {
-      const mismatchedFinal = mealUnits.filter(unit => unit !== finalUnit);
-      if (mismatchedFinal.length > 0) {
-        const unique = [...new Set(mismatchedFinal)];
-        reasons.push(`Meals differ from final (${unique.join(', ')})`);
+    if (!capitalizeFirst) return phrase;
+    return phrase.charAt(0).toUpperCase() + phrase.slice(1);
+  };
+
+  const sourceRank = source => {
+    if (source === 'meal') return 0;
+    if (source === 'final') return 1;
+    if (source === 'home') return 2;
+    return 3;
+  };
+
+  for (let i = 0; i < units.length; i += 1) {
+    for (let j = i + 1; j < units.length; j += 1) {
+      const a = units[i];
+      const b = units[j];
+      if (!areUnitsCompatible(a.unit, b.unit)) {
+        const pair = [a, b].sort((x, y) => {
+          const rankDiff = sourceRank(x.source) - sourceRank(y.source);
+          if (rankDiff !== 0) return rankDiff;
+          return x.unit.localeCompare(y.unit);
+        });
+        const [first, second] = pair;
+        const message = `${describe(first.source, first.unit, true)} vs. ${describe(
+          second.source,
+          second.unit
+        )}`;
+        reasonSet.add(message);
       }
     }
   }
 
+  const reasons = Array.from(reasonSet);
   const show = reasons.length > 0;
   if (show) {
     warning.classList.remove('hidden');
