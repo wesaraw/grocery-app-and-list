@@ -31,6 +31,29 @@ function saveMap(map) {
   });
 }
 
+export async function getItemNameMap() {
+  const map = await loadMap();
+  return { ...map };
+}
+
+export async function saveItemNameMap(map) {
+  await saveMap(map || {});
+}
+
+export function nextUnusedItemId(map, extraIds = []) {
+  let max = 0;
+  const consider = val => {
+    if (val == null) return;
+    const num = parseInt(val, 10);
+    if (!Number.isNaN(num) && num > max) {
+      max = num;
+    }
+  };
+  Object.values(map || {}).forEach(consider);
+  (Array.isArray(extraIds) ? extraIds : []).forEach(consider);
+  return String(max + 1);
+}
+
 export async function getItemId(name) {
   const map = await loadMap();
   if (map[name]) return map[name];

@@ -11,7 +11,10 @@ import { getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
 import {
   loadArray as loadItemArray,
   saveArray as saveItemArray,
-  convertArrayToNames
+  convertArrayToNames,
+  getItemNameMap,
+  saveItemNameMap,
+  nextUnusedItemId
 } from './utils/itemStorage.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
@@ -203,6 +206,155 @@ function saveMealsForType(cat, arr) {
   const info = MEAL_TYPES[cat];
   if (!info) return Promise.resolve();
   return saveItemArray(info.key, arr);
+}
+
+async function correctMealIdErrors() {
+  await initializeMealCategories();
+  const categories = Object.values(MEAL_TYPES).filter(info => info && info.key);
+  const categoryData = await Promise.all(
+    categories.map(async info => ({ info, meals: await loadItemArray(info.key) }))
+  );
+  const mealsByKey = new Map(categoryData.map(({ info, meals }) => [info.key, meals]));
+
+  const originalMap = await getItemNameMap();
+  const workingMap = { ...originalMap };
+  const reverseMap = {};
+  Object.entries(workingMap).forEach(([name, id]) => {
+    if (id != null && reverseMap[id] == null) {
+      reverseMap[id] = name;
+    }
+  });
+
+  const idGroups = new Map();
+  const missingIdEntries = [];
+  const numericMealIds = [];
+
+  categoryData.forEach(({ info, meals }) => {
+    meals.forEach((meal, index) => {
+      if (!meal || typeof meal !== 'object') return;
+      const entry = { meal, info, index, meals };
+      const rawId = meal.id;
+      const id = rawId == null ? '' : String(rawId).trim();
+      if (!id || !/^[0-9]+$/.test(id)) {
+        missingIdEntries.push(entry);
+        return;
+      }
+      numericMealIds.push(id);
+      if (!idGroups.has(id)) {
+        idGroups.set(id, []);
+      }
+      idGroups.get(id).push(entry);
+    });
+  });
+
+  let nextSeed = parseInt(nextUnusedItemId(workingMap, numericMealIds), 10);
+  if (!Number.isFinite(nextSeed)) {
+    nextSeed = 1;
+  }
+  let maxId = nextSeed - 1;
+
+  let mealsUpdated = 0;
+  let mapUpdates = 0;
+  const dirtyKeys = new Set();
+
+  const ensureMap = (name, id) => {
+    if (!name) return;
+    const strId = String(id);
+    if (workingMap[name] !== strId) {
+      workingMap[name] = strId;
+      mapUpdates += 1;
+    }
+  };
+
+  const setReverse = (id, name) => {
+    if (!id || !name) return;
+    reverseMap[id] = name;
+  };
+
+  const allocateNewId = () => {
+    maxId += 1;
+    return String(maxId);
+  };
+
+  const canonical = value => canonicalName(value || '');
+
+  for (const [id, entries] of idGroups.entries()) {
+    if (entries.length === 0) continue;
+    if (entries.length === 1) {
+      const [entry] = entries;
+      const normalizedId = String(entry.meal.id ?? id);
+      ensureMap(entry.meal.name, normalizedId);
+      setReverse(normalizedId, entry.meal.name);
+      continue;
+    }
+    const keeperName = reverseMap[id];
+    const keeperCanonical = keeperName ? canonical(keeperName) : null;
+    let keeper = null;
+    if (keeperCanonical) {
+      keeper = entries.find(e => canonical(e.meal.name) === keeperCanonical) || null;
+    }
+    if (!keeper) {
+      keeper = entries[0];
+    }
+    entries.forEach(entry => {
+      if (entry === keeper) {
+        const normalizedId = String(entry.meal.id ?? id);
+        ensureMap(entry.meal.name, normalizedId);
+        setReverse(normalizedId, entry.meal.name);
+        return;
+      }
+      const newId = allocateNewId();
+      entry.meal.id = newId;
+      ensureMap(entry.meal.name, newId);
+      setReverse(newId, entry.meal.name);
+      dirtyKeys.add(entry.info.key);
+      mealsUpdated += 1;
+    });
+  }
+
+  missingIdEntries.forEach(entry => {
+    const newId = allocateNewId();
+    entry.meal.id = newId;
+    ensureMap(entry.meal.name, newId);
+    setReverse(newId, entry.meal.name);
+    dirtyKeys.add(entry.info.key);
+    mealsUpdated += 1;
+  });
+
+  idGroups.forEach(entries => {
+    entries.forEach(entry => {
+      ensureMap(entry.meal.name, entry.meal.id);
+      setReverse(String(entry.meal.id), entry.meal.name);
+    });
+  });
+  missingIdEntries.forEach(entry => {
+    ensureMap(entry.meal.name, entry.meal.id);
+    setReverse(String(entry.meal.id), entry.meal.name);
+  });
+
+  const mapChanged = mapUpdates > 0;
+  const mealsChanged = mealsUpdated > 0;
+
+  if (mealsChanged) {
+    await Promise.all(
+      Array.from(dirtyKeys).map(async mealKey => {
+        const list = mealsByKey.get(mealKey);
+        if (list) {
+          await saveItemArray(mealKey, list);
+        }
+      })
+    );
+  }
+
+  if (mapChanged) {
+    await saveItemNameMap(workingMap);
+  }
+
+  if (mealsChanged || mapChanged) {
+    await calculateAndSaveMealNeeds();
+  }
+
+  return { mealsUpdated, mapUpdates };
 }
 
 function pricePerHomeUnit(itemName, product) {
@@ -1239,6 +1391,40 @@ async function init() {
       deleteButtons.forEach(btn => {
         btn.style.display = deleteMode ? '' : 'none';
       });
+    });
+  }
+  const repairBtn = document.getElementById('repairMealIds');
+  if (repairBtn) {
+    repairBtn.addEventListener('click', async () => {
+      const originalText = repairBtn.textContent;
+      repairBtn.disabled = true;
+      repairBtn.textContent = 'Correcting…';
+      try {
+        const { mealsUpdated, mapUpdates } = await correctMealIdErrors();
+        if (mealsUpdated === 0 && mapUpdates === 0) {
+          alert('No meal id errors were found.');
+        } else {
+          const parts = [];
+          if (mealsUpdated > 0) {
+            parts.push(`${mealsUpdated} meal id${mealsUpdated === 1 ? '' : 's'} updated`);
+          }
+          if (mapUpdates > 0) {
+            parts.push(`${mapUpdates} name mapping${mapUpdates === 1 ? '' : 's'} adjusted`);
+          }
+          alert(`Corrected ${parts.join(' and ')}.`);
+          try {
+            await loadAndRender();
+          } catch (refreshErr) {
+            console.error('Failed to refresh meal list after id repair', refreshErr);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to repair meal ids', err);
+        alert('Failed to correct meal id errors. Please try again.');
+      } finally {
+        repairBtn.disabled = false;
+        repairBtn.textContent = originalText;
+      }
     });
   }
   await loadAndRender();
