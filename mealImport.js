@@ -157,13 +157,20 @@ function saveMeals(category, arr) {
   });
 }
 
+const CATEGORY_MAP = {
+  instantbreakfast: 'breakfast'
+};
+
 export function parseMealsFromXml(text) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(text, 'application/xml');
   const meals = [];
   doc.querySelectorAll('meal').forEach(mEl => {
     const meal = {};
-    meal.category = mEl.querySelector('category')?.textContent.trim() || 'lunchDinner';
+    const rawCategory = mEl.querySelector('category')?.textContent.trim();
+    const normalizedCategory =
+      CATEGORY_MAP[rawCategory?.toLowerCase()] || rawCategory || 'lunchDinner';
+    meal.category = normalizedCategory;
     meal.name = mEl.querySelector('name')?.textContent.trim() || '';
     meal.recipeBook = mEl.querySelector('recipeBook')?.textContent.trim() || '';
     meal.image = mEl.querySelector('image')?.textContent.trim() || null;
@@ -216,10 +223,24 @@ async function addMeal(meal, userCount) {
   await calculateAndSaveMealNeeds();
 }
 
-export async function importMealsFromText(text, images = {}) {
+export async function importMealsFromText(text, images = {}, progressCallbacks = {}) {
+  const { onStart = () => {}, onProgress = () => {}, onError = () => {}, onComplete = () => {} } = progressCallbacks;
+
   await initializeMealCategories();
   const users = await loadUsers();
   const meals = parseMealsFromXml(text);
+  const total = meals.length;
+
+  onStart(total);
+  if (total === 0) {
+    onComplete({ total: 0, successCount: 0, errors: [] });
+    return { total: 0, successCount: 0, errors: [] };
+  }
+
+  let processed = 0;
+  let successCount = 0;
+  const errors = [];
+
   for (const meal of meals) {
     if (meal.image && images[meal.image]) {
       meal.image = images[meal.image];
@@ -228,40 +249,57 @@ export async function importMealsFromText(text, images = {}) {
     }
     try {
       await addMeal(meal, users.length);
-      alert(`Imported meal: ${meal.name}`);
-    } catch (e) {
-      alert(`Error importing ${meal.name}: ${e.message}`);
+      successCount += 1;
+    } catch (error) {
+      errors.push({ meal, error });
+      onError({ meal, error, processed: processed + 1, total });
+    } finally {
+      processed += 1;
+      onProgress(processed, total);
     }
   }
+
+  const summary = { total, successCount, errors };
+  onComplete(summary);
+  return summary;
 }
 
-export function importMealsFromFiles(fileList) {
-  const files = Array.from(fileList);
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error || new Error('Failed to read file.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error || new Error('Failed to read file.'));
+    reader.readAsText(file);
+  });
+}
+
+export async function importMealsFromFiles(fileList, progressCallbacks = {}) {
+  const files = Array.from(fileList || []);
+  if (!files.length) {
+    return { total: 0, successCount: 0, errors: [] };
+  }
+
   const xmlFile = files.find(f => f.name.toLowerCase().endsWith('.xml'));
   if (!xmlFile) {
-    alert('XML file not found');
-    return;
+    throw new Error('XML file not found');
   }
+
   const imageFiles = files.filter(f => f !== xmlFile);
   const images = {};
 
-  Promise.all(
-    imageFiles.map(
-      f =>
-        new Promise(resolve => {
-          const r = new FileReader();
-          r.onload = () => {
-            images[f.name] = r.result;
-            resolve();
-          };
-          r.readAsDataURL(f);
-        })
-    )
-  ).then(() => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      importMealsFromText(reader.result, images);
-    };
-    reader.readAsText(xmlFile);
-  });
+  for (const imageFile of imageFiles) {
+    images[imageFile.name] = await readFileAsDataURL(imageFile);
+  }
+
+  const xmlText = await readFileAsText(xmlFile);
+  return importMealsFromText(xmlText, images, progressCallbacks);
 }
