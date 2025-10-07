@@ -5,6 +5,8 @@ import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemSto
 import { initializeMealCategories, MEAL_TYPES } from './utils/mealData.js';
 import { canonicalName } from './utils/nameUtils.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
+import { parseQuantity } from './utils/calendarUtils.js';
+import { normalizeUnit } from './utils/priceUtils.js';
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -15,6 +17,117 @@ const headerState = {};
 let allNeeds = [];
 let tbody;
 let itemUsageMap = new Map();
+let itemMealUnitMap = new Map();
+let finalUnitMap = new Map();
+
+function normalizeUnitType(unit, sourceText = '') {
+  if (!unit && !sourceText) return null;
+  const raw = unit ? `${unit}` : '';
+  const text = raw.trim().toLowerCase();
+  const source = sourceText ? sourceText.toLowerCase() : '';
+  const base = text.replace(/\./g, '').replace(/\s+/g, ' ').trim();
+  const collapsed = base.replace(/\s+/g, '');
+  const ALIASES = {
+    each: 'ea',
+    ea: 'ea',
+    unit: 'ea',
+    units: 'ea',
+    count: 'ea',
+    ct: 'ea',
+    pk: 'ea',
+    pack: 'ea',
+    packs: 'ea',
+    package: 'ea',
+    packages: 'ea',
+    pkg: 'ea',
+    floz: 'fl oz',
+    'fl oz': 'fl oz',
+    'fluid ounce': 'fl oz',
+    'fluid ounces': 'fl oz',
+    gallon: 'gal',
+    gallons: 'gal',
+    gal: 'gal',
+    quart: 'qt',
+    quarts: 'qt',
+    qt: 'qt',
+    pint: 'pt',
+    pints: 'pt',
+    pt: 'pt',
+    ounce: 'oz',
+    ounces: 'oz',
+    oz: 'oz',
+    pound: 'lb',
+    pounds: 'lb',
+    lbs: 'lb',
+    lb: 'lb',
+    gram: 'g',
+    grams: 'g',
+    g: 'g',
+    kilogram: 'kg',
+    kilograms: 'kg',
+    kg: 'kg',
+    milliliter: 'ml',
+    milliliters: 'ml',
+    ml: 'ml',
+    liter: 'l',
+    liters: 'l',
+    litre: 'l',
+    litres: 'l',
+    l: 'l',
+    bag: 'bag',
+    bags: 'bag',
+    box: 'box',
+    boxes: 'box',
+    jar: 'jar',
+    jars: 'jar',
+    bottle: 'bottle',
+    bottles: 'bottle',
+    stick: 'stick',
+    sticks: 'stick',
+    cup: 'cup',
+    cups: 'cup',
+    tbsp: 'tbsp',
+    tablespoon: 'tbsp',
+    tablespoons: 'tbsp',
+    tsp: 'tsp',
+    teaspoon: 'tsp',
+    teaspoons: 'tsp',
+    dash: 'dash',
+    pinch: 'pinch',
+    sheet: 'sheet',
+    sheets: 'sheet'
+  };
+
+  const aliasLookup = value => {
+    if (!value) return null;
+    if (ALIASES[value]) return ALIASES[value];
+    return null;
+  };
+
+  let result = aliasLookup(base) || aliasLookup(collapsed);
+
+  if (!result && base === 'fl' && /\bfl\s*oz\b/.test(source)) {
+    result = 'fl oz';
+  }
+  if (!result && /\bfluid\s+ounce/.test(source)) {
+    result = 'fl oz';
+  }
+
+  if (!result) {
+    const normalized = normalizeUnit(text || source.replace(/.*?([a-zA-Z]+)/, '$1'));
+    result = aliasLookup(normalized) || normalized;
+  }
+
+  if (!result && source) {
+    const sizeMatch = source.match(/([a-z]+\s*[a-z]+)$/i);
+    if (sizeMatch) {
+      const cleaned = sizeMatch[1].replace(/\./g, '').toLowerCase();
+      result = aliasLookup(cleaned) || aliasLookup(cleaned.replace(/\s+/g, '')) || cleaned;
+    }
+  }
+
+  return result || null;
+}
 
 async function loadArray(key, path) {
   const arr = await loadItemArray(key);
@@ -30,6 +143,61 @@ function save(key, value) {
   });
 }
 
+function loadFromStorage(keys) {
+  return new Promise(resolve => {
+    chrome.storage.local.get(keys, data => resolve(data || {}));
+  });
+}
+
+function extractFinalUnit(product = {}) {
+  const tryNormalize = (value, source = '') =>
+    normalizeUnitType(value, source || value) || null;
+
+  const fromUnitType = tryNormalize(product.unitType);
+  if (fromUnitType) return fromUnitType;
+
+  const fromSizeUnit = tryNormalize(product.sizeUnit, product.size);
+  if (fromSizeUnit) return fromSizeUnit;
+
+  if (product.size) {
+    const parsed = parseQuantity(product.size);
+    const fromSize = tryNormalize(parsed.unit, product.size);
+    if (fromSize) return fromSize;
+  }
+
+  if (product.unit) {
+    const parsed = parseQuantity(product.unit);
+    const fromUnit = tryNormalize(parsed.unit, product.unit);
+    if (fromUnit) return fromUnit;
+  }
+
+  return null;
+}
+
+async function buildFinalUnitMap(items = []) {
+  const map = new Map();
+  if (!Array.isArray(items) || items.length === 0) {
+    finalUnitMap = map;
+    return map;
+  }
+  const keys = items.map(item => `final_product_${encodeURIComponent(item.name)}`);
+  const storage = await loadFromStorage(keys);
+  items.forEach(item => {
+    if (!item || !item.name) return;
+    const canon = canonicalName(item.name);
+    if (!canon) return;
+    const key = `final_product_${encodeURIComponent(item.name)}`;
+    const product = storage[key];
+    if (!product) return;
+    const unit = extractFinalUnit(product);
+    if (unit) {
+      map.set(canon, unit);
+    }
+  });
+  finalUnitMap = map;
+  return map;
+}
+
 let needs = [];
 let consumption = [];
 let stock = [];
@@ -37,6 +205,7 @@ let rows = [];
 
 async function buildItemUsageMap() {
   const usage = new Map();
+  const mealUnits = new Map();
   const entries = Object.entries(MEAL_TYPES || {});
   await Promise.all(
     entries.map(async ([typeId, info]) => {
@@ -62,11 +231,21 @@ async function buildItemUsageMap() {
             recipeBook,
             mealName
           });
+          const quantityText = ing?.serving_size || ing?.amount || '';
+          const parsed = parseQuantity(quantityText);
+          const mealUnit =
+            normalizeUnitType(parsed.unit, quantityText) ||
+            normalizeUnitType(ing?.unit, ing?.unit);
+          if (mealUnit) {
+            if (!mealUnits.has(canon)) mealUnits.set(canon, new Set());
+            mealUnits.get(canon).add(mealUnit);
+          }
         });
       });
     })
   );
   itemUsageMap = usage;
+  itemMealUnitMap = mealUnits;
 }
 
 function updateSaveVisibility(row) {
@@ -80,6 +259,53 @@ function updateSaveVisibility(row) {
   }
 }
 
+function updateUnitWarning(row) {
+  if (!row || !row.warning) return;
+  const warning = row.warning;
+  const canon = canonicalName(row.item.name);
+  const mealUnitSet = itemMealUnitMap.get(canon);
+  const mealUnits = mealUnitSet ? Array.from(mealUnitSet).sort() : [];
+  const finalUnit = finalUnitMap.get(canon) || null;
+  const homeUnit = normalizeUnitType(row.item.home_unit, row.item.home_unit);
+  const reasons = [];
+
+  if (!homeUnit && (mealUnits.length > 0 || finalUnit)) {
+    reasons.push('Home unit is not set');
+  }
+
+  if (mealUnits.length > 0) {
+    const mismatched = mealUnits.filter(unit => !homeUnit || unit !== homeUnit);
+    if (mismatched.length > 0) {
+      const unique = [...new Set(mismatched)];
+      reasons.push(`Meals use ${unique.join(', ')}`);
+    }
+  }
+
+  if (finalUnit) {
+    if (!homeUnit || finalUnit !== homeUnit) {
+      reasons.push(`Final selection is ${finalUnit}`);
+    }
+    if (mealUnits.length > 0) {
+      const mismatchedFinal = mealUnits.filter(unit => unit !== finalUnit);
+      if (mismatchedFinal.length > 0) {
+        const unique = [...new Set(mismatchedFinal)];
+        reasons.push(`Meals differ from final (${unique.join(', ')})`);
+      }
+    }
+  }
+
+  const show = reasons.length > 0;
+  if (show) {
+    warning.classList.remove('hidden');
+    warning.setAttribute('aria-hidden', 'false');
+    warning.title = `Unit mismatch: ${reasons.join('; ')}`;
+  } else {
+    warning.classList.add('hidden');
+    warning.setAttribute('aria-hidden', 'true');
+    warning.removeAttribute('title');
+  }
+}
+
 function buildRow(item) {
   const tr = document.createElement('tr');
   const nameTd = document.createElement('td');
@@ -89,6 +315,13 @@ function buildRow(item) {
   toggleBtn.textContent = item.name;
   toggleBtn.setAttribute('aria-expanded', 'false');
   nameTd.appendChild(toggleBtn);
+  const warning = document.createElement('span');
+  warning.className = 'unit-warning hidden';
+  warning.textContent = '⚠️';
+  warning.setAttribute('role', 'img');
+  warning.setAttribute('aria-label', 'Unit mismatch warning');
+  warning.setAttribute('aria-hidden', 'true');
+  nameTd.appendChild(warning);
   const homeTd = document.createElement('td');
   homeTd.textContent = item.home_unit;
   const inputTd = document.createElement('td');
@@ -162,7 +395,8 @@ function buildRow(item) {
     saveBtn,
     homeTd,
     wholeTd,
-    toggleBtn
+    toggleBtn,
+    warning
   };
 
   input.addEventListener('input', () => updateSaveVisibility(row));
@@ -181,6 +415,8 @@ function buildRow(item) {
   tr.appendChild(wholeTd);
   tr.appendChild(checkTd);
   tr.appendChild(saveTd);
+
+  updateUnitWarning(row);
 
   return row;
 }
@@ -204,6 +440,7 @@ async function init() {
   ]);
   await initializeMealCategories();
   await buildItemUsageMap();
+  await buildFinalUnitMap(needs);
   tbody = document.getElementById('uom-list');
   allNeeds = sortItemsByCategory(needs);
 
@@ -302,6 +539,7 @@ async function saveRow(row) {
     save('currentStock', stock)
   ]);
   row.saveBtn.classList.add('hidden');
+  updateUnitWarning(row);
 }
 
 document.addEventListener('DOMContentLoaded', init);
