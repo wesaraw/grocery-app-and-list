@@ -157,9 +157,30 @@ function saveMeals(category, arr) {
   });
 }
 
-const CATEGORY_MAP = {
-  instantbreakfast: 'breakfast'
-};
+
+function sanitizeCategoryId(value) {
+  return (value || '').toLowerCase().replace(/\s+/g, '');
+}
+
+function resolveCategoryId(rawCategory) {
+  const sanitizedInput = sanitizeCategoryId(rawCategory);
+  if (!sanitizedInput) return 'lunchDinner';
+
+  if (MEAL_TYPES[sanitizedInput]) {
+    return sanitizedInput;
+  }
+
+  for (const [id, info] of Object.entries(MEAL_TYPES)) {
+    if (sanitizeCategoryId(id) === sanitizedInput) {
+      return id;
+    }
+    if (info?.label && sanitizeCategoryId(info.label) === sanitizedInput) {
+      return id;
+    }
+  }
+
+  return 'lunchDinner';
+}
 
 export function parseMealsFromXml(text) {
   const parser = new DOMParser();
@@ -168,9 +189,7 @@ export function parseMealsFromXml(text) {
   doc.querySelectorAll('meal').forEach(mEl => {
     const meal = {};
     const rawCategory = mEl.querySelector('category')?.textContent.trim();
-    const normalizedCategory =
-      CATEGORY_MAP[rawCategory?.toLowerCase()] || rawCategory || 'lunchDinner';
-    meal.category = normalizedCategory;
+    meal.category = resolveCategoryId(rawCategory);
     meal.name = mEl.querySelector('name')?.textContent.trim() || '';
     meal.recipeBook = mEl.querySelector('recipeBook')?.textContent.trim() || '';
     meal.image = mEl.querySelector('image')?.textContent.trim() || null;
