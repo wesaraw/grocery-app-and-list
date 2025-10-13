@@ -227,7 +227,8 @@ function toISODateString(date) {
 function getCurrentWeekInfo() {
   const now = new Date();
   const iso = toISODateString(now);
-  return { year: now.getFullYear(), week: weekNumber(iso) };
+  const year = Number.parseInt(iso.slice(0, 4), 10);
+  return { year: Number.isInteger(year) ? year : now.getUTCFullYear(), week: weekNumber(iso) };
 }
 
 function clampNumber(value, min, max) {
@@ -447,24 +448,41 @@ function buildSlotOverridesByUser(overrides = []) {
 
 function buildWeekDates(year, week) {
   const dates = [];
-  if (!Number.isInteger(year) || !Number.isInteger(week)) return dates;
-  const base = new Date(year, 0, 1);
-  let cursor = new Date(base);
-  while (weekNumber(toISODateString(cursor)) < week) {
-    cursor.setDate(cursor.getDate() + 1);
-    if (cursor.getFullYear() !== year && week === 1) break;
+  if (!Number.isInteger(year) || !Number.isInteger(week) || week < 1) {
+    return dates;
   }
-  const start = new Date(cursor);
-  start.setDate(start.getDate() - start.getDay());
+  const cursor = new Date(Date.UTC(year, 0, 1));
+  const limit = new Date(Date.UTC(year + 1, 0, 1));
+  let found = false;
+
+  while (cursor < limit) {
+    const iso = toISODateString(cursor);
+    const currentWeek = weekNumber(iso);
+    if (Number.isFinite(currentWeek) && currentWeek === week) {
+      found = true;
+      break;
+    }
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  if (!found) {
+    return dates;
+  }
+
+  const start = new Date(cursor.getTime());
+  start.setUTCDate(start.getUTCDate() - start.getUTCDay());
+  const baseDay = start.getUTCDate();
+
   for (let i = 0; i < 7; i += 1) {
-    const date = new Date(start);
-    date.setDate(start.getDate() + i);
+    const date = new Date(start.getTime());
+    date.setUTCDate(baseDay + i);
     dates.push({
       date,
       iso: toISODateString(date),
-      dayName: DAY_NAMES[date.getDay()]
+      dayName: DAY_NAMES[date.getUTCDay()]
     });
   }
+
   return dates;
 }
 
@@ -1030,7 +1048,8 @@ export const __test = {
   normalizeUserDayPrefs,
   buildCategoryLabelMaps,
   refreshSlots,
-  resolveCategoryIdKey
+  resolveCategoryIdKey,
+  buildWeekDates
 };
 
 document.addEventListener('DOMContentLoaded', initialize);

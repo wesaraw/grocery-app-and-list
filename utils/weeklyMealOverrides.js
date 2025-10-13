@@ -12,6 +12,27 @@ function toISODateString(date) {
   return date.toISOString().split('T')[0];
 }
 
+function parseISODateString(value) {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+    return null;
+  }
+  const utcTime = Date.UTC(year, month - 1, day);
+  const date = new Date(utcTime);
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return null;
+  }
+  return { year, month, day, date };
+}
+
 function normalizeDate(value) {
   if (typeof value !== 'string') {
     return { iso: null, year: null, week: null, changed: true };
@@ -20,15 +41,17 @@ function normalizeDate(value) {
   if (!trimmed) {
     return { iso: null, year: null, week: null, changed: trimmed !== value };
   }
-  const parsed = new Date(trimmed);
-  if (Number.isNaN(parsed.getTime())) {
+  const parsed = parseISODateString(trimmed);
+  if (!parsed) {
     return { iso: null, year: null, week: null, changed: true };
   }
-  const iso = toISODateString(parsed);
-  const year = parsed.getFullYear();
+  const iso = toISODateString(parsed.date);
   const week = weekNumber(iso);
+  if (!Number.isFinite(week)) {
+    return { iso: null, year: null, week: null, changed: true };
+  }
   const changed = iso !== trimmed;
-  return { iso, year, week, changed };
+  return { iso, year: parsed.year, week, changed };
 }
 
 function normalizeEntry(entry) {
