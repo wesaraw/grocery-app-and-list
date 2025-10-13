@@ -1378,9 +1378,24 @@ export function generateWhatToEatCalendar(
           }
           const forcedMealId =
             forcedEntry && forcedEntry.type === 'cook' ? forcedEntry.mealId : null;
+          let forcedMeal = null;
+          if (forcedMealId) {
+            if (overrideCategory) {
+              const overrideContext = getContext(overrideCategory);
+              forcedMeal =
+                overrideContext?.meals.find(
+                  m => (m.id || m.name) === forcedMealId
+                ) || null;
+            }
+            if (!forcedMeal) {
+              const baseContext = getContext(cat);
+              forcedMeal =
+                baseContext?.meals.find(m => (m.id || m.name) === forcedMealId) || null;
+            }
+          }
           let pick = null;
           const pickOptions = {
-            requirePrepared,
+            requirePrepared: requirePrepared || (forcedMeal?.prepared ? true : false),
             forcedMealId,
             forcedEntry
           };
@@ -1395,11 +1410,14 @@ export function generateWhatToEatCalendar(
           if (!pick && baseSlotActive) {
             pick = attemptPick(cat, slotIndex, undefined, pickOptions);
           }
+          if (forcedMealId && pick && pick.chosenId !== forcedMealId) {
+            pick = null;
+          }
           if (!pick && forcedMealId) {
             const entry = createCookEntry(forcedMealId);
             slotResults[slotIndex] = entry;
-            let fallbackMeal = null;
-            if (overrideCategory) {
+            let fallbackMeal = forcedMeal;
+            if (!fallbackMeal && overrideCategory) {
               const overrideContext = getContext(overrideCategory);
               fallbackMeal =
                 overrideContext?.meals.find(
