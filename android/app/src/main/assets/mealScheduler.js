@@ -31,6 +31,160 @@ const DAY_ABBR = {
   Saturday: 'Sat'
 };
 
+function normalizeCategoryKeyValue(value) {
+  if (value == null) return '';
+  return value
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, '');
+}
+
+function ensureCategoryLabelEntry(labelsById, categoryId, label) {
+  if (!labelsById || !categoryId || !label) return;
+  if (!labelsById[categoryId]) {
+    labelsById[categoryId] = label;
+  }
+}
+
+function registerCategoryLabel(map, rawLabel, categoryId) {
+  if (!(map instanceof Map) || !categoryId || rawLabel == null) return;
+  const stringLabel = rawLabel.toString();
+  if (!stringLabel) return;
+  const trimmed = stringLabel.trim();
+  if (!trimmed) return;
+  const lower = trimmed.toLowerCase();
+  const normalized = normalizeCategoryKeyValue(trimmed);
+  const collapsed = normalized.replace(/and/g, '');
+  [trimmed, lower, normalized, collapsed]
+    .filter(Boolean)
+    .forEach(key => {
+      if (!map.has(key)) {
+        map.set(key, categoryId);
+      }
+    });
+}
+
+function buildCategoryLabelMaps(descriptorData = {}) {
+  const labelToId = new Map();
+  const labelsById = {};
+  const byCategory = descriptorData.byCategory || {};
+
+  Object.entries(byCategory).forEach(([categoryId, descriptors]) => {
+    if (!categoryId) return;
+    registerCategoryLabel(labelToId, categoryId, categoryId);
+    const list = Array.isArray(descriptors) ? descriptors : [];
+    list.forEach(descriptor => {
+      if (descriptor?.categoryLabel) {
+        registerCategoryLabel(labelToId, descriptor.categoryLabel, categoryId);
+        ensureCategoryLabelEntry(labelsById, categoryId, descriptor.categoryLabel);
+      }
+    });
+  });
+
+  Object.entries(MEAL_TYPES).forEach(([categoryId, config]) => {
+    if (!categoryId) return;
+    registerCategoryLabel(labelToId, categoryId, categoryId);
+    if (config?.label) {
+      registerCategoryLabel(labelToId, config.label, categoryId);
+      ensureCategoryLabelEntry(labelsById, categoryId, config.label);
+    }
+  });
+
+  return { labelToId, labelsById };
+}
+
+function cloneDayPreference(pref) {
+  if (!pref || typeof pref !== 'object') {
+    return {};
+  }
+  const clone = { ...pref };
+  if (Array.isArray(pref.days)) {
+    clone.days = pref.days.slice();
+  }
+  if (Array.isArray(pref.union)) {
+    clone.union = pref.union.slice();
+  }
+  if (Array.isArray(pref.slots)) {
+    clone.slots = pref.slots.map(slot => (Array.isArray(slot) ? slot.slice() : []));
+  }
+  return clone;
+}
+
+function mergeArrayUnique(base = [], addition = []) {
+  const result = new Set();
+  base.forEach(entry => {
+    if (entry != null) {
+      result.add(entry);
+    }
+  });
+  addition.forEach(entry => {
+    if (entry != null) {
+      result.add(entry);
+    }
+  });
+  return Array.from(result);
+}
+
+function mergeSlotPreference(target = {}, addition = {}) {
+  const result = { ...target };
+  if (Array.isArray(addition.days)) {
+    result.days = mergeArrayUnique(result.days || [], addition.days);
+  }
+  if (Array.isArray(addition.union)) {
+    result.union = mergeArrayUnique(result.union || [], addition.union);
+  }
+  if (Array.isArray(addition.slots)) {
+    const existing = Array.isArray(result.slots) ? result.slots : [];
+    const max = Math.max(existing.length, addition.slots.length);
+    const merged = [];
+    for (let i = 0; i < max; i += 1) {
+      const existingSet = new Set(Array.isArray(existing[i]) ? existing[i] : []);
+      const additionArray = Array.isArray(addition.slots[i]) ? addition.slots[i] : [];
+      additionArray.forEach(entry => {
+        if (entry != null) {
+          existingSet.add(entry);
+        }
+      });
+      merged[i] = Array.from(existingSet);
+    }
+    result.slots = merged;
+  }
+  Object.keys(addition || {}).forEach(key => {
+    if (key === 'days' || key === 'union' || key === 'slots') return;
+    result[key] = addition[key];
+  });
+  return result;
+}
+
+function resolveCategoryIdKey(rawKey, { labelLookup, descriptorsByCategory } = {}) {
+  if (rawKey == null) return '';
+  const stringKey = rawKey.toString();
+  const trimmed = stringKey.trim();
+  if (!trimmed) return '';
+  if (descriptorsByCategory && descriptorsByCategory[trimmed]) return trimmed;
+  if (MEAL_TYPES[trimmed]) return trimmed;
+  const lower = trimmed.toLowerCase();
+  if (descriptorsByCategory && descriptorsByCategory[lower]) return lower;
+  if (MEAL_TYPES[lower]) return lower;
+  const normalized = normalizeCategoryKeyValue(trimmed);
+  const lookup =
+    labelLookup instanceof Map
+      ? labelLookup.get(trimmed) || labelLookup.get(lower) || labelLookup.get(normalized)
+      : null;
+  if (lookup) return lookup;
+  if (normalized && descriptorsByCategory && descriptorsByCategory[normalized]) return normalized;
+  if (normalized && MEAL_TYPES[normalized]) return normalized;
+  return trimmed;
+}
+
+function ensureCategoryLabelMapping(categoryId, label, labelLookup, labelsById) {
+  if (!categoryId || !label) return;
+  ensureCategoryLabelEntry(labelsById, categoryId, label);
+  registerCategoryLabel(labelLookup, label, categoryId);
+}
+
 const userSelect = document.getElementById('userSelect');
 const yearInput = document.getElementById('yearInput');
 const weekInput = document.getElementById('weekInput');
@@ -51,6 +205,8 @@ const state = {
   weeklyOverrides: [],
   mealsByCategory: {},
   mealLookup: new Map(),
+  categoryIdByLabel: new Map(),
+  categoryLabelsById: {},
   currentUserIndex: null,
   currentYear: null,
   currentWeek: null,
@@ -121,6 +277,9 @@ function assignmentsEqual(a, b) {
 }
 
 function resolveCategoryLabel(categoryId) {
+  if (state.categoryLabelsById && state.categoryLabelsById[categoryId]) {
+    return state.categoryLabelsById[categoryId];
+  }
   const descriptorList = state.slotDescriptorsByCategory[categoryId];
   if (descriptorList && descriptorList.length && descriptorList[0]?.categoryLabel) {
     return descriptorList[0].categoryLabel;
@@ -216,7 +375,38 @@ function buildMealLookup(mealsByCategory) {
   return map;
 }
 
-function normalizeUserDayPrefs(list, userCount) {
+function remapUserDayPreferenceMap(prefMap, options = {}) {
+  const { resolveCategoryId, labelLookup, labelsById } = options;
+  const normalized = {};
+  if (!prefMap || typeof prefMap !== 'object') {
+    return normalized;
+  }
+  Object.entries(prefMap).forEach(([rawKey, prefValue]) => {
+    if (!rawKey) return;
+    const resolvedId = resolveCategoryId ? resolveCategoryId(rawKey) : rawKey;
+    if (!resolvedId) return;
+    const clone = cloneDayPreference(prefValue);
+    const label =
+      typeof clone.categoryLabel === 'string' && clone.categoryLabel
+        ? clone.categoryLabel
+        : typeof rawKey === 'string'
+        ? rawKey
+        : '';
+    if (label) {
+      clone.categoryLabel = label;
+      ensureCategoryLabelMapping(resolvedId, label, labelLookup, labelsById);
+    }
+    const existing = normalized[resolvedId];
+    if (existing) {
+      normalized[resolvedId] = mergeSlotPreference(existing, clone);
+    } else {
+      normalized[resolvedId] = clone;
+    }
+  });
+  return normalized;
+}
+
+function normalizeUserDayPrefs(list, userCount, options = {}) {
   const arr = Array.isArray(list) ? list.slice() : [];
   while (arr.length < userCount) {
     arr.push({});
@@ -224,6 +414,8 @@ function normalizeUserDayPrefs(list, userCount) {
   for (let i = 0; i < arr.length; i += 1) {
     if (!arr[i] || typeof arr[i] !== 'object') {
       arr[i] = {};
+    } else {
+      arr[i] = remapUserDayPreferenceMap(arr[i], options);
     }
   }
   return arr;
@@ -781,9 +973,21 @@ async function initialize() {
         loadMealsByCategory()
       ]);
     state.users = Array.isArray(users) ? users : [];
-    state.userDayPrefs = normalizeUserDayPrefs(userDayPrefs, state.users.length);
     state.slotDescriptorsByCategory = descriptorData.byCategory || {};
     state.slotCounts = descriptorData.slotCounts || {};
+    const { labelToId, labelsById } = buildCategoryLabelMaps(descriptorData);
+    state.categoryIdByLabel = labelToId;
+    state.categoryLabelsById = labelsById;
+    const resolveCategoryId = rawKey =>
+      resolveCategoryIdKey(rawKey, {
+        labelLookup: state.categoryIdByLabel,
+        descriptorsByCategory: state.slotDescriptorsByCategory
+      });
+    state.userDayPrefs = normalizeUserDayPrefs(userDayPrefs, state.users.length, {
+      resolveCategoryId,
+      labelLookup: state.categoryIdByLabel,
+      labelsById: state.categoryLabelsById
+    });
     state.slotOverrides = slotOverrides || [];
     state.slotOverridesByUser = buildSlotOverridesByUser(state.slotOverrides);
     state.weeklyOverrides = Array.isArray(weeklyOverrides) ? weeklyOverrides : [];
@@ -820,5 +1024,13 @@ yearInput.addEventListener('change', onYearChange);
 weekInput.addEventListener('change', onWeekChange);
 clearSelectionBtn.addEventListener('click', handleClearSelection);
 saveBtn.addEventListener('click', handleSave);
+
+export const __test = {
+  state,
+  normalizeUserDayPrefs,
+  buildCategoryLabelMaps,
+  refreshSlots,
+  resolveCategoryIdKey
+};
 
 document.addEventListener('DOMContentLoaded', initialize);
