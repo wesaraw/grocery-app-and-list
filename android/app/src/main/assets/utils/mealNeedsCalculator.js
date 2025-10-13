@@ -24,6 +24,8 @@ import {
   MEAL_SLOT_OVERRIDE_DAYS
 } from './mealSlotOverrides.js';
 
+import { loadWeeklyMealOverrides, groupWeeklyOverridesByDateAndUser } from './weeklyMealOverrides.js';
+
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 
 function parseQuantity(str) {
@@ -86,6 +88,12 @@ export async function calculateAndSaveMealNeeds(options = {}) {
   const priceThresholds = await loadUserPriceThresholds();
   const itemSeasons = await loadItemSeasons();
   const overrides = await loadMealSlotOverrides();
+
+  const weeklyOverrideEntries = await loadWeeklyMealOverrides();
+  const weeklyOverridesByDate = groupWeeklyOverridesByDateAndUser(
+    weeklyOverrideEntries,
+    users
+  );
 
   while (userDays.length < users.length) userDays.push({});
 
@@ -552,6 +560,7 @@ export async function calculateAndSaveMealNeeds(options = {}) {
     priceThresholds,
     itemSeasons,
     slotOverridesByUserName,
+    weeklyOverridesByDate,
     {
       previousCalendar: resync ? {} : prevCalendar,
       freezeBefore: freezeBeforeStr,

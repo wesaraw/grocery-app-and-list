@@ -27,10 +27,17 @@ const mealList = document.getElementById('mealList');
 const editBtn = document.getElementById('editNamesBtn');
 const saveNamesBtn = document.getElementById('saveNamesBtn');
 const overrideBtn = document.getElementById('mealSlotOverrideBtn');
+const schedulerBtn = document.getElementById('mealSchedulerBtn');
 
 if (overrideBtn) {
   overrideBtn.addEventListener('click', () => {
     openOrFocusWindow('mealSlotOverride.html', 960, 720);
+  });
+}
+
+if (schedulerBtn) {
+  schedulerBtn.addEventListener('click', () => {
+    openOrFocusWindow('mealScheduler.html', 960, 720);
   });
 }
 

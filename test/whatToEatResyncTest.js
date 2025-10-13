@@ -130,6 +130,7 @@ const driftResult = generateWhatToEatCalendar(
   {},
   {},
   {},
+  {},
   {
     previousCalendar,
     freezeBefore,
@@ -145,6 +146,7 @@ const resyncResult = generateWhatToEatCalendar(
   mealsPerDay,
   startDate,
   1,
+  {},
   {},
   {},
   {},

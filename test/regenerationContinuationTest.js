@@ -74,6 +74,7 @@ function normalizeEntryValue(value) {
     {},
     {},
     {},
+    {},
     {}
   );
 
@@ -88,6 +89,7 @@ function normalizeEntryValue(value) {
     mealsPerDay,
     freezeDate,
     2,
+    {},
     {},
     {},
     {},

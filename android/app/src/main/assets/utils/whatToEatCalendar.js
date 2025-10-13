@@ -36,6 +36,113 @@ function normalizeForcedDay(dayValue) {
   return result;
 }
 
+function cloneForcedEntry(entry) {
+  if (entry == null) return null;
+  if (typeof entry === 'string') {
+    return normalizeCalendarEntry(entry);
+  }
+  if (typeof entry === 'object') {
+    const normalized = normalizeCalendarEntry(entry);
+    if (!normalized) return null;
+    const extra = {};
+    Object.keys(entry).forEach(key => {
+      if (!['mealId', 'type', 'leftoverTargets', 'leftoverSource'].includes(key)) {
+        extra[key] = entry[key];
+      }
+    });
+    return { ...normalized, ...extra };
+  }
+  return null;
+}
+
+function normalizeForcedCategorySlots(slotValue) {
+  const slotMap = {};
+  if (Array.isArray(slotValue)) {
+    slotValue.forEach((entry, idx) => {
+      if (entry === null) {
+        slotMap[idx] = null;
+        return;
+      }
+      const cloned = cloneForcedEntry(entry);
+      if (cloned) {
+        slotMap[idx] = cloned;
+      }
+    });
+    return slotMap;
+  }
+  if (slotValue && typeof slotValue === 'object') {
+    const keys = Object.keys(slotValue);
+    const hasNumericKey = keys.some(key => !Number.isNaN(Number(key)));
+    if (hasNumericKey) {
+      keys.forEach(key => {
+        const value = slotValue[key];
+        if (value === null) {
+          slotMap[key] = null;
+          return;
+        }
+        const cloned = cloneForcedEntry(value);
+        if (cloned) {
+          slotMap[key] = cloned;
+        }
+      });
+      return slotMap;
+    }
+    const cloned = cloneForcedEntry(slotValue);
+    if (cloned) {
+      slotMap[0] = cloned;
+    } else if (slotValue === null) {
+      slotMap[0] = null;
+    }
+    return slotMap;
+  }
+  if (slotValue === null) {
+    slotMap[0] = null;
+    return slotMap;
+  }
+  const cloned = cloneForcedEntry(slotValue);
+  if (cloned) {
+    slotMap[0] = cloned;
+  }
+  return slotMap;
+}
+
+function normalizeForcedUserEntry(entry) {
+  const result = {};
+  if (!entry || typeof entry !== 'object') {
+    return result;
+  }
+  Object.entries(entry).forEach(([categoryId, slotValue]) => {
+    const slotMap = normalizeForcedCategorySlots(slotValue);
+    if (Object.keys(slotMap).length) {
+      result[categoryId] = slotMap;
+    } else if (slotValue != null) {
+      result[categoryId] = {};
+    }
+  });
+  return result;
+}
+
+function mergeForcedUserEntries(target, source) {
+  if (!source || typeof source !== 'object') return;
+  Object.entries(source).forEach(([categoryId, slotMap]) => {
+    if (!target[categoryId]) {
+      target[categoryId] = {};
+    }
+    const categoryTarget = target[categoryId];
+    if (!slotMap || typeof slotMap !== 'object') return;
+    Object.entries(slotMap).forEach(([slotKey, entry]) => {
+      if (entry === null) {
+        categoryTarget[slotKey] = null;
+        return;
+      }
+      const cloned = cloneForcedEntry(entry);
+      if (cloned) {
+        categoryTarget[slotKey] = cloned;
+      }
+    });
+  });
+}
+
 function incrementDateStr(dateStr) {
   if (!dateStr) return null;
   const dt = new Date(dateStr);
@@ -55,6 +162,7 @@ export function generateWhatToEatCalendar(
   priceThresholds = {},
   itemSeasons = {},
   slotOverrides = {},
+  weeklyOverrides = null,
   options = {}
 ) {
   const {
@@ -101,9 +209,41 @@ export function generateWhatToEatCalendar(
         targetUser[dateStr] = cloneValue(dayValue);
         preservedDates.add(dateStr);
         const forcedDay = forcedByDate.get(dateStr) || {};
-        forcedDay[user] = normalizeForcedDay(dayValue);
+        const existingUser = normalizeForcedUserEntry(forcedDay[user]);
+        const normalizedForced = normalizeForcedDay(dayValue);
+        Object.entries(normalizedForced).forEach(([categoryId, slotValue]) => {
+          const slotMap = normalizeForcedCategorySlots(slotValue);
+          if (!existingUser[categoryId]) {
+            existingUser[categoryId] = {};
+          }
+          Object.entries(slotMap).forEach(([slotKey, entry]) => {
+            existingUser[categoryId][slotKey] = entry;
+          });
+        });
+        forcedDay[user] = existingUser;
         forcedByDate.set(dateStr, forcedDay);
       });
+    });
+  }
+
+  if (weeklyOverrides && typeof weeklyOverrides === 'object') {
+    Object.entries(weeklyOverrides).forEach(([dateStr, perUser]) => {
+      if (!perUser || typeof perUser !== 'object') return;
+      const forcedDay = forcedByDate.get(dateStr) || {};
+      let dayChanged = false;
+      Object.entries(perUser).forEach(([user, userEntries]) => {
+        if (!userEntries || typeof userEntries !== 'object') return;
+        const existingUser = normalizeForcedUserEntry(forcedDay[user]);
+        const overrideUser = normalizeForcedUserEntry(userEntries);
+        mergeForcedUserEntries(existingUser, overrideUser);
+        if (Object.keys(existingUser).length) {
+          forcedDay[user] = existingUser;
+          dayChanged = true;
+        }
+      });
+      if (dayChanged) {
+        forcedByDate.set(dateStr, forcedDay);
+      }
     });
   }
 
@@ -131,7 +271,7 @@ export function generateWhatToEatCalendar(
       current.setDate(start.getDate() + i);
       const dateStr = toISODateString(current);
       if (freezeBeforeStr && dateStr < freezeBeforeStr) continue;
-      items.push({ date: current, dateStr, forced: null, write: true });
+      items.push({ date: current, dateStr, forced: forcedByDate.get(dateStr) || null, write: true });
     }
     items.sort((a, b) => (a.dateStr < b.dateStr ? -1 : a.dateStr > b.dateStr ? 1 : 0));
     return items;
