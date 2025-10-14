@@ -212,8 +212,15 @@
       display: inline-flex;
     }
 
-    #saveBtn {
+    .actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
       margin-top: 20px;
+    }
+
+    #saveBtn {
       padding: 10px 20px;
       border-radius: 8px;
       border: none;
@@ -231,6 +238,28 @@
     }
 
     #saveBtn:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    #copyAllBtn {
+      padding: 10px 18px;
+      border-radius: 8px;
+      border: 1px solid #cbd3eb;
+      background: #f8faff;
+      color: #2f3a5c;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease, border 0.2s ease;
+    }
+
+    #copyAllBtn:hover:not(:disabled) {
+      background: #eef4ff;
+      border-color: #9fb5f6;
+    }
+
+    #copyAllBtn:disabled {
       opacity: 0.6;
       cursor: default;
     }
@@ -273,7 +302,10 @@
       <div class="meal-options" id="mealOptions"></div>
     </div>
   </div>
-  <button id="saveBtn" type="button">Save Changes</button>
+  <div class="actions">
+    <button id="saveBtn" type="button">Save Changes</button>
+    <button id="copyAllBtn" type="button">Copy to all users</button>
+  </div>
   <script type="module" src="mealScheduler.js"></script>
 </body>
 </html>

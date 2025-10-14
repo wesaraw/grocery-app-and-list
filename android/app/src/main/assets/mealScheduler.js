@@ -192,6 +192,7 @@ const slotColumn = document.getElementById('slotColumn');
 const selectedSlotLabel = document.getElementById('selectedSlotLabel');
 const mealOptions = document.getElementById('mealOptions');
 const clearSelectionBtn = document.getElementById('clearSelectionBtn');
+const copyAllBtn = document.getElementById('copyAllBtn');
 const saveBtn = document.getElementById('saveBtn');
 const statusMessage = document.getElementById('statusMessage');
 
@@ -217,6 +218,7 @@ const state = {
   workingAssignments: new Map(),
   hiddenAssignments: [],
   saving: false,
+  copying: false,
   dirty: false
 };
 
@@ -721,6 +723,17 @@ function clearAssignment(key) {
   updateDirtyState();
 }
 
+function updateCopyAllButtonState() {
+  if (!copyAllBtn) return;
+  const hasBaseline =
+    state.baselineAssignments instanceof Map && state.baselineAssignments.size > 0;
+  const hasSelection =
+    state.currentUserIndex != null &&
+    Number.isInteger(state.currentYear) &&
+    Number.isInteger(state.currentWeek);
+  copyAllBtn.disabled = state.copying || state.saving || !hasSelection || !hasBaseline;
+}
+
 function updateDirtyState() {
   const dirty = !assignmentsEqual(state.workingAssignments, state.baselineAssignments);
   state.dirty = dirty;
@@ -729,8 +742,9 @@ function updateDirtyState() {
   } else {
     saveBtn.dataset.visible = 'false';
   }
-  saveBtn.disabled = state.saving || !dirty;
+  saveBtn.disabled = state.saving || state.copying || !dirty;
   state.slotButtons.forEach((_, key) => updateSlotButtonState(key));
+  updateCopyAllButtonState();
 }
 
 function buildBaselineAssignments(userIndex, year, week, slotKeys) {
@@ -972,6 +986,94 @@ async function handleSave() {
   }
 }
 
+async function handleCopyOverridesToAllUsers() {
+  if (state.copying || state.saving) return;
+  if (
+    state.currentUserIndex == null ||
+    !Number.isInteger(state.currentYear) ||
+    !Number.isInteger(state.currentWeek)
+  ) {
+    setStatus('Select a user, year, and week before copying overrides.', 'error');
+    return;
+  }
+  if (!state.baselineAssignments || state.baselineAssignments.size === 0) {
+    setStatus('There are no saved overrides to copy for this user.', 'info');
+    return;
+  }
+
+  state.copying = true;
+  updateDirtyState();
+  setStatus('Copying overrides to subscribed users...');
+
+  try {
+    const year = state.currentYear;
+    const week = state.currentWeek;
+    const sourceUserIndex = state.currentUserIndex;
+    const sourceAssignments = Array.from(state.baselineAssignments.values()).filter(
+      assignment => assignment?.mealId
+    );
+
+    if (!sourceAssignments.length) {
+      setStatus('There are no saved overrides to copy for this user.', 'info');
+      return;
+    }
+
+    let updatedOverrides = state.weeklyOverrides.filter(Boolean);
+    updatedOverrides = updatedOverrides.filter(entry => {
+      if (!entry) return false;
+      const entryYear = Number(entry.year);
+      const entryWeek = Number(entry.week);
+      const entryUser = Number(entry.userIndex);
+      return !(entryYear === year && entryWeek === week && entryUser !== sourceUserIndex);
+    });
+
+    for (let userIndex = 0; userIndex < state.users.length; userIndex += 1) {
+      if (userIndex === sourceUserIndex) continue;
+      const slotMetadata = buildSlotMetadata(userIndex, year, week);
+      if (!slotMetadata.size) continue;
+      const availableKeys = new Set(slotMetadata.keys());
+
+      sourceAssignments.forEach(assignment => {
+        if (!availableKeys.has(assignment.key)) return;
+        const slot = slotMetadata.get(assignment.key);
+        if (!slot) return;
+        const lookup = state.mealLookup.get(assignment.mealId);
+        const meal = lookup?.meal;
+        if (!meal) return;
+        if (!isMealAvailableForUser(meal, userIndex, state.users.length)) return;
+        updatedOverrides.push({
+          id: generateWeeklyMealOverrideId(),
+          userIndex,
+          year,
+          week,
+          date: slot.date,
+          categoryId: slot.categoryId,
+          slotIndex: slot.slotIndex,
+          mealId: assignment.mealId
+        });
+      });
+    }
+
+    await saveWeeklyMealOverrides(updatedOverrides);
+    state.weeklyOverrides = updatedOverrides;
+    setStatus('Overrides copied to subscribed users.', 'success');
+    try {
+      await calculateAndSaveMealNeeds({ resync: true });
+      if (chrome?.runtime?.sendMessage) {
+        chrome.runtime.sendMessage({ type: 'inventory-updated' });
+      }
+    } catch (err) {
+      console.warn('Meal needs recalculation failed', err);
+    }
+  } catch (error) {
+    console.error('Failed to copy overrides to all users', error);
+    setStatus('Failed to copy overrides. Please try again.', 'error');
+  } finally {
+    state.copying = false;
+    updateDirtyState();
+  }
+}
+
 function handleClearSelection() {
   if (!state.selectedSlotKey) return;
   clearAssignment(state.selectedSlotKey);
@@ -1042,6 +1144,7 @@ yearInput.addEventListener('change', onYearChange);
 weekInput.addEventListener('change', onWeekChange);
 clearSelectionBtn.addEventListener('click', handleClearSelection);
 saveBtn.addEventListener('click', handleSave);
+copyAllBtn.addEventListener('click', handleCopyOverridesToAllUsers);
 
 export const __test = {
   state,
