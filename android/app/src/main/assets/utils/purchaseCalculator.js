@@ -7,6 +7,7 @@ import {
 } from './calendarUtils.js';
 import { loadDensityMap } from './unitNormalize.js';
 import { loadUsers, loadUserPortionMultipliers } from './userData.js';
+import { canonicalName } from './nameUtils.js';
 
 
 function sumRange(arr, start, end) {
@@ -73,20 +74,78 @@ export async function calculatePurchaseNeeds(
   calendar = {},
   mealsByCategory = {},
   useMealPlanTotals = true,
-  densityMap = {}
+  densityMap = {},
 ) {
-  const consMap = new Map(consumption.map(i => [i.name, i]));
-  const expMap = new Map(expiration.map(i => [i.name, i]));
+  const canonicalKey = name => canonicalName(name || '');
 
-  const mealMap = useMealPlanTotals
-    ? new Map(mealYear.map(m => [m.name, m.total_needed_year]))
-    : new Map();
-  const mergedNeeds = needs.map(n => ({
-    ...n,
-    total_needed_year: (n.total_needed_year || 0) + (mealMap.get(n.name) || 0)
+  const needsUnitMap = new Map();
+  const needsByCanonical = new Map();
+  needs.forEach(n => {
+    const key = canonicalKey(n.name);
+    if (!key) {
+      return;
+    }
+    const existing = needsByCanonical.get(key);
+    if (existing) {
+      existing.base_total_needed_year =
+        (existing.base_total_needed_year || 0) + (n.total_needed_year || 0);
+      if (existing.home_unit == null && n.home_unit != null) {
+        existing.home_unit = n.home_unit;
+      }
+      if (n.treat_as_whole_unit) {
+        existing.treat_as_whole_unit = true;
+      }
+    } else {
+      needsByCanonical.set(key, {
+        ...n,
+        canonical: key,
+        base_total_needed_year: n.total_needed_year || 0
+      });
+    }
+    if (!needsUnitMap.has(key) && n.home_unit != null) {
+      needsUnitMap.set(key, n.home_unit);
+    }
+  });
+
+  const needsUnitLookup = {
+    get(name) {
+      return needsUnitMap.get(canonicalKey(name));
+    }
+  };
+
+  const consMap = new Map();
+  consumption.forEach(item => {
+    const key = canonicalKey(item.name);
+    if (!key) return;
+    const monthly = Number(item.monthly_consumption) || 0;
+    consMap.set(key, (consMap.get(key) || 0) + monthly);
+  });
+
+  const expMap = new Map();
+  expiration.forEach(item => {
+    const key = canonicalKey(item.name);
+    if (!key) return;
+    if (!expMap.has(key)) {
+      expMap.set(key, item);
+    }
+  });
+
+  const mealMap = new Map();
+  if (useMealPlanTotals) {
+    mealYear.forEach(m => {
+      const key = canonicalKey(m.name);
+      if (!key) return;
+      const total = Number(m.total_needed_year) || 0;
+      mealMap.set(key, (mealMap.get(key) || 0) + total);
+    });
+  }
+
+  const mergedNeeds = Array.from(needsByCanonical.values()).map(item => ({
+    ...item,
+    total_needed_year:
+      (item.base_total_needed_year || 0) + (mealMap.get(item.canonical) || 0)
   }));
 
-  const needsMap = new Map(needs.map(n => [n.name, n.home_unit]));
   let users = [];
   let rawMultipliers = [];
   try {
@@ -111,47 +170,80 @@ export async function calculatePurchaseNeeds(
   const calendarNeeds = aggregateCalendar(
     calendar,
     mealsByCategory,
-    needsMap,
+    needsUnitLookup,
     densityMap,
     true,
     multiplierMap,
     userIndexLookup
   );
 
+  const canonicalCalendarNeeds = new Map();
+  calendarNeeds.forEach((arr, name) => {
+    const key = canonicalKey(name);
+    if (!key) return;
+    const existing = canonicalCalendarNeeds.get(key);
+    if (existing) {
+      (Array.isArray(arr) ? arr : []).forEach((value, idx) => {
+        if (value) {
+          existing[idx] = (existing[idx] || 0) + value;
+        }
+      });
+    } else {
+      canonicalCalendarNeeds.set(key, Array.isArray(arr) ? arr.slice() : []);
+    }
+  });
+
   const weeklyNeedMap = new Map();
   mergedNeeds.forEach(item => {
-    const baseWeekly =
-      (consMap.get(item.name)?.monthly_consumption ?? 0) / WEEKS_PER_MONTH;
+    const baseWeekly = (consMap.get(item.canonical) || 0) / WEEKS_PER_MONTH;
     const arr = Array(53).fill(baseWeekly);
-    const mealArr = calendarNeeds.get(item.name);
+    const mealArr = canonicalCalendarNeeds.get(item.canonical);
     if (mealArr) {
       mealArr.forEach((v, idx) => {
         arr[idx] = (arr[idx] || 0) + v;
       });
     }
-    weeklyNeedMap.set(item.name, arr);
+    weeklyNeedMap.set(item.canonical, arr);
+  });
+
+  const stockQuantityMap = new Map();
+  stock.forEach(entry => {
+    const key = canonicalKey(entry.name);
+    if (!key) return;
+    const amount = Number(entry.amount) || 0;
+    stockQuantityMap.set(key, (stockQuantityMap.get(key) || 0) + amount);
+  });
+
+  const purchasesByCanonical = new Map();
+  Object.entries(purchases || {}).forEach(([name, list]) => {
+    const key = canonicalKey(name);
+    if (!key || !Array.isArray(list)) return;
+    const existing = purchasesByCanonical.get(key) || [];
+    list.forEach(p => existing.push(p));
+    purchasesByCanonical.set(key, existing);
   });
 
   const timelineItems = mergedNeeds.map(item => ({
-    name: item.name,
-    weekly_consumption: weeklyNeedMap.get(item.name)[week] || 0,
+    name: item.canonical,
+    weekly_consumption: weeklyNeedMap.get(item.canonical)?.[week] || 0,
     expiration_weeks:
-      (expMap.get(item.name)?.shelf_life_months ?? 12) * WEEKS_PER_MONTH,
-    starting_stock: stock.find(s => s.name === item.name)?.amount ?? 0,
-    purchases: purchases[item.name] || []
+      (expMap.get(item.canonical)?.shelf_life_months ?? 12) * WEEKS_PER_MONTH,
+    starting_stock: stockQuantityMap.get(item.canonical) || 0,
+    purchases: purchasesByCanonical.get(item.canonical) || []
   }));
 
+  const timelineLookup = new Map();
   const stockMap = new Map();
   timelineItems.forEach(t => {
-    const qty = simulateBeforeWeekVar(t, weeklyNeedMap.get(t.name), week);
+    timelineLookup.set(t.name, t);
+    const weeklyArr = weeklyNeedMap.get(t.name) || Array(53).fill(0);
+    const qty = simulateBeforeWeekVar(t, weeklyArr, week);
     stockMap.set(t.name, qty);
   });
 
-  const weeksRemaining = 52 - week + 1;
-
   const futurePurchasesMap = new Map();
-  Object.keys(purchases).forEach(name => {
-    const total = purchases[name]
+  purchasesByCanonical.forEach((list, name) => {
+    const total = list
       .filter(p => p.purchase_week >= week)
       .reduce((sum, p) => sum + (p.quantity_purchased || 0), 0);
     futurePurchasesMap.set(name, total);
@@ -160,36 +252,35 @@ export async function calculatePurchaseNeeds(
   const purchasesWithinMap = new Map();
   mergedNeeds.forEach(item => {
     const expWeeks =
-      (expMap.get(item.name)?.shelf_life_months ?? 12) * WEEKS_PER_MONTH;
+      (expMap.get(item.canonical)?.shelf_life_months ?? 12) * WEEKS_PER_MONTH;
     const horizon = week + Math.ceil(expWeeks);
-    const list = purchases[item.name] || [];
+    const list = purchasesByCanonical.get(item.canonical) || [];
     const total = list
       .filter(p => p.purchase_week >= week && p.purchase_week < horizon)
       .reduce((sum, p) => sum + (p.quantity_purchased || 0), 0);
-    purchasesWithinMap.set(item.name, total);
+    purchasesWithinMap.set(item.canonical, total);
   });
 
   return mergedNeeds.map(item => {
-    const weeklyArr = weeklyNeedMap.get(item.name);
+    const weeklyArr = weeklyNeedMap.get(item.canonical) || Array(53).fill(0);
     const required = sumRange(weeklyArr, week, 53);
 
     const onHand =
-      (stockMap.get(item.name) || 0) + (futurePurchasesMap.get(item.name) || 0);
-
-    // calculate gating amount based on expiration
+      (stockMap.get(item.canonical) || 0) +
+      (futurePurchasesMap.get(item.canonical) || 0);
 
     const expWeeks =
-      (expMap.get(item.name)?.shelf_life_months ?? 12) * WEEKS_PER_MONTH;
+      (expMap.get(item.canonical)?.shelf_life_months ?? 12) * WEEKS_PER_MONTH;
     const horizon = week + Math.ceil(expWeeks);
 
     const horizonStock = simulateBeforeWeekVar(
-      timelineItems.find(t => t.name === item.name),
+      timelineLookup.get(item.canonical),
       weeklyArr,
       horizon
     );
 
-    const purchasesWithin = purchasesWithinMap.get(item.name) || 0;
-    const currentQty = stockMap.get(item.name) || 0;
+    const purchasesWithin = purchasesWithinMap.get(item.canonical) || 0;
+    const currentQty = stockMap.get(item.canonical) || 0;
     const consumedExisting = currentQty + purchasesWithin - horizonStock;
     const capacity = sumRange(weeklyArr, week, horizon);
     let toBuyExpiration = capacity - consumedExisting;

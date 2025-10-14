@@ -16,6 +16,7 @@ async function run() {
     <div id="mealOptions"></div>
     <button id="clearSelectionBtn"></button>
     <button id="saveBtn"></button>
+    <button id="copyAllBtn"></button>
     <div id="statusMessage"></div>
   </body>`, { url: 'http://localhost/' });
 
