@@ -1046,7 +1046,7 @@ async function handleCopyOverridesToAllUsers() {
           userIndex,
           year,
           week,
-          date: slot.date,
+          date: slot.iso,
           categoryId: slot.categoryId,
           slotIndex: slot.slotIndex,
           mealId: assignment.mealId
