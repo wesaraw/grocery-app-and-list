@@ -75,6 +75,7 @@ export async function calculatePurchaseNeeds(
   mealsByCategory = {},
   useMealPlanTotals = true,
   densityMap = {},
+  startDate = null
 ) {
   const canonicalKey = name => canonicalName(name || '');
 
@@ -174,7 +175,8 @@ export async function calculatePurchaseNeeds(
     densityMap,
     true,
     multiplierMap,
-    userIndexLookup
+    userIndexLookup,
+    startDate
   );
 
   const canonicalCalendarNeeds = new Map();

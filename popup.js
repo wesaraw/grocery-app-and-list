@@ -45,10 +45,18 @@ async function loadStock() {
   });
 }
 
-function getCurrentWeek() {
-  const start = new Date(new Date().getFullYear(), 0, 1);
+function getTodayIsoDate() {
   const today = new Date();
-  return Math.ceil(((today - start) / 86400000 + start.getDay() + 1) / 7);
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${today.getFullYear()}-${month}-${day}`;
+}
+
+function getCurrentWeek() {
+  const today = new Date();
+  const start = new Date(today.getFullYear(), 0, 1);
+  const week = Math.ceil(((today - start) / 86400000 + start.getDay() + 1) / 7);
+  return { week, isoDate: getTodayIsoDate() };
 }
 
 
@@ -534,7 +542,7 @@ async function init() {
   purchasesData = purchases;
   calendarData = calendar;
   mealsByCategoryData = mealsByCategory;
-  const week = getCurrentWeek();
+  const { week, isoDate } = getCurrentWeek();
   const purchaseInfo = await calculatePurchaseNeeds(
     needs,
     consumption,
@@ -547,7 +555,8 @@ async function init() {
     calendar,
     mealsByCategory,
     !hasCalendar,
-    densityMap
+    densityMap,
+    isoDate
   );
   const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
   const stockMap = new Map(stock.map(i => [i.name, i]));
@@ -656,6 +665,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 async function refreshNeeds(stock = stockData, consumed = consumedYearData) {
   stockData = stock;
   const hasCalendar = calendarData && Object.keys(calendarData).length > 0;
+  const { week, isoDate } = getCurrentWeek();
   const purchaseInfo = await calculatePurchaseNeeds(
     needsData,
     consumptionData,
@@ -664,11 +674,12 @@ async function refreshNeeds(stock = stockData, consumed = consumedYearData) {
     consumed,
     mealYearData,
     purchasesData,
-    getCurrentWeek(),
+    week,
     calendarData,
     mealsByCategoryData,
     !hasCalendar,
-    densityMap
+    densityMap,
+    isoDate
   );
   const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
   const stockMap = new Map(stock.map(i => [i.name, i]));
@@ -741,7 +752,7 @@ async function rerenderAll() {
   purchasesData = purchases;
   calendarData = calendar;
   mealsByCategoryData = mealsByCategory;
-  const week = getCurrentWeek();
+  const { week, isoDate } = getCurrentWeek();
   const purchaseInfo = await calculatePurchaseNeeds(
     needs,
     consumption,
@@ -754,7 +765,8 @@ async function rerenderAll() {
     calendar,
     mealsByCategory,
     !hasCalendar,
-    densityMap
+    densityMap,
+    isoDate
   );
   const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
   const stockMap = new Map(stock.map(i => [i.name, i]));
@@ -893,7 +905,7 @@ async function loadCommitData(itemName) {
 
 async function commitSelections() {
   const commitItems = [];
-  const currentWeek = getCurrentWeek();
+  const { week: currentWeek, isoDate } = getCurrentWeek();
 
   const hasCalendar = calendarData && Object.keys(calendarData).length > 0;
   const purchaseInfo = await calculatePurchaseNeeds(
@@ -908,7 +920,8 @@ async function commitSelections() {
     calendarData,
     mealsByCategoryData,
     !hasCalendar,
-    densityMap
+    densityMap,
+    isoDate
   );
   const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
 

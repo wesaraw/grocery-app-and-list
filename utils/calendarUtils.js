@@ -131,10 +131,14 @@ export function aggregateCalendar(
   densityMap = {},
   perUser = false,
   userMultipliers = [],
-  userIndexLookup = null
+  userIndexLookup = null,
+  startDate = null
 ) {
   const mealMap = buildMealMap(mealsByCategory);
   const result = new Map();
+  const parsedStartDate =
+    typeof startDate === 'string' ? parseISODateString(startDate) : null;
+  const startUtcTime = parsedStartDate ? parsedStartDate.utcTime : null;
 
   function resolveMultiplier(key) {
     if (userMultipliers == null) return 1;
@@ -179,6 +183,11 @@ export function aggregateCalendar(
     const baseMultiplier = resolveMultiplier(userKey);
     const userIndex = resolveUserIndex(userKey);
     Object.entries(days || {}).forEach(([dateStr, rec]) => {
+      const parsedDate = parseISODateString(dateStr);
+      if (!parsedDate) return;
+      if (startUtcTime != null && parsedDate.utcTime < startUtcTime) {
+        return;
+      }
       const week = weekNumber(dateStr);
       Object.values(rec || {}).forEach(val => {
         const entries = expandCalendarValue(val);
