@@ -151,6 +151,157 @@ function incrementDateStr(dateStr) {
   return toISODateString(dt);
 }
 
+function serializeEntry(entry) {
+  if (entry == null) return null;
+  if (entry.type === 'leftover') {
+    return {
+      type: 'leftover',
+      mealId: entry.mealId,
+      leftoverSource: entry.leftoverSource ? { ...entry.leftoverSource } : null
+    };
+  }
+  const targets = Array.isArray(entry.leftoverTargets)
+    ? entry.leftoverTargets.map(t => ({ ...t }))
+    : [];
+  if (!targets.length) {
+    return entry.mealId;
+  }
+  return {
+    type: 'cook',
+    mealId: entry.mealId,
+    leftoverTargets: targets
+  };
+}
+
+function buildAllowedMealIdSet(meals) {
+  const set = new Set();
+  if (!Array.isArray(meals)) return set;
+  meals.forEach(meal => {
+    if (!meal) return;
+    const { id, name } = meal;
+    if (id !== undefined && id !== null) {
+      set.add(id);
+      set.add(String(id));
+    }
+    if (name != null && name !== '') {
+      set.add(name);
+    }
+  });
+  return set;
+}
+
+export function buildAllowedMealLookup(subscriptions = {}) {
+  const result = {};
+  if (!subscriptions || typeof subscriptions !== 'object') {
+    return result;
+  }
+  Object.entries(subscriptions).forEach(([user, prefs]) => {
+    if (!prefs || typeof prefs !== 'object') return;
+    const userMap = {};
+    Object.entries(prefs).forEach(([categoryId, meals]) => {
+      const set = buildAllowedMealIdSet(meals);
+      if (set.size) {
+        userMap[categoryId] = set;
+      }
+    });
+    if (Object.keys(userMap).length) {
+      result[user] = userMap;
+    }
+  });
+  return result;
+}
+
+function isMealAllowed(allowedSet, mealId) {
+  if (!allowedSet || allowedSet.size === 0) return false;
+  if (allowedSet.has(mealId)) return true;
+  if (mealId != null) {
+    const str = String(mealId);
+    if (allowedSet.has(str)) return true;
+  }
+  return false;
+}
+
+function filterCalendarEntryForAllowed(entry, allowedSet) {
+  if (entry == null) return null;
+  const normalized = normalizeCalendarEntry(entry);
+  if (!normalized) return null;
+  if (normalized.type === 'cook') {
+    if (!isMealAllowed(allowedSet, normalized.mealId)) {
+      return null;
+    }
+  }
+  return serializeEntry(normalized);
+}
+
+function filterCalendarValueByAllowed(value, allowedSet) {
+  if (Array.isArray(value)) {
+    const filtered = value.map(item => filterCalendarEntryForAllowed(item, allowedSet));
+    const keep = filtered.some(item => item != null);
+    if (!keep) {
+      return { keep: false, value: null };
+    }
+    return {
+      keep: true,
+      value: filtered.map(item => (item == null ? null : item))
+    };
+  }
+  if (value == null) {
+    return { keep: false, value: null };
+  }
+  if (typeof value === 'string') {
+    const filtered = filterCalendarEntryForAllowed(value, allowedSet);
+    if (!filtered) {
+      return { keep: false, value: null };
+    }
+    return { keep: true, value: filtered };
+  }
+  if (typeof value === 'object') {
+    const isEntry =
+      value.mealId != null || value.id != null || value.name != null || value.type != null;
+    if (isEntry) {
+      const filtered = filterCalendarEntryForAllowed(value, allowedSet);
+      if (!filtered) {
+        return { keep: false, value: null };
+      }
+      return { keep: true, value: filtered };
+    }
+    const keys = Object.keys(value);
+    const next = {};
+    let hasAny = false;
+    keys.forEach(key => {
+      const { keep, value: filtered } = filterCalendarValueByAllowed(value[key], allowedSet);
+      if (keep) {
+        next[key] = filtered;
+        hasAny = true;
+      }
+    });
+    return hasAny ? { keep: true, value: next } : { keep: false, value: null };
+  }
+  return { keep: false, value: null };
+}
+
+export function filterCalendarDayByAllowedMeals(dayValue, allowedCategories = null) {
+  if (dayValue == null) return null;
+  if (Array.isArray(dayValue)) {
+    const { keep, value } = filterCalendarValueByAllowed(dayValue, allowedCategories);
+    return keep ? value : null;
+  }
+  if (typeof dayValue !== 'object') {
+    return null;
+  }
+  const result = {};
+  let hasValues = false;
+  Object.entries(dayValue).forEach(([categoryId, value]) => {
+    const allowedSet = allowedCategories ? allowedCategories[categoryId] : null;
+    const { keep, value: filtered } = filterCalendarValueByAllowed(value, allowedSet);
+    if (keep) {
+      result[categoryId] = filtered;
+      hasValues = true;
+    }
+  });
+  return hasValues ? result : null;
+}
+
 export function generateWhatToEatCalendar(
   users,
   preparedCal,
@@ -173,6 +324,8 @@ export function generateWhatToEatCalendar(
 
   const freezeBeforeStr =
     typeof freezeBefore === 'string' && freezeBefore ? freezeBefore : null;
+
+  const allowedMealsByUser = buildAllowedMealLookup(subscriptions);
 
   let snapshotBase = null;
   if (initialState && typeof initialState === 'object') {
@@ -204,13 +357,16 @@ export function generateWhatToEatCalendar(
     users.forEach(user => {
       const prevUser = previousCalendar[user] || {};
       const targetUser = calendar[user];
+      const allowedForUser = allowedMealsByUser[user] || null;
       Object.entries(prevUser).forEach(([dateStr, dayValue]) => {
         if (freezeBeforeStr && dateStr >= freezeBeforeStr) return;
-        targetUser[dateStr] = cloneValue(dayValue);
+        const filteredDay = filterCalendarDayByAllowedMeals(dayValue, allowedForUser);
+        if (!filteredDay) return;
+        targetUser[dateStr] = filteredDay;
         preservedDates.add(dateStr);
         const forcedDay = forcedByDate.get(dateStr) || {};
         const existingUser = normalizeForcedUserEntry(forcedDay[user]);
-        const normalizedForced = normalizeForcedDay(dayValue);
+        const normalizedForced = normalizeForcedDay(filteredDay);
         Object.entries(normalizedForced).forEach(([categoryId, slotValue]) => {
           const slotMap = normalizeForcedCategorySlots(slotValue);
           if (!existingUser[categoryId]) {
@@ -353,28 +509,6 @@ export function generateWhatToEatCalendar(
 
   function createLeftoverEntry(mealId, source) {
     return { type: 'leftover', mealId, leftoverSource: source || null };
-  }
-
-  function serializeEntry(entry) {
-    if (entry == null) return null;
-    if (entry.type === 'leftover') {
-      return {
-        type: 'leftover',
-        mealId: entry.mealId,
-        leftoverSource: entry.leftoverSource ? { ...entry.leftoverSource } : null
-      };
-    }
-    const targets = Array.isArray(entry.leftoverTargets)
-      ? entry.leftoverTargets.map(t => ({ ...t }))
-      : [];
-    if (!targets.length) {
-      return entry.mealId;
-    }
-    return {
-      type: 'cook',
-      mealId: entry.mealId,
-      leftoverTargets: targets
-    };
   }
 
   function rotateArray(arr, seed) {

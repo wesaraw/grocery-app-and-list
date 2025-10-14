@@ -8,7 +8,11 @@ import {
 import {
   generatePreparedMealsCalendar
 } from './preparedMealsCalendar.js';
-import { generateWhatToEatCalendar } from './whatToEatCalendar.js';
+import {
+  generateWhatToEatCalendar,
+  buildAllowedMealLookup,
+  filterCalendarDayByAllowedMeals
+} from './whatToEatCalendar.js';
 import { loadJSON } from './dataLoader.js';
 import { initUomTable, convert } from './uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './unitNormalize.js';
@@ -526,6 +530,8 @@ export async function calculateAndSaveMealNeeds(options = {}) {
     });
   });
 
+  const allowedMealLookup = buildAllowedMealLookup(subscriptions);
+
   const eatingDays = {};
   Object.entries(eatingDaysByUser).forEach(([user, prefs]) => {
     eatingDays[user] = prefs;
@@ -575,11 +581,18 @@ export async function calculateAndSaveMealNeeds(options = {}) {
     users.forEach(user => {
       const nextUserEntries = { ...(whatCal[user] || {}) };
       const prevUserEntries = prevCalendar[user];
+      const allowedForUser = allowedMealLookup[user] || null;
       if (prevUserEntries && typeof prevUserEntries === 'object') {
         Object.entries(prevUserEntries).forEach(([dateStr, dayValue]) => {
           if (!freezeBeforeStr || dateStr < freezeBeforeStr) {
             if (nextUserEntries[dateStr] === undefined) {
-              nextUserEntries[dateStr] = dayValue;
+              const filteredDay = filterCalendarDayByAllowedMeals(
+                dayValue,
+                allowedForUser
+              );
+              if (filteredDay && Object.keys(filteredDay).length) {
+                nextUserEntries[dateStr] = filteredDay;
+              }
             }
           }
         });
@@ -590,11 +603,18 @@ export async function calculateAndSaveMealNeeds(options = {}) {
     Object.keys(prevCalendar).forEach(prevUser => {
       if (mergedCal[prevUser]) return;
       const prevUserEntries = prevCalendar[prevUser];
+      const allowedForUser = allowedMealLookup[prevUser] || null;
       const mergedEntries = {};
       if (prevUserEntries && typeof prevUserEntries === 'object') {
         Object.entries(prevUserEntries).forEach(([dateStr, dayValue]) => {
           if (!freezeBeforeStr || dateStr < freezeBeforeStr) {
-            mergedEntries[dateStr] = dayValue;
+            const filteredDay = filterCalendarDayByAllowedMeals(
+              dayValue,
+              allowedForUser
+            );
+            if (filteredDay && Object.keys(filteredDay).length) {
+              mergedEntries[dateStr] = filteredDay;
+            }
           }
         });
       }
