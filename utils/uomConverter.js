@@ -16,7 +16,12 @@ const ALIAS_MAP = {
   'halfdoz': 'halfdoz',
   'half-doz': 'halfdoz',
   halfdozen: 'halfdoz',
-  'half-dozen': 'halfdoz'
+  'half-dozen': 'halfdoz',
+  pint: 'pt',
+  pints: 'pt',
+  perpint: 'pt',
+  'per pint': 'pt',
+  'per-pint': 'pt'
 };
 
 export async function initUomTable() {
