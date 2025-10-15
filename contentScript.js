@@ -74,6 +74,34 @@ function scrapeStopAndShop() {
     unit: 1
   };
 
+  const UNIT_PHRASE_REPLACEMENTS = {
+    'dry pint': 'pt',
+    'dry pints': 'pt',
+    'fluid ounce': 'fl oz',
+    'fluid ounces': 'fl oz',
+    'fluid oz': 'fl oz',
+    'fluid ozs': 'fl oz',
+    'dry quart': 'qt',
+    'dry quarts': 'qt'
+  };
+
+  function normalizeUnitPhrases(str) {
+    if (!str) return str;
+    let normalized = str;
+    Object.entries(UNIT_PHRASE_REPLACEMENTS).forEach(([phrase, replacement]) => {
+      const pattern = phrase
+        .split(' ')
+        .map(part => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+        .join('\\s+');
+      normalized = normalized.replace(new RegExp(`\\b${pattern}\\b`, 'gi'), replacement);
+    });
+    return normalized;
+  }
+
+  const UNIT_PATTERN =
+    'fl\\s*oz|oz|lb|kg|ml|l|gal|g|qt|pt|cup|tbsp|tsp|ea|ct|pkg|box|can|bag|bottle|stick|roll|bar|pouch|jar|packet|sleeve|slice|piece|tube|tray|unit';
+  const UNIT_PATTERN_NO_SPACE = UNIT_PATTERN.replace(/\\s\*/g, '');
+
   const sanitize = str =>
     str?.replace(/<[^>]*>/g, ' ').replace(/&nbsp;|&#160;/gi, ' ').replace(/\s+/g, ' ').trim();
 
@@ -116,15 +144,17 @@ function scrapeStopAndShop() {
     let unitQty = null;
     let unitType = null;
     let pricePerUnit = null;
-    if (perUnitText) {
-      const isCent = perUnitText.includes('¢');
-      const clean = perUnitText.replace(/[^0-9./a-zA-Z]/g, '');
-      const match = clean.match(/([\d.]+)\/([\d.]*)\s*([a-zA-Z]+)/);
+    const normalizedPerUnitText = normalizeUnitPhrases(perUnitText);
+    if (normalizedPerUnitText) {
+      const isCent = normalizedPerUnitText.includes('¢');
+      const clean = normalizedPerUnitText.replace(/[^0-9./a-zA-Z]/g, '');
+      const match = clean.match(new RegExp(`([\\d.]+)\/([\\d.]*)(${UNIT_PATTERN_NO_SPACE})`, 'i'));
       if (match) {
         const priceVal = parseNumber(match[1]) / (isCent ? 100 : 1);
         const qtyVal = parseNumber(match[2]);
         unitQty = !isNaN(qtyVal) && qtyVal !== 0 ? qtyVal : 1;
-        unitType = match[3].replace(/[\s.]+/g, '');
+        unitType = match[3].toLowerCase().replace(/[\s.]+/g, '');
+        if (unitType === 'floz') unitType = 'oz';
         if (!isNaN(priceVal)) {
           pricePerUnit = priceVal / unitQty;
         }
@@ -139,11 +169,13 @@ function scrapeStopAndShop() {
 
     let sizeQty = null;
     let sizeUnit = null;
-    if (unitSize) {
-      const m = unitSize.match(/([\d./]+)\s*([a-zA-Z]+)/);
+    const normalizedUnitSize = normalizeUnitPhrases(unitSize);
+    if (normalizedUnitSize) {
+      const m = normalizedUnitSize.match(new RegExp(`([\\d./]+)\\s*(${UNIT_PATTERN})`, 'i'));
       if (m) {
         sizeQty = parseNumber(m[1]);
-        sizeUnit = m[2].replace(/[\s.]+/g, '');
+        sizeUnit = m[2].toLowerCase().replace(/[\s.]+/g, '');
+        if (sizeUnit === 'floz') sizeUnit = 'oz';
       }
     }
 
