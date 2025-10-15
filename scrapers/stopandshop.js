@@ -84,6 +84,30 @@ export function scrapeStopAndShop() {
       .trim();
   }
 
+  const UNIT_PHRASE_REPLACEMENTS = {
+    'dry pint': 'pt',
+    'dry pints': 'pt',
+    'fluid ounce': 'fl oz',
+    'fluid ounces': 'fl oz',
+    'fluid oz': 'fl oz',
+    'fluid ozs': 'fl oz',
+    'dry quart': 'qt',
+    'dry quarts': 'qt'
+  };
+
+  function normalizeUnitPhrases(str) {
+    if (!str) return str;
+    let normalized = str;
+    Object.entries(UNIT_PHRASE_REPLACEMENTS).forEach(([phrase, replacement]) => {
+      const pattern = phrase
+        .split(' ')
+        .map(part => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+        .join('\\s+');
+      normalized = normalized.replace(new RegExp(`\\b${pattern}\\b`, 'gi'), replacement);
+    });
+    return normalized;
+  }
+
   function matchPack(str) {
     if (!str) return null;
     const s = sanitize(str);
@@ -120,8 +144,10 @@ export function scrapeStopAndShop() {
 
     let unitQty = null;
     let unitType = null;
-    if (perUnitText) {
-      const clean = perUnitText.replace(/[^0-9./a-zA-Z]/g, '');
+    const normalizedPerUnitText = normalizeUnitPhrases(perUnitText);
+
+    if (normalizedPerUnitText) {
+      const clean = normalizedPerUnitText.replace(/[^0-9./a-zA-Z]/g, '');
       const match = clean.match(/([\d.]+)\/(fl\s*oz|oz|lb|kg|ml|l|gal|g|qt|pt|cup|tbsp|tsp|ea|ct|pkg|box|can|bag|bottle|stick|roll|bar|pouch|jar|packet|sleeve|slice|piece|tube|tray|unit)/i);
       if (match) {
         unitQty = parseFloat(match[1]);
@@ -138,8 +164,10 @@ export function scrapeStopAndShop() {
 
     let sizeQty = null;
     let sizeUnit = null;
-    if (unitSize) {
-      const m = unitSize.match(/([\d.]+)\s*(fl\s*oz|oz|lb|kg|ml|l|gal|g|qt|pt|cup|tbsp|tsp|ea|ct|pkg|box|can|bag|bottle|stick|roll|bar|pouch|jar|packet|sleeve|slice|piece|tube|tray|unit)/i);
+    const normalizedUnitSize = normalizeUnitPhrases(unitSize);
+
+    if (normalizedUnitSize) {
+      const m = normalizedUnitSize.match(/([\d.]+)\s*(fl\s*oz|oz|lb|kg|ml|l|gal|g|qt|pt|cup|tbsp|tsp|ea|ct|pkg|box|can|bag|bottle|stick|roll|bar|pouch|jar|packet|sleeve|slice|piece|tube|tray|unit)/i);
       if (m) {
         sizeQty = parseFloat(m[1]);
         sizeUnit = m[2].toLowerCase().replace(/\s+/g, '');
@@ -159,8 +187,8 @@ export function scrapeStopAndShop() {
     let convertedQty = null;
     let pricePerUnit = null;
 
-    if (perUnitText) {
-      let m = perUnitText.match(/\$([\d.]+)\/?\s*([\d.]*)\s*(\w+)/);
+    if (normalizedPerUnitText) {
+      let m = normalizedPerUnitText.match(/\$([\d.]+)\/?\s*([\d.]*)\s*(\w+)/);
       let priceVal = null;
       let qtyVal = null;
       if (m) {
@@ -168,7 +196,7 @@ export function scrapeStopAndShop() {
         qtyVal = parseFloat(m[2]);
         unitType = m[3].toLowerCase().replace(/\s+/g, '');
       } else {
-        m = perUnitText.match(/([\d.]+)\s*¢\/?\s*([\d.]*)\s*(\w+)/);
+        m = normalizedPerUnitText.match(/([\d.]+)\s*¢\/?\s*([\d.]*)\s*(\w+)/);
         if (m) {
           priceVal = parseFloat(m[1]) / 100;
           qtyVal = parseFloat(m[2]);
