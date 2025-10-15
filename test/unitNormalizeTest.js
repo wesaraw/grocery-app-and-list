@@ -33,4 +33,9 @@ if (eggs !== 12) {
   throw new Error('dozen conversion failed');
 }
 
+const pintToOz = convert(1, 'pint', 'oz');
+if (pintToOz !== 16) {
+  throw new Error('pint conversion failed');
+}
+
 console.log('unitNormalize tests passed');
