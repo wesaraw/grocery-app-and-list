@@ -64,6 +64,12 @@ function pricePerHomeUnit(itemName, product) {
       }
     }
   }
+  if (unit === 'each') {
+    const { count } = baseGetPackInfo(product);
+    if (product.priceNumber != null && count) {
+      return product.priceNumber / count;
+    }
+  }
   return null;
 }
 
@@ -231,8 +237,8 @@ function baseGetPackInfo(product) {
     if (!str) return null;
     const s = sanitize(str);
     let m;
-    if ((m = s.match(/(\d+)\s*(?:doz|dozen)/i))) {
-      return { count: parseInt(m[1], 10) * 12, match: m[0] };
+    if ((m = s.match(/(\d+(?:\.\d+)?)\s*(?:doz|dozen)/i))) {
+      return { count: Math.round(parseFloat(m[1]) * 12), match: m[0] };
     }
     if ((m = s.match(/(?:half|1\/2)\s*-?\s*doz(?:en)?/i))) {
       return { count: 6, match: m[0] };
@@ -280,6 +286,19 @@ const dozenProduct = { name: 'Large Eggs', unit: '1 DOZ', priceNumber: 5.49 };
 const dozenInfo = baseGetPackInfo(dozenProduct);
 if (dozenInfo.count !== 12) {
   throw new Error('Dozen pack detection failed');
+}
+
+const fractionalDozenProduct = { name: 'Large Eggs', size: '1.5 doz', priceNumber: 8.19 };
+const fractionalDozenInfo = baseGetPackInfo(fractionalDozenProduct);
+if (fractionalDozenInfo.count !== 18) {
+  throw new Error(`Fractional dozen detection failed: expected 18 but got ${fractionalDozenInfo.count}`);
+}
+
+needsData.push({ name: 'Egg', home_unit: 'each' });
+const perEgg = pricePerHomeUnit('Egg', fractionalDozenProduct);
+const expectedPerEgg = fractionalDozenProduct.priceNumber / 18;
+if (perEgg == null || Math.abs(perEgg - expectedPerEgg) > 0.0001) {
+  throw new Error(`Expected per-egg price ${expectedPerEgg.toFixed(4)} but got ${perEgg}`);
 }
 
 function extractSize(text) {

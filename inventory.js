@@ -72,8 +72,8 @@ function baseGetPackInfo(product) {
     if (!str) return null;
     const s = sanitize(str);
     let m;
-    if ((m = s.match(/(\d+)\s*(?:doz|dozen)/i))) {
-      return { count: parseInt(m[1], 10) * 12, match: m[0] };
+    if ((m = s.match(/(\d+(?:\.\d+)?)\s*(?:doz|dozen)/i))) {
+      return { count: Math.round(parseFloat(m[1]) * 12), match: m[0] };
     }
     if ((m = s.match(/(?:half|1\/2)\s*-?\s*doz(?:en)?/i))) {
       return { count: 6, match: m[0] };
