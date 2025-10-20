@@ -200,18 +200,36 @@ function renderMealColumn(container, entries, mealMap) {
   });
 }
 
-function buildData(calendar, userEntries, mealMap, start, days, prepDay) {
+function normalizePrepDays(prepDays) {
+  if (!Array.isArray(prepDays)) return [];
+  const seen = new Set();
+  const result = [];
+  prepDays.forEach(day => {
+    if (typeof day === 'string') {
+      const trimmed = day.trim();
+      if (trimmed && !seen.has(trimmed)) {
+        seen.add(trimmed);
+        result.push(trimmed);
+      }
+    }
+  });
+  return result;
+}
+
+function buildData(calendar, userEntries, mealMap, start, days, prepDays) {
+  const normalizedPrepDays = normalizePrepDays(prepDays);
+  const prepSet = new Set(normalizedPrepDays);
   const date = start ? new Date(start) : new Date();
 
   let calcDays = days;
-  if (prepDay) {
+  if (prepSet.size) {
     const last = new Date(date);
     last.setDate(last.getDate() + days - 1);
     while (true) {
       last.setDate(last.getDate() + 1);
       calcDays++;
       const dayName = last.toLocaleDateString('en-US', { weekday: 'long' });
-      if (dayName === prepDay) break;
+      if (prepSet.has(dayName)) break;
     }
   }
 
@@ -270,12 +288,12 @@ function buildData(calendar, userEntries, mealMap, start, days, prepDay) {
     date.setDate(date.getDate() + 1);
   }
 
-  if (prepDay) {
+  if (prepSet.size) {
     for (let i = 0; i < rows.length; i++) {
-      if (rows[i].dayName !== prepDay) continue;
+      if (!prepSet.has(rows[i].dayName)) continue;
       const totals = new Map();
       for (let j = i + 1; j < rows.length; j++) {
-        if (rows[j].dayName === prepDay) break;
+        if (prepSet.has(rows[j].dayName)) break;
         rows[j].ahead.forEach((value, id) => {
           increment(totals, id, value);
         });
@@ -336,7 +354,7 @@ async function init() {
   const userEntries = buildUserEntries(users, multipliers, calendar);
   const mealMap = await loadAllMeals();
   const cookingDays = await loadCookingDays();
-  const prepDay = Array.isArray(cookingDays.prepDay) ? cookingDays.prepDay[0] : null;
+  const prepDays = normalizePrepDays(cookingDays.prepDay);
   const { start, days } = getParams();
   document.getElementById('startDate').value = start || new Date().toISOString().split('T')[0];
   document.getElementById('numDays').value = days;
@@ -344,7 +362,7 @@ async function init() {
   function update() {
     const startVal = document.getElementById('startDate').value;
     const daysVal = parseInt(document.getElementById('numDays').value, 10) || 7;
-    const data = buildData(calendar, userEntries, mealMap, startVal, daysVal, prepDay);
+    const data = buildData(calendar, userEntries, mealMap, startVal, daysVal, prepDays);
     renderRows(data, mealMap);
   }
 

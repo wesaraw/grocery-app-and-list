@@ -53,7 +53,7 @@ function buildRow(cat, label, tbody) {
 function buildPrepDayRow(tbody) {
   const tr = document.createElement('tr');
   const catTd = document.createElement('td');
-  catTd.textContent = 'Prep Ahead Day';
+  catTd.textContent = 'Prep Ahead Days';
   const daysTd = document.createElement('td');
   daysTd.colSpan = 7;
   const boxes = [];
@@ -75,12 +75,6 @@ function buildPrepDayRow(tbody) {
   saveTd.appendChild(saveBtn);
 
   function update() {
-    // ensure only one box checked
-    const checked = boxes.filter(b => b.chk.checked);
-    if (checked.length > 1) {
-      const latest = checked[checked.length - 1];
-      boxes.forEach(b => { if (b !== latest) b.chk.checked = false; });
-    }
     const vals = boxes.filter(b => b.chk.checked).map(b => b.day);
     const cur = data.prepDay || [];
     if (vals.join(',') !== cur.join(',')) saveBtn.classList.remove('hidden');
