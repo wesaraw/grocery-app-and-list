@@ -165,6 +165,7 @@ function renderMealColumn(container, entries, mealMap) {
     let leftoverDates = [];
     let prepItems = null;
     let wholeMeal = false;
+    let targetLabels = [];
     if (Array.isArray(entry)) {
       mealId = entry[0];
       totalMultiplier = entry[1];
@@ -179,6 +180,20 @@ function renderMealColumn(container, entries, mealMap) {
       }
       if (entry.wholeMeal) {
         wholeMeal = true;
+      }
+      if (Array.isArray(entry.targets)) {
+        const labels = [];
+        entry.targets.forEach(target => {
+          if (!target) return;
+          const label = target.dayName || target.date;
+          if (!label) return;
+          if (!labels.includes(label)) {
+            labels.push(label);
+          }
+        });
+        if (labels.length) {
+          targetLabels = labels;
+        }
       }
     } else if (entry) {
       mealId = entry;
@@ -195,9 +210,10 @@ function renderMealColumn(container, entries, mealMap) {
       (meal?.categoryId && (MEAL_TYPES[meal.categoryId]?.label || meal.categoryId));
     const displayName = categoryLabel ? `${categoryLabel}: ${name}` : name;
     const portionText = formatPortions(totalMultiplier);
+    const targetText = targetLabels.length ? ` for ${targetLabels.join(', ')}` : '';
     title.textContent = portionText
-      ? `${displayName} (${portionText})`
-      : displayName;
+      ? `${displayName} (${portionText})${targetText}`
+      : `${displayName}${targetText}`;
     block.appendChild(title);
 
     if (leftoverDates.length) {
@@ -298,10 +314,36 @@ function buildData(calendar, userEntries, mealMap, start, days, prepDays) {
     if (!mealId || !amount) return;
     let record = map.get(mealId);
     if (!record) {
-      record = { mealId, total: 0, wholeMeal: false, itemTotals: null };
+      record = { mealId, total: 0, wholeMeal: false, itemTotals: null, targets: [] };
       map.set(mealId, record);
     }
     record.total += amount;
+
+    const targetList = [];
+    if (options.target && typeof options.target === 'object') {
+      targetList.push(options.target);
+    }
+    if (Array.isArray(options.targets)) {
+      targetList.push(...options.targets);
+    }
+    if (targetList.length) {
+      if (!Array.isArray(record.targets)) record.targets = [];
+      targetList.forEach(target => {
+        if (!target || typeof target !== 'object') return;
+        const rawDate = target.date != null ? String(target.date) : null;
+        const rawDayName = target.dayName != null ? String(target.dayName) : null;
+        const date = rawDate ? rawDate.trim() || null : null;
+        const dayName = rawDayName ? rawDayName.trim() || null : null;
+        if (!date && !dayName) return;
+        const exists = record.targets.some(
+          existing => existing.date === date && existing.dayName === dayName
+        );
+        if (!exists) {
+          record.targets.push({ date, dayName });
+        }
+      });
+    }
+
     if (options.wholeMeal) {
       record.wholeMeal = true;
       record.itemTotals = null;
@@ -323,12 +365,32 @@ function buildData(calendar, userEntries, mealMap, start, days, prepDays) {
       mealId: record.mealId,
       total: record.total,
       wholeMeal: record.wholeMeal,
-      itemTotals: record.itemTotals ? { ...record.itemTotals } : null
+      itemTotals: record.itemTotals ? { ...record.itemTotals } : null,
+      targets: Array.isArray(record.targets)
+        ? record.targets.map(target => ({ ...target }))
+        : []
     };
   }
 
   function mergePrepRecords(target, source) {
     target.total += source.total;
+    if (!Array.isArray(target.targets)) target.targets = [];
+    if (Array.isArray(source.targets)) {
+      source.targets.forEach(targetInfo => {
+        if (!targetInfo) return;
+        const rawDate = targetInfo.date != null ? String(targetInfo.date) : null;
+        const rawDayName = targetInfo.dayName != null ? String(targetInfo.dayName) : null;
+        const date = rawDate ? rawDate.trim() || null : null;
+        const dayName = rawDayName ? rawDayName.trim() || null : null;
+        if (!date && !dayName) return;
+        const exists = target.targets.some(
+          existing => existing.date === date && existing.dayName === dayName
+        );
+        if (!exists) {
+          target.targets.push({ date, dayName });
+        }
+      });
+    }
     if (source.wholeMeal) {
       target.wholeMeal = true;
       target.itemTotals = null;
@@ -388,7 +450,8 @@ function buildData(calendar, userEntries, mealMap, start, days, prepDays) {
             }
             if (meal.prepAhead) {
               addPrepRecord(ahead, calEntry.mealId, userEntry.multiplier, {
-                wholeMeal: true
+                wholeMeal: true,
+                targets: [{ date: dStr, dayName }]
               });
             } else if (Array.isArray(meal.ingredients)) {
               const indices = [];
@@ -399,7 +462,8 @@ function buildData(calendar, userEntries, mealMap, start, days, prepDays) {
               });
               if (indices.length) {
                 addPrepRecord(ahead, calEntry.mealId, userEntry.multiplier, {
-                  items: indices
+                  items: indices,
+                  targets: [{ date: dStr, dayName }]
                 });
               }
             }
@@ -445,6 +509,9 @@ function buildData(calendar, userEntries, mealMap, start, days, prepDays) {
             mealId: record.mealId,
             total: record.total
           };
+          if (Array.isArray(record.targets) && record.targets.length) {
+            result.targets = record.targets.map(target => ({ ...target }));
+          }
           if (record.itemTotals) {
             result.items = Object.entries(record.itemTotals).map(([idx, total]) => {
               const parsedIndex = Number(idx);
