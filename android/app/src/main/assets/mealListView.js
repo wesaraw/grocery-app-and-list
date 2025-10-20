@@ -30,6 +30,27 @@ const deleteButtons = [];
 let needsMap = new Map();
 let densityMap = {};
 
+function normalizeIngredientPrepFlags(ingredients) {
+  if (!Array.isArray(ingredients)) return [];
+  ingredients.forEach(ing => {
+    if (!ing || typeof ing !== 'object') return;
+    if (ing.prepAhead === undefined) ing.prepAhead = false;
+  });
+  return ingredients;
+}
+
+function normalizeMealRecord(meal) {
+  if (!meal || typeof meal !== 'object') return;
+  if (meal.prepared === undefined) meal.prepared = false;
+  if (meal.prepAhead === undefined) meal.prepAhead = false;
+  if (meal.leftoverOk === undefined) meal.leftoverOk = false;
+  if (meal.recipeBook === undefined) meal.recipeBook = '';
+  if (!Array.isArray(meal.ingredients)) {
+    meal.ingredients = [];
+  }
+  normalizeIngredientPrepFlags(meal.ingredients);
+}
+
 function sanitizeOverrides(source, userCount) {
   if (!Array.isArray(source) || userCount <= 0) return [];
   const sanitized = [];
@@ -123,22 +144,12 @@ function createAddButton(name) {
 async function loadMeals() {
   const arr = await loadItemArray(key);
   if (arr.length > 0) {
-    arr.forEach(m => {
-      if (m.prepared === undefined) m.prepared = false;
-      if (m.prepAhead === undefined) m.prepAhead = false;
-      if (m.leftoverOk === undefined) m.leftoverOk = false;
-      if (m.recipeBook === undefined) m.recipeBook = '';
-    });
+    arr.forEach(normalizeMealRecord);
     return arr;
   }
   const fromJson = await loadJSON(path);
   const withNames = await convertArrayToNames(fromJson);
-  withNames.forEach(m => {
-    if (m.prepared === undefined) m.prepared = false;
-    if (m.prepAhead === undefined) m.prepAhead = false;
-    if (m.leftoverOk === undefined) m.leftoverOk = false;
-    if (m.recipeBook === undefined) m.recipeBook = '';
-  });
+  withNames.forEach(normalizeMealRecord);
   return withNames;
 }
 
@@ -166,22 +177,12 @@ function loadMealsForType(cat) {
   return (async () => {
     const arr = await loadItemArray(info.key);
     if (arr.length > 0) {
-      arr.forEach(m => {
-        if (m.prepared === undefined) m.prepared = false;
-        if (m.prepAhead === undefined) m.prepAhead = false;
-        if (m.leftoverOk === undefined) m.leftoverOk = false;
-        if (m.recipeBook === undefined) m.recipeBook = '';
-      });
+      arr.forEach(normalizeMealRecord);
       return arr;
     }
     const fromJson = await loadJSON(info.path);
     const withNames = await convertArrayToNames(fromJson);
-    withNames.forEach(m => {
-      if (m.prepared === undefined) m.prepared = false;
-      if (m.prepAhead === undefined) m.prepAhead = false;
-      if (m.leftoverOk === undefined) m.leftoverOk = false;
-      if (m.recipeBook === undefined) m.recipeBook = '';
-    });
+    withNames.forEach(normalizeMealRecord);
     return withNames;
   })();
 }
@@ -290,7 +291,7 @@ async function ingredientCost(name, amountStr) {
 function createRows(meal, arr) {
   const rows = [];
   const ingredients = meal.ingredients || [];
-  const ingTds = [];
+  const ingCells = [];
   let imageTd;
   let nameTd;
   let editBtn;
@@ -501,10 +502,22 @@ function createRows(meal, arr) {
     const ingTd = document.createElement('td');
     ingTd.textContent = ing.name || '';
     if (ing.name) ingTd.dataset.name = ing.name;
-    ingTds.push(ingTd);
+
+    const prepItemTd = document.createElement('td');
+    prepItemTd.style.textAlign = 'center';
+    const prepItemChk = document.createElement('input');
+    prepItemChk.type = 'checkbox';
+    prepItemChk.checked = !!ing.prepAhead;
+    prepItemChk.addEventListener('change', async () => {
+      ing.prepAhead = prepItemChk.checked;
+      await persistMealChange();
+    });
+    prepItemTd.appendChild(prepItemChk);
 
     const amtTd = document.createElement('td');
     amtTd.textContent = ing.amount || ing.serving_size || '';
+
+    ingCells.push({ ingTd, prepTd: prepItemTd });
 
     const costTd = document.createElement('td');
     let totalTd;
@@ -523,6 +536,7 @@ function createRows(meal, arr) {
     }
 
     tr.appendChild(ingTd);
+    tr.appendChild(prepItemTd);
     tr.appendChild(amtTd);
     tr.appendChild(costTd);
     if (totalTd) tr.appendChild(totalTd);
@@ -716,11 +730,13 @@ function createRows(meal, arr) {
     groupTd.style.textAlign = 'center';
 
     const ingTd = document.createElement('td');
-    ingTds.push(ingTd);
+    const prepItemTd = document.createElement('td');
+    prepItemTd.style.textAlign = 'center';
     const amtTd = document.createElement('td');
     const costTd = document.createElement('td');
     const totalTd = document.createElement('td');
     const actionTd = document.createElement('td');
+    ingCells.push({ ingTd, prepTd: prepItemTd });
     tr.appendChild(useTd);
     tr.appendChild(imageTd);
     tr.appendChild(nameTd);
@@ -728,6 +744,7 @@ function createRows(meal, arr) {
     tr.appendChild(leftoverTd);
     tr.appendChild(groupTd);
     tr.appendChild(ingTd);
+    tr.appendChild(prepItemTd);
     tr.appendChild(amtTd);
     tr.appendChild(costTd);
     tr.appendChild(totalTd);
@@ -848,12 +865,12 @@ function createRows(meal, arr) {
     });
     saveBtn.addEventListener('click', commit);
 
-    ingTds.forEach(td => {
+    ingCells.forEach(cell => {
       const input = document.createElement('input');
       input.style.display = 'block';
       input.style.marginTop = '2px';
       input.style.width = '95%';
-      td.appendChild(input);
+      cell.ingTd.appendChild(input);
       input.addEventListener('input', checkSave);
       input.addEventListener('keydown', e => {
         if (e.key === 'Enter') commit();
@@ -970,7 +987,7 @@ async function loadAndRender() {
     if (!bookMap[book]) bookMap[book] = [];
     bookMap[book].push(m);
   });
-  const headerColspan = 11;
+  const headerColspan = 12;
   Object.keys(bookMap)
     .sort((a, b) => a.localeCompare(b))
     .forEach(book => {

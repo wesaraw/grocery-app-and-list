@@ -18,6 +18,13 @@ function loadMeals() {
           if (m.prepAhead === undefined) m.prepAhead = false;
           if (m.leftoverOk === undefined) m.leftoverOk = false;
           if (m.recipeBook === undefined) m.recipeBook = '';
+          if (!Array.isArray(m.ingredients)) {
+            m.ingredients = [];
+          }
+          m.ingredients.forEach(ing => {
+            if (!ing || typeof ing !== 'object') return;
+            if (ing.prepAhead === undefined) ing.prepAhead = false;
+          });
         });
       }
       resolve(arr || []);
@@ -48,6 +55,12 @@ function createRow(units) {
   ingInput.type = 'text';
   ingTd.appendChild(ingInput);
 
+  const prepTd = document.createElement('td');
+  prepTd.style.textAlign = 'center';
+  const prepChk = document.createElement('input');
+  prepChk.type = 'checkbox';
+  prepTd.appendChild(prepChk);
+
   const amtTd = document.createElement('td');
   const amtInput = document.createElement('input');
   amtInput.type = 'text';
@@ -65,10 +78,11 @@ function createRow(units) {
 
   tr.appendChild(mealTd);
   tr.appendChild(ingTd);
+  tr.appendChild(prepTd);
   tr.appendChild(amtTd);
   tr.appendChild(unitTd);
 
-  return { tr, mealInput, ingInput, amtInput, select };
+  return { tr, mealInput, ingInput, amtInput, select, prepChk };
 }
 
 function highlightError(el) {
@@ -105,6 +119,11 @@ async function init() {
   function togglePrepAhead() {
     prepAheadLabel.style.display = preparedBox.checked ? '' : 'none';
     if (!preparedBox.checked) prepAheadBox.checked = false;
+    rows.forEach(row => {
+      if (!row.ingInput.value.trim() && !row.amtInput.value.trim()) {
+        row.prepChk.checked = preparedBox.checked && prepAheadBox.checked;
+      }
+    });
   }
   preparedBox.addEventListener('change', togglePrepAhead);
   togglePrepAhead();
@@ -117,6 +136,7 @@ async function init() {
     }
     rows.push(row);
     tbody.appendChild(row.tr);
+    row.prepChk.checked = preparedBox.checked && prepAheadBox.checked;
 
     function checkAddNext() {
       if (rows[rows.length - 1] === row && anyFilled(row)) {
@@ -128,6 +148,7 @@ async function init() {
     row.ingInput.addEventListener('input', checkAddNext);
     row.amtInput.addEventListener('input', checkAddNext);
     row.select.addEventListener('change', checkAddNext);
+    row.prepChk.addEventListener('change', checkAddNext);
 
     if (rows.length === 1) {
       row.mealInput.addEventListener('input', () => {
@@ -155,6 +176,11 @@ async function init() {
       const amt = row.amtInput.value.trim();
       const unit = row.select.value;
       if (!ing && !amt) {
+        if (row.prepChk.checked) {
+          highlightError(row.ingInput);
+          highlightError(row.amtInput);
+          hasError = true;
+        }
         return;
       }
       if (!ing || !amt) {
@@ -163,7 +189,7 @@ async function init() {
         hasError = true;
         return;
       }
-      validRows.push({ ing, amt, unit });
+      validRows.push({ ing, amt, unit, prepAhead: row.prepChk.checked });
     });
     if (hasError || !mealName || !validRows.length) {
       document.getElementById('warning').style.display = 'block';
@@ -174,7 +200,8 @@ async function init() {
     const ingredients = validRows.map(r => ({
       name: r.ing,
       amount: `${r.amt} ${r.unit}`,
-      serving_size: `${r.amt} ${r.unit}`
+      serving_size: `${r.amt} ${r.unit}`,
+      prepAhead: !!r.prepAhead
     }));
 
     const weight = parseFloat(weightInput.value);

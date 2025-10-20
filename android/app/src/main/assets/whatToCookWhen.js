@@ -31,6 +31,12 @@ async function loadAllMeals() {
             if (m.prepared === undefined) m.prepared = false;
             if (m.prepAhead === undefined) m.prepAhead = false;
             if (m.leftoverOk === undefined) m.leftoverOk = false;
+            if (Array.isArray(m.ingredients)) {
+              m.ingredients.forEach(ing => {
+                if (!ing || typeof ing !== 'object') return;
+                ing.prepAhead = !!ing.prepAhead;
+              });
+            }
             map[m.id || m.name] = m;
           });
         }
@@ -81,11 +87,6 @@ function getDayRecord(calendar, entry, dateStr) {
     if (day) return day;
   }
   return {};
-}
-
-function increment(map, key, amount) {
-  if (!amount) return;
-  map.set(key, (map.get(key) || 0) + amount);
 }
 
 function getParams() {
@@ -147,6 +148,8 @@ function renderMealColumn(container, entries, mealMap) {
     let mealId = null;
     let totalMultiplier = null;
     let leftoverDates = [];
+    let prepItems = null;
+    let wholeMeal = false;
     if (Array.isArray(entry)) {
       mealId = entry[0];
       totalMultiplier = entry[1];
@@ -155,6 +158,12 @@ function renderMealColumn(container, entries, mealMap) {
       if (entry.total != null) totalMultiplier = entry.total;
       if (Array.isArray(entry.leftoverDates)) {
         leftoverDates = entry.leftoverDates.filter(Boolean);
+      }
+      if (Array.isArray(entry.items)) {
+        prepItems = entry.items;
+      }
+      if (entry.wholeMeal) {
+        wholeMeal = true;
       }
     } else if (entry) {
       mealId = entry;
@@ -178,16 +187,46 @@ function renderMealColumn(container, entries, mealMap) {
     }
 
     const ingredients = Array.isArray(meal?.ingredients) ? meal.ingredients : [];
+    const hasPartialPrep = !wholeMeal && Array.isArray(prepItems) && prepItems.length;
     if (ingredients.length) {
       const list = document.createElement('ul');
       list.className = 'ingredient-list';
-      ingredients.forEach(ing => {
-        const li = document.createElement('li');
-        const ingName = ing?.name?.trim() || 'Unnamed ingredient';
-        const amountText = formatIngredientAmount(ing, totalMultiplier);
-        li.textContent = amountText ? `${ingName}: ${amountText}` : ingName;
-        list.appendChild(li);
-      });
+      if (hasPartialPrep) {
+        const aggregated = new Map();
+        prepItems.forEach(item => {
+          const idx = typeof item.index === 'number' ? item.index : parseInt(item.index, 10);
+          if (!Number.isFinite(idx)) return;
+          if (idx < 0 || idx >= ingredients.length) return;
+          const amt = Number(item.total);
+          if (!Number.isFinite(amt) || amt <= 0) return;
+          aggregated.set(idx, (aggregated.get(idx) || 0) + amt);
+        });
+        const sorted = Array.from(aggregated.entries()).sort((a, b) => a[0] - b[0]);
+        sorted.forEach(([idx, amt]) => {
+          const ing = ingredients[idx];
+          const li = document.createElement('li');
+          const ingName = ing?.name?.trim() || 'Unnamed ingredient';
+          const amountText = formatIngredientAmount(ing, amt);
+          li.textContent = amountText ? `${ingName}: ${amountText}` : ingName;
+          list.appendChild(li);
+        });
+        if (!sorted.length) {
+          ingredients.forEach(ing => {
+            const li = document.createElement('li');
+            const ingName = ing?.name?.trim() || 'Unnamed ingredient';
+            li.textContent = ingName;
+            list.appendChild(li);
+          });
+        }
+      } else {
+        ingredients.forEach(ing => {
+          const li = document.createElement('li');
+          const ingName = ing?.name?.trim() || 'Unnamed ingredient';
+          const amountText = formatIngredientAmount(ing, totalMultiplier);
+          li.textContent = amountText ? `${ingName}: ${amountText}` : ingName;
+          list.appendChild(li);
+        });
+      }
       block.appendChild(list);
     } else {
       const placeholder = document.createElement('div');
@@ -231,6 +270,54 @@ function buildData(calendar, userEntries, mealMap, start, days, prepDays) {
       const dayName = last.toLocaleDateString('en-US', { weekday: 'long' });
       if (prepSet.has(dayName)) break;
     }
+  }
+
+  function addPrepRecord(map, mealId, amount, options = {}) {
+    if (!mealId || !amount) return;
+    let record = map.get(mealId);
+    if (!record) {
+      record = { mealId, total: 0, wholeMeal: false, itemTotals: null };
+      map.set(mealId, record);
+    }
+    record.total += amount;
+    if (options.wholeMeal) {
+      record.wholeMeal = true;
+      record.itemTotals = null;
+      return;
+    }
+    if (record.wholeMeal) return;
+    const items = Array.isArray(options.items) ? options.items : [];
+    if (!items.length) return;
+    if (!record.itemTotals) record.itemTotals = {};
+    items.forEach(idx => {
+      if (idx === null || idx === undefined) return;
+      const key = String(idx);
+      record.itemTotals[key] = (record.itemTotals[key] || 0) + amount;
+    });
+  }
+
+  function clonePrepRecord(record) {
+    return {
+      mealId: record.mealId,
+      total: record.total,
+      wholeMeal: record.wholeMeal,
+      itemTotals: record.itemTotals ? { ...record.itemTotals } : null
+    };
+  }
+
+  function mergePrepRecords(target, source) {
+    target.total += source.total;
+    if (source.wholeMeal) {
+      target.wholeMeal = true;
+      target.itemTotals = null;
+      return;
+    }
+    if (target.wholeMeal) return;
+    if (!source.itemTotals) return;
+    if (!target.itemTotals) target.itemTotals = {};
+    Object.keys(source.itemTotals).forEach(key => {
+      target.itemTotals[key] = (target.itemTotals[key] || 0) + source.itemTotals[key];
+    });
   }
 
   const rows = [];
@@ -278,7 +365,21 @@ function buildData(calendar, userEntries, mealMap, start, days, prepDays) {
               );
             }
             if (meal.prepAhead) {
-              increment(ahead, calEntry.mealId, userEntry.multiplier);
+              addPrepRecord(ahead, calEntry.mealId, userEntry.multiplier, {
+                wholeMeal: true
+              });
+            } else if (Array.isArray(meal.ingredients)) {
+              const indices = [];
+              meal.ingredients.forEach((ing, idx) => {
+                if (ing && ing.prepAhead) {
+                  indices.push(idx);
+                }
+              });
+              if (indices.length) {
+                addPrepRecord(ahead, calEntry.mealId, userEntry.multiplier, {
+                  items: indices
+                });
+              }
             }
           }
         });
@@ -294,8 +395,14 @@ function buildData(calendar, userEntries, mealMap, start, days, prepDays) {
       const totals = new Map();
       for (let j = i + 1; j < rows.length; j++) {
         if (prepSet.has(rows[j].dayName)) break;
-        rows[j].ahead.forEach((value, id) => {
-          increment(totals, id, value);
+        rows[j].ahead.forEach((record, mealId) => {
+          if (!mealId || !record) return;
+          const existing = totals.get(mealId);
+          if (existing) {
+            mergePrepRecords(existing, record);
+          } else {
+            totals.set(mealId, clonePrepRecord(record));
+          }
         });
       }
       rows[i].prepList = totals;
@@ -310,7 +417,27 @@ function buildData(calendar, userEntries, mealMap, start, days, prepDays) {
       total: info.total,
       leftoverDates: Array.from(info.leftoverDates).sort()
     })),
-    prepList: row.prepList ? Array.from(row.prepList.entries()) : []
+    prepList: row.prepList
+      ? Array.from(row.prepList.values()).map(record => {
+          const result = {
+            mealId: record.mealId,
+            total: record.total
+          };
+          if (record.itemTotals) {
+            result.items = Object.entries(record.itemTotals).map(([idx, total]) => {
+              const parsedIndex = Number(idx);
+              return {
+                index: Number.isNaN(parsedIndex) ? idx : parsedIndex,
+                total
+              };
+            });
+          }
+          if (record.wholeMeal) {
+            result.wholeMeal = true;
+          }
+          return result;
+        })
+      : []
   }));
 }
 

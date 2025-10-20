@@ -19,6 +19,13 @@ function loadMeals(type) {
           if (m.prepared === undefined) m.prepared = false;
           if (m.prepAhead === undefined) m.prepAhead = false;
           if (m.leftoverOk === undefined) m.leftoverOk = false;
+          if (!Array.isArray(m.ingredients)) {
+            m.ingredients = [];
+          }
+          m.ingredients.forEach(ing => {
+            if (!ing || typeof ing !== 'object') return;
+            if (ing.prepAhead === undefined) ing.prepAhead = false;
+          });
         });
       }
       resolve(arr || []);

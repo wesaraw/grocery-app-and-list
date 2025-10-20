@@ -143,6 +143,13 @@ function loadMeals(category) {
           if (m.prepAhead === undefined) m.prepAhead = false;
           if (m.leftoverOk === undefined) m.leftoverOk = false;
           if (m.recipeBook === undefined) m.recipeBook = '';
+          if (!Array.isArray(m.ingredients)) {
+            m.ingredients = [];
+          }
+          m.ingredients.forEach(ing => {
+            if (!ing || typeof ing !== 'object') return;
+            if (ing.prepAhead === undefined) ing.prepAhead = false;
+          });
         });
       }
       resolve(arr || []);
@@ -205,7 +212,13 @@ export function parseMealsFromXml(text) {
       const amt = iEl.querySelector('amount')?.textContent.trim();
       const unit = iEl.querySelector('unit')?.textContent.trim();
       if (name && amt && unit) {
-        meal.ingredients.push({ name, amount: `${amt} ${unit}`, unit, serving_size: `${amt} ${unit}` });
+        meal.ingredients.push({
+          name,
+          amount: `${amt} ${unit}`,
+          unit,
+          serving_size: `${amt} ${unit}`,
+          prepAhead: false
+        });
       }
     });
     if (meal.name && meal.ingredients.length) {
@@ -216,7 +229,13 @@ export function parseMealsFromXml(text) {
 }
 
 async function addMeal(meal, userCount) {
-  for (const ing of meal.ingredients) {
+  const normalizedIngredients = Array.isArray(meal.ingredients)
+    ? meal.ingredients.map(ing => ({
+        ...ing,
+        prepAhead: !!ing?.prepAhead
+      }))
+    : [];
+  for (const ing of normalizedIngredients) {
     await ensureItemExists(ing.name, ing.unit);
   }
   let usersArr = meal.users || [];
@@ -229,7 +248,7 @@ async function addMeal(meal, userCount) {
   arr.push({
     name: meal.name,
     recipeBook: meal.recipeBook || '',
-    ingredients: meal.ingredients,
+    ingredients: normalizedIngredients,
     users: usersArr,
     people: usersArr.filter(Boolean).length,
     prepared: meal.prepared,

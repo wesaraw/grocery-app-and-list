@@ -41,6 +41,27 @@ let densityMap = {};
 const UOM_PATH = 'Required for grocery app/uom_conversion_table.json';
 let units = [];
 
+function normalizeIngredientPrepFlags(ingredients) {
+  if (!Array.isArray(ingredients)) return [];
+  ingredients.forEach(ing => {
+    if (!ing || typeof ing !== 'object') return;
+    if (ing.prepAhead === undefined) ing.prepAhead = false;
+  });
+  return ingredients;
+}
+
+function normalizeMealRecord(meal) {
+  if (!meal || typeof meal !== 'object') return;
+  if (meal.prepared === undefined) meal.prepared = false;
+  if (meal.prepAhead === undefined) meal.prepAhead = false;
+  if (meal.leftoverOk === undefined) meal.leftoverOk = false;
+  if (meal.recipeBook === undefined) meal.recipeBook = '';
+  if (!Array.isArray(meal.ingredients)) {
+    meal.ingredients = [];
+  }
+  normalizeIngredientPrepFlags(meal.ingredients);
+}
+
 function sanitizeOverrides(source, userCount) {
   if (!Array.isArray(source) || userCount <= 0) return [];
   const sanitized = [];
@@ -134,22 +155,12 @@ function createAddButton(name) {
 async function loadMeals() {
   const arr = await loadItemArray(key);
   if (arr.length > 0) {
-    arr.forEach(m => {
-      if (m.prepared === undefined) m.prepared = false;
-      if (m.prepAhead === undefined) m.prepAhead = false;
-      if (m.leftoverOk === undefined) m.leftoverOk = false;
-      if (m.recipeBook === undefined) m.recipeBook = '';
-    });
+    arr.forEach(normalizeMealRecord);
     return arr;
   }
   const fromJson = await loadJSON(path);
   const withNames = await convertArrayToNames(fromJson);
-  withNames.forEach(m => {
-    if (m.prepared === undefined) m.prepared = false;
-    if (m.prepAhead === undefined) m.prepAhead = false;
-    if (m.leftoverOk === undefined) m.leftoverOk = false;
-    if (m.recipeBook === undefined) m.recipeBook = '';
-  });
+  withNames.forEach(normalizeMealRecord);
   return withNames;
 }
 
@@ -182,22 +193,12 @@ function loadMealsForType(cat) {
   return (async () => {
     const arr = await loadItemArray(info.key);
     if (arr.length > 0) {
-      arr.forEach(m => {
-        if (m.prepared === undefined) m.prepared = false;
-        if (m.prepAhead === undefined) m.prepAhead = false;
-        if (m.leftoverOk === undefined) m.leftoverOk = false;
-        if (m.recipeBook === undefined) m.recipeBook = '';
-      });
+      arr.forEach(normalizeMealRecord);
       return arr;
     }
     const fromJson = await loadJSON(info.path);
     const withNames = await convertArrayToNames(fromJson);
-    withNames.forEach(m => {
-      if (m.prepared === undefined) m.prepared = false;
-      if (m.prepAhead === undefined) m.prepAhead = false;
-      if (m.leftoverOk === undefined) m.leftoverOk = false;
-      if (m.recipeBook === undefined) m.recipeBook = '';
-    });
+    withNames.forEach(normalizeMealRecord);
     return withNames;
   })();
 }
@@ -686,10 +687,21 @@ function createRows(meal, arr) {
     ingTd.textContent = ing.name || '';
     if (ing.name) ingTd.dataset.name = ing.name;
 
+    const prepItemTd = document.createElement('td');
+    prepItemTd.style.textAlign = 'center';
+    const prepItemChk = document.createElement('input');
+    prepItemChk.type = 'checkbox';
+    prepItemChk.checked = !!ing.prepAhead;
+    prepItemChk.addEventListener('change', async () => {
+      ing.prepAhead = prepItemChk.checked;
+      await persistMealChange();
+    });
+    prepItemTd.appendChild(prepItemChk);
+
     const amtTd = document.createElement('td');
     amtTd.textContent = ing.amount || ing.serving_size || '';
 
-    ingCells.push({ ingTd, amtTd, tr });
+    ingCells.push({ ingTd, amtTd, prepTd: prepItemTd, tr });
 
     const costTd = document.createElement('td');
     let totalTd;
@@ -709,6 +721,7 @@ function createRows(meal, arr) {
     }
 
     tr.appendChild(ingTd);
+    tr.appendChild(prepItemTd);
     tr.appendChild(amtTd);
     tr.appendChild(costTd);
     if (totalTd) tr.appendChild(totalTd);
@@ -916,8 +929,10 @@ function createRows(meal, arr) {
     spanCells.push(groupTd);
 
     const ingTd = document.createElement('td');
+    const prepItemTd = document.createElement('td');
+    prepItemTd.style.textAlign = 'center';
     const amtTd = document.createElement('td');
-    ingCells.push({ ingTd, amtTd, tr });
+    ingCells.push({ ingTd, amtTd, prepTd: prepItemTd, tr });
     const costTd = document.createElement('td');
     const totalTd = document.createElement('td');
     spanCells.push(totalTd);
@@ -930,6 +945,7 @@ function createRows(meal, arr) {
     tr.appendChild(weightTd);
     tr.appendChild(groupTd);
     tr.appendChild(ingTd);
+    tr.appendChild(prepItemTd);
     tr.appendChild(amtTd);
     tr.appendChild(costTd);
     tr.appendChild(totalTd);
@@ -978,7 +994,11 @@ function createRows(meal, arr) {
         (bookInput && bookInput.value.trim()) ||
         (categorySelect && categorySelect.value !== type) ||
         (weightInput && weightInput.value.trim()) ||
-        rowsInfo.some(r => r.nameInput.value.trim() || r.qtyInput.value.trim()) ||
+        rowsInfo.some(r => {
+          if (r.nameInput.value.trim() || r.qtyInput.value.trim()) return true;
+          if (r.prepInput && r.prepInput.checked !== r.initialPrep) return true;
+          return false;
+        }) ||
         newImage;
       if (saveBtn) saveBtn.style.display = any ? '' : 'none';
     }
@@ -989,7 +1009,7 @@ function createRows(meal, arr) {
     }
 
     function addInputs(cell, ing = {}) {
-      const { ingTd, amtTd } = cell;
+      const { ingTd, amtTd, prepTd } = cell;
       const nameInput = document.createElement('textarea');
       nameInput.rows = 1;
       nameInput.style.display = 'block';
@@ -1018,6 +1038,13 @@ function createRows(meal, arr) {
       amtTd.appendChild(qtyInput);
       amtTd.appendChild(select);
 
+      const prepChk = document.createElement('input');
+      prepChk.type = 'checkbox';
+      prepChk.checked = !!ing.prepAhead;
+      prepTd.innerHTML = '';
+      prepTd.style.textAlign = 'center';
+      prepTd.appendChild(prepChk);
+
       autoResize(nameInput);
 
       nameInput.addEventListener('input', () => {
@@ -1026,6 +1053,7 @@ function createRows(meal, arr) {
       });
       qtyInput.addEventListener('input', checkSave);
       select.addEventListener('change', checkSave);
+      prepChk.addEventListener('change', checkSave);
       [nameInput, qtyInput, select].forEach(el =>
         el.addEventListener('keydown', e => {
           if (e.key === 'Enter' && !e.shiftKey) {
@@ -1035,7 +1063,14 @@ function createRows(meal, arr) {
         })
       );
 
-      rowsInfo.push({ nameInput, qtyInput, select });
+      rowsInfo.push({
+        nameInput,
+        qtyInput,
+        select,
+        prepInput: prepChk,
+        initialPrep: !!ing.prepAhead,
+        prepCell: prepTd
+      });
     }
 
     mealInput = document.createElement('input');
@@ -1073,19 +1108,22 @@ function createRows(meal, arr) {
     newIngBtn.addEventListener('click', () => {
       const tr = document.createElement('tr');
       const ingTd = document.createElement('td');
+      const prepTd = document.createElement('td');
+      prepTd.style.textAlign = 'center';
       const amtTd = document.createElement('td');
       const costTd = document.createElement('td');
       const actionTd = document.createElement('td');
       tr.appendChild(ingTd);
+      tr.appendChild(prepTd);
       tr.appendChild(amtTd);
       tr.appendChild(costTd);
       tr.appendChild(actionTd);
       rows[rows.length - 1].after(tr);
       rows.push(tr);
-      const cell = { ingTd, amtTd, tr };
+      const cell = { ingTd, amtTd, prepTd, tr };
       ingCells.push(cell);
       addedRows.push(tr);
-      addInputs(cell, {});
+      addInputs(cell, { prepAhead: meal.prepared && meal.prepAhead });
       updateRowSpans();
     });
 
@@ -1193,7 +1231,12 @@ function createRows(meal, arr) {
         const u = r.select.value;
         if (!n && !q) return;
         const amt = q ? `${q} ${u}` : '';
-        newIngs.push({ name: n, amount: amt, serving_size: amt });
+        newIngs.push({
+          name: n,
+          amount: amt,
+          serving_size: amt,
+          prepAhead: !!(r.prepInput && r.prepInput.checked)
+        });
       });
       if (JSON.stringify(newIngs) !== JSON.stringify(meal.ingredients)) {
         meal.ingredients = newIngs;
@@ -1216,10 +1259,40 @@ function createRows(meal, arr) {
         r.nameInput.remove();
         r.qtyInput.remove();
         r.select.remove();
+        if (r.prepInput) {
+          const parent = r.prepInput.parentElement;
+          if (parent) parent.remove();
+          else r.prepInput.remove();
+        }
+        if (r.prepCell) r.prepCell.innerHTML = '';
       });
       rowsInfo.length = 0;
       addedRows.forEach(tr => tr.remove());
       addedRows.length = 0;
+      ingCells.forEach((cell, idx) => {
+        const ing = meal.ingredients[idx];
+        cell.ingTd.textContent = ing?.name || '';
+        if (ing?.name) {
+          cell.ingTd.dataset.name = ing.name;
+        } else {
+          delete cell.ingTd.dataset.name;
+        }
+        cell.amtTd.textContent = ing?.amount || ing?.serving_size || '';
+        if (cell.prepTd) {
+          cell.prepTd.innerHTML = '';
+          cell.prepTd.style.textAlign = 'center';
+          if (ing && typeof ing === 'object') {
+            const chk = document.createElement('input');
+            chk.type = 'checkbox';
+            chk.checked = !!ing.prepAhead;
+            chk.addEventListener('change', async () => {
+              ing.prepAhead = chk.checked;
+              await persistMealChange();
+            });
+            cell.prepTd.appendChild(chk);
+          }
+        }
+      });
       updateRowSpans();
       if (mealLabel) mealLabel.remove();
       if (categoryLabel) categoryLabel.remove();
@@ -1289,7 +1362,7 @@ async function loadAndRender() {
     if (!bookMap[book]) bookMap[book] = [];
     bookMap[book].push(m);
   });
-  const headerColspan = 11;
+  const headerColspan = 12;
   const bookNames = Object.keys(bookMap).sort((a, b) => a.localeCompare(b));
   const validBooks = new Set(bookNames);
   if (focusBook !== null && validBooks.has(focusBook)) {
