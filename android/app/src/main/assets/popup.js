@@ -3,7 +3,7 @@ import { calculatePurchaseNeeds } from './utils/purchaseCalculator.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
-import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
+import { MEAL_TYPES, initializeMealCategories, loadCookingDays } from './utils/mealData.js';
 import {
   sortItemsByCategory,
   renderItemsWithCategoryHeaders
@@ -11,6 +11,7 @@ import {
 import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from "./utils/priceUtils.js";
 import { loadPurchases } from './utils/purchaseStorage.js';
 import { loadArray as loadItemArray, convertArrayToNames, getItemId } from './utils/itemStorage.js';
+import { resolveNextPrepWindow } from './utils/calendarUtils.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
@@ -116,21 +117,35 @@ async function loadMealsByCategory() {
 }
 
 async function getData() {
-  const [needs, selections, consumption, stock, expiration, consumed, purchases, mealYear, mealMonth, calendar, meals, dMap] =
-    await Promise.all([
-      loadNeeds(),
-      loadJSON(STORE_SELECTION_PATH),
-      loadMonthlyConsumption(),
-      loadStock(),
-      loadExpiration(),
-      loadConsumed(),
-      loadPurchases(),
-      loadStoredArray('mealPlanYearly'),
-      loadMealPlanMonth(),
-      loadCalendar(),
-      loadMealsByCategory(),
-      loadDensityMap()
-    ]);
+  const [
+    needs,
+    selections,
+    consumption,
+    stock,
+    expiration,
+    consumed,
+    purchases,
+    mealYear,
+    mealMonth,
+    calendar,
+    meals,
+    dMap,
+    cookingDays
+  ] = await Promise.all([
+    loadNeeds(),
+    loadJSON(STORE_SELECTION_PATH),
+    loadMonthlyConsumption(),
+    loadStock(),
+    loadExpiration(),
+    loadConsumed(),
+    loadPurchases(),
+    loadStoredArray('mealPlanYearly'),
+    loadMealPlanMonth(),
+    loadCalendar(),
+    loadMealsByCategory(),
+    loadDensityMap(),
+    loadCookingDays()
+  ]);
   return {
     needs,
     selections,
@@ -143,7 +158,8 @@ async function getData() {
     mealMonth,
     calendar,
     mealsByCategory: meals,
-    density: dMap
+    density: dMap,
+    cookingDays
   };
 }
 
@@ -166,6 +182,7 @@ let densityMap = {};
 let mealMonthMap = new Map();
 let mealPlanMonthMap = new Map();
 let selectionsData = [];
+let cookingDaysData = {};
 
 let resolveInit;
 const initReady = new Promise(resolve => {
@@ -506,7 +523,8 @@ async function init() {
     mealMonth,
     calendar,
     mealsByCategory,
-    density
+    density,
+    cookingDays
   } = await getData();
   needsData = needs;
   densityMap = density;
@@ -540,6 +558,7 @@ async function init() {
   purchasesData = purchases;
   calendarData = calendar;
   mealsByCategoryData = mealsByCategory;
+  cookingDaysData = cookingDays || {};
   const { week, isoDate } = getCurrentWeek();
   const purchaseInfo = await calculatePurchaseNeeds(
     needs,
@@ -717,7 +736,8 @@ async function rerenderAll() {
     mealYear,
     mealMonth,
     calendar,
-    mealsByCategory
+    mealsByCategory,
+    cookingDays
   } = await getData();
   needsData = needs;
   selectionsData = selections;
@@ -750,6 +770,7 @@ async function rerenderAll() {
   purchasesData = purchases;
   calendarData = calendar;
   mealsByCategoryData = mealsByCategory;
+  cookingDaysData = cookingDays || {};
   const { week, isoDate } = getCurrentWeek();
   const purchaseInfo = await calculatePurchaseNeeds(
     needs,
@@ -923,6 +944,32 @@ async function commitSelections() {
   );
   const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
 
+  const { prepDays, endDate: prepWindowEndDate } = resolveNextPrepWindow(
+    cookingDaysData,
+    isoDate
+  );
+  let prepPurchaseMap = null;
+  if (prepWindowEndDate) {
+    const prepPurchaseInfo = await calculatePurchaseNeeds(
+      needsData,
+      consumptionData,
+      stockData,
+      expirationData,
+      consumedYearData,
+      mealYearData,
+      purchasesData,
+      currentWeek,
+      calendarData,
+      mealsByCategoryData,
+      !hasCalendar,
+      densityMap,
+      isoDate,
+      prepWindowEndDate
+    );
+    prepPurchaseMap = new Map(prepPurchaseInfo.map(p => [p.name, p]));
+  }
+  const hasPrepWindow = prepWindowEndDate != null;
+
   for (const item of needsData) {
     const needRecord = purchaseMap.get(item.name);
     if (!needRecord || needRecord.toBuy <= 0) continue;
@@ -963,6 +1010,17 @@ async function commitSelections() {
     const packsToBuy = Math.ceil(needRecord.toBuy / perPackHomeQty);
     const amount = perPackHomeQty * packsToBuy;
 
+    let prepWindowAmount = hasPrepWindow ? 0 : null;
+    let prepWindowPacks = hasPrepWindow ? 0 : null;
+    if (hasPrepWindow) {
+      const prepNeed = prepPurchaseMap?.get(item.name)?.toBuy || 0;
+      const cappedPrepNeed = Math.min(needRecord.toBuy, Math.max(0, prepNeed));
+      if (cappedPrepNeed > 0) {
+        prepWindowPacks = Math.ceil(cappedPrepNeed / perPackHomeQty);
+        prepWindowAmount = perPackHomeQty * prepWindowPacks;
+      }
+    }
+
     const itemId = await getItemId(item.name);
     commitItems.push({
       item: item.name,
@@ -971,12 +1029,20 @@ async function commitSelections() {
       product,
       amount,
       unit: item.home_unit,
-      packs: packsToBuy
+      packs: packsToBuy,
+      prepWindowAmount,
+      prepWindowPacks
     });
   }
   chrome.storage.local.set({
     lastCommitItems: commitItems,
-    pendingCommitWeek: currentWeek
+    pendingCommitWeek: currentWeek,
+    lastCommitContext: {
+      startDate: isoDate,
+      prepWindowEndDate,
+      prepDays,
+      generatedAt: new Date().toISOString()
+    }
   });
 
   openOrFocusWindow('shoppingList.html');

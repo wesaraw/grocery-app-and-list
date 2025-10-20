@@ -25,6 +25,13 @@ export function parseQuantity(str) {
   return { value, unit };
 }
 
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const WEEKDAY_INDEX = WEEKDAY_NAMES.reduce((map, name, idx) => {
+  map[name.toLowerCase()] = idx;
+  map[name.slice(0, 3).toLowerCase()] = idx;
+  return map;
+}, {});
+
 function parseISODateString(value) {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
@@ -47,6 +54,52 @@ function parseISODateString(value) {
     return null;
   }
   return { year, month, day, utcTime };
+}
+
+function formatISODateFromUTC(utcTime) {
+  const d = new Date(utcTime);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(
+    d.getUTCDate()
+  ).padStart(2, '0')}`;
+}
+
+function normalizePrepDayList(list) {
+  if (!Array.isArray(list)) return [];
+  const seen = new Set();
+  const result = [];
+  list.forEach(day => {
+    if (typeof day !== 'string') return;
+    const trimmed = day.trim();
+    if (!trimmed) return;
+    const key = trimmed.toLowerCase();
+    const idx = WEEKDAY_INDEX[key];
+    if (idx == null || seen.has(idx)) return;
+    seen.add(idx);
+    result.push(WEEKDAY_NAMES[idx]);
+  });
+  result.sort((a, b) => WEEKDAY_INDEX[a.toLowerCase()] - WEEKDAY_INDEX[b.toLowerCase()]);
+  return result;
+}
+
+export function resolveNextPrepWindow(cookingDays = {}, startDate = null) {
+  const prepDays = normalizePrepDayList(cookingDays.prepDay);
+  if (!prepDays.length) {
+    return { prepDays, endDate: null };
+  }
+  const parsedStart = parseISODateString(startDate);
+  if (!parsedStart) {
+    return { prepDays, endDate: null };
+  }
+  const startDay = new Date(parsedStart.utcTime).getUTCDay();
+  const prepDayIndexes = new Set(prepDays.map(day => WEEKDAY_INDEX[day.toLowerCase()]));
+  const MS_PER_DAY = 86400000;
+  for (let offset = 1; offset <= 7; offset += 1) {
+    const dayIndex = (startDay + offset) % 7;
+    if (prepDayIndexes.has(dayIndex)) {
+      return { prepDays, endDate: formatISODateFromUTC(parsedStart.utcTime + offset * MS_PER_DAY) };
+    }
+  }
+  return { prepDays, endDate: null };
 }
 
 export function weekNumber(dateStr) {
@@ -132,13 +185,16 @@ export function aggregateCalendar(
   perUser = false,
   userMultipliers = [],
   userIndexLookup = null,
-  startDate = null
+  startDate = null,
+  endDate = null
 ) {
   const mealMap = buildMealMap(mealsByCategory);
   const result = new Map();
   const parsedStartDate =
     typeof startDate === 'string' ? parseISODateString(startDate) : null;
   const startUtcTime = parsedStartDate ? parsedStartDate.utcTime : null;
+  const parsedEndDate = typeof endDate === 'string' ? parseISODateString(endDate) : null;
+  const endUtcTime = parsedEndDate ? parsedEndDate.utcTime : null;
 
   function resolveMultiplier(key) {
     if (userMultipliers == null) return 1;
@@ -186,6 +242,9 @@ export function aggregateCalendar(
       const parsedDate = parseISODateString(dateStr);
       if (!parsedDate) return;
       if (startUtcTime != null && parsedDate.utcTime < startUtcTime) {
+        return;
+      }
+      if (endUtcTime != null && parsedDate.utcTime > endUtcTime) {
         return;
       }
       const week = weekNumber(dateStr);
