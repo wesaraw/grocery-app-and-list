@@ -193,6 +193,10 @@ const selectedSlotLabel = document.getElementById('selectedSlotLabel');
 const mealOptions = document.getElementById('mealOptions');
 const clearSelectionBtn = document.getElementById('clearSelectionBtn');
 const copyAllBtn = document.getElementById('copyAllBtn');
+const copyWeekBtn = document.getElementById('copyWeekBtn');
+const copyWeekControls = document.getElementById('copyWeekControls');
+const copyWeekSelect = document.getElementById('copyWeekSelect');
+const copyWeekSaveBtn = document.getElementById('copyWeekSaveBtn');
 const saveBtn = document.getElementById('saveBtn');
 const statusMessage = document.getElementById('statusMessage');
 
@@ -219,6 +223,8 @@ const state = {
   hiddenAssignments: [],
   saving: false,
   copying: false,
+  copyWeekActive: false,
+  copyWeekTarget: null,
   dirty: false
 };
 
@@ -723,15 +729,112 @@ function clearAssignment(key) {
   updateDirtyState();
 }
 
-function updateCopyAllButtonState() {
-  if (!copyAllBtn) return;
-  const hasBaseline =
-    state.baselineAssignments instanceof Map && state.baselineAssignments.size > 0;
+function hasOverridesForWeek(year, week) {
+  if (!Number.isInteger(year) || !Number.isInteger(week)) return false;
+  return state.weeklyOverrides.some(entry => {
+    if (!entry) return false;
+    const entryYear = Number(entry.year);
+    const entryWeek = Number(entry.week);
+    return entryYear === year && entryWeek === week;
+  });
+}
+
+function populateCopyWeekSelect(defaultWeek) {
+  if (!copyWeekSelect) return;
+  copyWeekSelect.innerHTML = '';
+  const weeks = [];
+  for (let week = 1; week <= 52; week += 1) {
+    weeks.push(week);
+  }
+  if (Number.isInteger(defaultWeek) && defaultWeek > 52 && !weeks.includes(defaultWeek)) {
+    weeks.push(defaultWeek);
+  }
+  weeks.forEach(week => {
+    const option = document.createElement('option');
+    option.value = String(week);
+    option.textContent = `Week ${week}`;
+    copyWeekSelect.appendChild(option);
+  });
+}
+
+function updateCopyControlsState() {
   const hasSelection =
     state.currentUserIndex != null &&
     Number.isInteger(state.currentYear) &&
     Number.isInteger(state.currentWeek);
-  copyAllBtn.disabled = state.copying || state.saving || !hasSelection || !hasBaseline;
+  const hasBaseline =
+    state.baselineAssignments instanceof Map && state.baselineAssignments.size > 0;
+  const hasWeekOverrides = hasOverridesForWeek(state.currentYear, state.currentWeek);
+
+  if (copyAllBtn) {
+    copyAllBtn.disabled = state.copying || state.saving || !hasSelection || !hasBaseline;
+  }
+  if (copyWeekBtn) {
+    copyWeekBtn.disabled = state.copying || state.saving || !hasSelection || !hasWeekOverrides;
+    copyWeekBtn.setAttribute('aria-expanded', state.copyWeekActive ? 'true' : 'false');
+  }
+  if (copyWeekControls) {
+    copyWeekControls.dataset.visible = state.copyWeekActive ? 'true' : 'false';
+  }
+  if (copyWeekSelect) {
+    copyWeekSelect.disabled = state.copying || state.saving;
+    if (state.copyWeekActive && Number.isInteger(state.copyWeekTarget)) {
+      copyWeekSelect.value = String(state.copyWeekTarget);
+    }
+  }
+  if (copyWeekSaveBtn) {
+    const targetWeek = Number(state.copyWeekTarget);
+    const validTarget =
+      state.copyWeekActive &&
+      hasSelection &&
+      Number.isInteger(targetWeek) &&
+      targetWeek >= 1 &&
+      targetWeek <= 53 &&
+      targetWeek !== state.currentWeek;
+    copyWeekSaveBtn.disabled = state.copying || state.saving || !validTarget;
+  }
+}
+
+function setCopyWeekActive(active) {
+  const next = Boolean(active);
+  state.copyWeekActive = next;
+  if (copyWeekBtn) {
+    copyWeekBtn.setAttribute('aria-expanded', next ? 'true' : 'false');
+  }
+  if (copyWeekControls) {
+    copyWeekControls.dataset.visible = next ? 'true' : 'false';
+  }
+  if (next) {
+    const defaultWeek = clampNumber(Number(state.currentWeek) || 1, 1, 53);
+    populateCopyWeekSelect(defaultWeek);
+    state.copyWeekTarget = defaultWeek;
+    if (copyWeekSelect) {
+      copyWeekSelect.value = String(defaultWeek);
+    }
+  } else {
+    state.copyWeekTarget = null;
+    if (copyWeekSelect) {
+      copyWeekSelect.value = '';
+      copyWeekSelect.innerHTML = '';
+    }
+  }
+  updateCopyControlsState();
+}
+
+function setCopyWeekTarget(week) {
+  if (Number.isInteger(week)) {
+    state.copyWeekTarget = week;
+  } else {
+    state.copyWeekTarget = null;
+  }
+  updateCopyControlsState();
+}
+
+function getDayNameFromIsoDate(iso) {
+  if (!iso) return null;
+  const date = new Date(`${iso}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return null;
+  return DAY_NAMES[date.getUTCDay()] || null;
 }
 
 function updateDirtyState() {
@@ -744,7 +847,7 @@ function updateDirtyState() {
   }
   saveBtn.disabled = state.saving || state.copying || !dirty;
   state.slotButtons.forEach((_, key) => updateSlotButtonState(key));
-  updateCopyAllButtonState();
+  updateCopyControlsState();
 }
 
 function buildBaselineAssignments(userIndex, year, week, slotKeys) {
@@ -859,6 +962,7 @@ function renderSlotColumn() {
 }
 
 function refreshSlots() {
+  setCopyWeekActive(false);
   if (
     state.currentUserIndex == null ||
     !Number.isInteger(state.currentYear) ||
@@ -982,6 +1086,147 @@ async function handleSave() {
     setStatus('Failed to save overrides. Please try again.', 'error');
   } finally {
     state.saving = false;
+    updateDirtyState();
+  }
+}
+
+function handleCopyWeekToggle() {
+  if (state.copying || state.saving) return;
+  if (
+    state.currentUserIndex == null ||
+    !Number.isInteger(state.currentYear) ||
+    !Number.isInteger(state.currentWeek)
+  ) {
+    setStatus('Select a user, year, and week before copying overrides.', 'error');
+    return;
+  }
+  if (!state.copyWeekActive && !hasOverridesForWeek(state.currentYear, state.currentWeek)) {
+    setStatus('There are no saved overrides to copy for this week.', 'info');
+    return;
+  }
+  setCopyWeekActive(!state.copyWeekActive);
+  if (state.copyWeekActive && copyWeekSelect) {
+    copyWeekSelect.focus();
+  }
+}
+
+function handleCopyWeekSelectChange(event) {
+  const value = Number(event?.target?.value);
+  if (Number.isInteger(value)) {
+    setCopyWeekTarget(value);
+  } else {
+    setCopyWeekTarget(null);
+  }
+}
+
+async function handleCopyWeekConfirm() {
+  if (state.copying || state.saving) return;
+  if (
+    state.currentUserIndex == null ||
+    !Number.isInteger(state.currentYear) ||
+    !Number.isInteger(state.currentWeek)
+  ) {
+    setStatus('Select a user, year, and week before copying overrides.', 'error');
+    return;
+  }
+  if (!state.copyWeekActive) {
+    setCopyWeekActive(true);
+    return;
+  }
+
+  const targetWeek = Number(state.copyWeekTarget);
+  if (!Number.isInteger(targetWeek) || targetWeek < 1 || targetWeek > 53) {
+    setStatus('Select a valid week before copying overrides.', 'error');
+    return;
+  }
+  if (targetWeek === state.currentWeek) {
+    setStatus('Select a different week to copy to.', 'error');
+    return;
+  }
+
+  const year = state.currentYear;
+  const sourceOverrides = state.weeklyOverrides.filter(
+    entry => Number(entry?.year) === year && Number(entry?.week) === state.currentWeek
+  );
+
+  if (!sourceOverrides.length) {
+    setStatus('There are no saved overrides to copy for this week.', 'info');
+    return;
+  }
+
+  const targetWeekDates = buildWeekDates(year, targetWeek);
+  if (!targetWeekDates.length) {
+    setStatus('Unable to determine the dates for the selected week.', 'error');
+    return;
+  }
+
+  const targetIsoByDayName = {};
+  targetWeekDates.forEach(info => {
+    if (info?.dayName && info?.iso) {
+      targetIsoByDayName[info.dayName] = info.iso;
+    }
+  });
+
+  const sourceWeekDates = buildWeekDates(year, state.currentWeek);
+  const sourceDayByIso = new Map();
+  sourceWeekDates.forEach(info => {
+    if (info?.iso && info?.dayName) {
+      sourceDayByIso.set(info.iso, info.dayName);
+    }
+  });
+
+  state.copying = true;
+  updateDirtyState();
+  setStatus('Copying overrides to selected week...');
+
+  try {
+    let updatedOverrides = state.weeklyOverrides.filter(Boolean);
+    updatedOverrides = updatedOverrides.filter(entry => {
+      if (!entry) return false;
+      const entryYear = Number(entry.year);
+      const entryWeek = Number(entry.week);
+      return !(entryYear === year && entryWeek === targetWeek);
+    });
+
+    let copiedCount = 0;
+    sourceOverrides.forEach(entry => {
+      if (!entry) return;
+      const dayName = sourceDayByIso.get(entry.date) || getDayNameFromIsoDate(entry.date);
+      if (!dayName) return;
+      const targetIso = targetIsoByDayName[dayName];
+      if (!targetIso) return;
+      updatedOverrides.push({
+        ...entry,
+        id: generateWeeklyMealOverrideId(),
+        year,
+        week: targetWeek,
+        date: targetIso
+      });
+      copiedCount += 1;
+    });
+
+    if (!copiedCount) {
+      setStatus('There are no saved overrides to copy for this week.', 'info');
+      return;
+    }
+
+    await saveWeeklyMealOverrides(updatedOverrides);
+    state.weeklyOverrides = updatedOverrides;
+    setStatus('Week copied successfully.', 'success');
+    setCopyWeekActive(false);
+    try {
+      await calculateAndSaveMealNeeds({ resync: true });
+      if (chrome?.runtime?.sendMessage) {
+        chrome.runtime.sendMessage({ type: 'inventory-updated' });
+      }
+    } catch (err) {
+      console.warn('Meal needs recalculation failed', err);
+    }
+  } catch (error) {
+    console.error('Failed to copy overrides to another week', error);
+    setStatus('Failed to copy overrides. Please try again.', 'error');
+  } finally {
+    state.copying = false;
     updateDirtyState();
   }
 }
@@ -1145,6 +1390,15 @@ weekInput.addEventListener('change', onWeekChange);
 clearSelectionBtn.addEventListener('click', handleClearSelection);
 saveBtn.addEventListener('click', handleSave);
 copyAllBtn.addEventListener('click', handleCopyOverridesToAllUsers);
+if (copyWeekBtn) {
+  copyWeekBtn.addEventListener('click', handleCopyWeekToggle);
+}
+if (copyWeekSelect) {
+  copyWeekSelect.addEventListener('change', handleCopyWeekSelectChange);
+}
+if (copyWeekSaveBtn) {
+  copyWeekSaveBtn.addEventListener('click', handleCopyWeekConfirm);
+}
 
 export const __test = {
   state,
