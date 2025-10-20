@@ -31,6 +31,12 @@ async function loadAllMeals() {
       if (meal.prepared === undefined) meal.prepared = false;
       if (meal.prepAhead === undefined) meal.prepAhead = false;
       if (meal.leftoverOk === undefined) meal.leftoverOk = false;
+      if (!meal.categoryId) meal.categoryId = type;
+      if (!meal.categoryLabel) {
+        const category = MEAL_TYPES[type];
+        const label = category?.label || meal.category || meal.categoryId || type;
+        meal.categoryLabel = label;
+      }
       map[meal.id || meal.name] = meal;
     });
   }
@@ -82,6 +88,19 @@ function getDayRecord(calendar, entry, dateStr) {
 function increment(map, key, amount) {
   if (!amount) return;
   map.set(key, (map.get(key) || 0) + amount);
+}
+
+function parseLocalDate(value) {
+  if (typeof value !== 'string') return null;
+  const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+    return null;
+  }
+  return new Date(year, month - 1, day);
 }
 
 function getParams() {
@@ -162,8 +181,14 @@ function renderMealColumn(container, entries, mealMap) {
     const title = document.createElement('div');
     title.className = 'meal-title';
     const name = meal?.name || mealId;
+    const categoryLabel =
+      meal?.categoryLabel ||
+      (meal?.categoryId && (MEAL_TYPES[meal.categoryId]?.label || meal.categoryId));
+    const displayName = categoryLabel ? `${categoryLabel}: ${name}` : name;
     const portionText = formatPortions(totalMultiplier);
-    title.textContent = portionText ? `${name} (${portionText})` : name;
+    title.textContent = portionText
+      ? `${displayName} (${portionText})`
+      : displayName;
     block.appendChild(title);
 
     if (leftoverDates.length) {
@@ -215,7 +240,8 @@ function normalizePrepDays(prepDays) {
 function buildData(calendar, userEntries, mealMap, start, days, prepDays) {
   const normalizedPrepDays = normalizePrepDays(prepDays);
   const prepSet = new Set(normalizedPrepDays);
-  const date = start ? new Date(start) : new Date();
+  const startDate = start ? parseLocalDate(start) : null;
+  const date = startDate ? new Date(startDate) : new Date();
 
   let calcDays = days;
   if (prepSet.size) {
