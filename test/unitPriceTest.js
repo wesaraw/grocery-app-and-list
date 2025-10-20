@@ -237,7 +237,14 @@ function baseGetPackInfo(product) {
     if (!str) return null;
     const s = sanitize(str);
     let m;
-    if ((m = s.match(/(\d+(?:\.\d+)?)\s*(?:doz|dozen)/i))) {
+    if ((m = s.match(/(\d+)\s*\/\s*(\d+)\s*(?:doz|dozen)/i))) {
+      const numerator = parseInt(m[1], 10);
+      const denominator = parseInt(m[2], 10);
+      if (denominator) {
+        return { count: Math.round((numerator / denominator) * 12), match: m[0] };
+      }
+    }
+    if (!s.includes('/') && (m = s.match(/(\d+(?:\.\d+)?)\s*(?:doz|dozen)/i))) {
       return { count: Math.round(parseFloat(m[1]) * 12), match: m[0] };
     }
     if ((m = s.match(/(?:half|1\/2)\s*-?\s*doz(?:en)?/i))) {
@@ -299,6 +306,18 @@ const perEgg = pricePerHomeUnit('Egg', fractionalDozenProduct);
 const expectedPerEgg = fractionalDozenProduct.priceNumber / 18;
 if (perEgg == null || Math.abs(perEgg - expectedPerEgg) > 0.0001) {
   throw new Error(`Expected per-egg price ${expectedPerEgg.toFixed(4)} but got ${perEgg}`);
+}
+
+const halfDozenProduct = { name: 'Medium Eggs', size: '1/2 doz', priceNumber: 6.29 };
+const halfDozenInfo = baseGetPackInfo(halfDozenProduct);
+if (halfDozenInfo.count !== 6) {
+  throw new Error(`Half dozen detection failed: expected 6 but got ${halfDozenInfo.count}`);
+}
+
+const perHalfEgg = pricePerHomeUnit('Egg', halfDozenProduct);
+const expectedHalfPerEgg = halfDozenProduct.priceNumber / 6;
+if (perHalfEgg == null || Math.abs(perHalfEgg - expectedHalfPerEgg) > 0.0001) {
+  throw new Error(`Expected per-egg price ${expectedHalfPerEgg.toFixed(4)} but got ${perHalfEgg}`);
 }
 
 function extractSize(text) {

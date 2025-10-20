@@ -231,7 +231,14 @@ function baseGetPackInfo(product) {
     if (!str) return null;
     const s = sanitize(str);
     let m;
-    if ((m = s.match(/(\d+(?:\.\d+)?)\s*(?:doz|dozen)/i))) {
+    if ((m = s.match(/(\d+)\s*\/\s*(\d+)\s*(?:doz|dozen)/i))) {
+      const numerator = parseInt(m[1], 10);
+      const denominator = parseInt(m[2], 10);
+      if (denominator) {
+        return { count: Math.round((numerator / denominator) * 12), match: m[0] };
+      }
+    }
+    if (!s.includes('/') && (m = s.match(/(\d+(?:\.\d+)?)\s*(?:doz|dozen)/i))) {
       return { count: Math.round(parseFloat(m[1]) * 12), match: m[0] };
     }
     if ((m = s.match(/(?:half|1\/2)\s*-?\s*doz(?:en)?/i))) {
