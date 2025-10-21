@@ -132,6 +132,24 @@ function extractUnitText(raw) {
   return trimmed;
 }
 
+function formatUnitLabel(text) {
+  if (!text) return '';
+  return text
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part, index) => {
+      const lower = part.toLowerCase();
+      if (lower === 'cooked' || lower === 'dry') {
+        return lower.charAt(0).toUpperCase() + lower.slice(1);
+      }
+      if (index === 0 && lower.length > 2) {
+        return part.charAt(0).toUpperCase() + part.slice(1);
+      }
+      return part;
+    })
+    .join(' ');
+}
+
 let densityMap = {};
 
 function getDensitySettings(name) {
@@ -142,7 +160,7 @@ function getDensitySettings(name) {
   return densityMap[canonical] || null;
 }
 
-function formatNormalizedSuffix(ingredientName, totalQuantity, unit) {
+function formatNormalizedSuffix(ingredientName, totalQuantity, unit, baseUnitText = '') {
   if (!ingredientName || !Number.isFinite(totalQuantity) || !unit) {
     return '';
   }
@@ -150,10 +168,23 @@ function formatNormalizedSuffix(ingredientName, totalQuantity, unit) {
   if (!settings) return '';
   const normalized = computeNormalizedQuantity(totalQuantity, unit, settings);
   if (!normalized) return '';
-  const normalizedUnit =
+  const normalizedUnitRaw =
     typeof normalized.unit === 'string' ? normalized.unit.trim() : '';
+  if (!normalizedUnitRaw) return '';
+  const normalizedUnit = formatUnitLabel(normalizedUnitRaw);
   if (!normalizedUnit) return '';
-  if (normalizedUnit.toLowerCase() === unit.toLowerCase()) return '';
+  let baseUnitLabel = '';
+  if (typeof baseUnitText === 'string' && baseUnitText.trim()) {
+    baseUnitLabel = formatUnitLabel(baseUnitText.trim());
+  } else if (unit && unit !== 'ea') {
+    baseUnitLabel = formatUnitLabel(unit);
+  }
+  if (
+    baseUnitLabel &&
+    normalizedUnit.toLowerCase() === baseUnitLabel.toLowerCase()
+  ) {
+    return '';
+  }
   const formatted = formatNumber(normalized.quantity);
   if (!formatted) return '';
   return `(Converts to ${formatted} ${normalizedUnit})`;
@@ -181,7 +212,7 @@ function formatIngredientAmount(ingredient, multiplier) {
   }
   const unitText = extractUnitText(raw);
   const baseText = unitText ? `${formatted} ${unitText}` : formatted;
-  const suffix = formatNormalizedSuffix(ingredient.name, total, unit);
+  const suffix = formatNormalizedSuffix(ingredient.name, total, unit, unitText);
   return suffix ? `${baseText} ${suffix}` : baseText;
 }
 

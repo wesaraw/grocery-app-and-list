@@ -34,6 +34,32 @@ const deleteButtons = [];
 let needsMap = new Map();
 let densityMap = {};
 
+function extractUnitText(raw) {
+  if (typeof raw !== 'string') return '';
+  const trimmed = raw.trim();
+  if (!trimmed) return '';
+  const match = trimmed.match(/^[\d\s./+-]+(.*)$/);
+  return match ? match[1].trim() : '';
+}
+
+function formatUnitLabel(text) {
+  if (!text) return '';
+  return text
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part, index) => {
+      const lower = part.toLowerCase();
+      if (lower === 'cooked' || lower === 'dry') {
+        return lower.charAt(0).toUpperCase() + lower.slice(1);
+      }
+      if (index === 0 && lower.length > 2) {
+        return part.charAt(0).toUpperCase() + part.slice(1);
+      }
+      return part;
+    })
+    .join(' ');
+}
+
 function formatNormalizedQuantity(value) {
   if (!Number.isFinite(value)) return null;
   const rounded = Math.round(value * 100) / 100;
@@ -58,9 +84,21 @@ function formatIngredientAmount(ingredient) {
   if (!unit) return baseStr;
   const normalized = computeNormalizedQuantity(value, unit, info);
   if (!normalized || normalized.unit == null) return baseStr;
-  const normalizedUnit = typeof normalized.unit === 'string' ? normalized.unit.trim() : '';
+  const normalizedUnitRaw = typeof normalized.unit === 'string' ? normalized.unit.trim() : '';
+  if (!normalizedUnitRaw) return baseStr;
+  const normalizedUnit = formatUnitLabel(normalizedUnitRaw);
   if (!normalizedUnit) return baseStr;
-  if (normalizedUnit.toLowerCase() === unit.toLowerCase()) return baseStr;
+  let baseUnitText = extractUnitText(baseStr);
+  if (!baseUnitText && unit && unit !== 'ea') {
+    baseUnitText = unit;
+  }
+  const formattedBaseUnit = formatUnitLabel(baseUnitText);
+  if (
+    formattedBaseUnit &&
+    normalizedUnit.toLowerCase() === formattedBaseUnit.toLowerCase()
+  ) {
+    return baseStr;
+  }
   const formattedQty = formatNormalizedQuantity(normalized.quantity);
   if (!formattedQty) return baseStr;
   return `${baseStr} (Converts to ${formattedQty} ${normalizedUnit})`;
