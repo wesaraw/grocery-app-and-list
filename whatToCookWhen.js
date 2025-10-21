@@ -3,6 +3,8 @@ import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemSto
 import { loadUsers, loadUserPortionMultipliers } from './utils/userData.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 import { parseQuantity, expandCalendarValue } from './utils/calendarUtils.js';
+import { canonicalName } from './utils/nameUtils.js';
+import { loadDensityMap, computeNormalizedQuantity } from './utils/unitNormalize.js';
 
 function loadCalendar() {
   return new Promise(resolve => {
@@ -130,11 +132,45 @@ function extractUnitText(raw) {
   return trimmed;
 }
 
+let densityMap = {};
+
+function getDensitySettings(name) {
+  if (!name) return null;
+  if (densityMap[name]) return densityMap[name];
+  const canonical = canonicalName(name);
+  if (!canonical) return null;
+  return densityMap[canonical] || null;
+}
+
+function formatNormalizedSuffix(ingredientName, totalQuantity, unit) {
+  if (!ingredientName || !Number.isFinite(totalQuantity) || !unit) {
+    return '';
+  }
+  const settings = getDensitySettings(ingredientName);
+  if (!settings) return '';
+  const normalized = computeNormalizedQuantity(totalQuantity, unit, settings);
+  if (!normalized) return '';
+  const normalizedUnit =
+    typeof normalized.unit === 'string' ? normalized.unit.trim() : '';
+  if (!normalizedUnit) return '';
+  if (normalizedUnit.toLowerCase() === unit.toLowerCase()) return '';
+  const formatted = formatNumber(normalized.quantity);
+  if (!formatted) return '';
+  return `(Converts to ${formatted} ${normalizedUnit})`;
+}
+
 function formatIngredientAmount(ingredient, multiplier) {
   if (!ingredient) return '';
-  const raw = (ingredient.serving_size || ingredient.amount || '').trim();
+  const sourceValue =
+    ingredient.serving_size != null ? ingredient.serving_size : ingredient.amount;
+  const raw =
+    typeof sourceValue === 'string'
+      ? sourceValue.trim()
+      : sourceValue != null
+      ? String(sourceValue).trim()
+      : '';
   if (!raw) return '';
-  const { value } = parseQuantity(raw);
+  const { value, unit } = parseQuantity(raw);
   if (!value) {
     return raw;
   }
@@ -144,8 +180,9 @@ function formatIngredientAmount(ingredient, multiplier) {
     return raw;
   }
   const unitText = extractUnitText(raw);
-  if (!unitText) return formatted;
-  return `${formatted} ${unitText}`;
+  const baseText = unitText ? `${formatted} ${unitText}` : formatted;
+  const suffix = formatNormalizedSuffix(ingredient.name, total, unit);
+  return suffix ? `${baseText} ${suffix}` : baseText;
 }
 
 function formatPortions(multiplier) {
@@ -564,13 +601,18 @@ function openEatView() {
 
 async function init() {
   await initializeMealCategories();
-  const users = await loadUsers();
-  const calendar = await loadCalendar();
-  const multipliers = await loadUserPortionMultipliers();
+  const [users, calendar, multipliers, mealMap, cookingDays, densities] =
+    await Promise.all([
+      loadUsers(),
+      loadCalendar(),
+      loadUserPortionMultipliers(),
+      loadAllMeals(),
+      loadCookingDays(),
+      loadDensityMap()
+    ]);
+  densityMap = densities || {};
   const userEntries = buildUserEntries(users, multipliers, calendar);
-  const mealMap = await loadAllMeals();
-  const cookingDays = await loadCookingDays();
-  const prepDays = normalizePrepDays(cookingDays.prepDay);
+  const prepDays = normalizePrepDays(cookingDays?.prepDay);
   const { start, days } = getParams();
   document.getElementById('startDate').value = start || new Date().toISOString().split('T')[0];
   document.getElementById('numDays').value = days;

@@ -8,18 +8,53 @@ import {
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const NEEDS_KEY = 'yearlyNeeds';
+const UOM_PATH = 'Required for grocery app/uom_conversion_table.json';
 
 let allNeeds = [];
 let densityMap = {};
 let tbody;
 let filterText = '';
 const headerState = {};
+let unitOptions = [];
 
 async function loadNeeds() {
   const storedNeeds = await loadItemArray(NEEDS_KEY);
   if (storedNeeds.length > 0) return storedNeeds;
   const needs = await loadJSON(NEEDS_PATH);
   return await convertArrayToNames(needs);
+}
+
+function prepareUnitOptions(uomTable) {
+  if (!uomTable) return [];
+  return Object.keys(uomTable)
+    .sort((a, b) => a.localeCompare(b));
+}
+
+function createUnitSelect() {
+  const select = document.createElement('select');
+  const emptyOption = document.createElement('option');
+  emptyOption.value = '';
+  emptyOption.textContent = '';
+  select.appendChild(emptyOption);
+  unitOptions.forEach(unit => {
+    const opt = document.createElement('option');
+    opt.value = unit;
+    opt.textContent = unit;
+    select.appendChild(opt);
+  });
+  return select;
+}
+
+function setSelectValue(select, value) {
+  if (!value) return;
+  const exists = Array.from(select.options).some(opt => opt.value === value);
+  if (!exists) {
+    const opt = document.createElement('option');
+    opt.value = value;
+    opt.textContent = value;
+    select.appendChild(opt);
+  }
+  select.value = value;
 }
 
 function parseRatio(str) {
@@ -49,6 +84,31 @@ function buildRow(item) {
   chk.type = 'checkbox';
   chk.checked = densityMap[item.name]?.convert || false;
   convertTd.appendChild(chk);
+  const normalized = densityMap[item.name]?.normalized || {};
+  const fromTd = document.createElement('td');
+  fromTd.className = 'normalized-cell';
+  const fromSelect = createUnitSelect();
+  setSelectValue(fromSelect, normalized.fromUnit || '');
+  const fromInput = document.createElement('input');
+  fromInput.type = 'number';
+  fromInput.step = 'any';
+  if (normalized.fromValue !== undefined) {
+    fromInput.value = normalized.fromValue;
+  }
+  fromTd.appendChild(fromSelect);
+  fromTd.appendChild(fromInput);
+  const toTd = document.createElement('td');
+  toTd.className = 'normalized-cell';
+  const toSelect = createUnitSelect();
+  setSelectValue(toSelect, normalized.toUnit || '');
+  const toInput = document.createElement('input');
+  toInput.type = 'number';
+  toInput.step = 'any';
+  if (normalized.toValue !== undefined) {
+    toInput.value = normalized.toValue;
+  }
+  toTd.appendChild(toSelect);
+  toTd.appendChild(toInput);
   const saveTd = document.createElement('td');
   const saveBtn = document.createElement('button');
   saveBtn.textContent = 'Save';
@@ -61,6 +121,10 @@ function buildRow(item) {
   ratioInput.addEventListener('input', showSave);
   cupInput.addEventListener('input', showSave);
   chk.addEventListener('change', showSave);
+  fromSelect.addEventListener('change', showSave);
+  fromInput.addEventListener('input', showSave);
+  toSelect.addEventListener('change', showSave);
+  toInput.addEventListener('input', showSave);
 
   saveBtn.addEventListener('click', async () => {
     let ratioVal = parseRatio(ratioInput.value.trim());
@@ -69,7 +133,29 @@ function buildRow(item) {
       if (!isNaN(w)) ratioVal = w / 240;
     }
     if (!ratioVal) ratioVal = 1;
-    densityMap[item.name] = { convert: chk.checked, ratio: ratioVal };
+    const updated = {
+      ...densityMap[item.name],
+      convert: chk.checked,
+      ratio: ratioVal
+    };
+    delete updated.normalized;
+    const fromUnit = fromSelect.value.trim();
+    const toUnit = toSelect.value.trim();
+    const fromValueStr = fromInput.value.trim();
+    const toValueStr = toInput.value.trim();
+    if (fromUnit && toUnit && fromValueStr !== '' && toValueStr !== '') {
+      const fromValue = parseFloat(fromValueStr);
+      const toValue = parseFloat(toValueStr);
+      if (!Number.isNaN(fromValue) && !Number.isNaN(toValue)) {
+        updated.normalized = {
+          fromUnit,
+          fromValue,
+          toUnit,
+          toValue
+        };
+      }
+    }
+    densityMap[item.name] = updated;
     await saveDensityMap(densityMap);
     saveBtn.classList.add('hidden');
   });
@@ -78,16 +164,21 @@ function buildRow(item) {
   tr.appendChild(ratioTd);
   tr.appendChild(cupTd);
   tr.appendChild(convertTd);
+  tr.appendChild(fromTd);
+  tr.appendChild(toTd);
   tr.appendChild(saveTd);
   return tr;
 }
 
 async function init() {
-  [allNeeds, densityMap] = await Promise.all([
+  const [needs, densities, uomTable] = await Promise.all([
     loadNeeds(),
-    loadDensityMap()
+    loadDensityMap(),
+    loadJSON(UOM_PATH)
   ]);
-  allNeeds = sortItemsByCategory(allNeeds);
+  allNeeds = sortItemsByCategory(needs);
+  densityMap = densities;
+  unitOptions = prepareUnitOptions(uomTable);
   tbody = document.getElementById('ratio-list');
   render();
   document.getElementById('searchBox').addEventListener('input', () => {
@@ -109,7 +200,7 @@ function render() {
   function addCategoryRow(cat) {
     const tr = document.createElement('tr');
     const th = document.createElement('th');
-    th.colSpan = 5;
+    th.colSpan = 7;
     th.className = 'category-header';
     th.textContent = cat;
     tr.appendChild(th);

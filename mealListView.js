@@ -6,7 +6,11 @@ import { loadUsers, loadUserPortionMultipliers } from './utils/userData.js';
 import { canonicalName } from './utils/nameUtils.js';
 import { parseQuantity } from './utils/calendarUtils.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
-import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
+import {
+  loadDensityMap,
+  convertWithDensity,
+  computeNormalizedQuantity
+} from './utils/unitNormalize.js';
 import { getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
 import {
   loadArray as loadItemArray,
@@ -40,6 +44,38 @@ let needsMap = new Map();
 let densityMap = {};
 const UOM_PATH = 'Required for grocery app/uom_conversion_table.json';
 let units = [];
+
+function formatNormalizedQuantity(value) {
+  if (!Number.isFinite(value)) return null;
+  const rounded = Math.round(value * 100) / 100;
+  const normalized = Object.is(rounded, -0) ? 0 : rounded;
+  if (Number.isInteger(normalized)) return normalized.toString();
+  return normalized
+    .toFixed(2)
+    .replace(/\.00$/, '')
+    .replace(/(\.\d)0$/, '$1');
+}
+
+function formatIngredientAmount(ingredient) {
+  const base = ingredient?.amount || ingredient?.serving_size || '';
+  if (base == null) return '';
+  const baseStr = typeof base === 'string' ? base.trim() : String(base);
+  if (!baseStr) return '';
+  const name = ingredient?.name;
+  if (!name) return baseStr;
+  const info = densityMap[name] || densityMap[canonicalName(name)];
+  if (!info) return baseStr;
+  const { value, unit } = parseQuantity(baseStr);
+  if (!unit) return baseStr;
+  const normalized = computeNormalizedQuantity(value, unit, info);
+  if (!normalized || normalized.unit == null) return baseStr;
+  const normalizedUnit = typeof normalized.unit === 'string' ? normalized.unit.trim() : '';
+  if (!normalizedUnit) return baseStr;
+  if (normalizedUnit.toLowerCase() === unit.toLowerCase()) return baseStr;
+  const formattedQty = formatNormalizedQuantity(normalized.quantity);
+  if (!formattedQty) return baseStr;
+  return `${baseStr} (Converts to ${formattedQty} ${normalizedUnit})`;
+}
 
 function normalizeIngredientPrepFlags(ingredients) {
   if (!Array.isArray(ingredients)) return [];
@@ -699,7 +735,7 @@ function createRows(meal, arr) {
     prepItemTd.appendChild(prepItemChk);
 
     const amtTd = document.createElement('td');
-    amtTd.textContent = ing.amount || ing.serving_size || '';
+    amtTd.textContent = formatIngredientAmount(ing);
 
     ingCells.push({ ingTd, amtTd, prepTd: prepItemTd, tr });
 
@@ -1277,7 +1313,7 @@ function createRows(meal, arr) {
         } else {
           delete cell.ingTd.dataset.name;
         }
-        cell.amtTd.textContent = ing?.amount || ing?.serving_size || '';
+        cell.amtTd.textContent = formatIngredientAmount(ing);
         if (cell.prepTd) {
           cell.prepTd.innerHTML = '';
           cell.prepTd.style.textAlign = 'center';

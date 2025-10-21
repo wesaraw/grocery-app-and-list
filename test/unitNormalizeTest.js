@@ -1,4 +1,8 @@
-import { normalizeUnit, convertToWeightFromVolume } from '../utils/unitNormalize.js';
+import {
+  normalizeUnit,
+  convertToWeightFromVolume,
+  computeNormalizedQuantity
+} from '../utils/unitNormalize.js';
 import { parseQuantity } from '../utils/calendarUtils.js';
 import { initUomTable, convert } from '../utils/uomConverter.js';
 import { pathToFileURL } from 'url';
@@ -36,6 +40,36 @@ if (eggs !== 12) {
 const pintOz = convert(1, 'pint', 'oz');
 if (pintOz !== 16) {
   throw new Error('pint conversion failed');
+}
+
+const cheeseSettings = {
+  normalized: {
+    fromUnit: 'oz',
+    fromValue: 16,
+    toUnit: 'slice',
+    toValue: 20
+  }
+};
+
+const normalizedCheese = computeNormalizedQuantity(3, 'oz', cheeseSettings);
+if (
+  !normalizedCheese ||
+  normalizedCheese.unit !== 'slice' ||
+  Math.abs(normalizedCheese.quantity - 3.75) > 0.01
+) {
+  throw new Error('normalized conversion failed');
+}
+
+const skipSameUnit = computeNormalizedQuantity(3, 'slice', cheeseSettings);
+if (skipSameUnit !== null) {
+  throw new Error('should skip normalization when units already match');
+}
+
+const missingNormalized = computeNormalizedQuantity(3, 'oz', {
+  normalized: { fromUnit: 'oz', fromValue: 16 }
+});
+if (missingNormalized !== null) {
+  throw new Error('normalization should be ignored when mapping incomplete');
 }
 
 console.log('unitNormalize tests passed');

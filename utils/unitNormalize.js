@@ -36,6 +36,45 @@ export async function userDensityCalibration(itemName, measuredWeightG) {
 
 const DENSITY_KEY = 'densityRatios';
 
+/**
+ * A density map entry may contain an optional normalized conversion describing how to map
+ * a measured unit into a user-defined unit. The normalized object is persisted with the
+ * following shape:
+ * {
+ *   fromUnit: string,
+ *   fromValue: number,
+ *   toUnit: string,
+ *   toValue: number
+ * }
+ */
+
+function sanitizeNormalizedEntry(normalized) {
+  if (!normalized || typeof normalized !== 'object') return null;
+  const fromUnit = typeof normalized.fromUnit === 'string' ? normalized.fromUnit.trim() : '';
+  const toUnit = typeof normalized.toUnit === 'string' ? normalized.toUnit.trim() : '';
+  const fromValue = Number(normalized.fromValue);
+  const toValue = Number(normalized.toValue);
+  if (!fromUnit || !toUnit) return null;
+  if (!Number.isFinite(fromValue) || !Number.isFinite(toValue) || fromValue === 0) return null;
+  return {
+    fromUnit,
+    toUnit,
+    fromValue,
+    toValue,
+  };
+}
+
+function sanitizeDensityEntry(entry) {
+  if (!entry || typeof entry !== 'object') return {};
+  const { normalized, ...rest } = entry;
+  const sanitized = { ...rest };
+  const cleanNormalized = sanitizeNormalizedEntry(normalized);
+  if (cleanNormalized) {
+    sanitized.normalized = cleanNormalized;
+  }
+  return sanitized;
+}
+
 export function loadDensityMap() {
   return new Promise(resolve => {
     chrome.storage.local.get(DENSITY_KEY, async data => {
@@ -45,14 +84,22 @@ export function loadDensityMap() {
         const stored = await convertObjectKeysToIds(withNames);
         chrome.storage.local.set({ [DENSITY_KEY]: stored });
       }
-      resolve(withNames);
+      const sanitized = {};
+      Object.entries(withNames || {}).forEach(([name, entry]) => {
+        sanitized[name] = sanitizeDensityEntry(entry);
+      });
+      resolve(sanitized);
     });
   });
 }
 
 export function saveDensityMap(map) {
+  const sanitized = {};
+  Object.entries(map || {}).forEach(([name, entry]) => {
+    sanitized[name] = sanitizeDensityEntry(entry);
+  });
   return new Promise(resolve => {
-    convertObjectKeysToIds(map).then(stored => {
+    convertObjectKeysToIds(sanitized).then(stored => {
       chrome.storage.local.set({ [DENSITY_KEY]: stored }, () => resolve());
     });
   });
@@ -117,4 +164,23 @@ export function convertWithDensity(qty, fromUnit, toUnit = 'oz', settings = {}) 
     return convertToWeightFromVolume(ml, ratio);
   }
   return convert(qty, fromKey, toKey);
+}
+
+export function computeNormalizedQuantity(quantity, unit, settings = {}) {
+  if (quantity == null || !unit || !settings || typeof settings !== 'object') {
+    return null;
+  }
+  const sourceUnit = typeof unit === 'string' ? unit.trim() : '';
+  if (!sourceUnit) return null;
+  const normalized = sanitizeNormalizedEntry(settings.normalized);
+  if (!normalized) return null;
+  const { fromUnit, fromValue, toUnit, toValue } = normalized;
+  if (typeof toUnit === 'string' && toUnit.trim().toLowerCase() === sourceUnit.toLowerCase()) {
+    return null;
+  }
+  const converted = convertWithDensity(quantity, sourceUnit, fromUnit, settings);
+  if (converted == null || !Number.isFinite(converted)) return null;
+  const normalizedQty = (converted / fromValue) * toValue;
+  if (!Number.isFinite(normalizedQty)) return null;
+  return { quantity: normalizedQty, unit: toUnit };
 }
