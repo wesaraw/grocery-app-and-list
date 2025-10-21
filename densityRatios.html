@@ -29,6 +29,25 @@
     .normalized-cell select {
       flex: 1;
     }
+    .state-label {
+      font-size: 11px;
+      color: #555;
+      min-width: 52px;
+      text-transform: capitalize;
+    }
+    .prep-toggle-group {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .prep-toggle-group label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
   </style>
 </head>
 <body>
@@ -41,6 +60,7 @@
         <th>Ratio</th>
         <th>1 cup weight (g)</th>
         <th>Convert?</th>
+        <th>Prep state</th>
         <th>From (unit & amount)</th>
         <th>To (unit & amount)</th>
         <th>Save</th>

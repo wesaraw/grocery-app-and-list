@@ -6,6 +6,8 @@ import { convertObjectKeysToNames, convertObjectKeysToIds } from './itemStorage.
 const VOLUME_UNITS = new Set(['floz', 'fl oz', 'ml', 'l', 'gal', 'qt', 'pt', 'cup', 'tbsp', 'tsp']);
 const WEIGHT_UNITS = new Set(['oz', 'lb', 'g', 'kg']);
 
+const PREP_STATES = new Set(['cooked', 'dry']);
+
 const VOLUME_TO_ML = {
   'ml': 1,
   'l': 1000,
@@ -44,9 +46,17 @@ const DENSITY_KEY = 'densityRatios';
  *   fromUnit: string,
  *   fromValue: number,
  *   toUnit: string,
- *   toValue: number
+ *   toValue: number,
+ *   fromState?: 'cooked' | 'dry',
+ *   toState?: 'cooked' | 'dry'
  * }
  */
+
+function sanitizeState(value) {
+  if (!value || typeof value !== 'string') return '';
+  const lower = value.trim().toLowerCase();
+  return PREP_STATES.has(lower) ? lower : '';
+}
 
 function sanitizeNormalizedEntry(normalized) {
   if (!normalized || typeof normalized !== 'object') return null;
@@ -56,18 +66,26 @@ function sanitizeNormalizedEntry(normalized) {
   const toValue = Number(normalized.toValue);
   if (!fromUnit || !toUnit) return null;
   if (!Number.isFinite(fromValue) || !Number.isFinite(toValue) || fromValue === 0) return null;
-  return {
+  const cleaned = {
     fromUnit,
     toUnit,
     fromValue,
     toValue,
   };
+  const fromState = sanitizeState(normalized.fromState);
+  const toState = sanitizeState(normalized.toState);
+  if (fromState) cleaned.fromState = fromState;
+  if (toState) cleaned.toState = toState;
+  return cleaned;
 }
 
 function sanitizeDensityEntry(entry) {
   if (!entry || typeof entry !== 'object') return {};
   const { normalized, ...rest } = entry;
   const sanitized = { ...rest };
+  const prepState = sanitizeState(rest.prepState);
+  if (prepState) sanitized.prepState = prepState;
+  else delete sanitized.prepState;
   const cleanNormalized = sanitizeNormalizedEntry(normalized);
   if (cleanNormalized) {
     sanitized.normalized = cleanNormalized;
