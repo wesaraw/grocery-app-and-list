@@ -5,6 +5,10 @@ import { UNIT_ALIASES } from './priceUtils.js';
 const VOLUME_UNITS = new Set(['floz', 'fl oz', 'ml', 'l', 'gal', 'qt', 'pt', 'cup', 'tbsp', 'tsp']);
 const WEIGHT_UNITS = new Set(['oz', 'lb', 'g', 'kg']);
 
+const PREP_STATES = new Set(['cooked', 'dry']);
+
+const STATE_SUFFIX_RE = /\s+(cooked|dry)$/i;
+
 const VOLUME_TO_ML = {
   'ml': 1,
   'l': 1000,
@@ -35,17 +39,104 @@ export async function userDensityCalibration(itemName, measuredWeightG) {
 
 const DENSITY_KEY = 'densityRatios';
 
+/**
+ * A density map entry may contain an optional normalized conversion describing how to map
+ * a measured unit into a user-defined unit. The normalized object is persisted with the
+ * following shape:
+ * {
+ *   fromUnit: string,
+ *   fromValue: number,
+ *   toUnit: string,
+ *   toValue: number,
+ *   fromState?: 'cooked' | 'dry',
+ *   toState?: 'cooked' | 'dry'
+ * }
+ */
+
+function sanitizeState(value) {
+  if (!value || typeof value !== 'string') return '';
+  const lower = value.trim().toLowerCase();
+  return PREP_STATES.has(lower) ? lower : '';
+}
+
+function stripStateSuffix(unit) {
+  if (!unit || typeof unit !== 'string') return '';
+  return unit.replace(STATE_SUFFIX_RE, '').trim();
+}
+
+function formatUnitWithState(unit, state) {
+  const cleanState = sanitizeState(state);
+  const baseUnit = stripStateSuffix(unit);
+  if (!cleanState) return baseUnit || unit || '';
+  const label = cleanState.charAt(0).toUpperCase() + cleanState.slice(1);
+  return baseUnit ? `${baseUnit} ${label}` : label;
+}
+
+function sanitizeNormalizedEntry(normalized) {
+  if (!normalized || typeof normalized !== 'object') return null;
+  const fromUnit = typeof normalized.fromUnit === 'string' ? normalized.fromUnit.trim() : '';
+  const toUnit = typeof normalized.toUnit === 'string' ? normalized.toUnit.trim() : '';
+  const fromValue = Number(normalized.fromValue);
+  const toValue = Number(normalized.toValue);
+  if (!fromUnit || !toUnit) return null;
+  if (!Number.isFinite(fromValue) || !Number.isFinite(toValue) || fromValue === 0) return null;
+
+  const cleaned = {
+    fromUnit,
+    toUnit,
+    fromValue,
+    toValue,
+  };
+
+  const rawFromState = typeof normalized.fromState === 'string' ? normalized.fromState.trim() : '';
+  const rawToState = typeof normalized.toState === 'string' ? normalized.toState.trim() : '';
+  const fromState = sanitizeState(rawFromState);
+  const toState = sanitizeState(rawToState);
+  const hasStateInput = Boolean(rawFromState) || Boolean(rawToState);
+
+  if (hasStateInput) {
+    if (!fromState || !toState) return null;
+    cleaned.fromState = fromState;
+    cleaned.toState = toState;
+  }
+
+  return cleaned;
+}
+
+function sanitizeDensityEntry(entry) {
+  if (!entry || typeof entry !== 'object') return {};
+  const { normalized, ...rest } = entry;
+  const sanitized = { ...rest };
+  const prepState = sanitizeState(rest.prepState);
+  if (prepState) sanitized.prepState = prepState;
+  else delete sanitized.prepState;
+  const cleanNormalized = sanitizeNormalizedEntry(normalized);
+  if (cleanNormalized) {
+    sanitized.normalized = cleanNormalized;
+  }
+  return sanitized;
+}
+
 export function loadDensityMap() {
   return new Promise(resolve => {
     chrome.storage.local.get(DENSITY_KEY, data => {
-      resolve(data[DENSITY_KEY] || {});
+      const raw = data[DENSITY_KEY] || {};
+      const sanitized = {};
+      Object.entries(raw).forEach(([name, entry]) => {
+        sanitized[name] = sanitizeDensityEntry(entry);
+      });
+      resolve(sanitized);
     });
   });
 }
 
 export function saveDensityMap(map) {
+  const sanitized = {};
+  Object.entries(map || {}).forEach(([name, entry]) => {
+    sanitized[name] = sanitizeDensityEntry(entry);
+  });
   return new Promise(resolve => {
-    chrome.storage.local.set({ [DENSITY_KEY]: map }, () => resolve());
+    chrome.storage.local.set({ [DENSITY_KEY]: sanitized }, () => resolve());
   });
 }
 
@@ -108,4 +199,49 @@ export function convertWithDensity(qty, fromUnit, toUnit = 'oz', settings = {}) 
     return convertToWeightFromVolume(ml, ratio);
   }
   return convert(qty, fromKey, toKey);
+}
+
+export function computeNormalizedQuantity(quantity, unit, settings = {}) {
+  if (quantity == null || !unit || !settings || typeof settings !== 'object') {
+    return null;
+  }
+  const sourceUnit = typeof unit === 'string' ? unit.trim() : '';
+  if (!sourceUnit) return null;
+  const normalized = sanitizeNormalizedEntry(settings.normalized);
+  if (!normalized) return null;
+  const { fromUnit, fromValue, toUnit, toValue } = normalized;
+  const fromState = sanitizeState(normalized.fromState);
+  const toState = sanitizeState(normalized.toState);
+  const prepState = sanitizeState(settings.prepState);
+
+  const baseSourceUnit = stripStateSuffix(sourceUnit);
+  const baseFromUnit = stripStateSuffix(fromUnit);
+  const baseToUnit = stripStateSuffix(toUnit);
+
+  if (!baseFromUnit || !baseToUnit) return null;
+
+  const hasStateMapping = Boolean(fromState && toState);
+  if (hasStateMapping) {
+    if (!prepState || prepState !== fromState) {
+      return null;
+    }
+    if (toState === fromState) {
+      return null;
+    }
+  }
+
+  const sameUnit =
+    baseToUnit && baseSourceUnit && baseToUnit.toLowerCase() === baseSourceUnit.toLowerCase();
+  if (!hasStateMapping && sameUnit) {
+    return null;
+  }
+
+  const converted = convertWithDensity(quantity, baseSourceUnit || sourceUnit, baseFromUnit, settings);
+  if (converted == null || !Number.isFinite(converted)) return null;
+  const normalizedQty = (converted / fromValue) * toValue;
+  if (!Number.isFinite(normalizedQty)) return null;
+  const resultUnit = hasStateMapping
+    ? formatUnitWithState(baseToUnit || toUnit, toState)
+    : (baseToUnit || toUnit);
+  return { quantity: normalizedQty, unit: resultUnit };
 }
