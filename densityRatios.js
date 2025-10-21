@@ -1,14 +1,26 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { loadDensityMap, saveDensityMap } from './utils/unitNormalize.js';
 import { sortItemsByCategory } from './utils/sortByCategory.js';
+import {
+  loadArray as loadItemArray,
+  convertArrayToNames
+} from './utils/itemStorage.js';
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
+const NEEDS_KEY = 'yearlyNeeds';
 
 let allNeeds = [];
 let densityMap = {};
 let tbody;
 let filterText = '';
 const headerState = {};
+
+async function loadNeeds() {
+  const storedNeeds = await loadItemArray(NEEDS_KEY);
+  if (storedNeeds.length > 0) return storedNeeds;
+  const needs = await loadJSON(NEEDS_PATH);
+  return await convertArrayToNames(needs);
+}
 
 function parseRatio(str) {
   const m1 = str.match(/^([0-9.]+)\s*:\s*1$/);
@@ -72,7 +84,7 @@ function buildRow(item) {
 
 async function init() {
   [allNeeds, densityMap] = await Promise.all([
-    loadJSON(NEEDS_PATH),
+    loadNeeds(),
     loadDensityMap()
   ]);
   allNeeds = sortItemsByCategory(allNeeds);
