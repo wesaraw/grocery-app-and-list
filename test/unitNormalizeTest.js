@@ -72,6 +72,42 @@ if (missingNormalized !== null) {
   throw new Error('normalization should be ignored when mapping incomplete');
 }
 
+const quinoaSettings = {
+  prepState: 'cooked',
+  normalized: {
+    fromUnit: 'cup',
+    fromValue: 2,
+    toUnit: 'cup',
+    toValue: 1,
+    fromState: 'cooked',
+    toState: 'dry'
+  }
+};
+
+const cookedToDry = computeNormalizedQuantity(2, 'cup', quinoaSettings);
+if (
+  !cookedToDry ||
+  cookedToDry.unit !== 'cup Dry' ||
+  Math.abs(cookedToDry.quantity - 1) > 0.0001
+) {
+  throw new Error('cooked to dry conversion failed');
+}
+
+const mismatchedPrepState = computeNormalizedQuantity(2, 'cup', {
+  prepState: 'dry',
+  normalized: quinoaSettings.normalized
+});
+if (mismatchedPrepState !== null) {
+  throw new Error('normalization should be skipped when prep state does not match mapping');
+}
+
+const missingPrepState = computeNormalizedQuantity(2, 'cup', {
+  normalized: quinoaSettings.normalized
+});
+if (missingPrepState !== null) {
+  throw new Error('normalization should require a matching prep state when mapping uses states');
+}
+
 const missingStateMapping = computeNormalizedQuantity(3, 'oz', {
   normalized: {
     fromUnit: 'oz',

@@ -8,6 +8,8 @@ const WEIGHT_UNITS = new Set(['oz', 'lb', 'g', 'kg']);
 
 const PREP_STATES = new Set(['cooked', 'dry']);
 
+const STATE_SUFFIX_RE = /\s+(cooked|dry)$/i;
+
 const VOLUME_TO_ML = {
   'ml': 1,
   'l': 1000,
@@ -56,6 +58,19 @@ function sanitizeState(value) {
   if (!value || typeof value !== 'string') return '';
   const lower = value.trim().toLowerCase();
   return PREP_STATES.has(lower) ? lower : '';
+}
+
+function stripStateSuffix(unit) {
+  if (!unit || typeof unit !== 'string') return '';
+  return unit.replace(STATE_SUFFIX_RE, '').trim();
+}
+
+function formatUnitWithState(unit, state) {
+  const cleanState = sanitizeState(state);
+  const baseUnit = stripStateSuffix(unit);
+  if (!cleanState) return baseUnit || unit || '';
+  const label = cleanState.charAt(0).toUpperCase() + cleanState.slice(1);
+  return baseUnit ? `${baseUnit} ${label}` : label;
 }
 
 function sanitizeNormalizedEntry(normalized) {
@@ -203,12 +218,38 @@ export function computeNormalizedQuantity(quantity, unit, settings = {}) {
   const normalized = sanitizeNormalizedEntry(settings.normalized);
   if (!normalized) return null;
   const { fromUnit, fromValue, toUnit, toValue } = normalized;
-  if (typeof toUnit === 'string' && toUnit.trim().toLowerCase() === sourceUnit.toLowerCase()) {
+  const fromState = sanitizeState(normalized.fromState);
+  const toState = sanitizeState(normalized.toState);
+  const prepState = sanitizeState(settings.prepState);
+
+  const baseSourceUnit = stripStateSuffix(sourceUnit);
+  const baseFromUnit = stripStateSuffix(fromUnit);
+  const baseToUnit = stripStateSuffix(toUnit);
+
+  if (!baseFromUnit || !baseToUnit) return null;
+
+  const hasStateMapping = Boolean(fromState && toState);
+  if (hasStateMapping) {
+    if (!prepState || prepState !== fromState) {
+      return null;
+    }
+    if (toState === fromState) {
+      return null;
+    }
+  }
+
+  const sameUnit =
+    baseToUnit && baseSourceUnit && baseToUnit.toLowerCase() === baseSourceUnit.toLowerCase();
+  if (!hasStateMapping && sameUnit) {
     return null;
   }
-  const converted = convertWithDensity(quantity, sourceUnit, fromUnit, settings);
+
+  const converted = convertWithDensity(quantity, baseSourceUnit || sourceUnit, baseFromUnit, settings);
   if (converted == null || !Number.isFinite(converted)) return null;
   const normalizedQty = (converted / fromValue) * toValue;
   if (!Number.isFinite(normalizedQty)) return null;
-  return { quantity: normalizedQty, unit: toUnit };
+  const resultUnit = hasStateMapping
+    ? formatUnitWithState(baseToUnit || toUnit, toState)
+    : (baseToUnit || toUnit);
+  return { quantity: normalizedQty, unit: resultUnit };
 }
