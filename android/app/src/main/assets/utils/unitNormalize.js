@@ -65,16 +65,26 @@ function sanitizeNormalizedEntry(normalized) {
   const toValue = Number(normalized.toValue);
   if (!fromUnit || !toUnit) return null;
   if (!Number.isFinite(fromValue) || !Number.isFinite(toValue) || fromValue === 0) return null;
+
   const cleaned = {
     fromUnit,
     toUnit,
     fromValue,
     toValue,
   };
-  const fromState = sanitizeState(normalized.fromState);
-  const toState = sanitizeState(normalized.toState);
-  if (fromState) cleaned.fromState = fromState;
-  if (toState) cleaned.toState = toState;
+
+  const rawFromState = typeof normalized.fromState === 'string' ? normalized.fromState.trim() : '';
+  const rawToState = typeof normalized.toState === 'string' ? normalized.toState.trim() : '';
+  const fromState = sanitizeState(rawFromState);
+  const toState = sanitizeState(rawToState);
+  const hasStateInput = Boolean(rawFromState) || Boolean(rawToState);
+
+  if (hasStateInput) {
+    if (!fromState || !toState) return null;
+    cleaned.fromState = fromState;
+    cleaned.toState = toState;
+  }
+
   return cleaned;
 }
 

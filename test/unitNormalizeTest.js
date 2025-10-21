@@ -72,4 +72,31 @@ if (missingNormalized !== null) {
   throw new Error('normalization should be ignored when mapping incomplete');
 }
 
+const missingStateMapping = computeNormalizedQuantity(3, 'oz', {
+  normalized: {
+    fromUnit: 'oz',
+    fromValue: 3,
+    toUnit: 'cup',
+    toValue: 1,
+    fromState: 'cooked'
+  }
+});
+if (missingStateMapping !== null) {
+  throw new Error('normalization should require both cooked/dry states when provided');
+}
+
+const invalidStateMapping = computeNormalizedQuantity(3, 'oz', {
+  normalized: {
+    fromUnit: 'oz',
+    fromValue: 3,
+    toUnit: 'cup',
+    toValue: 1,
+    fromState: 'cooked',
+    toState: 'raw'
+  }
+});
+if (invalidStateMapping !== null) {
+  throw new Error('normalization should reject invalid cooked/dry states');
+}
+
 console.log('unitNormalize tests passed');
