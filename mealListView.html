@@ -46,6 +46,13 @@
         background-color: #fff4b2;
         transition: background-color 0.6s ease;
       }
+      .calendar-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-left: 8px;
+        font-size: 13px;
+      }
   </style>
 </head>
 <body>
@@ -53,6 +60,10 @@
   <button id="addMeal">Add Meal</button>
   <button id="removeMeal">Remove Meal</button>
   <button id="repairMealIds">Correct meal id errors</button>
+  <label class="calendar-toggle">
+    <input type="checkbox" id="displayOnWhatToCook" checked>
+    Display on What To Cook
+  </label>
   <table>
     <thead>
       <tr>

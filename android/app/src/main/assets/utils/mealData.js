@@ -21,6 +21,22 @@ export const MEAL_TYPES = {
   }
 };
 
+const WHAT_TO_COOK_VISIBILITY_KEY = 'whatToCookVisibility';
+
+function buildVisibilityWithDefaults(rawVisibility = {}) {
+  const defaults = {};
+  Object.keys(MEAL_TYPES).forEach(type => {
+    defaults[type] = true;
+  });
+  if (rawVisibility && typeof rawVisibility === 'object') {
+    Object.entries(rawVisibility).forEach(([type, value]) => {
+      if (typeof type !== 'string') return;
+      defaults[type] = value !== false;
+    });
+  }
+  return defaults;
+}
+
 export async function initializeMealCategories() {
   return new Promise(resolve => {
     chrome.storage.local.get('mealCategories', data => {
@@ -98,3 +114,26 @@ export function saveCookingDays(obj) {
     chrome.storage.local.set({ cookingDays: obj }, () => resolve());
   });
 }
+
+export function loadWhatToCookVisibility() {
+  return new Promise(resolve => {
+    chrome.storage.local.get(WHAT_TO_COOK_VISIBILITY_KEY, data => {
+      resolve(buildVisibilityWithDefaults(data[WHAT_TO_COOK_VISIBILITY_KEY] || {}));
+    });
+  });
+}
+
+export function saveWhatToCookVisibility(map) {
+  return new Promise(resolve => {
+    const sanitized = {};
+    if (map && typeof map === 'object') {
+      Object.entries(map).forEach(([type, value]) => {
+        if (typeof type !== 'string') return;
+        sanitized[type] = value !== false;
+      });
+    }
+    chrome.storage.local.set({ [WHAT_TO_COOK_VISIBILITY_KEY]: sanitized }, () => resolve());
+  });
+}
+
+export { WHAT_TO_COOK_VISIBILITY_KEY };

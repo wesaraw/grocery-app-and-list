@@ -1,4 +1,9 @@
-import { MEAL_TYPES, initializeMealCategories, loadCookingDays } from './utils/mealData.js';
+import {
+  MEAL_TYPES,
+  initializeMealCategories,
+  loadCookingDays,
+  loadWhatToCookVisibility
+} from './utils/mealData.js';
 import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
 import { loadUsers, loadUserPortionMultipliers } from './utils/userData.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
@@ -18,7 +23,15 @@ function loadCalendar() {
 
 async function loadAllMeals() {
   const map = {};
+  let visibility = {};
+  try {
+    visibility = await loadWhatToCookVisibility();
+  } catch (err) {
+    console.error('Failed to load What To Cook visibility settings', err);
+    visibility = {};
+  }
   for (const type of Object.keys(MEAL_TYPES)) {
+    if (visibility[type] === false) continue;
     const { key, path } = MEAL_TYPES[type];
     let meals = await loadItemArray(key);
     if (!Array.isArray(meals) || meals.length === 0) {

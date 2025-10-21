@@ -41,12 +41,23 @@
         z-index: 1;
         cursor: pointer;
       }
+      .calendar-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-left: 8px;
+        font-size: 13px;
+      }
   </style>
 </head>
 <body>
   <h1 id="title"></h1>
   <button id="addMeal">Add Meal</button>
   <button id="removeMeal">Remove Meal</button>
+  <label class="calendar-toggle">
+    <input type="checkbox" id="displayOnWhatToCook" checked>
+    Display on What To Cook
+  </label>
   <table>
     <thead>
       <tr>
