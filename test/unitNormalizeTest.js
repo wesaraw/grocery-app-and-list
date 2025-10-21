@@ -108,7 +108,7 @@ if (missingPrepState !== null) {
   throw new Error('normalization should require a matching prep state when mapping uses states');
 }
 
-const missingStateMapping = computeNormalizedQuantity(3, 'oz', {
+const missingToStateMapping = computeNormalizedQuantity(3, 'oz', {
   normalized: {
     fromUnit: 'oz',
     fromValue: 3,
@@ -117,7 +117,7 @@ const missingStateMapping = computeNormalizedQuantity(3, 'oz', {
     fromState: 'cooked'
   }
 });
-if (missingStateMapping !== null) {
+if (missingToStateMapping !== null) {
   throw new Error('normalization should require both cooked/dry states when provided');
 }
 
@@ -133,6 +133,34 @@ const invalidStateMapping = computeNormalizedQuantity(3, 'oz', {
 });
 if (invalidStateMapping !== null) {
   throw new Error('normalization should reject invalid cooked/dry states');
+}
+
+const missingFromStateMapping = computeNormalizedQuantity(3, 'oz', {
+  normalized: {
+    fromUnit: 'oz',
+    fromValue: 3,
+    toUnit: 'cup',
+    toValue: 1,
+    toState: 'dry'
+  }
+});
+if (missingFromStateMapping !== null) {
+  throw new Error('normalization should require the cooked/dry source state when provided');
+}
+
+const sameStateMapping = computeNormalizedQuantity(2, 'cup', {
+  prepState: 'cooked',
+  normalized: {
+    fromUnit: 'cup',
+    fromValue: 1,
+    toUnit: 'cup',
+    toValue: 1,
+    fromState: 'cooked',
+    toState: 'cooked'
+  }
+});
+if (sameStateMapping !== null) {
+  throw new Error('normalization should be skipped when cooked/dry states already match');
 }
 
 console.log('unitNormalize tests passed');
