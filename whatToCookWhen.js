@@ -152,12 +152,65 @@ function formatUnitLabel(text) {
 
 let densityMap = {};
 
-function getDensitySettings(name) {
+function stripPrepStateSuffix(value) {
+  if (typeof value !== 'string') return '';
+  let trimmed = value.trim();
+  if (!trimmed) return '';
+  const patterns = [
+    /\s*\((cooked|dry)\)\s*$/i,
+    /\s*[-–—]\s*(cooked|dry)\s*$/i,
+    /\s+(cooked|dry)\s*$/i
+  ];
+  let changed = true;
+  while (changed && trimmed) {
+    changed = false;
+    for (const pattern of patterns) {
+      if (pattern.test(trimmed)) {
+        trimmed = trimmed.replace(pattern, '').trim();
+        changed = true;
+        break;
+      }
+    }
+  }
+  return trimmed;
+}
+
+function resolveDensitySettings(name) {
   if (!name) return null;
-  if (densityMap[name]) return densityMap[name];
-  const canonical = canonicalName(name);
-  if (!canonical) return null;
-  return densityMap[canonical] || null;
+  const candidates = [];
+  const seen = new Set();
+  const push = value => {
+    if (!value) return;
+    const key = value.toString();
+    if (seen.has(key)) return;
+    seen.add(key);
+    candidates.push(value);
+  };
+
+  push(name);
+  push(canonicalName(name));
+
+  const stripped = stripPrepStateSuffix(name);
+  if (stripped && stripped !== name) {
+    push(stripped);
+    push(canonicalName(stripped));
+  }
+
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const direct = densityMap[candidate];
+    if (direct) return direct;
+    const canonicalCandidate = canonicalName(candidate);
+    if (canonicalCandidate) {
+      const canonicalMatch = densityMap[canonicalCandidate];
+      if (canonicalMatch) return canonicalMatch;
+    }
+  }
+  return null;
+}
+
+function getDensitySettings(name) {
+  return resolveDensitySettings(name);
 }
 
 function formatNormalizedSuffix(ingredientName, totalQuantity, unit, baseUnitText = '') {

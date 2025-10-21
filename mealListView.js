@@ -45,6 +45,63 @@ let densityMap = {};
 const UOM_PATH = 'Required for grocery app/uom_conversion_table.json';
 let units = [];
 
+function stripPrepStateSuffix(value) {
+  if (typeof value !== 'string') return '';
+  let trimmed = value.trim();
+  if (!trimmed) return '';
+  const patterns = [
+    /\s*\((cooked|dry)\)\s*$/i,
+    /\s*[-–—]\s*(cooked|dry)\s*$/i,
+    /\s+(cooked|dry)\s*$/i
+  ];
+  let changed = true;
+  while (changed && trimmed) {
+    changed = false;
+    for (const pattern of patterns) {
+      if (pattern.test(trimmed)) {
+        trimmed = trimmed.replace(pattern, '').trim();
+        changed = true;
+        break;
+      }
+    }
+  }
+  return trimmed;
+}
+
+function resolveDensitySettings(name) {
+  if (!name) return null;
+  const candidates = [];
+  const seen = new Set();
+  const push = value => {
+    if (!value) return;
+    const key = value.toString();
+    if (seen.has(key)) return;
+    seen.add(key);
+    candidates.push(value);
+  };
+
+  push(name);
+  push(canonicalName(name));
+
+  const stripped = stripPrepStateSuffix(name);
+  if (stripped && stripped !== name) {
+    push(stripped);
+    push(canonicalName(stripped));
+  }
+
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const direct = densityMap[candidate];
+    if (direct) return direct;
+    const canonicalCandidate = canonicalName(candidate);
+    if (canonicalCandidate) {
+      const canonicalMatch = densityMap[canonicalCandidate];
+      if (canonicalMatch) return canonicalMatch;
+    }
+  }
+  return null;
+}
+
 function extractUnitText(raw) {
   if (typeof raw !== 'string') return '';
   const trimmed = raw.trim();
@@ -89,7 +146,7 @@ function formatIngredientAmount(ingredient) {
   if (!baseStr) return '';
   const name = ingredient?.name;
   if (!name) return baseStr;
-  const info = densityMap[name] || densityMap[canonicalName(name)];
+  const info = resolveDensitySettings(name);
   if (!info) return baseStr;
   const { value, unit } = parseQuantity(baseStr);
   if (!unit) return baseStr;
