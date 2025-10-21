@@ -1,4 +1,9 @@
-import { MEAL_TYPES, initializeMealCategories, loadCookingDays } from './utils/mealData.js';
+import {
+  MEAL_TYPES,
+  initializeMealCategories,
+  loadCookingDays,
+  loadWhatToCookVisibility
+} from './utils/mealData.js';
 import { loadUsers, loadUserPortionMultipliers } from './utils/userData.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 import { parseQuantity, expandCalendarValue } from './utils/calendarUtils.js';
@@ -17,9 +22,17 @@ function loadCalendar() {
   });
 }
 
-async function loadAllMeals() {
+export async function loadAllMeals() {
   const map = {};
+  let visibility = {};
+  try {
+    visibility = await loadWhatToCookVisibility();
+  } catch (err) {
+    console.error('Failed to load What To Cook visibility map', err);
+    visibility = {};
+  }
   for (const type of Object.keys(MEAL_TYPES)) {
+    if (visibility?.[type] === false) continue;
     const { key, path } = MEAL_TYPES[type];
     await new Promise(res => {
       chrome.storage.local.get(key, async data => {

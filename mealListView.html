@@ -41,6 +41,17 @@
         z-index: 1;
         cursor: pointer;
       }
+      .visibility-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 14px;
+        margin: 4px 0 8px;
+      }
+      .visibility-toggle input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+      }
       tr.focused-meal td,
       tr.focused-meal th {
         background-color: #fff4b2;
@@ -50,6 +61,10 @@
 </head>
 <body>
   <h1 id="title"></h1>
+  <label class="visibility-toggle">
+    <input type="checkbox" id="displayOnWhatToCook" checked>
+    Display on What To Cook
+  </label>
   <button id="addMeal">Add Meal</button>
   <button id="removeMeal">Remove Meal</button>
   <button id="repairMealIds">Correct meal id errors</button>

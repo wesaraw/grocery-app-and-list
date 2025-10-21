@@ -21,6 +21,43 @@ export const MEAL_TYPES = {
   }
 };
 
+export const WHAT_TO_COOK_VISIBILITY_KEY = 'whatToCookVisibility';
+
+function normalizeVisibilityMap(raw = {}) {
+  const normalized = {};
+  if (raw && typeof raw === 'object') {
+    Object.entries(raw).forEach(([categoryId, value]) => {
+      if (categoryId == null) return;
+      normalized[categoryId] = value !== false;
+    });
+  }
+  Object.keys(MEAL_TYPES).forEach(categoryId => {
+    if (normalized[categoryId] === undefined) {
+      normalized[categoryId] = true;
+    }
+  });
+  return normalized;
+}
+
+export function loadWhatToCookVisibility() {
+  return new Promise(resolve => {
+    chrome.storage.local.get(WHAT_TO_COOK_VISIBILITY_KEY, data => {
+      const raw = data?.[WHAT_TO_COOK_VISIBILITY_KEY];
+      resolve(normalizeVisibilityMap(raw));
+    });
+  });
+}
+
+export function saveWhatToCookVisibility(map = {}) {
+  const stored = {};
+  Object.entries(normalizeVisibilityMap(map)).forEach(([categoryId, value]) => {
+    stored[categoryId] = value !== false;
+  });
+  return new Promise(resolve => {
+    chrome.storage.local.set({ [WHAT_TO_COOK_VISIBILITY_KEY]: stored }, () => resolve());
+  });
+}
+
 export async function initializeMealCategories() {
   return new Promise(resolve => {
     chrome.storage.local.get('mealCategories', data => {

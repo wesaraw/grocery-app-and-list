@@ -1,4 +1,10 @@
-import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
+import {
+  MEAL_TYPES,
+  initializeMealCategories,
+  loadWhatToCookVisibility,
+  saveWhatToCookVisibility,
+  WHAT_TO_COOK_VISIBILITY_KEY
+} from './utils/mealData.js';
 import { loadJSON } from './utils/dataLoader.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
@@ -33,6 +39,19 @@ let deleteMode = false;
 const deleteButtons = [];
 let needsMap = new Map();
 let densityMap = {};
+
+let whatToCookVisibility = {};
+let visibilityCheckbox = null;
+let suppressVisibilityChange = false;
+
+function setVisibilityCheckboxState(checked) {
+  if (!visibilityCheckbox) return;
+  const normalized = !!checked;
+  if (visibilityCheckbox.checked === normalized) return;
+  suppressVisibilityChange = true;
+  visibilityCheckbox.checked = normalized;
+  suppressVisibilityChange = false;
+}
 
 function extractUnitText(raw) {
   if (typeof raw !== 'string') return '';
@@ -1103,6 +1122,27 @@ async function init() {
   path = info.path;
   label = info.label;
   document.getElementById('title').textContent = `${label} Meals`;
+  visibilityCheckbox = document.getElementById('displayOnWhatToCook');
+  if (visibilityCheckbox) {
+    try {
+      whatToCookVisibility = await loadWhatToCookVisibility();
+    } catch (err) {
+      console.error('Failed to load What To Cook visibility settings', err);
+      whatToCookVisibility = {};
+    }
+    setVisibilityCheckboxState(whatToCookVisibility[type] !== false);
+    visibilityCheckbox.addEventListener('change', async () => {
+      if (suppressVisibilityChange) return;
+      const checked = visibilityCheckbox.checked;
+      const nextMap = { ...whatToCookVisibility, [type]: checked };
+      whatToCookVisibility = nextMap;
+      try {
+        await saveWhatToCookVisibility(nextMap);
+      } catch (err) {
+        console.error('Failed to save What To Cook visibility settings', err);
+      }
+    });
+  }
   const addBtn = document.getElementById('addMeal');
   if (addBtn) {
     addBtn.addEventListener('click', () => {
@@ -1132,6 +1172,18 @@ async function init() {
     }
     if (area === 'local' && changes[key]) {
       loadAndRender();
+    }
+    if (area === 'local' && changes[WHAT_TO_COOK_VISIBILITY_KEY]) {
+      loadWhatToCookVisibility()
+        .then(map => {
+          whatToCookVisibility = map;
+          if (visibilityCheckbox) {
+            setVisibilityCheckboxState(map[type] !== false);
+          }
+        })
+        .catch(err => {
+          console.error('Failed to refresh What To Cook visibility state', err);
+        });
     }
   });
 }
