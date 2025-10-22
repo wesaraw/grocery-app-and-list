@@ -708,6 +708,7 @@ async function refreshNeeds(stock = stockData, consumed = consumedYearData) {
   const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
   const stockMap = new Map(stock.map(i => [i.name, i]));
   const text = filterText.trim().toLowerCase();
+  const searchActive = text.length > 0;
   needsData.forEach(item => {
     const rec = finalMap.get(item.name);
     if (rec && rec.btn) {
@@ -721,11 +722,12 @@ async function refreshNeeds(stock = stockData, consumed = consumedYearData) {
       rec.btn.textContent = item.name + amountText;
       const qty = stockMap.get(item.name)?.amount || 0;
       const weekly = item.total_needed_year ? item.total_needed_year / 52 : 0;
-      const showByStock = qty < weekly;
-      const showByNeed = !hideZeroItems || (needAmt != null && needAmt > 0);
+      const passesStock = qty < weekly;
+      const passesZeroQty = !hideZeroItems || qty > 0;
       const match = !text || item.name.toLowerCase().includes(text);
-      rec.li.style.display =
-        showByStock && showByNeed && match ? 'list-item' : 'none';
+      const baseVisible = passesStock && passesZeroQty;
+      const shouldShow = match && (searchActive ? passesZeroQty : baseVisible);
+      rec.li.style.display = shouldShow ? 'list-item' : 'none';
     }
   });
 }
@@ -796,6 +798,8 @@ async function rerenderAll() {
   );
   const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
   const stockMap = new Map(stock.map(i => [i.name, i]));
+  const text = filterText.trim().toLowerCase();
+  const searchActive = text.length > 0;
   const itemsContainer = document.getElementById('items');
   itemsContainer.innerHTML = '';
   finalMap.clear();
@@ -819,9 +823,12 @@ async function rerenderAll() {
     finalImg.style.display = 'none';
     const currentQty = stockMap.get(item.name)?.amount || 0;
     const weeklyNeed = item.total_needed_year ? item.total_needed_year / 52 : 0;
-    const showByStock = currentQty < weeklyNeed;
-    const showByNeed = !hideZeroItems || (needAmt != null && needAmt > 0);
-    li.style.display = showByStock && showByNeed ? 'list-item' : 'none';
+    const passesStock = currentQty < weeklyNeed;
+    const passesZeroQty = !hideZeroItems || currentQty > 0;
+    const match = !text || item.name.toLowerCase().includes(text);
+    const baseVisible = passesStock && passesZeroQty;
+    const shouldShow = match && (searchActive ? passesZeroQty : baseVisible);
+    li.style.display = shouldShow ? 'list-item' : 'none';
     const rec = { li, btn, span: finalSpan, img: finalImg, needAmt, product: null, weightMap: null };
     finalMap.set(item.name, rec);
     getFinal(item.name).then(async store => {
