@@ -196,10 +196,20 @@ function buildRow(item) {
   applyPrepState(currentPrepState);
 
   saveBtn.addEventListener('click', async () => {
-    let ratioVal = parseRatio(ratioInput.value.trim());
-    if (!ratioVal && cupInput.value.trim()) {
-      const w = parseFloat(cupInput.value.trim());
-      if (!isNaN(w)) ratioVal = w / 240;
+    let ratioVal;
+    const cupWeightStr = cupInput.value.trim();
+    if (cupWeightStr) {
+      const grams = parseFloat(cupWeightStr);
+      if (Number.isFinite(grams) && grams > 0) {
+        ratioVal = grams / 240;
+        const formattedRatio = Number.isInteger(ratioVal)
+          ? ratioVal.toString()
+          : ratioVal.toFixed(4).replace(/\.0+$|0+$/, '');
+        ratioInput.value = `${formattedRatio}:1`;
+      }
+    }
+    if (!ratioVal) {
+      ratioVal = parseRatio(ratioInput.value.trim());
     }
     if (!ratioVal) ratioVal = 1;
     const updated = {
