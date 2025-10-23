@@ -12,6 +12,7 @@ import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from "./utils/priceUti
 import { loadPurchases } from './utils/purchaseStorage.js';
 import { loadArray as loadItemArray, convertArrayToNames, getItemId } from './utils/itemStorage.js';
 import { resolveNextPrepWindow } from './utils/calendarUtils.js';
+import { formatQuantity, roundQuantity } from './utils/quantityFormat.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
@@ -280,7 +281,12 @@ function baseGetPackInfo(product) {
 }
 
 function weightKey(product, itemName) {
-  if (product.convertedQty != null) return product.convertedQty.toFixed(2);
+  if (product.convertedQty != null) {
+    const clamped = roundQuantity(product.convertedQty);
+    if (Number.isFinite(clamped)) {
+      return clamped.toFixed(2);
+    }
+  }
   if (product.sizeQty != null && product.sizeUnit) {
     const info = densityMap[itemName] || {};
     const oz = convertWithDensity(
@@ -289,7 +295,12 @@ function weightKey(product, itemName) {
       'oz',
       { convert_volume_to_weight: info.convert, custom_density_ratio: info.ratio }
     );
-    if (!isNaN(oz)) return oz.toFixed(2);
+    if (Number.isFinite(oz)) {
+      const rounded = roundQuantity(oz);
+      if (Number.isFinite(rounded)) {
+        return rounded.toFixed(2);
+      }
+    }
   }
   return null;
 }
@@ -352,7 +363,7 @@ function needText(itemName, needAmt, product = null, map = weightPackMap) {
   const packs = product ? packsForNeed(itemName, needAmt, product, map) : null;
   const packStr =
     packs != null ? ` \u2026 ${packs} pack${packs > 1 ? 's' : ''}` : '';
-  return ` (Need: ${needAmt} ${item.home_unit}${packStr})`;
+  return ` (Need: ${formatQuantity(needAmt)} ${item.home_unit}${packStr})`;
 }
 
 async function buildWeightPackMap(item, stores) {
@@ -483,7 +494,7 @@ function formatFinalText(itemName, store, product, map = weightPackMap) {
     const displayUnit = normalizedUnitType || product.unitType || 'oz';
     let qStr =
       product.convertedQty != null
-        ? `${product.convertedQty.toFixed(2)} ${displayUnit}`
+        ? `${formatQuantity(product.convertedQty)} ${displayUnit}`
         : product.size;
     const unitPrice = pricePerHomeUnit(itemName, product, map);
     const label = homeUnitLabel(itemName) || displayUnit || 'oz';

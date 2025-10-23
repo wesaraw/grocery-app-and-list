@@ -1,6 +1,7 @@
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
 import { getItemName } from './utils/itemStorage.js';
 import { getPriceUnitInfo } from './utils/priceUtils.js';
+import { formatQuantity } from './utils/quantityFormat.js';
 
 function storageGet(keys) {
   return new Promise(resolve => {
@@ -98,6 +99,7 @@ async function loadCommitData() {
   return { items, context: lastCommitContext, pendingCommitWeek };
 }
 
+
 function getCurrentWeek() {
   const now = new Date();
   const start = new Date(now.getFullYear(), 0, 1);
@@ -166,7 +168,7 @@ function updateRowText(record) {
   const displayUnit = unitInfo.unitType || data.product?.unitType || 'oz';
   const qtyText =
     data.product?.convertedQty != null
-      ? `${data.product.convertedQty.toFixed(2)} ${displayUnit}`
+      ? `${formatQuantity(data.product.convertedQty)} ${displayUnit}`
       : data.product?.size || '';
   const unitText =
     unitInfo.pricePerUnit != null
@@ -176,7 +178,7 @@ function updateRowText(record) {
   const packValue = isPositiveNumber(activePacks) ? Math.max(1, Math.round(activePacks)) : null;
   const packText = packValue != null ? `${packValue} pack${packValue > 1 ? 's' : ''}` : '';
   const amountText = isPositiveNumber(activeAmount)
-    ? `${activeAmount.toFixed(2)} ${data.unit || ''}`.trim()
+    ? `${formatQuantity(activeAmount)} ${data.unit || ''}`.trim()
     : '';
 
   const parts = [

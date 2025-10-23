@@ -3,12 +3,14 @@ import { openOrFocusWindow } from './utils/windowUtils.js';
 import { canonicalName } from './utils/nameUtils.js';
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
 import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
+import { formatQuantity } from './utils/quantityFormat.js';
 
 async function loadJSON(path) {
   const url = chrome.runtime.getURL(path);
   const res = await fetch(url);
   return res.json();
 }
+
 
 async function loadOverrides() {
   return new Promise(resolve => {
@@ -38,6 +40,7 @@ async function loadFinalProducts(names) {
     }
   });
 }
+
 
 async function loadArray(key, path) {
   const arr = await loadItemArray(key);
@@ -190,7 +193,7 @@ function simulateItem(item, overrides) {
       cls = 'yellow';
     }
     weeks.push({
-      qty: qtyBefore.toFixed(1),
+      qty: formatQuantity(qtyBefore),
       weeksToExpiration: Math.floor(weeksToExpiration),
       cls
     });
@@ -297,7 +300,7 @@ function buildGrid(items, headerState = {}, startWeek = 1) {
     const th = document.createElement('th');
     th.className = 'item-label';
     th.innerHTML = `${item.name}<br/><span class="exp-weeks">${item.expiration_weeks}w</span>` +
-      `<br/><span class="weekly-cons">${item.weekly_consumption.toFixed(2)}/wk</span>`;
+      `<br/><span class="weekly-cons">${formatQuantity(item.weekly_consumption)}/wk</span>`;
     const span = th.querySelector('.weekly-cons');
     if (span) {
       span.style.cursor = 'pointer';
@@ -611,6 +614,9 @@ async function init() {
   });
   document.getElementById('editExpirations').addEventListener('click', () => {
     openOrFocusWindow('expiration.html');
+  });
+  document.getElementById('editSeasons').addEventListener('click', () => {
+    openOrFocusWindow('editSeason.html');
   });
   document.getElementById('couponBtn').addEventListener('click', () => {
     openOrFocusWindow('coupon.html');

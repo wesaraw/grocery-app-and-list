@@ -1,4 +1,73 @@
 console.log("✅ contentScript.js loaded on page:", window.location.href);
+
+const DECIMAL_PLACES = 2;
+
+function toNumber(value) {
+  if (typeof value === "number") return value;
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : NaN;
+  }
+  return Number.isFinite(value) ? value : NaN;
+}
+
+function fallbackRoundQuantity(value, precision = DECIMAL_PLACES) {
+  if (value == null) return value;
+  const num = toNumber(value);
+  if (!Number.isFinite(num)) return value;
+  const places = typeof precision === "number" && Number.isFinite(precision) ? precision : DECIMAL_PLACES;
+  const factor = Math.pow(10, Math.max(0, Math.trunc(places)));
+  return Math.round(num * factor) / factor;
+}
+
+function fallbackFormatQuantity(value) {
+  if (value == null || value === "") return "";
+  const rounded = fallbackRoundQuantity(value);
+  if (!Number.isFinite(rounded)) {
+    return typeof value === "string" ? value : String(value);
+  }
+  const tenth = Math.round(rounded * 10) / 10;
+  if (Object.is(tenth, -0)) return "0";
+  if (Number.isInteger(tenth)) {
+    return String(tenth);
+  }
+  return tenth.toFixed(1).replace(/\.0$/, "");
+}
+
+let roundQuantity = fallbackRoundQuantity;
+let formatQuantity = fallbackFormatQuantity;
+
+import(chrome.runtime.getURL("utils/quantityFormat.js"))
+  .then(mod => {
+    if (mod && typeof mod.roundQuantity === "function") {
+      roundQuantity = mod.roundQuantity;
+    }
+    if (mod && typeof mod.formatQuantity === "function") {
+      formatQuantity = mod.formatQuantity;
+    }
+  })
+  .catch(() => {});
+
+function clampQuantity(value) {
+  return value == null ? value : roundQuantity(value);
+}
+
+function pushClampedProduct(list, product) {
+  const clamped = { ...product };
+  if (Object.prototype.hasOwnProperty.call(clamped, "sizeQty")) {
+    clamped.sizeQty = clampQuantity(clamped.sizeQty);
+  }
+  if (Object.prototype.hasOwnProperty.call(clamped, "unitQty")) {
+    clamped.unitQty = clampQuantity(clamped.unitQty);
+  }
+  if (Object.prototype.hasOwnProperty.call(clamped, "convertedQty")) {
+    clamped.convertedQty = clampQuantity(clamped.convertedQty);
+  }
+  if (Object.prototype.hasOwnProperty.call(clamped, "pricePerUnit")) {
+    clamped.pricePerUnit = clampQuantity(clamped.pricePerUnit);
+  }
+  list.push(clamped);
+}
 function getImageSrc(el) {
   if (!el) return "";
   const attrs = ["src", "data-src", "data-original", "data-image-src", "data-lazy", "data-lazy-src"];
@@ -208,8 +277,9 @@ function scrapeStopAndShop() {
         image,
         link
       });
-      const sizeStr = sizeQty != null && sizeUnit ? `${sizeQty} ${sizeUnit}` : unitSize || '';
-      products.push({
+      const sizeStr =
+        sizeQty != null && sizeUnit ? `${formatQuantity(sizeQty)} ${sizeUnit}` : unitSize || '';
+      pushClampedProduct(products, {
         name,
         price: priceText,
         priceNumber,
@@ -386,8 +456,9 @@ function scrapeWalmart() {
     }
 
     if (name && priceText) {
-      const sizeStr = sizeQty != null && sizeUnit ? `${sizeQty} ${sizeUnit}` : unitSize || '';
-      products.push({
+      const sizeStr =
+        sizeQty != null && sizeUnit ? `${formatQuantity(sizeQty)} ${sizeUnit}` : unitSize || '';
+      pushClampedProduct(products, {
         name,
         price: priceText,
         priceNumber,
@@ -542,7 +613,8 @@ function scrapeAmazon() {
     const baseSizeQty = unitInfo.unitSize;
     let sizeQty = baseSizeQty != null ? baseSizeQty * packCount : null;
     let sizeUnit = unitInfo.unit;
-    let size = baseSizeQty != null ? String(baseSizeQty) : countText || '';
+    const baseSizeDisplay = baseSizeQty != null ? formatQuantity(baseSizeQty) : null;
+    let size = baseSizeDisplay != null ? baseSizeDisplay : countText || '';
 
     let convertedQty = null;
     if (baseSizeQty != null && sizeUnit && UNIT_FACTORS[sizeUnit]) {
@@ -559,7 +631,7 @@ function scrapeAmazon() {
     }
 
     if (name && priceText) {
-      products.push({
+      pushClampedProduct(products, {
         name,
         price: priceText,
         priceNumber,
@@ -774,11 +846,13 @@ function scrapeShaws() {
     }
 
     if (name && priceText) {
-      products.push({
+      const sizeStr =
+        sizeQty != null && sizeUnit ? `${formatQuantity(sizeQty)} ${sizeUnit}` : sizeText || '';
+      pushClampedProduct(products, {
         name,
         price: priceText,
         priceNumber,
-        size: sizeText || '',
+        size: sizeStr,
         sizeQty,
         sizeUnit,
         unit: unitText || '',
@@ -994,8 +1068,9 @@ function scrapeRocheBros() {
     }
 
     if (name && priceText) {
-      const sizeStr = sizeQty != null && sizeUnit ? `${sizeQty} ${sizeUnit}` : sizeText || '';
-      products.push({
+      const sizeStr =
+        sizeQty != null && sizeUnit ? `${formatQuantity(sizeQty)} ${sizeUnit}` : sizeText || '';
+      pushClampedProduct(products, {
         name,
         price: priceText,
         priceNumber,
@@ -1112,11 +1187,13 @@ function scrapeHannaford() {
     }
 
     if (name && (priceText || priceNumber != null)) {
-      products.push({
+      const sizeStr =
+        sizeQty != null && sizeUnit ? `${formatQuantity(sizeQty)} ${sizeUnit}` : sizeText || '';
+      pushClampedProduct(products, {
         name,
         price: priceText || (priceNumber != null ? `$${priceNumber.toFixed(2)}` : ''),
         priceNumber,
-        size: sizeText || '',
+        size: sizeStr,
         sizeQty,
         sizeUnit,
         unit: unitText || '',

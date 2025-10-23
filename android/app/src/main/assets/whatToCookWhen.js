@@ -4,11 +4,13 @@ import {
   loadCookingDays,
   loadWhatToCookVisibility
 } from './utils/mealData.js';
+import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
 import { loadUsers, loadUserPortionMultipliers } from './utils/userData.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 import { parseQuantity, expandCalendarValue } from './utils/calendarUtils.js';
 import { canonicalName } from './utils/nameUtils.js';
 import { loadDensityMap, computeNormalizedQuantity } from './utils/unitNormalize.js';
+import { formatQuantity } from './utils/quantityFormat.js';
 
 function loadCalendar() {
   return new Promise(resolve => {
@@ -34,29 +36,30 @@ export async function loadAllMeals() {
   for (const type of Object.keys(MEAL_TYPES)) {
     if (visibility?.[type] === false) continue;
     const { key, path } = MEAL_TYPES[type];
-    await new Promise(res => {
-      chrome.storage.local.get(key, async data => {
-        let arr = data[key];
-        if (!arr) {
-          const resp = await fetch(path).catch(() => null);
-          arr = resp ? await resp.json().catch(() => []) : [];
-        }
-        if (Array.isArray(arr)) {
-          arr.forEach(m => {
-            if (m.prepared === undefined) m.prepared = false;
-            if (m.prepAhead === undefined) m.prepAhead = false;
-            if (m.leftoverOk === undefined) m.leftoverOk = false;
-            if (Array.isArray(m.ingredients)) {
-              m.ingredients.forEach(ing => {
-                if (!ing || typeof ing !== 'object') return;
-                ing.prepAhead = !!ing.prepAhead;
-              });
-            }
-            map[m.id || m.name] = m;
-          });
-        }
-        res();
-      });
+    let meals = await loadItemArray(key);
+    if (!Array.isArray(meals) || meals.length === 0) {
+      const resp = await fetch(path).catch(() => null);
+      const fallback = resp ? await resp.json().catch(() => []) : [];
+      meals = await convertArrayToNames(Array.isArray(fallback) ? fallback : []);
+    }
+    if (!Array.isArray(meals)) continue;
+    meals.forEach(meal => {
+      if (meal.prepared === undefined) meal.prepared = false;
+      if (meal.prepAhead === undefined) meal.prepAhead = false;
+      if (meal.leftoverOk === undefined) meal.leftoverOk = false;
+      if (Array.isArray(meal.ingredients)) {
+        meal.ingredients.forEach(ing => {
+          if (!ing || typeof ing !== 'object') return;
+          ing.prepAhead = !!ing.prepAhead;
+        });
+      }
+      if (!meal.categoryId) meal.categoryId = type;
+      if (!meal.categoryLabel) {
+        const category = MEAL_TYPES[type];
+        const label = category?.label || meal.category || meal.categoryId || type;
+        meal.categoryLabel = label;
+      }
+      map[meal.id || meal.name] = meal;
     });
   }
   return map;
@@ -104,6 +107,19 @@ function getDayRecord(calendar, entry, dateStr) {
   return {};
 }
 
+function parseLocalDate(value) {
+  if (typeof value !== 'string') return null;
+  const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+    return null;
+  }
+  return new Date(year, month - 1, day);
+}
+
 function getParams() {
   const p = new URLSearchParams(location.search);
   return {
@@ -114,11 +130,7 @@ function getParams() {
 
 function formatNumber(value) {
   if (!Number.isFinite(value)) return '';
-  let rounded = Math.round(value * 1000) / 1000;
-  if (Object.is(rounded, -0)) rounded = 0;
-  let str = rounded.toFixed(3);
-  str = str.replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
-  return str;
+  return formatQuantity(value);
 }
 
 function extractUnitText(raw) {
@@ -231,6 +243,7 @@ function renderMealColumn(container, entries, mealMap) {
     let leftoverDates = [];
     let prepItems = null;
     let wholeMeal = false;
+    let targetLabels = [];
     if (Array.isArray(entry)) {
       mealId = entry[0];
       totalMultiplier = entry[1];
@@ -246,6 +259,20 @@ function renderMealColumn(container, entries, mealMap) {
       if (entry.wholeMeal) {
         wholeMeal = true;
       }
+      if (Array.isArray(entry.targets)) {
+        const labels = [];
+        entry.targets.forEach(target => {
+          if (!target) return;
+          const label = target.dayName || target.date;
+          if (!label) return;
+          if (!labels.includes(label)) {
+            labels.push(label);
+          }
+        });
+        if (labels.length) {
+          targetLabels = labels;
+        }
+      }
     } else if (entry) {
       mealId = entry;
     }
@@ -256,8 +283,15 @@ function renderMealColumn(container, entries, mealMap) {
     const title = document.createElement('div');
     title.className = 'meal-title';
     const name = meal?.name || mealId;
+    const categoryLabel =
+      meal?.categoryLabel ||
+      (meal?.categoryId && (MEAL_TYPES[meal.categoryId]?.label || meal.categoryId));
+    const displayName = categoryLabel ? `${categoryLabel}: ${name}` : name;
     const portionText = formatPortions(totalMultiplier);
-    title.textContent = portionText ? `${name} (${portionText})` : name;
+    const targetText = targetLabels.length ? ` for ${targetLabels.join(', ')}` : '';
+    title.textContent = portionText
+      ? `${displayName} (${portionText})${targetText}`
+      : `${displayName}${targetText}`;
     block.appendChild(title);
 
     if (leftoverDates.length) {
@@ -339,7 +373,8 @@ function normalizePrepDays(prepDays) {
 function buildData(calendar, userEntries, mealMap, start, days, prepDays) {
   const normalizedPrepDays = normalizePrepDays(prepDays);
   const prepSet = new Set(normalizedPrepDays);
-  const date = start ? new Date(start) : new Date();
+  const startDate = start ? parseLocalDate(start) : null;
+  const date = startDate ? new Date(startDate) : new Date();
 
   let calcDays = days;
   if (prepSet.size) {
@@ -357,10 +392,36 @@ function buildData(calendar, userEntries, mealMap, start, days, prepDays) {
     if (!mealId || !amount) return;
     let record = map.get(mealId);
     if (!record) {
-      record = { mealId, total: 0, wholeMeal: false, itemTotals: null };
+      record = { mealId, total: 0, wholeMeal: false, itemTotals: null, targets: [] };
       map.set(mealId, record);
     }
     record.total += amount;
+
+    const targetList = [];
+    if (options.target && typeof options.target === 'object') {
+      targetList.push(options.target);
+    }
+    if (Array.isArray(options.targets)) {
+      targetList.push(...options.targets);
+    }
+    if (targetList.length) {
+      if (!Array.isArray(record.targets)) record.targets = [];
+      targetList.forEach(target => {
+        if (!target || typeof target !== 'object') return;
+        const rawDate = target.date != null ? String(target.date) : null;
+        const rawDayName = target.dayName != null ? String(target.dayName) : null;
+        const date = rawDate ? rawDate.trim() || null : null;
+        const dayName = rawDayName ? rawDayName.trim() || null : null;
+        if (!date && !dayName) return;
+        const exists = record.targets.some(
+          existing => existing.date === date && existing.dayName === dayName
+        );
+        if (!exists) {
+          record.targets.push({ date, dayName });
+        }
+      });
+    }
+
     if (options.wholeMeal) {
       record.wholeMeal = true;
       record.itemTotals = null;
@@ -382,12 +443,32 @@ function buildData(calendar, userEntries, mealMap, start, days, prepDays) {
       mealId: record.mealId,
       total: record.total,
       wholeMeal: record.wholeMeal,
-      itemTotals: record.itemTotals ? { ...record.itemTotals } : null
+      itemTotals: record.itemTotals ? { ...record.itemTotals } : null,
+      targets: Array.isArray(record.targets)
+        ? record.targets.map(target => ({ ...target }))
+        : []
     };
   }
 
   function mergePrepRecords(target, source) {
     target.total += source.total;
+    if (!Array.isArray(target.targets)) target.targets = [];
+    if (Array.isArray(source.targets)) {
+      source.targets.forEach(targetInfo => {
+        if (!targetInfo) return;
+        const rawDate = targetInfo.date != null ? String(targetInfo.date) : null;
+        const rawDayName = targetInfo.dayName != null ? String(targetInfo.dayName) : null;
+        const date = rawDate ? rawDate.trim() || null : null;
+        const dayName = rawDayName ? rawDayName.trim() || null : null;
+        if (!date && !dayName) return;
+        const exists = target.targets.some(
+          existing => existing.date === date && existing.dayName === dayName
+        );
+        if (!exists) {
+          target.targets.push({ date, dayName });
+        }
+      });
+    }
     if (source.wholeMeal) {
       target.wholeMeal = true;
       target.itemTotals = null;
@@ -447,7 +528,8 @@ function buildData(calendar, userEntries, mealMap, start, days, prepDays) {
             }
             if (meal.prepAhead) {
               addPrepRecord(ahead, calEntry.mealId, userEntry.multiplier, {
-                wholeMeal: true
+                wholeMeal: true,
+                targets: [{ date: dStr, dayName }]
               });
             } else if (Array.isArray(meal.ingredients)) {
               const indices = [];
@@ -458,7 +540,8 @@ function buildData(calendar, userEntries, mealMap, start, days, prepDays) {
               });
               if (indices.length) {
                 addPrepRecord(ahead, calEntry.mealId, userEntry.multiplier, {
-                  items: indices
+                  items: indices,
+                  targets: [{ date: dStr, dayName }]
                 });
               }
             }
@@ -504,6 +587,9 @@ function buildData(calendar, userEntries, mealMap, start, days, prepDays) {
             mealId: record.mealId,
             total: record.total
           };
+          if (Array.isArray(record.targets) && record.targets.length) {
+            result.targets = record.targets.map(target => ({ ...target }));
+          }
           if (record.itemTotals) {
             result.items = Object.entries(record.itemTotals).map(([idx, total]) => {
               const parsedIndex = Number(idx);

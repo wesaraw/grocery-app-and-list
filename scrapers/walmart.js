@@ -1,5 +1,6 @@
 import { getImageSrc } from "../utils/imageUtils.js";
 import { parsePriceNumber, parseUnitPrice } from "../utils/priceUtils.js";
+import { roundQuantity } from "../utils/quantityFormat.js";
 
 export function extractWalmartPrice(tile) {
   const container = tile.querySelector('[data-automation-id="product-price"]');
@@ -224,13 +225,13 @@ export function scrapeWalmart() {
         price: priceText,
         priceNumber,
         size: sizeStr,
-        sizeQty,
+        sizeQty: sizeQty != null ? roundQuantity(sizeQty) : sizeQty,
         sizeUnit,
         unit: perUnitText || '',
-        unitQty,
+        unitQty: unitQty != null ? roundQuantity(unitQty) : unitQty,
         unitType,
-        convertedQty,
-        pricePerUnit,
+        convertedQty: convertedQty != null ? roundQuantity(convertedQty) : convertedQty,
+        pricePerUnit: pricePerUnit != null ? roundQuantity(pricePerUnit) : pricePerUnit,
         packCount,
         image,
         link

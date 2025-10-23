@@ -1,5 +1,6 @@
 import { getImageSrc } from "../utils/imageUtils.js";
 import { parsePriceNumber, parseUnitPrice, UNIT_ALIASES } from "../utils/priceUtils.js";
+import { roundQuantity } from "../utils/quantityFormat.js";
 export function scrapeShaws() {
   const UNIT_FACTORS = {
     oz: 1,
@@ -242,18 +243,23 @@ export function scrapeShaws() {
 
     if (name && priceText) {
       const sizeStr = sizeQty != null && sizeUnit ? `${sizeQty} ${sizeUnit}` : sizeText || '';
+      const roundedSizeQty = sizeQty != null ? roundQuantity(sizeQty) : sizeQty;
+      const roundedUnitQty = unitQty != null ? roundQuantity(unitQty) : unitQty;
+      const roundedConvertedQty = convertedQty != null ? roundQuantity(convertedQty) : convertedQty;
+      const roundedPricePerUnit = pricePerUnit != null ? roundQuantity(pricePerUnit) : pricePerUnit;
+
       products.push({
         name,
         price: priceText,
         priceNumber,
         size: sizeStr,
-        sizeQty,
+        sizeQty: roundedSizeQty,
         sizeUnit,
         unit: unitText || '',
-        unitQty,
+        unitQty: roundedUnitQty,
         unitType,
-        convertedQty,
-        pricePerUnit,
+        convertedQty: roundedConvertedQty,
+        pricePerUnit: roundedPricePerUnit,
         packCount,
         image,
         link

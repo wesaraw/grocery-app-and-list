@@ -1,3 +1,5 @@
+import { formatQuantity } from './utils/quantityFormat.js';
+
 function canonicalName(name) {
   return (name || '').trim().toLowerCase().replace(/\s+/g, ' ');
 }
@@ -24,13 +26,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   const weekly = parseFloat(params.get('weekly') || (base + meal) / wpm);
   const breakdown = await loadBreakdown(key);
   const lines = [
-    `${base.toFixed(2)} (base monthly consumption)`,
-    `${meal.toFixed(2)} (meal plan monthly consumption)`
+    `${formatQuantity(base)} (base monthly consumption)`,
+    `${formatQuantity(meal)} (meal plan monthly consumption)`
   ];
   Object.keys(breakdown).forEach(m => {
     const entry = breakdown[m];
     const amount = typeof entry === 'number' ? entry : entry.amount;
-    lines.push(`  - ${m}: ${amount.toFixed(2)}`);
+    lines.push(`  - ${m}: ${formatQuantity(amount)}`);
     if (entry && entry.details) {
       const A = entry.details.perDay;
       const factors = (entry.details.factors || [])
@@ -40,9 +42,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
   lines.push(
-    `${(base + meal).toFixed(2)} (combined monthly consumption)`,
-    `${wpm.toFixed(2)} (weeks per month)`,
-    `${weekly.toFixed(2)} (weekly need)`
+    `${formatQuantity(base + meal)} (combined monthly consumption)`,
+    `${formatQuantity(wpm)} (weeks per month)`,
+    `${formatQuantity(weekly)} (weekly need)`
   );
   document.getElementById('item').textContent = item;
   document.getElementById('info').textContent = lines.join('\n');

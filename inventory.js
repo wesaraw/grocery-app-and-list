@@ -8,6 +8,7 @@ import {
 } from './utils/sortByCategory.js';
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
 import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
+import { formatQuantity } from './utils/quantityFormat.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -145,7 +146,7 @@ function createItemRow(name, amount, unit, purchasesMap, week, product, dMap) {
   const div = document.createElement('div');
   div.className = 'item';
   const span = document.createElement('span');
-  span.textContent = `${name} - ${amount.toFixed(2)} ${unit}`;
+  span.textContent = `${name} - ${formatQuantity(amount)} ${unit}`;
   div.appendChild(span);
 
   const input = document.createElement('input');
@@ -198,7 +199,7 @@ function createItemRow(name, amount, unit, purchasesMap, week, product, dMap) {
             chrome.runtime.sendMessage({ type: 'inventory-updated' });
           } catch (_) {}
           amount = newTotal;
-          span.textContent = `${name} - ${amount.toFixed(2)} ${unit}`;
+          span.textContent = `${name} - ${formatQuantity(amount)} ${unit}`;
         }
         packInput.value = '';
       }
@@ -221,7 +222,7 @@ function createItemRow(name, amount, unit, purchasesMap, week, product, dMap) {
         } catch (_) {}
         amount = val;
       }
-      span.textContent = `${name} - ${amount.toFixed(2)} ${unit}`;
+      span.textContent = `${name} - ${formatQuantity(amount)} ${unit}`;
       input.value = '';
     }
   }

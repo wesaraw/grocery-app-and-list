@@ -2,6 +2,7 @@ import { loadJSON } from './utils/dataLoader.js';
 import { sortItemsByCategory, renderItemsWithCategoryHeaders } from './utils/sortByCategory.js';
 import { loadMealPlanData } from './utils/mealNeedsCalculator.js';
 import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
+import { formatQuantity } from './utils/quantityFormat.js';
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONS_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -53,7 +54,7 @@ function createRow(
   const yearlyUser = needsMap.get(item.name)?.total_needed_year || 0;
   const monthlyMeal = mealMonthMap.get(item.name) || 0;
   const yearlyMeal = mealYearMap.get(item.name) || 0;
-  span.textContent = `${item.name} - ${(monthlyUser + monthlyMeal).toFixed(2)}/mo - ${(yearlyUser + yearlyMeal).toFixed(2)}/yr`;
+  span.textContent = `${item.name} - ${formatQuantity(monthlyUser + monthlyMeal)}/mo - ${formatQuantity(yearlyUser + yearlyMeal)}/yr`;
   div.appendChild(span);
 
   const mInput = document.createElement('input');
@@ -63,7 +64,7 @@ function createRow(
   const mMeal = document.createElement('input');
   mMeal.type = 'number';
   mMeal.disabled = true;
-  mMeal.value = monthlyMeal.toFixed(2);
+  mMeal.value = formatQuantity(monthlyMeal);
   const yInput = document.createElement('input');
   yInput.type = 'number';
   yInput.placeholder = 'Yearly User';
@@ -71,7 +72,7 @@ function createRow(
   const yMeal = document.createElement('input');
   yMeal.type = 'number';
   yMeal.disabled = true;
-  yMeal.value = yearlyMeal.toFixed(2);
+  yMeal.value = formatQuantity(yearlyMeal);
 
   async function commit() {
     const mVal = parseFloat(mInput.value);
@@ -110,7 +111,7 @@ function createRow(
     }
     const newMonthly = consMap.get(item.name)?.monthly_consumption || 0;
     const newYearly = needsMap.get(item.name)?.total_needed_year || 0;
-    span.textContent = `${item.name} - ${(newMonthly + monthlyMeal).toFixed(2)}/mo - ${(newYearly + yearlyMeal).toFixed(2)}/yr`;
+    span.textContent = `${item.name} - ${formatQuantity(newMonthly + monthlyMeal)}/mo - ${formatQuantity(newYearly + yearlyMeal)}/yr`;
     mInput.value = newMonthly;
     yInput.value = newYearly;
     await Promise.all([saveNeeds(needsArr), saveConsumption(consArr)]);

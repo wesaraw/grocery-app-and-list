@@ -1,5 +1,6 @@
 import { convert } from './uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './unitNormalize.js';
+import { roundQuantity } from './quantityFormat.js';
 
 export function parseQuantity(str) {
   if (!str) return { value: 0, unit: null };
@@ -281,6 +282,7 @@ export function aggregateCalendar(
               result.set(ing.name, arr);
             }
             arr[week] += qty * mult * effectiveMultiplier;
+            arr[week] = roundQuantity(arr[week]);
           });
         });
       });

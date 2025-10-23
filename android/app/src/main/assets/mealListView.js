@@ -21,24 +21,25 @@ import { getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
 import {
   loadArray as loadItemArray,
   saveArray as saveItemArray,
-  convertArrayToNames
+  convertArrayToNames,
+  getItemNameMap,
+  saveItemNameMap,
+  nextUnusedItemId
 } from './utils/itemStorage.js';
+import { formatQuantity } from './utils/quantityFormat.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
+const expandedBooks = new Map();
 
 const params = new URLSearchParams(location.search);
 let type = params.get('type') || 'breakfast';
+const focusMealParam = params.get('meal');
+const focusMealName = focusMealParam ? canonicalName(focusMealParam) : null;
+const focusBookParam = params.get('book');
+const focusBook = focusBookParam !== null ? focusBookParam : null;
+let focusHandled = false;
 let key, path, label;
-
-let inventorySet = new Set();
-const ingredientCells = {};
-let userNames = [];
-let userPortionDefaults = [];
-let deleteMode = false;
-const deleteButtons = [];
-let needsMap = new Map();
-let densityMap = {};
 
 let whatToCookVisibility = {};
 let visibilityCheckbox = null;
@@ -52,6 +53,17 @@ function setVisibilityCheckboxState(checked) {
   visibilityCheckbox.checked = normalized;
   suppressVisibilityChange = false;
 }
+
+let inventorySet = new Set();
+const ingredientCells = {};
+let userNames = [];
+let userPortionDefaults = [];
+let deleteMode = false;
+const deleteButtons = [];
+let needsMap = new Map();
+let densityMap = {};
+const UOM_PATH = 'Required for grocery app/uom_conversion_table.json';
+let units = [];
 
 function extractUnitText(raw) {
   if (typeof raw !== 'string') return '';
@@ -81,13 +93,8 @@ function formatUnitLabel(text) {
 
 function formatNormalizedQuantity(value) {
   if (!Number.isFinite(value)) return null;
-  const rounded = Math.round(value * 100) / 100;
-  const normalized = Object.is(rounded, -0) ? 0 : rounded;
-  if (Number.isInteger(normalized)) return normalized.toString();
-  return normalized
-    .toFixed(2)
-    .replace(/\.00$/, '')
-    .replace(/(\.\d)0$/, '$1');
+  const formatted = formatQuantity(value);
+  return formatted === '' ? null : formatted;
 }
 
 function formatIngredientAmount(ingredient) {
@@ -260,6 +267,11 @@ async function loadNeeds() {
   return await convertArrayToNames(fromJson);
 }
 
+async function loadUnits() {
+  const data = await loadJSON(UOM_PATH);
+  return Object.keys(data);
+}
+
 function saveMeals(arr) {
   return saveItemArray(key, arr);
 }
@@ -284,6 +296,155 @@ function saveMealsForType(cat, arr) {
   const info = MEAL_TYPES[cat];
   if (!info) return Promise.resolve();
   return saveItemArray(info.key, arr);
+}
+
+async function correctMealIdErrors() {
+  await initializeMealCategories();
+  const categories = Object.values(MEAL_TYPES).filter(info => info && info.key);
+  const categoryData = await Promise.all(
+    categories.map(async info => ({ info, meals: await loadItemArray(info.key) }))
+  );
+  const mealsByKey = new Map(categoryData.map(({ info, meals }) => [info.key, meals]));
+
+  const originalMap = await getItemNameMap();
+  const workingMap = { ...originalMap };
+  const reverseMap = {};
+  Object.entries(workingMap).forEach(([name, id]) => {
+    if (id != null && reverseMap[id] == null) {
+      reverseMap[id] = name;
+    }
+  });
+
+  const idGroups = new Map();
+  const missingIdEntries = [];
+  const numericMealIds = [];
+
+  categoryData.forEach(({ info, meals }) => {
+    meals.forEach((meal, index) => {
+      if (!meal || typeof meal !== 'object') return;
+      const entry = { meal, info, index, meals };
+      const rawId = meal.id;
+      const id = rawId == null ? '' : String(rawId).trim();
+      if (!id || !/^[0-9]+$/.test(id)) {
+        missingIdEntries.push(entry);
+        return;
+      }
+      numericMealIds.push(id);
+      if (!idGroups.has(id)) {
+        idGroups.set(id, []);
+      }
+      idGroups.get(id).push(entry);
+    });
+  });
+
+  let nextSeed = parseInt(nextUnusedItemId(workingMap, numericMealIds), 10);
+  if (!Number.isFinite(nextSeed)) {
+    nextSeed = 1;
+  }
+  let maxId = nextSeed - 1;
+
+  let mealsUpdated = 0;
+  let mapUpdates = 0;
+  const dirtyKeys = new Set();
+
+  const ensureMap = (name, id) => {
+    if (!name) return;
+    const strId = String(id);
+    if (workingMap[name] !== strId) {
+      workingMap[name] = strId;
+      mapUpdates += 1;
+    }
+  };
+
+  const setReverse = (id, name) => {
+    if (!id || !name) return;
+    reverseMap[id] = name;
+  };
+
+  const allocateNewId = () => {
+    maxId += 1;
+    return String(maxId);
+  };
+
+  const canonical = value => canonicalName(value || '');
+
+  for (const [id, entries] of idGroups.entries()) {
+    if (entries.length === 0) continue;
+    if (entries.length === 1) {
+      const [entry] = entries;
+      const normalizedId = String(entry.meal.id ?? id);
+      ensureMap(entry.meal.name, normalizedId);
+      setReverse(normalizedId, entry.meal.name);
+      continue;
+    }
+    const keeperName = reverseMap[id];
+    const keeperCanonical = keeperName ? canonical(keeperName) : null;
+    let keeper = null;
+    if (keeperCanonical) {
+      keeper = entries.find(e => canonical(e.meal.name) === keeperCanonical) || null;
+    }
+    if (!keeper) {
+      keeper = entries[0];
+    }
+    entries.forEach(entry => {
+      if (entry === keeper) {
+        const normalizedId = String(entry.meal.id ?? id);
+        ensureMap(entry.meal.name, normalizedId);
+        setReverse(normalizedId, entry.meal.name);
+        return;
+      }
+      const newId = allocateNewId();
+      entry.meal.id = newId;
+      ensureMap(entry.meal.name, newId);
+      setReverse(newId, entry.meal.name);
+      dirtyKeys.add(entry.info.key);
+      mealsUpdated += 1;
+    });
+  }
+
+  missingIdEntries.forEach(entry => {
+    const newId = allocateNewId();
+    entry.meal.id = newId;
+    ensureMap(entry.meal.name, newId);
+    setReverse(newId, entry.meal.name);
+    dirtyKeys.add(entry.info.key);
+    mealsUpdated += 1;
+  });
+
+  idGroups.forEach(entries => {
+    entries.forEach(entry => {
+      ensureMap(entry.meal.name, entry.meal.id);
+      setReverse(String(entry.meal.id), entry.meal.name);
+    });
+  });
+  missingIdEntries.forEach(entry => {
+    ensureMap(entry.meal.name, entry.meal.id);
+    setReverse(String(entry.meal.id), entry.meal.name);
+  });
+
+  const mapChanged = mapUpdates > 0;
+  const mealsChanged = mealsUpdated > 0;
+
+  if (mealsChanged) {
+    await Promise.all(
+      Array.from(dirtyKeys).map(async mealKey => {
+        const list = mealsByKey.get(mealKey);
+        if (list) {
+          await saveItemArray(mealKey, list);
+        }
+      })
+    );
+  }
+
+  if (mapChanged) {
+    await saveItemNameMap(workingMap);
+  }
+
+  if (mealsChanged || mapChanged) {
+    await calculateAndSaveMealNeeds();
+  }
+
+  return { mealsUpdated, mapUpdates };
 }
 
 function pricePerHomeUnit(itemName, product) {
@@ -385,8 +546,11 @@ function createRows(meal, arr) {
   const rows = [];
   const ingredients = meal.ingredients || [];
   const ingCells = [];
+  const spanCells = [];
+  const canonicalMeal = canonicalName(meal.name || '');
   let imageTd;
   let nameTd;
+  let weightTd;
   let editBtn;
   if (!Array.isArray(meal.users)) {
     const def = meal.people === undefined ? (meal.active === false ? 0 : 1) : meal.people;
@@ -413,6 +577,9 @@ function createRows(meal, arr) {
 
   ingredients.forEach((ing, idx) => {
     const tr = document.createElement('tr');
+    if (idx === 0 && canonicalMeal) {
+      tr.dataset.mealName = canonicalMeal;
+    }
     if (idx === 0) {
       const useTd = document.createElement('td');
       useTd.classList.add('use-cell');
@@ -492,6 +659,7 @@ function createRows(meal, arr) {
         useContainer.appendChild(lbl);
       });
       if (ingredients.length > 1) useTd.rowSpan = ingredients.length;
+      spanCells.push(useTd);
 
       const prepTd = document.createElement('td');
       const prepChk = document.createElement('input');
@@ -524,6 +692,7 @@ function createRows(meal, arr) {
       prepTd.appendChild(prepChk);
       prepTd.appendChild(prepAheadLabel);
       if (ingredients.length > 1) prepTd.rowSpan = ingredients.length;
+      spanCells.push(prepTd);
 
       const leftoverTd = document.createElement('td');
       const leftoverChk = document.createElement('input');
@@ -533,9 +702,16 @@ function createRows(meal, arr) {
         meal.leftoverOk = leftoverChk.checked;
         await saveMeals(arr);
       });
-      leftoverTd.appendChild(leftoverChk);
       leftoverTd.style.textAlign = 'center';
+      leftoverTd.appendChild(leftoverChk);
       if (ingredients.length > 1) leftoverTd.rowSpan = ingredients.length;
+      spanCells.push(leftoverTd);
+
+      weightTd = document.createElement('td');
+      weightTd.style.textAlign = 'center';
+      weightTd.textContent = meal.weight ?? 1;
+      if (ingredients.length > 1) weightTd.rowSpan = ingredients.length;
+      spanCells.push(weightTd);
 
       const groupTd = document.createElement('td');
       const groupChk = document.createElement('input');
@@ -545,9 +721,10 @@ function createRows(meal, arr) {
         meal.groupMeal = groupChk.checked;
         await saveMeals(arr);
       });
-      groupTd.appendChild(groupChk);
       groupTd.style.textAlign = 'center';
+      groupTd.appendChild(groupChk);
       if (ingredients.length > 1) groupTd.rowSpan = ingredients.length;
+      spanCells.push(groupTd);
 
       imageTd = document.createElement('td');
       const img = document.createElement('img');
@@ -555,6 +732,7 @@ function createRows(meal, arr) {
       img.style.display = 'none';
       imageTd.appendChild(img);
       if (ingredients.length > 1) imageTd.rowSpan = ingredients.length;
+      spanCells.push(imageTd);
 
       nameTd = document.createElement('td');
       nameTd.style.minWidth = '200px';
@@ -562,6 +740,7 @@ function createRows(meal, arr) {
       nameSpan.textContent = meal.name || '';
       nameTd.appendChild(nameSpan);
       if (ingredients.length > 1) nameTd.rowSpan = ingredients.length;
+      spanCells.push(nameTd);
 
       setMealImage(img, meal);
 
@@ -589,6 +768,7 @@ function createRows(meal, arr) {
       tr.appendChild(nameTd);
       tr.appendChild(prepTd);
       tr.appendChild(leftoverTd);
+      tr.appendChild(weightTd);
       tr.appendChild(groupTd);
     }
 
@@ -610,13 +790,14 @@ function createRows(meal, arr) {
     const amtTd = document.createElement('td');
     amtTd.textContent = formatIngredientAmount(ing);
 
-    ingCells.push({ ingTd, prepTd: prepItemTd });
+    ingCells.push({ ingTd, amtTd, prepTd: prepItemTd, tr });
 
     const costTd = document.createElement('td');
     let totalTd;
     if (idx === 0) {
       totalTd = document.createElement('td');
       if (ingredients.length > 1) totalTd.rowSpan = ingredients.length;
+      spanCells.push(totalTd);
       firstTotalTd = totalTd;
     }
 
@@ -662,6 +843,9 @@ function createRows(meal, arr) {
 
   if (ingredients.length === 0) {
     const tr = document.createElement('tr');
+    if (canonicalMeal) {
+      tr.dataset.mealName = canonicalMeal;
+    }
     const useTd = document.createElement('td');
     useTd.classList.add('use-cell');
     const useContainer = document.createElement('div');
@@ -744,6 +928,8 @@ function createRows(meal, arr) {
     img.className = 'meal-img';
     img.style.display = 'none';
     imageTd.appendChild(img);
+    spanCells.push(useTd);
+    spanCells.push(imageTd);
 
     nameTd = document.createElement('td');
     nameTd.style.minWidth = '200px';
@@ -751,6 +937,7 @@ function createRows(meal, arr) {
     nameSpan.textContent = meal.name || '';
     nameTd.appendChild(nameSpan);
     setMealImage(img, meal);
+    spanCells.push(nameTd);
     editBtn = document.createElement('button');
     editBtn.textContent = 'Edit';
     const delBtn = document.createElement('button');
@@ -799,6 +986,7 @@ function createRows(meal, arr) {
     });
     prepTd.appendChild(prepChk);
     prepTd.appendChild(prepAheadLabel);
+    spanCells.push(prepTd);
 
     const leftoverTd = document.createElement('td');
     const leftoverChk = document.createElement('input');
@@ -808,8 +996,14 @@ function createRows(meal, arr) {
       meal.leftoverOk = leftoverChk.checked;
       await saveMeals(arr);
     });
-    leftoverTd.appendChild(leftoverChk);
     leftoverTd.style.textAlign = 'center';
+    leftoverTd.appendChild(leftoverChk);
+    spanCells.push(leftoverTd);
+
+    weightTd = document.createElement('td');
+    weightTd.style.textAlign = 'center';
+    weightTd.textContent = meal.weight ?? 1;
+    spanCells.push(weightTd);
 
     const groupTd = document.createElement('td');
     const groupChk = document.createElement('input');
@@ -819,22 +1013,25 @@ function createRows(meal, arr) {
       meal.groupMeal = groupChk.checked;
       await saveMeals(arr);
     });
-    groupTd.appendChild(groupChk);
     groupTd.style.textAlign = 'center';
+    groupTd.appendChild(groupChk);
+    spanCells.push(groupTd);
 
     const ingTd = document.createElement('td');
     const prepItemTd = document.createElement('td');
     prepItemTd.style.textAlign = 'center';
     const amtTd = document.createElement('td');
+    ingCells.push({ ingTd, amtTd, prepTd: prepItemTd, tr });
     const costTd = document.createElement('td');
     const totalTd = document.createElement('td');
+    spanCells.push(totalTd);
     const actionTd = document.createElement('td');
-    ingCells.push({ ingTd, prepTd: prepItemTd });
     tr.appendChild(useTd);
     tr.appendChild(imageTd);
     tr.appendChild(nameTd);
     tr.appendChild(prepTd);
     tr.appendChild(leftoverTd);
+    tr.appendChild(weightTd);
     tr.appendChild(groupTd);
     tr.appendChild(ingTd);
     tr.appendChild(prepItemTd);
@@ -855,7 +1052,10 @@ function createRows(meal, arr) {
 
   function showEdit() {
     editBtn.classList.add('editing');
-    const ingredientInputs = [];
+    const rowsInfo = [];
+    const addedRows = [];
+    const baseSpan = Math.max(ingCells.length, 1);
+    const spanElems = spanCells;
     let mealInput;
     let bookInput;
     let categorySelect;
@@ -866,15 +1066,100 @@ function createRows(meal, arr) {
     let changeBtn;
     let fileInput;
     let newImage = null;
+    let newIngBtn;
+    let weightInput;
+
+    function updateRowSpans() {
+      const val = baseSpan + addedRows.length;
+      spanElems.forEach(td => {
+        if (!td) return;
+        if (val > 1) td.rowSpan = val; else td.removeAttribute('rowspan');
+      });
+    }
 
     function checkSave() {
       const any =
         (mealInput && mealInput.value.trim()) ||
         (bookInput && bookInput.value.trim()) ||
         (categorySelect && categorySelect.value !== type) ||
-        ingredientInputs.some(i => i.value.trim()) ||
+        (weightInput && weightInput.value.trim()) ||
+        rowsInfo.some(r => {
+          if (r.nameInput.value.trim() || r.qtyInput.value.trim()) return true;
+          if (r.prepInput && r.prepInput.checked !== r.initialPrep) return true;
+          return false;
+        }) ||
         newImage;
       if (saveBtn) saveBtn.style.display = any ? '' : 'none';
+    }
+
+    function autoResize(el) {
+      el.style.height = 'auto';
+      el.style.height = `${el.scrollHeight}px`;
+    }
+
+    function addInputs(cell, ing = {}) {
+      const { ingTd, amtTd, prepTd } = cell;
+      const nameInput = document.createElement('textarea');
+      nameInput.rows = 1;
+      nameInput.style.display = 'block';
+      nameInput.style.marginTop = '2px';
+      nameInput.style.width = '98%';
+      nameInput.style.overflow = 'hidden';
+      nameInput.value = ing.name || '';
+      ingTd.innerHTML = '';
+      ingTd.appendChild(nameInput);
+
+      const qtyInput = document.createElement('input');
+      qtyInput.type = 'text';
+      qtyInput.style.width = '40px';
+      qtyInput.style.marginRight = '2px';
+      const select = document.createElement('select');
+      units.forEach(u => {
+        const opt = document.createElement('option');
+        opt.value = u;
+        opt.textContent = u;
+        select.appendChild(opt);
+      });
+      const { value, unit } = parseQuantity(ing.amount || ing.serving_size);
+      if (value) qtyInput.value = value;
+      if (unit) select.value = unit;
+      amtTd.innerHTML = '';
+      amtTd.appendChild(qtyInput);
+      amtTd.appendChild(select);
+
+      const prepChk = document.createElement('input');
+      prepChk.type = 'checkbox';
+      prepChk.checked = !!ing.prepAhead;
+      prepTd.innerHTML = '';
+      prepTd.style.textAlign = 'center';
+      prepTd.appendChild(prepChk);
+
+      autoResize(nameInput);
+
+      nameInput.addEventListener('input', () => {
+        autoResize(nameInput);
+        checkSave();
+      });
+      qtyInput.addEventListener('input', checkSave);
+      select.addEventListener('change', checkSave);
+      prepChk.addEventListener('change', checkSave);
+      [nameInput, qtyInput, select].forEach(el =>
+        el.addEventListener('keydown', e => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            commit();
+          }
+        })
+      );
+
+      rowsInfo.push({
+        nameInput,
+        qtyInput,
+        select,
+        prepInput: prepChk,
+        initialPrep: !!ing.prepAhead,
+        prepCell: prepTd
+      });
     }
 
     mealInput = document.createElement('input');
@@ -904,6 +1189,42 @@ function createRows(meal, arr) {
       };
       reader.readAsDataURL(file);
     });
+
+    newIngBtn = document.createElement('button');
+    newIngBtn.textContent = 'New Ingredient';
+    newIngBtn.style.display = 'block';
+    newIngBtn.style.marginTop = '2px';
+    newIngBtn.addEventListener('click', () => {
+      const tr = document.createElement('tr');
+      const ingTd = document.createElement('td');
+      const prepTd = document.createElement('td');
+      prepTd.style.textAlign = 'center';
+      const amtTd = document.createElement('td');
+      const costTd = document.createElement('td');
+      const actionTd = document.createElement('td');
+      tr.appendChild(ingTd);
+      tr.appendChild(prepTd);
+      tr.appendChild(amtTd);
+      tr.appendChild(costTd);
+      tr.appendChild(actionTd);
+      rows[rows.length - 1].after(tr);
+      rows.push(tr);
+      const cell = { ingTd, amtTd, prepTd, tr };
+      ingCells.push(cell);
+      addedRows.push(tr);
+      addInputs(cell, { prepAhead: meal.prepared && meal.prepAhead });
+      updateRowSpans();
+    });
+
+    weightInput = document.createElement('input');
+    weightInput.type = 'number';
+    weightInput.min = '0.1';
+    weightInput.step = '0.1';
+    weightInput.style.width = '40px';
+    weightInput.style.marginTop = '2px';
+    weightInput.style.display = 'block';
+    weightInput.value = meal.weight ?? 1;
+    weightInput.addEventListener('input', checkSave);
 
     bookInput = document.createElement('input');
     bookInput.style.display = 'block';
@@ -947,6 +1268,8 @@ function createRows(meal, arr) {
     nameTd.appendChild(mealLabel);
     nameTd.appendChild(categoryLabel);
     nameTd.appendChild(bookLabel);
+    nameTd.appendChild(newIngBtn);
+    weightTd.appendChild(weightInput);
     nameTd.appendChild(saveBtn);
     mealInput.addEventListener('input', checkSave);
     bookInput.addEventListener('input', checkSave);
@@ -958,24 +1281,13 @@ function createRows(meal, arr) {
     });
     saveBtn.addEventListener('click', commit);
 
-    ingCells.forEach(cell => {
-      const input = document.createElement('input');
-      input.style.display = 'block';
-      input.style.marginTop = '2px';
-      input.style.width = '95%';
-      cell.ingTd.appendChild(input);
-      input.addEventListener('input', checkSave);
-      input.addEventListener('keydown', e => {
-        if (e.key === 'Enter') commit();
-      });
-      ingredientInputs.push(input);
-    });
+    ingCells.forEach((cell, idx) => addInputs(cell, ingredients[idx]));
+    updateRowSpans();
 
     async function commit() {
       const nameVal = mealInput ? mealInput.value.trim() : '';
       const bookVal = bookInput ? bookInput.value.trim() : '';
       const catVal = categorySelect ? categorySelect.value : type;
-      const ingVals = ingredientInputs.map(i => i.value.trim());
       let changed = false;
       if (nameVal) {
         meal.name = nameVal;
@@ -993,12 +1305,32 @@ function createRows(meal, arr) {
         await saveMealsForType(catVal, destArr);
         changed = true;
       }
-      ingVals.forEach((val, idx) => {
-        if (val) {
-          if (meal.ingredients[idx]) meal.ingredients[idx].name = val;
+      if (weightInput) {
+        const w = parseFloat(weightInput.value);
+        const wt = !isNaN(w) && w > 0 ? w : 1;
+        if (wt !== meal.weight) {
+          meal.weight = wt;
           changed = true;
         }
+      }
+      const newIngs = [];
+      rowsInfo.forEach(r => {
+        const n = r.nameInput.value.trim();
+        const q = r.qtyInput.value.trim();
+        const u = r.select.value;
+        if (!n && !q) return;
+        const amt = q ? `${q} ${u}` : '';
+        newIngs.push({
+          name: n,
+          amount: amt,
+          serving_size: amt,
+          prepAhead: !!(r.prepInput && r.prepInput.checked)
+        });
       });
+      if (JSON.stringify(newIngs) !== JSON.stringify(meal.ingredients)) {
+        meal.ingredients = newIngs;
+        changed = true;
+      }
       if (newImage) {
         meal.image = newImage;
         changed = true;
@@ -1012,14 +1344,53 @@ function createRows(meal, arr) {
     }
 
     function hideEdit() {
-      ingredientInputs.forEach(i => i.remove());
-      ingredientInputs.length = 0;
+      rowsInfo.forEach(r => {
+        r.nameInput.remove();
+        r.qtyInput.remove();
+        r.select.remove();
+        if (r.prepInput) {
+          const parent = r.prepInput.parentElement;
+          if (parent) parent.remove();
+          else r.prepInput.remove();
+        }
+        if (r.prepCell) r.prepCell.innerHTML = '';
+      });
+      rowsInfo.length = 0;
+      addedRows.forEach(tr => tr.remove());
+      addedRows.length = 0;
+      ingCells.forEach((cell, idx) => {
+        const ing = meal.ingredients[idx];
+        cell.ingTd.textContent = ing?.name || '';
+        if (ing?.name) {
+          cell.ingTd.dataset.name = ing.name;
+        } else {
+          delete cell.ingTd.dataset.name;
+        }
+        cell.amtTd.textContent = formatIngredientAmount(ing);
+        if (cell.prepTd) {
+          cell.prepTd.innerHTML = '';
+          cell.prepTd.style.textAlign = 'center';
+          if (ing && typeof ing === 'object') {
+            const chk = document.createElement('input');
+            chk.type = 'checkbox';
+            chk.checked = !!ing.prepAhead;
+            chk.addEventListener('change', async () => {
+              ing.prepAhead = chk.checked;
+              await persistMealChange();
+            });
+            cell.prepTd.appendChild(chk);
+          }
+        }
+      });
+      updateRowSpans();
       if (mealLabel) mealLabel.remove();
       if (categoryLabel) categoryLabel.remove();
       if (bookLabel) bookLabel.remove();
+      if (newIngBtn) newIngBtn.remove();
       if (saveBtn) saveBtn.remove();
       if (changeBtn) changeBtn.remove();
       if (fileInput) fileInput.remove();
+      if (weightInput) weightInput.remove();
       newImage = null;
       setMealImage(imageTd.querySelector('img.meal-img'), meal);
       editBtn.classList.remove('editing');
@@ -1081,42 +1452,88 @@ async function loadAndRender() {
     bookMap[book].push(m);
   });
   const headerColspan = 12;
-  Object.keys(bookMap)
-    .sort((a, b) => a.localeCompare(b))
-    .forEach(book => {
-      const headerTr = document.createElement('tr');
-      const th = document.createElement('th');
-      th.className = 'book-header';
-      th.colSpan = headerColspan;
-      th.textContent = book || 'Uncategorized';
-      headerTr.appendChild(th);
-      tbody.appendChild(headerTr);
-      const rows = [];
-      bookMap[book].forEach(meal => {
-        const r = createRows(meal, meals);
-        r.forEach(row => {
-          row.dataset.book = book;
-          row.style.display = 'none';
-          rows.push(row);
-          tbody.appendChild(row);
-        });
-      });
-      th.addEventListener('click', () => {
-        const hidden = rows[0] && rows[0].style.display === 'none';
-        rows.forEach(r => (r.style.display = hidden ? '' : 'none'));
+  const bookNames = Object.keys(bookMap).sort((a, b) => a.localeCompare(b));
+  const validBooks = new Set(bookNames);
+  if (focusBook !== null && validBooks.has(focusBook)) {
+    expandedBooks.set(focusBook, true);
+  }
+  expandedBooks.forEach((_, book) => {
+    if (!validBooks.has(book)) {
+      expandedBooks.delete(book);
+    }
+  });
+  bookNames.forEach(book => {
+    const headerTr = document.createElement('tr');
+    const th = document.createElement('th');
+    th.className = 'book-header';
+    th.colSpan = headerColspan;
+    th.textContent = book || 'Uncategorized';
+    headerTr.appendChild(th);
+    tbody.appendChild(headerTr);
+    const rows = [];
+    let expanded = expandedBooks.get(book);
+    if (expanded === undefined) expanded = false;
+    bookMap[book].forEach(meal => {
+      const r = createRows(meal, meals);
+      r.forEach(row => {
+        row.dataset.book = book;
+        row.style.display = expanded ? '' : 'none';
+        rows.push(row);
+        tbody.appendChild(row);
       });
     });
+    th.addEventListener('click', () => {
+      expanded = !expanded;
+      rows.forEach(r => (r.style.display = expanded ? '' : 'none'));
+      if (rows.length > 0) {
+        expandedBooks.set(book, expanded);
+      } else {
+        expandedBooks.delete(book);
+      }
+    });
+  });
   updateInventoryDisplay();
   await calculateAndSaveMealNeeds();
+  if (!focusHandled) {
+    let targetRow = null;
+    if (focusMealName) {
+      const candidates = tbody.querySelectorAll('[data-meal-name]');
+      targetRow = Array.from(candidates).find(
+        row => row.dataset.mealName === focusMealName
+      );
+    }
+    if (focusMealName && targetRow) {
+      focusHandled = true;
+      const rect = targetRow.getBoundingClientRect();
+      const viewportHeight =
+        window.innerHeight || document.documentElement.clientHeight || 0;
+      const offset = rect.top + window.scrollY - Math.max((viewportHeight - rect.height) / 2, 0);
+      const clampedOffset = offset < 0 ? 0 : offset;
+      window.scrollTo({ top: clampedOffset });
+      targetRow.classList.add('focused-meal');
+      setTimeout(() => {
+        if (targetRow.isConnected) {
+          targetRow.classList.remove('focused-meal');
+        }
+      }, 2000);
+      return;
+    }
+    focusHandled = true;
+  }
   window.scrollTo(0, scrollTop);
 }
 
 async function init() {
   await initializeMealCategories();
   await initUomTable();
-  const [needs, dMap] = await Promise.all([loadNeeds(), loadDensityMap()]);
+  const [needs, dMap, u] = await Promise.all([
+    loadNeeds(),
+    loadDensityMap(),
+    loadUnits()
+  ]);
   needsMap = new Map(needs.map(n => [canonicalName(n.name), n]));
   densityMap = dMap;
+  units = u;
   const info = MEAL_TYPES[type] || MEAL_TYPES.breakfast;
   key = info.key;
   path = info.path;
@@ -1157,6 +1574,40 @@ async function init() {
       deleteButtons.forEach(btn => {
         btn.style.display = deleteMode ? '' : 'none';
       });
+    });
+  }
+  const repairBtn = document.getElementById('repairMealIds');
+  if (repairBtn) {
+    repairBtn.addEventListener('click', async () => {
+      const originalText = repairBtn.textContent;
+      repairBtn.disabled = true;
+      repairBtn.textContent = 'Correcting…';
+      try {
+        const { mealsUpdated, mapUpdates } = await correctMealIdErrors();
+        if (mealsUpdated === 0 && mapUpdates === 0) {
+          alert('No meal id errors were found.');
+        } else {
+          const parts = [];
+          if (mealsUpdated > 0) {
+            parts.push(`${mealsUpdated} meal id${mealsUpdated === 1 ? '' : 's'} updated`);
+          }
+          if (mapUpdates > 0) {
+            parts.push(`${mapUpdates} name mapping${mapUpdates === 1 ? '' : 's'} adjusted`);
+          }
+          alert(`Corrected ${parts.join(' and ')}.`);
+          try {
+            await loadAndRender();
+          } catch (refreshErr) {
+            console.error('Failed to refresh meal list after id repair', refreshErr);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to repair meal ids', err);
+        alert('Failed to correct meal id errors. Please try again.');
+      } finally {
+        repairBtn.disabled = false;
+        repairBtn.textContent = originalText;
+      }
     });
   }
   await loadAndRender();

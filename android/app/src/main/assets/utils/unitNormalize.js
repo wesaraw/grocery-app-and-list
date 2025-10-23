@@ -1,6 +1,7 @@
 // Utility functions for normalizing units and handling volume to weight ratios
 import { convert } from './uomConverter.js';
 import { UNIT_ALIASES } from './priceUtils.js';
+import { roundQuantity } from './quantityFormat.js';
 
 const VOLUME_UNITS = new Set(['floz', 'fl oz', 'ml', 'l', 'gal', 'qt', 'pt', 'cup', 'tbsp', 'tsp']);
 const WEIGHT_UNITS = new Set(['oz', 'lb', 'g', 'kg']);
@@ -25,7 +26,8 @@ const VOLUME_TO_ML = {
 export function convertToWeightFromVolume(volumeMl, densityRatio = 1.0) {
   if (!volumeMl || isNaN(volumeMl)) return null;
   const grams = volumeMl * densityRatio;
-  return grams / 28.35; // return ounces
+  const ounces = grams / 28.35; // return ounces
+  return roundQuantity(ounces);
 }
 
 export async function userDensityCalibration(itemName, measuredWeightG) {
@@ -177,7 +179,7 @@ export function normalizeUnit(settings = {}, quantityStr) {
   if (VOLUME_UNITS.has(key)) {
     const ml = qty * (VOLUME_TO_ML[key] || 1);
     const floz = ml / 29.5735;
-    return { quantity: floz, unit: 'fl oz' };
+    return { quantity: roundQuantity(floz), unit: 'fl oz' };
   }
   const oz = convert(qty, key, 'oz');
   return { quantity: oz, unit: 'oz' };
@@ -186,7 +188,7 @@ export function normalizeUnit(settings = {}, quantityStr) {
 
 export function convertWithDensity(qty, fromUnit, toUnit = 'oz', settings = {}) {
   if (qty == null) return null;
-  if (!fromUnit || !toUnit) return qty;
+  if (!fromUnit || !toUnit) return roundQuantity(qty);
   const ratio =
     settings.custom_density_ratio != null ? settings.custom_density_ratio : 1.0;
   const convertVol = settings.convert_volume_to_weight;
@@ -212,7 +214,7 @@ export function convertWithDensity(qty, fromUnit, toUnit = 'oz', settings = {}) 
     if (!Number.isFinite(targetMl) || targetMl <= 0) {
       return convert(qty, fromKey, toKey);
     }
-    return ml / targetMl;
+    return roundQuantity(ml / targetMl);
   }
 
   return convert(qty, fromKey, toKey);
@@ -257,8 +259,10 @@ export function computeNormalizedQuantity(quantity, unit, settings = {}) {
   if (converted == null || !Number.isFinite(converted)) return null;
   const normalizedQty = (converted / fromValue) * toValue;
   if (!Number.isFinite(normalizedQty)) return null;
+  const roundedQuantity = roundQuantity(normalizedQty);
+  if (!Number.isFinite(roundedQuantity)) return null;
   const resultUnit = hasStateMapping
     ? formatUnitWithState(baseToUnit || toUnit, toState)
     : (baseToUnit || toUnit);
-  return { quantity: normalizedQty, unit: resultUnit };
+  return { quantity: roundedQuantity, unit: resultUnit };
 }

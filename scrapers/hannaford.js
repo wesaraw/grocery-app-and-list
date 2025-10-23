@@ -1,5 +1,6 @@
 import { getImageSrc } from "../utils/imageUtils.js";
 import { parsePriceNumber, parseUnitPrice } from "../utils/priceUtils.js";
+import { roundQuantity } from "../utils/quantityFormat.js";
 export function scrapeHannaford() {
   const UNIT_FACTORS = {
     oz: 1,
@@ -206,9 +207,14 @@ export function scrapeHannaford() {
       }
     }
 
+    const roundedPricePerUnit = pricePerUnit != null ? roundQuantity(pricePerUnit) : pricePerUnit;
+    const roundedSizeQty = sizeQty != null ? roundQuantity(sizeQty) : sizeQty;
+    const roundedUnitQty = unitQty != null ? roundQuantity(unitQty) : unitQty;
+    const roundedConvertedQty = convertedQty != null ? roundQuantity(convertedQty) : convertedQty;
+
     const normalizedUnit =
-      pricePerUnit != null && unitType
-        ? `$${pricePerUnit.toFixed(2)}/${unitType}`
+      roundedPricePerUnit != null && unitType
+        ? `$${roundedPricePerUnit.toFixed(2)}/${unitType}`
         : perUnitText || '';
 
     if (name && (priceText || priceNumber != null)) {
@@ -218,13 +224,13 @@ export function scrapeHannaford() {
         price: priceText || (priceNumber != null ? `$${priceNumber.toFixed(2)}` : ''),
         priceNumber,
         size: sizeStr,
-        sizeQty,
+        sizeQty: roundedSizeQty,
         sizeUnit,
         unit: normalizedUnit,
-        unitQty,
+        unitQty: roundedUnitQty,
         unitType,
-        convertedQty,
-        pricePerUnit,
+        convertedQty: roundedConvertedQty,
+        pricePerUnit: roundedPricePerUnit,
         packCount,
         image,
         link

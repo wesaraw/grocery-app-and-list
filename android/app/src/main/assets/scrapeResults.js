@@ -3,6 +3,7 @@ import { initUomTable, convert } from './utils/uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from "./utils/priceUtils.js";
 import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
+import { formatQuantity, roundQuantity } from './utils/quantityFormat.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -91,7 +92,12 @@ function baseGetPackInfo(product) {
 }
 
 function weightKey(product, itemName) {
-  if (product.convertedQty != null) return product.convertedQty.toFixed(2);
+  if (product.convertedQty != null) {
+    const clamped = roundQuantity(product.convertedQty);
+    if (Number.isFinite(clamped)) {
+      return clamped.toFixed(2);
+    }
+  }
   if (product.sizeQty != null && product.sizeUnit) {
     const info = densityMap[itemName] || {};
     const oz = convertWithDensity(
@@ -100,7 +106,12 @@ function weightKey(product, itemName) {
       'oz',
       { convert_volume_to_weight: info.convert, custom_density_ratio: info.ratio }
     );
-    if (!isNaN(oz)) return oz.toFixed(2);
+    if (Number.isFinite(oz)) {
+      const rounded = roundQuantity(oz);
+      if (Number.isFinite(rounded)) {
+        return rounded.toFixed(2);
+      }
+    }
   }
   return null;
 }
@@ -381,7 +392,7 @@ async function init() {
     const displayUnit = normalizedUnitType || prod.unitType || 'oz';
     let qStr =
       prod.convertedQty != null
-        ? `${prod.convertedQty.toFixed(2)} ${displayUnit}`
+        ? `${formatQuantity(prod.convertedQty)} ${displayUnit}`
         : prod.size;
     const unitPrice = pricePerHomeUnit(item, prod);
     const label = homeUnitLabel(item) || displayUnit || 'oz';

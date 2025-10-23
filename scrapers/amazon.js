@@ -1,5 +1,6 @@
 import { getImageSrc } from "../utils/imageUtils.js";
 import { parsePriceNumber, parseUnitPrice } from "../utils/priceUtils.js";
+import { roundQuantity } from "../utils/quantityFormat.js";
 export function scrapeAmazon() {
   const UNIT_FACTORS = {
     oz: 1,
@@ -178,13 +179,13 @@ export function scrapeAmazon() {
         price: priceText,
         priceNumber,
         size: sizeStr,
-        sizeQty,
+        sizeQty: sizeQty != null ? roundQuantity(sizeQty) : sizeQty,
         sizeUnit,
         unit: unitText || '',
-        unitQty,
+        unitQty: unitQty != null ? roundQuantity(unitQty) : unitQty,
         unitType,
-        convertedQty,
-        pricePerUnit,
+        convertedQty: convertedQty != null ? roundQuantity(convertedQty) : convertedQty,
+        pricePerUnit: pricePerUnit != null ? roundQuantity(pricePerUnit) : pricePerUnit,
         packCount,
         image,
         link

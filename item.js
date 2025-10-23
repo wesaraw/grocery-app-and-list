@@ -4,6 +4,7 @@ import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
 import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
+import { formatQuantity, roundQuantity } from './utils/quantityFormat.js';
 
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
 const STORE_SELECTION_KEY = 'storeSelections';
@@ -139,7 +140,12 @@ function baseGetPackInfo(product) {
 }
 
 function weightKey(product, itemName) {
-  if (product.convertedQty != null) return product.convertedQty.toFixed(2);
+  if (product.convertedQty != null) {
+    const clamped = roundQuantity(product.convertedQty);
+    if (Number.isFinite(clamped)) {
+      return clamped.toFixed(2);
+    }
+  }
   if (product.sizeQty != null && product.sizeUnit) {
     const info = densityMap[itemName] || {};
     const oz = convertWithDensity(
@@ -148,7 +154,12 @@ function weightKey(product, itemName) {
       'oz',
       { convert_volume_to_weight: info.convert, custom_density_ratio: info.ratio }
     );
-    if (!isNaN(oz)) return oz.toFixed(2);
+    if (Number.isFinite(oz)) {
+      const rounded = roundQuantity(oz);
+      if (Number.isFinite(rounded)) {
+        return rounded.toFixed(2);
+      }
+    }
   }
   return null;
 }
@@ -473,7 +484,7 @@ async function init() {
       const { unitType: normalizedUnitType } = getPriceUnitInfo(selected);
       const displayUnit = normalizedUnitType || selected.unitType || 'oz';
       let qStr = selected.convertedQty != null
-        ? `${selected.convertedQty.toFixed(2)} ${displayUnit}`
+        ? `${formatQuantity(selected.convertedQty)} ${displayUnit}`
         : selected.size;
       const unitPrice = pricePerHomeUnit(itemName, selected);
       const label = homeUnitLabel(itemName) || displayUnit || 'oz';
@@ -532,7 +543,7 @@ async function init() {
           const displayUnit = normalizedUnitType || selected.unitType || 'oz';
           let qStr =
             selected.convertedQty != null
-              ? `${selected.convertedQty.toFixed(2)} ${displayUnit}`
+              ? `${formatQuantity(selected.convertedQty)} ${displayUnit}`
               : selected.size;
           const unitPrice = pricePerHomeUnit(itemName, selected);
           const label = homeUnitLabel(itemName) || displayUnit || 'oz';

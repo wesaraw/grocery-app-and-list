@@ -12,9 +12,11 @@ import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from "./utils/priceUti
 import { loadPurchases } from './utils/purchaseStorage.js';
 import { loadArray as loadItemArray, convertArrayToNames, getItemId } from './utils/itemStorage.js';
 import { resolveNextPrepWindow } from './utils/calendarUtils.js';
+import { formatQuantity, roundQuantity } from './utils/quantityFormat.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
+const STORE_SELECTION_KEY = 'storeSelections';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
@@ -30,6 +32,7 @@ async function loadArray(key, path) {
 const loadNeeds = () => loadArray('yearlyNeeds', YEARLY_NEEDS_PATH);
 const loadMonthlyConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
 const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
+const loadStoreSelections = () => loadArray(STORE_SELECTION_KEY, STORE_SELECTION_PATH);
 
 async function loadStock() {
   return new Promise(async resolve => {
@@ -133,7 +136,7 @@ async function getData() {
     cookingDays
   ] = await Promise.all([
     loadNeeds(),
-    loadJSON(STORE_SELECTION_PATH),
+    loadStoreSelections(),
     loadMonthlyConsumption(),
     loadStock(),
     loadExpiration(),
@@ -278,7 +281,12 @@ function baseGetPackInfo(product) {
 }
 
 function weightKey(product, itemName) {
-  if (product.convertedQty != null) return product.convertedQty.toFixed(2);
+  if (product.convertedQty != null) {
+    const clamped = roundQuantity(product.convertedQty);
+    if (Number.isFinite(clamped)) {
+      return clamped.toFixed(2);
+    }
+  }
   if (product.sizeQty != null && product.sizeUnit) {
     const info = densityMap[itemName] || {};
     const oz = convertWithDensity(
@@ -287,7 +295,12 @@ function weightKey(product, itemName) {
       'oz',
       { convert_volume_to_weight: info.convert, custom_density_ratio: info.ratio }
     );
-    if (!isNaN(oz)) return oz.toFixed(2);
+    if (Number.isFinite(oz)) {
+      const rounded = roundQuantity(oz);
+      if (Number.isFinite(rounded)) {
+        return rounded.toFixed(2);
+      }
+    }
   }
   return null;
 }
@@ -350,7 +363,7 @@ function needText(itemName, needAmt, product = null, map = weightPackMap) {
   const packs = product ? packsForNeed(itemName, needAmt, product, map) : null;
   const packStr =
     packs != null ? ` \u2026 ${packs} pack${packs > 1 ? 's' : ''}` : '';
-  return ` (Need: ${needAmt} ${item.home_unit}${packStr})`;
+  return ` (Need: ${formatQuantity(needAmt)} ${item.home_unit}${packStr})`;
 }
 
 async function buildWeightPackMap(item, stores) {
@@ -481,7 +494,7 @@ function formatFinalText(itemName, store, product, map = weightPackMap) {
     const displayUnit = normalizedUnitType || product.unitType || 'oz';
     let qStr =
       product.convertedQty != null
-        ? `${product.convertedQty.toFixed(2)} ${displayUnit}`
+        ? `${formatQuantity(product.convertedQty)} ${displayUnit}`
         : product.size;
     const unitPrice = pricePerHomeUnit(itemName, product, map);
     const label = homeUnitLabel(itemName) || displayUnit || 'oz';
@@ -682,7 +695,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
         rec.needAmt != null && !isNaN(rec.needAmt)
           ? needText(message.item, rec.needAmt, rec.product, rec.weightMap)
           : '';
-      btn.textContent = message.item + amountText;
+      rec.btn.textContent = message.item + amountText;
       updateFinalInfo(message.item, span, img, message.store, prod, weightMap);
     }
   }
@@ -1116,9 +1129,16 @@ function openExpirationEditor() {
   openOrFocusWindow('expiration.html');
 }
 
+function openSeasonsEditor() {
+  openOrFocusWindow('editSeason.html');
+}
+
 document
   .getElementById('editExpirations')
   .addEventListener('click', openExpirationEditor);
+document
+  .getElementById('editSeasons')
+  .addEventListener('click', openSeasonsEditor);
 
 function openCouponManager() {
   openOrFocusWindow('coupon.html');

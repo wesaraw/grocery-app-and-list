@@ -10,6 +10,7 @@ import {
   saveObject as saveItemObject,
   convertArrayToNames
 } from './utils/itemStorage.js';
+import { formatQuantity } from './utils/quantityFormat.js';
 
 const NEEDS_KEY = 'yearlyNeeds';
 const CONSUMED_KEY = 'consumedThisYear';
@@ -71,7 +72,7 @@ function updateHistoryList(name, ul, span, map, history, overrides, weekly) {
     btn.addEventListener('click', async () => {
       const rec = map.get(name);
       rec.amount -= entry.diff;
-      const weeklyText = weekly ? ` - ${weekly.toFixed(2)}/wk` : '';
+      const weeklyText = weekly ? ` - ${formatQuantity(weekly)}/wk` : '';
       span.textContent = `${rec.name} - ${rec.amount} ${rec.unit}${weeklyText}`;
       const arr = history[name] || [];
       const idx = arr.findIndex(e => e.id === entry.id);
@@ -101,7 +102,7 @@ function createItemRow(item, map, history, overrides, weekly) {
   const div = document.createElement('div');
   div.className = 'item';
   const span = document.createElement('span');
-  const weeklyText = weekly ? ` - ${weekly.toFixed(2)}/wk` : '';
+  const weeklyText = weekly ? ` - ${formatQuantity(weekly)}/wk` : '';
   span.textContent = `${item.name} - ${item.amount} ${item.unit}${weeklyText}`;
   div.appendChild(span);
 
@@ -121,7 +122,7 @@ function createItemRow(item, map, history, overrides, weekly) {
       const week = parseInt(weekInput.value, 10);
       if (!isNaN(change) && !isNaN(week)) {
         item.amount += change;
-        const wkTxt = weekly ? ` - ${weekly.toFixed(2)}/wk` : '';
+        const wkTxt = weekly ? ` - ${formatQuantity(weekly)}/wk` : '';
         span.textContent = `${item.name} - ${item.amount} ${item.unit}${wkTxt}`;
         const arr = history[item.name] || [];
         arr.unshift({ id: Date.now(), date: new Date().toLocaleDateString(), diff: change, week });

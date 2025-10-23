@@ -10,6 +10,7 @@ import { openOrFocusWindow } from './utils/windowUtils.js';
 import { parseQuantity, expandCalendarValue } from './utils/calendarUtils.js';
 import { canonicalName } from './utils/nameUtils.js';
 import { loadDensityMap, computeNormalizedQuantity } from './utils/unitNormalize.js';
+import { formatQuantity } from './utils/quantityFormat.js';
 
 function loadCalendar() {
   return new Promise(resolve => {
@@ -129,11 +130,7 @@ function getParams() {
 
 function formatNumber(value) {
   if (!Number.isFinite(value)) return '';
-  let rounded = Math.round(value * 1000) / 1000;
-  if (Object.is(rounded, -0)) rounded = 0;
-  let str = rounded.toFixed(3);
-  str = str.replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
-  return str;
+  return formatQuantity(value);
 }
 
 function extractUnitText(raw) {

@@ -26,6 +26,7 @@ import {
   saveItemNameMap,
   nextUnusedItemId
 } from './utils/itemStorage.js';
+import { formatQuantity } from './utils/quantityFormat.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -92,13 +93,8 @@ function formatUnitLabel(text) {
 
 function formatNormalizedQuantity(value) {
   if (!Number.isFinite(value)) return null;
-  const rounded = Math.round(value * 100) / 100;
-  const normalized = Object.is(rounded, -0) ? 0 : rounded;
-  if (Number.isInteger(normalized)) return normalized.toString();
-  return normalized
-    .toFixed(2)
-    .replace(/\.00$/, '')
-    .replace(/(\.\d)0$/, '$1');
+  const formatted = formatQuantity(value);
+  return formatted === '' ? null : formatted;
 }
 
 function formatIngredientAmount(ingredient) {

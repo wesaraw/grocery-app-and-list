@@ -8,6 +8,7 @@ import {
 } from './utils/sortByCategory.js';
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
 import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
+import { formatQuantity } from './utils/quantityFormat.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -19,7 +20,7 @@ async function loadStock() {
   const arr = await loadItemArray('currentStock');
   if (arr.length > 0) return arr;
   const stock = await loadJSON(STOCK_PATH);
-  return await convertArrayToNames(stock);
+  return stock;
 }
 
 async function loadArray(key, path) {
@@ -31,7 +32,11 @@ async function loadArray(key, path) {
 
 function loadStoredArray(key) {
   return new Promise(resolve => {
-    chrome.storage.local.get(key, data => resolve(data[key] || []));
+    try {
+      chrome.storage.local.get(key, data => resolve(data[key] || []));
+    } catch (e) {
+      resolve([]);
+    }
   });
 }
 
@@ -42,14 +47,18 @@ const loadNeeds = () => loadArray('yearlyNeeds', NEEDS_PATH);
 
 async function loadFinalProducts(names) {
   return new Promise(resolve => {
-    const keys = names.map(n => `final_product_${encodeURIComponent(n)}`);
-    chrome.storage.local.get(keys, data => {
-      const map = {};
-      names.forEach((n, idx) => {
-        map[n] = data[keys[idx]] || null;
+    try {
+      const keys = names.map(n => `final_product_${encodeURIComponent(n)}`);
+      chrome.storage.local.get(keys, data => {
+        const map = {};
+        names.forEach((n, idx) => {
+          map[n] = data[keys[idx]] || null;
+        });
+        resolve(map);
       });
-      resolve(map);
-    });
+    } catch (e) {
+      resolve({});
+    }
   });
 }
 
@@ -137,24 +146,23 @@ function createItemRow(name, amount, unit, purchasesMap, week, product, dMap) {
   const div = document.createElement('div');
   div.className = 'item';
   const span = document.createElement('span');
-  span.textContent = `${name} - ${amount.toFixed(2)} ${unit}`;
+  span.textContent = `${name} - ${formatQuantity(amount)} ${unit}`;
   div.appendChild(span);
 
   const input = document.createElement('input');
   input.type = 'number';
-  input.placeholder = 'New';
+  input.placeholder = 'Set total';
 
   const packInput = document.createElement('input');
   packInput.type = 'number';
   packInput.placeholder = 'Pack qty';
-
   async function commitPack() {
     const val = parseFloat(packInput.value);
     if (!isNaN(val) && product) {
-      let add = val;
+      let newTotal = val;
       if (unit.toLowerCase() === 'each') {
-        const { count } = getPackInfo(product);
-        add = val * count;
+        const { count } = getPackInfo(product, new Map(), name);
+        newTotal = val * count;
       } else {
         const info = dMap[name] || {};
         let ozQty = null;
@@ -169,7 +177,7 @@ function createItemRow(name, amount, unit, purchasesMap, week, product, dMap) {
           );
         }
         if (ozQty != null) {
-          add = convertWithDensity(
+          newTotal = convertWithDensity(
             ozQty,
             'oz',
             unit,
@@ -177,21 +185,24 @@ function createItemRow(name, amount, unit, purchasesMap, week, product, dMap) {
           );
         }
       }
-      if (!isNaN(add) && add !== 0) {
-        amount += add;
-        if (!purchasesMap[name]) purchasesMap[name] = [];
-        purchasesMap[name].push({
-          purchase_week: week,
-          quantity_purchased: add,
-          date_added: new Date().toISOString()
-        });
-        await savePurchases(purchasesMap);
-        try {
-          chrome.runtime.sendMessage({ type: 'inventory-updated' });
-        } catch (_) {}
-        span.textContent = `${name} - ${amount.toFixed(2)} ${unit}`;
+      if (!isNaN(newTotal)) {
+        const diff = newTotal - amount;
+        if (diff !== 0) {
+          if (!purchasesMap[name]) purchasesMap[name] = [];
+          purchasesMap[name].push({
+            purchase_week: week,
+            quantity_purchased: diff,
+            date_added: new Date().toISOString()
+          });
+          await savePurchases(purchasesMap);
+          try {
+            chrome.runtime.sendMessage({ type: 'inventory-updated' });
+          } catch (_) {}
+          amount = newTotal;
+          span.textContent = `${name} - ${formatQuantity(amount)} ${unit}`;
+        }
+        packInput.value = '';
       }
-      packInput.value = '';
     }
   }
   async function commitChange() {
@@ -211,7 +222,7 @@ function createItemRow(name, amount, unit, purchasesMap, week, product, dMap) {
         } catch (_) {}
         amount = val;
       }
-      span.textContent = `${name} - ${amount.toFixed(2)} ${unit}`;
+      span.textContent = `${name} - ${formatQuantity(amount)} ${unit}`;
       input.value = '';
     }
   }

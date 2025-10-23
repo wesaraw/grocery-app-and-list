@@ -8,6 +8,7 @@ const {
   UNIT_ALIASES
 } = await import('../utils/priceUtils.js');
 const { initUomTable, convert } = await import('../utils/uomConverter.js');
+const { roundQuantity } = await import('../utils/quantityFormat.js');
 import { pathToFileURL } from 'url';
 global.chrome = { runtime: { getURL: p => pathToFileURL(process.cwd() + '/' + p).href } };
 global.fetch = async url => ({ json: async () => JSON.parse(fs.readFileSync(new URL(url), 'utf8')) });
@@ -106,8 +107,8 @@ if (walmartItem.packCount !== 12) {
 }
 const perSheetWalmart = pricePerHomeUnit('Bounty Paper Towels', walmartItem);
 console.log('perSheetWalmart', perSheetWalmart);
-  if (perSheetWalmart == null || Math.abs(perSheetWalmart - 0.022) > 0.001) {
-    throw new Error(`Expected around 0.022 but got ${perSheetWalmart}`);
+  if (perSheetWalmart == null || Math.abs(perSheetWalmart - 0.02) > 0.001) {
+    throw new Error(`Expected around 0.02 but got ${perSheetWalmart}`);
   }
 
 // Walmart fl. oz parsing
@@ -223,8 +224,8 @@ console.log('dentastixPrice', dentItem.pricePerUnit.toFixed(3));
 if (dentItem.unitType !== 'oz') {
   throw new Error(`Expected unitType oz but got ${dentItem.unitType}`);
 }
-if (Math.abs(dentItem.pricePerUnit - 0.7137) > 0.001) {
-  throw new Error(`Expected price per oz around 0.714 but got ${dentItem.pricePerUnit}`);
+if (Math.abs(dentItem.pricePerUnit - 0.71) > 0.001) {
+  throw new Error(`Expected price per oz around 0.71 but got ${dentItem.pricePerUnit}`);
 }
 
 function baseGetPackInfo(product) {
@@ -378,11 +379,12 @@ const quartItem = hannProducts.find(
 );
 if (!quartItem) throw new Error('Failed to find Hannaford quart item');
 const expectedPpu = 1.51 / 32;
+const expectedRoundedPpu = roundQuantity(expectedPpu);
 if (quartItem.unitType !== 'fl oz') {
   throw new Error(`Expected unitType fl oz but got ${quartItem.unitType}`);
 }
-if (Math.abs(quartItem.pricePerUnit - expectedPpu) > 0.0001) {
-  throw new Error(`Expected price per fl oz about ${expectedPpu} but got ${quartItem.pricePerUnit}`);
+if (Math.abs(quartItem.pricePerUnit - expectedRoundedPpu) > 0.0001) {
+  throw new Error(`Expected price per fl oz about ${expectedRoundedPpu} but got ${quartItem.pricePerUnit}`);
 }
 if (quartItem.unit !== '$0.05/fl oz') {
   throw new Error(`Expected unit $0.05/fl oz but got ${quartItem.unit}`);
