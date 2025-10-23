@@ -75,26 +75,168 @@ function pushUnique(arr, value) {
   }
 }
 
+function buildUserDescriptor(userInfo) {
+  if (!userInfo) return null;
+  let id = null;
+  if (userInfo.id !== undefined && userInfo.id !== null) {
+    id = String(userInfo.id);
+  } else if (
+    typeof userInfo.displayName === 'string' &&
+    userInfo.displayName.trim()
+  ) {
+    id = userInfo.displayName.trim();
+  } else if (Array.isArray(userInfo.keys) && userInfo.keys.length) {
+    id = String(userInfo.keys[0]);
+  }
+  if (!id) return null;
+  const name =
+    typeof userInfo.displayName === 'string' && userInfo.displayName.trim()
+      ? userInfo.displayName.trim()
+      : id;
+  const descriptor = { id, name };
+  if (Number.isFinite(userInfo.order)) {
+    descriptor.order = userInfo.order;
+  }
+  return descriptor;
+}
+
+function incrementUserTotals(container, descriptor, amount) {
+  const numeric = Number(amount);
+  if (!container || !descriptor || !Number.isFinite(numeric) || numeric <= 0) {
+    return;
+  }
+  const key = descriptor.id;
+  if (!key) return;
+  const order = Number.isFinite(descriptor.order)
+    ? descriptor.order
+    : Number.POSITIVE_INFINITY;
+  const name =
+    typeof descriptor.name === 'string' && descriptor.name.trim()
+      ? descriptor.name.trim()
+      : key;
+  if (!container[key]) {
+    container[key] = { id: key, name, total: 0, order };
+  }
+  container[key].total += numeric;
+  if (Number.isFinite(order)) {
+    container[key].order = Math.min(container[key].order, order);
+  }
+}
+
+function cloneUserTotals(source) {
+  if (!source) return null;
+  const clone = {};
+  Object.entries(source).forEach(([key, value]) => {
+    if (!value) return;
+    clone[key] = {
+      id: value.id,
+      name: value.name,
+      total: value.total,
+      order: value.order
+    };
+  });
+  return clone;
+}
+
+function mergeUserTotals(target, source) {
+  if (!source) return target || null;
+  let result = target || {};
+  Object.values(source).forEach(value => {
+    if (!value) return;
+    incrementUserTotals(result, value, value.total);
+  });
+  return result;
+}
+
+function serializeUserTotals(source) {
+  if (!source) return [];
+  return Object.values(source)
+    .filter(value => Number.isFinite(value?.total) && value.total > 0)
+    .map(value => ({
+      id: value.id,
+      name: value.name,
+      total: value.total,
+      order: value.order
+    }))
+    .sort((a, b) => {
+      const orderA = Number.isFinite(a.order) ? a.order : Number.POSITIVE_INFINITY;
+      const orderB = Number.isFinite(b.order) ? b.order : Number.POSITIVE_INFINITY;
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+      const nameA = a.name || '';
+      const nameB = b.name || '';
+      return nameA.localeCompare(nameB);
+    });
+}
+
+function cloneItemUsers(source) {
+  if (!source) return null;
+  const clone = {};
+  Object.entries(source).forEach(([key, value]) => {
+    const nested = cloneUserTotals(value);
+    if (nested) {
+      clone[key] = nested;
+    }
+  });
+  return clone;
+}
+
+function mergeItemUsers(target, source) {
+  if (!source) return target || null;
+  let result = target || {};
+  Object.entries(source).forEach(([key, value]) => {
+    result[key] = mergeUserTotals(result[key], value);
+  });
+  return result;
+}
+
 function buildUserEntries(users = [], multipliers = [], calendar = {}) {
   const entries = [];
   const seen = new Set();
   users.forEach((name, idx) => {
     const keys = [];
     if (name !== undefined && name !== null) {
-      pushUnique(keys, name);
-      seen.add(String(name));
+      const rawName = String(name);
+      if (rawName) {
+        pushUnique(keys, rawName);
+        seen.add(rawName);
+      }
+      const trimmed = rawName.trim();
+      if (trimmed && trimmed !== rawName) {
+        pushUnique(keys, trimmed);
+        seen.add(trimmed);
+      }
     }
     const idxKey = String(idx);
     pushUnique(keys, idxKey);
     seen.add(idxKey);
     pushUnique(keys, idx);
-    entries.push({ keys, multiplier: sanitizeMultiplier(multipliers[idx]) });
+    const displayName =
+      typeof name === 'string' && name.trim()
+        ? name.trim()
+        : `User ${idx + 1}`;
+    entries.push({
+      keys,
+      multiplier: sanitizeMultiplier(multipliers[idx]),
+      displayName,
+      id: idxKey,
+      order: idx
+    });
   });
+  let extraOrder = users.length;
   Object.keys(calendar || {}).forEach(key => {
     const strKey = String(key);
     if (seen.has(strKey)) return;
-    entries.push({ keys: [key], multiplier: 1 });
+    entries.push({
+      keys: [key],
+      multiplier: 1,
+      displayName: strKey,
+      id: strKey,
+      order: extraOrder
+    });
     seen.add(strKey);
+    extraOrder += 1;
   });
   return entries;
 }
@@ -232,6 +374,31 @@ function formatPortions(multiplier) {
   return `${formatted} ${formatted === '1' ? 'portion' : 'portions'}`;
 }
 
+function formatUserBreakdown(ingredient, users) {
+  if (!Array.isArray(users) || !users.length) {
+    return '';
+  }
+  const parts = users
+    .map(user => {
+      if (!user) return null;
+      const label =
+        typeof user.name === 'string' && user.name.trim()
+          ? user.name.trim()
+          : user.id != null
+          ? String(user.id)
+          : null;
+      if (!label) return null;
+      const amountText = formatIngredientAmount(ingredient, user.total);
+      if (!amountText) return null;
+      return `${label}: ${amountText}`;
+    })
+    .filter(Boolean);
+  if (!parts.length) {
+    return '';
+  }
+  return ` (${parts.join(', ')})`;
+}
+
 function renderMealColumn(container, entries, mealMap) {
   container.innerHTML = '';
   if (!entries?.length) {
@@ -244,6 +411,7 @@ function renderMealColumn(container, entries, mealMap) {
     let prepItems = null;
     let wholeMeal = false;
     let targetLabels = [];
+    let userList = null;
     if (Array.isArray(entry)) {
       mealId = entry[0];
       totalMultiplier = entry[1];
@@ -258,6 +426,9 @@ function renderMealColumn(container, entries, mealMap) {
       }
       if (entry.wholeMeal) {
         wholeMeal = true;
+      }
+      if (Array.isArray(entry.users)) {
+        userList = entry.users;
       }
       if (Array.isArray(entry.targets)) {
         const labels = [];
@@ -314,22 +485,46 @@ function renderMealColumn(container, entries, mealMap) {
           if (idx < 0 || idx >= ingredients.length) return;
           const amt = Number(item.total);
           if (!Number.isFinite(amt) || amt <= 0) return;
-          aggregated.set(idx, (aggregated.get(idx) || 0) + amt);
+          let record = aggregated.get(idx);
+          if (!record) {
+            record = { total: 0, users: {} };
+            aggregated.set(idx, record);
+          }
+          record.total += amt;
+          const itemUsers = Array.isArray(item.users) ? item.users : null;
+          if (itemUsers && itemUsers.length) {
+            itemUsers.forEach(user => {
+              if (!user) return;
+              record.users = record.users || {};
+              incrementUserTotals(record.users, user, user.total);
+            });
+          }
         });
         const sorted = Array.from(aggregated.entries()).sort((a, b) => a[0] - b[0]);
-        sorted.forEach(([idx, amt]) => {
+        sorted.forEach(([idx, info]) => {
           const ing = ingredients[idx];
           const li = document.createElement('li');
           const ingName = ing?.name?.trim() || 'Unnamed ingredient';
-          const amountText = formatIngredientAmount(ing, amt);
-          li.textContent = amountText ? `${ingName}: ${amountText}` : ingName;
+          const amount = info?.total;
+          const amountText = formatIngredientAmount(ing, amount);
+          let breakdown = '';
+          const userTotals = serializeUserTotals(info?.users);
+          if (userTotals.length) {
+            breakdown = formatUserBreakdown(ing, userTotals);
+          } else if (userList) {
+            breakdown = formatUserBreakdown(ing, userList);
+          }
+          li.textContent = amountText
+            ? `${ingName}: ${amountText}${breakdown}`
+            : ingName;
           list.appendChild(li);
         });
         if (!sorted.length) {
           ingredients.forEach(ing => {
             const li = document.createElement('li');
             const ingName = ing?.name?.trim() || 'Unnamed ingredient';
-            li.textContent = ingName;
+            const breakdown = userList ? formatUserBreakdown(ing, userList) : '';
+            li.textContent = breakdown ? `${ingName}${breakdown}` : ingName;
             list.appendChild(li);
           });
         }
@@ -338,7 +533,12 @@ function renderMealColumn(container, entries, mealMap) {
           const li = document.createElement('li');
           const ingName = ing?.name?.trim() || 'Unnamed ingredient';
           const amountText = formatIngredientAmount(ing, totalMultiplier);
-          li.textContent = amountText ? `${ingName}: ${amountText}` : ingName;
+          const breakdown = userList ? formatUserBreakdown(ing, userList) : '';
+          li.textContent = amountText
+            ? `${ingName}: ${amountText}${breakdown}`
+            : breakdown
+            ? `${ingName}${breakdown}`
+            : ingName;
           list.appendChild(li);
         });
       }
@@ -388,14 +588,27 @@ function buildData(calendar, userEntries, mealMap, start, days, prepDays) {
     }
   }
 
-  function addPrepRecord(map, mealId, amount, options = {}) {
+  function addPrepRecord(map, mealId, amount, options = {}, userInfo = null) {
     if (!mealId || !amount) return;
     let record = map.get(mealId);
     if (!record) {
-      record = { mealId, total: 0, wholeMeal: false, itemTotals: null, targets: [] };
+      record = {
+        mealId,
+        total: 0,
+        wholeMeal: false,
+        itemTotals: null,
+        itemUsers: null,
+        targets: [],
+        userTotals: null
+      };
       map.set(mealId, record);
     }
     record.total += amount;
+    const descriptor = buildUserDescriptor(userInfo);
+    if (descriptor) {
+      record.userTotals = record.userTotals || {};
+      incrementUserTotals(record.userTotals, descriptor, amount);
+    }
 
     const targetList = [];
     if (options.target && typeof options.target === 'object') {
@@ -425,16 +638,22 @@ function buildData(calendar, userEntries, mealMap, start, days, prepDays) {
     if (options.wholeMeal) {
       record.wholeMeal = true;
       record.itemTotals = null;
+      record.itemUsers = null;
       return;
     }
     if (record.wholeMeal) return;
     const items = Array.isArray(options.items) ? options.items : [];
     if (!items.length) return;
     if (!record.itemTotals) record.itemTotals = {};
+    if (!record.itemUsers) record.itemUsers = {};
     items.forEach(idx => {
       if (idx === null || idx === undefined) return;
       const key = String(idx);
       record.itemTotals[key] = (record.itemTotals[key] || 0) + amount;
+      if (descriptor) {
+        record.itemUsers[key] = record.itemUsers[key] || {};
+        incrementUserTotals(record.itemUsers[key], descriptor, amount);
+      }
     });
   }
 
@@ -444,9 +663,11 @@ function buildData(calendar, userEntries, mealMap, start, days, prepDays) {
       total: record.total,
       wholeMeal: record.wholeMeal,
       itemTotals: record.itemTotals ? { ...record.itemTotals } : null,
+      itemUsers: cloneItemUsers(record.itemUsers),
       targets: Array.isArray(record.targets)
         ? record.targets.map(target => ({ ...target }))
-        : []
+        : [],
+      userTotals: cloneUserTotals(record.userTotals)
     };
   }
 
@@ -469,9 +690,11 @@ function buildData(calendar, userEntries, mealMap, start, days, prepDays) {
         }
       });
     }
+    target.userTotals = mergeUserTotals(target.userTotals, source.userTotals);
     if (source.wholeMeal) {
       target.wholeMeal = true;
       target.itemTotals = null;
+      target.itemUsers = null;
       return;
     }
     if (target.wholeMeal) return;
@@ -480,6 +703,7 @@ function buildData(calendar, userEntries, mealMap, start, days, prepDays) {
     Object.keys(source.itemTotals).forEach(key => {
       target.itemTotals[key] = (target.itemTotals[key] || 0) + source.itemTotals[key];
     });
+    target.itemUsers = mergeItemUsers(target.itemUsers, source.itemUsers);
   }
 
   const rows = [];
@@ -488,15 +712,25 @@ function buildData(calendar, userEntries, mealMap, start, days, prepDays) {
     const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
     const counts = new Map();
     const ahead = new Map();
-    function addCookTotal(id, amount, leftovers, prepared) {
+    function addCookTotal(id, amount, leftovers, prepared, userInfo) {
       if (!id || !amount) return;
       let record = counts.get(id);
       if (!record) {
-        record = { total: 0, leftoverDates: new Set(), prepared: !!prepared };
+        record = {
+          total: 0,
+          leftoverDates: new Set(),
+          prepared: !!prepared,
+          userTotals: null
+        };
         counts.set(id, record);
       }
       record.total += amount;
       if (prepared) record.prepared = true;
+      const descriptor = buildUserDescriptor(userInfo);
+      if (descriptor) {
+        record.userTotals = record.userTotals || {};
+        incrementUserTotals(record.userTotals, descriptor, amount);
+      }
       if (Array.isArray(leftovers)) {
         leftovers.forEach(target => {
           if (target?.date) {
@@ -523,14 +757,21 @@ function buildData(calendar, userEntries, mealMap, start, days, prepDays) {
                 calEntry.mealId,
                 totalMultiplier,
                 calEntry.leftoverTargets,
-                meal.prepared
+                meal.prepared,
+                userEntry
               );
             }
             if (meal.prepAhead) {
-              addPrepRecord(ahead, calEntry.mealId, userEntry.multiplier, {
-                wholeMeal: true,
-                targets: [{ date: dStr, dayName }]
-              });
+              addPrepRecord(
+                ahead,
+                calEntry.mealId,
+                userEntry.multiplier,
+                {
+                  wholeMeal: true,
+                  targets: [{ date: dStr, dayName }]
+                },
+                userEntry
+              );
             } else if (Array.isArray(meal.ingredients)) {
               const indices = [];
               meal.ingredients.forEach((ing, idx) => {
@@ -539,10 +780,16 @@ function buildData(calendar, userEntries, mealMap, start, days, prepDays) {
                 }
               });
               if (indices.length) {
-                addPrepRecord(ahead, calEntry.mealId, userEntry.multiplier, {
-                  items: indices,
-                  targets: [{ date: dStr, dayName }]
-                });
+                addPrepRecord(
+                  ahead,
+                  calEntry.mealId,
+                  userEntry.multiplier,
+                  {
+                    items: indices,
+                    targets: [{ date: dStr, dayName }]
+                  },
+                  userEntry
+                );
               }
             }
           }
@@ -576,31 +823,57 @@ function buildData(calendar, userEntries, mealMap, start, days, prepDays) {
   return rows.slice(0, days).map(row => ({
     date: row.date,
     dayName: row.dayName,
-    meals: Array.from(row.counts.entries()).map(([id, info]) => ({
-      id,
-      total: info.total,
-      leftoverDates: Array.from(info.leftoverDates).sort()
-    })),
+    meals: Array.from(row.counts.entries()).map(([id, info]) => {
+      const users = serializeUserTotals(info.userTotals);
+      return {
+        id,
+        total: info.total,
+        leftoverDates: Array.from(info.leftoverDates).sort(),
+        users
+      };
+    }),
     prepList: row.prepList
       ? Array.from(row.prepList.values()).map(record => {
           const result = {
             mealId: record.mealId,
             total: record.total
           };
+          const users = serializeUserTotals(record.userTotals);
+          if (users.length) {
+            result.users = users;
+          }
           if (Array.isArray(record.targets) && record.targets.length) {
             result.targets = record.targets.map(target => ({ ...target }));
           }
           if (record.itemTotals) {
             result.items = Object.entries(record.itemTotals).map(([idx, total]) => {
               const parsedIndex = Number(idx);
-              return {
+              const itemUsers = serializeUserTotals(record.itemUsers?.[idx]);
+              const item = {
                 index: Number.isNaN(parsedIndex) ? idx : parsedIndex,
                 total
               };
+              if (itemUsers.length) {
+                item.users = itemUsers;
+              }
+              return item;
             });
           }
           if (record.wholeMeal) {
             result.wholeMeal = true;
+          }
+          if (Array.isArray(result.items)) {
+            result.items = result.items.map(item => {
+              if (Array.isArray(item.users) && item.users.length) {
+                return item;
+              }
+              if (users.length) {
+                return { ...item, users };
+              }
+              const clone = { ...item };
+              delete clone.users;
+              return clone;
+            });
           }
           return result;
         })
