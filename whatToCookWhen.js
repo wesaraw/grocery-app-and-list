@@ -1383,6 +1383,7 @@ async function init() {
   let currentData = [];
   let printPrepared = false;
   const printContainer = document.getElementById('printPages');
+  const printButton = document.getElementById('printBtn');
 
   function preparePrint() {
     if (!printContainer) return;
@@ -1394,12 +1395,33 @@ async function init() {
     renderPrintPages(currentData, mealMap);
     const container = document.getElementById('printPages');
     printPrepared = !!container && container.childElementCount > 0;
+    return printPrepared;
   }
 
   function resetPrint() {
     if (!printContainer) return;
     clearPrintPages();
     printPrepared = false;
+  }
+
+  function waitForNextFrame() {
+    return new Promise(resolve => {
+      const raf =
+        (typeof window !== 'undefined' && window.requestAnimationFrame) || null;
+      if (typeof raf === 'function') {
+        raf(() => resolve());
+      } else {
+        setTimeout(resolve, 0);
+      }
+    });
+  }
+
+  function notify(message) {
+    if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+      window.alert(message);
+    } else if (typeof alert === 'function') {
+      alert(message);
+    }
   }
 
   function update() {
@@ -1417,6 +1439,30 @@ async function init() {
 
   document.getElementById('showBtn').addEventListener('click', update);
   document.getElementById('eatViewBtn').addEventListener('click', openEatView);
+
+  if (printButton) {
+    printButton.addEventListener('click', async () => {
+      if (typeof window.print !== 'function') {
+        const message = 'Printing is not supported in this browser.';
+        console.warn(message);
+        notify(message);
+        return;
+      }
+
+      update();
+      preparePrint();
+      await waitForNextFrame();
+
+      if (!printPrepared) {
+        const message = 'There is no printable content available yet.';
+        console.warn(message);
+        notify(message);
+        return;
+      }
+
+      window.print();
+    });
+  }
 
   if (printContainer) {
     window.addEventListener('beforeprint', preparePrint);
