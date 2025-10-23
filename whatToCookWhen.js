@@ -452,9 +452,15 @@ function createIngredientListItem(ingredient, totalMultiplier, users) {
 
 function renderMealColumn(container, entries, mealMap) {
   container.innerHTML = '';
+  if (container?.classList) {
+    container.classList.add('meal-cell');
+  }
   if (!entries?.length) {
     return;
   }
+  const column = document.createElement('div');
+  column.className = 'meal-column';
+  container.appendChild(column);
   entries.forEach(entry => {
     let mealId = null;
     let totalMultiplier = null;
@@ -581,7 +587,7 @@ function renderMealColumn(container, entries, mealMap) {
       block.appendChild(placeholder);
     }
 
-    container.appendChild(block);
+    column.appendChild(block);
   });
 }
 
