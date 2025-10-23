@@ -163,19 +163,107 @@
       color: #666;
     }
 
+    #printPages {
+      display: none;
+      --print-page-height: 10.5in;
+    }
+
+    .print-page {
+      width: 100%;
+    }
+
+    .print-columns {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      width: 100%;
+    }
+
+    .print-row {
+      display: flex;
+      gap: 16px;
+      width: 100%;
+    }
+
+    .print-card {
+      background: #ffffff;
+      border: 1px solid #dbe4f1;
+      border-radius: 8px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      break-inside: avoid-page;
+      page-break-inside: avoid;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .print-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      font-size: 0.9rem;
+      color: #0f172a;
+    }
+
+    .print-card-date {
+      font-weight: 600;
+    }
+
+    .print-card-section {
+      font-weight: 500;
+      color: #1f2937;
+    }
+
+    .print-card-body {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
     @media print {
       body {
         max-width: none;
-        padding: 12px 18px 18px;
+        padding: 18px 24px;
       }
 
+      .controls,
       table {
-        margin-top: 12px;
+        display: none !important;
       }
 
-      .meal-column {
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 10px;
+      #printPages {
+        display: block;
+        position: static;
+        width: 100%;
+        margin: 0;
+      }
+
+      .print-page {
+        padding: 0 0 24px;
+        break-after: page;
+        page-break-after: always;
+      }
+
+      .print-page:last-child {
+        break-after: auto;
+        page-break-after: auto;
+      }
+
+      .print-columns {
+        gap: 18px;
+      }
+
+      .print-row {
+        gap: 18px;
+      }
+
+      .print-card {
+        background: #ffffff;
+        border-color: #cbd5e1;
       }
 
       .meal-block {
@@ -211,6 +299,7 @@
     </thead>
     <tbody id="cookBody"></tbody>
   </table>
+  <div id="printPages" aria-hidden="true"></div>
   <script type="module" src="whatToCookWhen.js"></script>
 </body>
 </html>

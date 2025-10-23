@@ -374,6 +374,19 @@ function formatPortions(multiplier) {
   return `${formatted} ${formatted === '1' ? 'portion' : 'portions'}`;
 }
 
+function parseMultiplier(value) {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
 function buildUserBreakdownEntries(ingredient, users) {
   if (!Array.isArray(users) || !users.length) {
     return [];
@@ -395,7 +408,7 @@ function buildUserBreakdownEntries(ingredient, users) {
     .filter(Boolean);
 }
 
-function createIngredientListItem(ingredient, totalMultiplier, users) {
+function createIngredientListItem(ingredient, totalMultiplier, users, options = {}) {
   const li = document.createElement('li');
   li.className = 'ingredient-entry';
   const header = document.createElement('div');
@@ -406,20 +419,8 @@ function createIngredientListItem(ingredient, totalMultiplier, users) {
   nameEl.textContent = name;
   header.appendChild(nameEl);
   let amountText = '';
-  let multiplierValue = null;
-  if (typeof totalMultiplier === 'number') {
-    multiplierValue = totalMultiplier;
-  } else if (typeof totalMultiplier === 'string') {
-    const trimmed = totalMultiplier.trim();
-    if (trimmed) {
-      const parsed = Number(trimmed);
-      if (Number.isFinite(parsed)) {
-        multiplierValue = parsed;
-      }
-    }
-  }
-  if (Number.isFinite(multiplierValue)) {
-    amountText = formatIngredientAmount(ingredient, multiplierValue);
+  if (Number.isFinite(totalMultiplier) && totalMultiplier > 0) {
+    amountText = formatIngredientAmount(ingredient, totalMultiplier);
   }
   if (amountText) {
     const amountEl = document.createElement('span');
@@ -450,6 +451,193 @@ function createIngredientListItem(ingredient, totalMultiplier, users) {
   return li;
 }
 
+function normalizeMealEntry(entry, mealMap) {
+  if (!entry) return null;
+  let mealId = null;
+  let totalMultiplier = null;
+  let leftoverDates = [];
+  let wholeMeal = false;
+  let prepItems = [];
+  let userList = null;
+  let targetLabels = [];
+
+  if (Array.isArray(entry)) {
+    if (entry.length) mealId = entry[0];
+    totalMultiplier = parseMultiplier(entry[1]);
+  } else if (typeof entry === 'object') {
+    mealId = entry.id || entry.mealId || entry.name || null;
+    totalMultiplier = parseMultiplier(entry.total);
+    if (Array.isArray(entry.leftoverDates)) {
+      leftoverDates = entry.leftoverDates
+        .map(value => (value != null ? String(value).trim() : ''))
+        .filter(Boolean);
+    }
+    if (entry.wholeMeal) {
+      wholeMeal = true;
+    }
+    if (Array.isArray(entry.items)) {
+      prepItems = entry.items
+        .map(item => {
+          if (!item) return null;
+          const rawIndex = item.index;
+          const parsedIndex =
+            typeof rawIndex === 'number' && Number.isFinite(rawIndex)
+              ? rawIndex
+              : parseInt(rawIndex, 10);
+          if (!Number.isFinite(parsedIndex)) return null;
+          const total = parseMultiplier(item.total);
+          const users = Array.isArray(item.users)
+            ? item.users.filter(Boolean)
+            : null;
+          return { index: parsedIndex, total, users };
+        })
+        .filter(Boolean);
+    }
+    if (Array.isArray(entry.users) && entry.users.length) {
+      userList = entry.users.filter(Boolean);
+    }
+    if (Array.isArray(entry.targets)) {
+      const labels = [];
+      entry.targets.forEach(target => {
+        if (!target || typeof target !== 'object') return;
+        const source = target.dayName || target.date;
+        if (!source && source !== 0) return;
+        const label = String(source).trim();
+        if (!label) return;
+        if (!labels.includes(label)) {
+          labels.push(label);
+        }
+      });
+      if (labels.length) {
+        targetLabels = labels;
+      }
+    }
+  } else {
+    mealId = entry;
+  }
+
+  if (!mealId) return null;
+  const meal = mealMap[mealId];
+  if (!meal) return null;
+
+  const leftoverUnique = Array.from(new Set(leftoverDates)).sort();
+  const categoryLabel =
+    meal?.categoryLabel ||
+    (meal?.categoryId && (MEAL_TYPES[meal.categoryId]?.label || meal.categoryId));
+  const name = meal?.name || mealId;
+  const displayName = categoryLabel ? `${categoryLabel}: ${name}` : name;
+
+  return {
+    mealId,
+    meal,
+    displayName,
+    totalMultiplier,
+    leftoverDates: leftoverUnique,
+    wholeMeal,
+    prepItems,
+    userList,
+    targetLabels
+  };
+}
+
+function buildIngredientEntries(meal, normalized) {
+  const ingredients = Array.isArray(meal?.ingredients) ? meal.ingredients : [];
+  if (!ingredients.length) return [];
+  const result = [];
+  const baseUsers =
+    Array.isArray(normalized.userList) && normalized.userList.length
+      ? normalized.userList
+      : null;
+  const hasPartialPrep =
+    !normalized.wholeMeal &&
+    Array.isArray(normalized.prepItems) &&
+    normalized.prepItems.length;
+
+  if (hasPartialPrep) {
+    const aggregated = new Map();
+    normalized.prepItems.forEach(item => {
+      if (!item || !Number.isFinite(item.index)) return;
+      if (item.index < 0 || item.index >= ingredients.length) return;
+      const amount = Number(item.total);
+      if (!Number.isFinite(amount) || amount <= 0) return;
+      let record = aggregated.get(item.index);
+      if (!record) {
+        record = { total: 0, users: null };
+        aggregated.set(item.index, record);
+      }
+      record.total += amount;
+      const itemUsers = Array.isArray(item.users) ? item.users : null;
+      if (itemUsers && itemUsers.length) {
+        record.users = record.users || {};
+        itemUsers.forEach(user => {
+          if (!user) return;
+          incrementUserTotals(record.users, user, user.total);
+        });
+      }
+    });
+    if (aggregated.size) {
+      const sorted = Array.from(aggregated.entries()).sort((a, b) => a[0] - b[0]);
+      sorted.forEach(([idx, info]) => {
+        const ingredient = ingredients[idx];
+        const userTotals = serializeUserTotals(info.users);
+        const breakdownUsers = userTotals.length ? userTotals : baseUsers;
+        result.push({ ingredient, amount: info.total, users: breakdownUsers });
+      });
+      return result;
+    }
+    ingredients.forEach(ingredient => {
+      result.push({ ingredient, amount: null, users: baseUsers });
+    });
+    return result;
+  }
+
+  ingredients.forEach(ingredient => {
+    result.push({ ingredient, amount: normalized.totalMultiplier, users: baseUsers });
+  });
+  return result;
+}
+
+function buildMealBlockElement(normalized, options = {}) {
+  if (!normalized) return null;
+  const block = document.createElement('div');
+  block.className = 'meal-block';
+  const title = document.createElement('div');
+  title.className = 'meal-title';
+  const portionText = formatPortions(normalized.totalMultiplier);
+  const targetText = normalized.targetLabels.length
+    ? ` for ${normalized.targetLabels.join(', ')}`
+    : '';
+  title.textContent = portionText
+    ? `${normalized.displayName} (${portionText})${targetText}`
+    : `${normalized.displayName}${targetText}`;
+  block.appendChild(title);
+
+  if (normalized.leftoverDates.length) {
+    const detail = document.createElement('div');
+    detail.className = 'leftover-detail';
+    detail.textContent = `Includes leftovers for ${normalized.leftoverDates.join(', ')}`;
+    block.appendChild(detail);
+  }
+
+  const ingredientEntries = buildIngredientEntries(normalized.meal, normalized);
+  if (ingredientEntries.length) {
+    const list = document.createElement('ul');
+    list.className = 'ingredient-list';
+    ingredientEntries.forEach(entry => {
+      list.appendChild(
+        createIngredientListItem(entry.ingredient, entry.amount, entry.users, options)
+      );
+    });
+    block.appendChild(list);
+  } else {
+    const placeholder = document.createElement('div');
+    placeholder.className = 'no-ingredients';
+    placeholder.textContent = 'No ingredient details available';
+    block.appendChild(placeholder);
+  }
+  return block;
+}
+
 function renderMealColumn(container, entries, mealMap) {
   container.innerHTML = '';
   if (container?.classList) {
@@ -462,133 +650,206 @@ function renderMealColumn(container, entries, mealMap) {
   column.className = 'meal-column';
   container.appendChild(column);
   entries.forEach(entry => {
-    let mealId = null;
-    let totalMultiplier = null;
-    let leftoverDates = [];
-    let prepItems = null;
-    let wholeMeal = false;
-    let targetLabels = [];
-    let userList = null;
-    if (Array.isArray(entry)) {
-      mealId = entry[0];
-      totalMultiplier = entry[1];
-    } else if (entry && typeof entry === 'object') {
-      mealId = entry.id || entry.mealId || entry.name || null;
-      if (entry.total != null) totalMultiplier = entry.total;
-      if (Array.isArray(entry.leftoverDates)) {
-        leftoverDates = entry.leftoverDates.filter(Boolean);
-      }
-      if (Array.isArray(entry.items)) {
-        prepItems = entry.items;
-      }
-      if (entry.wholeMeal) {
-        wholeMeal = true;
-      }
-      if (Array.isArray(entry.users)) {
-        userList = entry.users;
-      }
-      if (Array.isArray(entry.targets)) {
-        const labels = [];
-        entry.targets.forEach(target => {
-          if (!target) return;
-          const label = target.dayName || target.date;
-          if (!label) return;
-          if (!labels.includes(label)) {
-            labels.push(label);
-          }
-        });
-        if (labels.length) {
-          targetLabels = labels;
-        }
-      }
-    } else if (entry) {
-      mealId = entry;
+    const normalized = normalizeMealEntry(entry, mealMap);
+    if (!normalized) return;
+    const block = buildMealBlockElement(normalized, { variant: 'screen' });
+    if (block) {
+      column.appendChild(block);
     }
-    if (!mealId) return;
-    const meal = mealMap[mealId];
-    const block = document.createElement('div');
-    block.className = 'meal-block';
-    const title = document.createElement('div');
-    title.className = 'meal-title';
-    const name = meal?.name || mealId;
-    const categoryLabel =
-      meal?.categoryLabel ||
-      (meal?.categoryId && (MEAL_TYPES[meal.categoryId]?.label || meal.categoryId));
-    const displayName = categoryLabel ? `${categoryLabel}: ${name}` : name;
-    const portionText = formatPortions(totalMultiplier);
-    const targetText = targetLabels.length ? ` for ${targetLabels.join(', ')}` : '';
-    title.textContent = portionText
-      ? `${displayName} (${portionText})${targetText}`
-      : `${displayName}${targetText}`;
-    block.appendChild(title);
-
-    if (leftoverDates.length) {
-      const detail = document.createElement('div');
-      detail.className = 'leftover-detail';
-      detail.textContent = `Includes leftovers for ${leftoverDates.join(', ')}`;
-      block.appendChild(detail);
-    }
-
-    const ingredients = Array.isArray(meal?.ingredients) ? meal.ingredients : [];
-    const hasPartialPrep = !wholeMeal && Array.isArray(prepItems) && prepItems.length;
-    if (ingredients.length) {
-      const list = document.createElement('ul');
-      list.className = 'ingredient-list';
-      if (hasPartialPrep) {
-        const aggregated = new Map();
-        prepItems.forEach(item => {
-          const idx = typeof item.index === 'number' ? item.index : parseInt(item.index, 10);
-          if (!Number.isFinite(idx)) return;
-          if (idx < 0 || idx >= ingredients.length) return;
-          const amt = Number(item.total);
-          if (!Number.isFinite(amt) || amt <= 0) return;
-          let record = aggregated.get(idx);
-          if (!record) {
-            record = { total: 0, users: {} };
-            aggregated.set(idx, record);
-          }
-          record.total += amt;
-          const itemUsers = Array.isArray(item.users) ? item.users : null;
-          if (itemUsers && itemUsers.length) {
-            itemUsers.forEach(user => {
-              if (!user) return;
-              record.users = record.users || {};
-              incrementUserTotals(record.users, user, user.total);
-            });
-          }
-        });
-        const sorted = Array.from(aggregated.entries()).sort((a, b) => a[0] - b[0]);
-        sorted.forEach(([idx, info]) => {
-          const ing = ingredients[idx];
-          const amount = info?.total;
-          const userTotals = serializeUserTotals(info?.users);
-          const breakdownUsers = userTotals.length ? userTotals : userList;
-          list.appendChild(
-            createIngredientListItem(ing, amount, breakdownUsers)
-          );
-        });
-        if (!sorted.length) {
-          ingredients.forEach(ing => {
-            list.appendChild(createIngredientListItem(ing, null, userList));
-          });
-        }
-      } else {
-        ingredients.forEach(ing => {
-          list.appendChild(
-            createIngredientListItem(ing, totalMultiplier, userList)
-          );
-        });
-      }
-      block.appendChild(list);
-    } else {
-      const placeholder = document.createElement('div');
-      placeholder.className = 'no-ingredients';
-      placeholder.textContent = 'No ingredient details available';
-      block.appendChild(placeholder);
-    }
-
-    column.appendChild(block);
   });
+}
+
+function createPrintCard(dateLabel, sectionLabel, block) {
+  const card = document.createElement('div');
+  card.className = 'print-card';
+  const header = document.createElement('div');
+  header.className = 'print-card-header';
+  if (dateLabel) {
+    const dateEl = document.createElement('div');
+    dateEl.className = 'print-card-date';
+    dateEl.textContent = dateLabel;
+    header.appendChild(dateEl);
+  }
+  if (sectionLabel) {
+    const sectionEl = document.createElement('div');
+    sectionEl.className = 'print-card-section';
+    sectionEl.textContent = sectionLabel;
+    header.appendChild(sectionEl);
+  }
+  card.appendChild(header);
+  const body = document.createElement('div');
+  body.className = 'print-card-body';
+  if (block) {
+    body.appendChild(block);
+  }
+  card.appendChild(body);
+  return card;
+}
+
+function parseCssDimension(value) {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (trimmed.endsWith('px')) {
+    const parsed = parseFloat(trimmed);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  const probe = document.createElement('div');
+  probe.style.position = 'absolute';
+  probe.style.visibility = 'hidden';
+  probe.style.height = trimmed;
+  document.body.appendChild(probe);
+  const pixels = probe.getBoundingClientRect().height;
+  document.body.removeChild(probe);
+  return pixels || null;
+}
+
+function getPrintPageHeight(container) {
+  if (!container) return 0;
+  const styles = getComputedStyle(container);
+  const raw = styles.getPropertyValue('--print-page-height');
+  const parsed = parseCssDimension(raw);
+  return parsed || 0;
+}
+
+function renderPrintPages(data, mealMap) {
+  const container = document.getElementById('printPages');
+  if (!container) return;
+  container.innerHTML = '';
+  if (!Array.isArray(data) || !data.length) {
+    return;
+  }
+
+  const originalStyles = {
+    display: container.style.display,
+    visibility: container.style.visibility,
+    position: container.style.position,
+    left: container.style.left,
+    top: container.style.top,
+    width: container.style.width
+  };
+
+  container.style.display = 'block';
+  container.style.visibility = 'hidden';
+  container.style.position = 'absolute';
+  container.style.left = '-9999px';
+  container.style.top = '0';
+  container.style.width = '100%';
+
+  const pageHeight = getPrintPageHeight(container);
+  const tolerance = 1;
+  const MAX_PER_ROW = 2;
+
+  function createPage() {
+    const page = document.createElement('section');
+    page.className = 'print-page';
+    const columns = document.createElement('div');
+    columns.className = 'print-columns';
+    page.appendChild(columns);
+    return { page, columns };
+  }
+
+  let currentPage = null;
+  let currentRow = null;
+  let rowCount = 0;
+
+  function startNewPage() {
+    currentPage = createPage();
+    container.appendChild(currentPage.page);
+    currentRow = null;
+    rowCount = 0;
+  }
+
+  function ensureRow() {
+    if (!currentPage) {
+      startNewPage();
+    }
+    if (!currentRow || rowCount >= MAX_PER_ROW) {
+      currentRow = document.createElement('div');
+      currentRow.className = 'print-row';
+      currentPage.columns.appendChild(currentRow);
+      rowCount = 0;
+    }
+  }
+
+  function addCard(card, attempt = 0) {
+    if (!card) return;
+    ensureRow();
+    currentRow.appendChild(card);
+    rowCount += 1;
+    const shouldCheck = pageHeight && pageHeight > 0 && attempt === 0;
+    if (shouldCheck) {
+      const height = currentPage.page.getBoundingClientRect().height;
+      if (height > pageHeight + tolerance) {
+        currentRow.removeChild(card);
+        rowCount -= 1;
+        if (!currentRow.children.length) {
+          currentRow.remove();
+          currentRow = null;
+        }
+        startNewPage();
+        addCard(card, attempt + 1);
+        return;
+      }
+    }
+    if (rowCount >= MAX_PER_ROW) {
+      currentRow = null;
+      rowCount = 0;
+    }
+  }
+
+  const cards = [];
+  data.forEach(day => {
+    if (!day) return;
+    const dateLabel = day.dayName ? `${day.date} (${day.dayName})` : day.date;
+    if (Array.isArray(day.meals)) {
+      day.meals.forEach(entry => {
+        const normalized = normalizeMealEntry(entry, mealMap);
+        if (!normalized) return;
+        const block = buildMealBlockElement(normalized, { variant: 'print' });
+        cards.push(createPrintCard(dateLabel, 'Cook Today', block));
+      });
+    }
+    if (Array.isArray(day.prepList)) {
+      day.prepList.forEach(entry => {
+        const normalized = normalizeMealEntry(entry, mealMap);
+        if (!normalized) return;
+        const block = buildMealBlockElement(normalized, { variant: 'print' });
+        cards.push(createPrintCard(dateLabel, 'Prep Ahead', block));
+      });
+    }
+  });
+
+  if (!cards.length) {
+    container.style.display = originalStyles.display;
+    container.style.visibility = originalStyles.visibility;
+    container.style.position = originalStyles.position;
+    container.style.left = originalStyles.left;
+    container.style.top = originalStyles.top;
+    container.style.width = originalStyles.width;
+    return;
+  }
+
+  cards.forEach(card => addCard(card));
+
+  container.style.display = originalStyles.display;
+  container.style.visibility = originalStyles.visibility;
+  container.style.position = originalStyles.position;
+  container.style.left = originalStyles.left;
+  container.style.top = originalStyles.top;
+  container.style.width = originalStyles.width;
+}
+
+function clearPrintPages() {
+  const container = document.getElementById('printPages');
+  if (!container) return;
+  container.innerHTML = '';
+  container.style.display = '';
+  container.style.visibility = '';
+  container.style.position = '';
+  container.style.left = '';
+  container.style.top = '';
+  container.style.width = '';
 }
 
 function normalizePrepDays(prepDays) {
@@ -968,15 +1229,63 @@ async function init() {
   document.getElementById('startDate').value = start || new Date().toISOString().split('T')[0];
   document.getElementById('numDays').value = days;
 
+  let currentData = [];
+  let printPrepared = false;
+  const printContainer = document.getElementById('printPages');
+
+  function preparePrint() {
+    if (!printContainer) return;
+    if (!currentData.length) {
+      clearPrintPages();
+      printPrepared = false;
+      return;
+    }
+    renderPrintPages(currentData, mealMap);
+    const container = document.getElementById('printPages');
+    printPrepared = !!container && container.childElementCount > 0;
+  }
+
+  function resetPrint() {
+    if (!printContainer) return;
+    clearPrintPages();
+    printPrepared = false;
+  }
+
   function update() {
     const startVal = document.getElementById('startDate').value;
     const daysVal = parseInt(document.getElementById('numDays').value, 10) || 7;
     const data = buildData(calendar, userEntries, mealMap, startVal, daysVal, prepDays);
+    currentData = data;
     renderRows(data, mealMap);
+    if (printPrepared) {
+      preparePrint();
+    } else if (printContainer) {
+      clearPrintPages();
+    }
   }
 
   document.getElementById('showBtn').addEventListener('click', update);
   document.getElementById('eatViewBtn').addEventListener('click', openEatView);
+
+  if (printContainer) {
+    window.addEventListener('beforeprint', preparePrint);
+    window.addEventListener('afterprint', resetPrint);
+    if (window.matchMedia) {
+      const mediaQuery = window.matchMedia('print');
+      const mqListener = event => {
+        if (event.matches) {
+          preparePrint();
+        } else {
+          resetPrint();
+        }
+      };
+      if (typeof mediaQuery.addEventListener === 'function') {
+        mediaQuery.addEventListener('change', mqListener);
+      } else if (typeof mediaQuery.addListener === 'function') {
+        mediaQuery.addListener(mqListener);
+      }
+    }
+  }
 
   update();
 }
