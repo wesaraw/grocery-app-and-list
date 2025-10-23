@@ -1,3 +1,5 @@
+import { convert } from './uomConverter.js';
+
 export const SHEET_SQFT = 0.111;
 export const TOWEL_SHEET_SQFT = 0.451;
 
@@ -35,6 +37,30 @@ export function normalizeUnit(unit) {
   if (!unit) return unit;
   const key = unit.toLowerCase().replace(/\s+/g, '').replace(/\./g, '');
   return UNIT_ALIASES[key] || key;
+}
+
+function normalizePricePerOunce(pricePerUnit, unitType) {
+  if (unitType == null) {
+    return { pricePerUnit, unitType: null };
+  }
+  const normalizedUnit = normalizeUnit(unitType);
+  if (pricePerUnit == null) {
+    return { pricePerUnit: null, unitType: normalizedUnit };
+  }
+  if (normalizedUnit === 'oz') {
+    return { pricePerUnit, unitType: 'oz' };
+  }
+  const ratio = convert(1, normalizedUnit, 'oz');
+  if (
+    typeof ratio === 'number' &&
+    Number.isFinite(ratio) &&
+    ratio > 0 &&
+    normalizedUnit !== 'oz' &&
+    ratio !== 1
+  ) {
+    return { pricePerUnit: pricePerUnit / ratio, unitType: 'oz' };
+  }
+  return { pricePerUnit, unitType: normalizedUnit };
 }
 
 export function sheetSqFtFor(name = '') {
@@ -135,10 +161,20 @@ export function parseUnitPrice(text) {
 }
 
 export function getPriceUnitInfo(product) {
+  let pricePerUnit = null;
+  let unitType = null;
   if (product.pricePerUnit != null && product.unitType) {
-    return { pricePerUnit: product.pricePerUnit, unitType: product.unitType };
+    pricePerUnit = product.pricePerUnit;
+    unitType = product.unitType;
+  } else {
+    const parsed = parseUnitPrice(product.unit);
+    if (parsed) {
+      pricePerUnit = parsed.pricePerUnit;
+      unitType = parsed.unitType;
+    }
   }
-  const parsed = parseUnitPrice(product.unit);
-  if (parsed) return parsed;
-  return { pricePerUnit: null, unitType: null };
+  if (unitType != null) {
+    return normalizePricePerOunce(pricePerUnit, unitType);
+  }
+  return { pricePerUnit, unitType: null };
 }

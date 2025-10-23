@@ -1,5 +1,6 @@
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
 import { getItemName } from './utils/itemStorage.js';
+import { getPriceUnitInfo } from './utils/priceUtils.js';
 
 function storageGet(keys) {
   return new Promise(resolve => {
@@ -162,13 +163,15 @@ function updateRowText(record) {
     data.product?.priceNumber != null
       ? `$${data.product.priceNumber.toFixed(2)}`
       : data.product?.price || '';
+  const unitInfo = data.product ? getPriceUnitInfo(data.product) : { pricePerUnit: null, unitType: null };
+  const displayUnit = unitInfo.unitType || data.product?.unitType || 'oz';
   const qtyText =
     data.product?.convertedQty != null
-      ? `${data.product.convertedQty.toFixed(2)} ${data.product.unitType || 'oz'}`
+      ? `${data.product.convertedQty.toFixed(2)} ${displayUnit}`
       : data.product?.size || '';
   const unitText =
-    data.product?.pricePerUnit != null
-      ? `$${data.product.pricePerUnit.toFixed(2)}/${data.product.unitType || 'oz'}`
+    unitInfo.pricePerUnit != null
+      ? `$${unitInfo.pricePerUnit.toFixed(2)}/${displayUnit}`
       : data.product?.unit || '';
 
   const packValue = isPositiveNumber(activePacks) ? Math.max(1, Math.round(activePacks)) : null;

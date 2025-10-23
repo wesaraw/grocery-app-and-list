@@ -377,12 +377,14 @@ async function init() {
 
     let pStr =
       prod.priceNumber != null ? `$${prod.priceNumber.toFixed(2)}` : prod.price;
+    const { unitType: normalizedUnitType } = getPriceUnitInfo(prod);
+    const displayUnit = normalizedUnitType || prod.unitType || 'oz';
     let qStr =
       prod.convertedQty != null
-        ? `${prod.convertedQty.toFixed(2)} ${prod.unitType || 'oz'}`
+        ? `${prod.convertedQty.toFixed(2)} ${displayUnit}`
         : prod.size;
     const unitPrice = pricePerHomeUnit(item, prod);
-    const label = homeUnitLabel(item) || prod.unitType || 'oz';
+    const label = homeUnitLabel(item) || displayUnit || 'oz';
     let uStr =
       unitPrice != null ? `$${unitPrice.toFixed(2)}/${label}` : prod.unit;
     const cost = monthlyCost(item, prod);

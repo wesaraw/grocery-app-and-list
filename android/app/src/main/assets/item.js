@@ -470,11 +470,13 @@ async function init() {
         }
       }
       let pStr = selected.priceNumber != null ? `$${selected.priceNumber.toFixed(2)}` : selected.price;
+      const { unitType: normalizedUnitType } = getPriceUnitInfo(selected);
+      const displayUnit = normalizedUnitType || selected.unitType || 'oz';
       let qStr = selected.convertedQty != null
-        ? `${selected.convertedQty.toFixed(2)} ${selected.unitType || 'oz'}`
+        ? `${selected.convertedQty.toFixed(2)} ${displayUnit}`
         : selected.size;
       const unitPrice = pricePerHomeUnit(itemName, selected);
-      const label = homeUnitLabel(itemName) || selected.unitType || 'oz';
+      const label = homeUnitLabel(itemName) || displayUnit || 'oz';
       let uStr = unitPrice != null
         ? `$${unitPrice.toFixed(2)}/${label}`
         : selected.unit;
@@ -526,12 +528,14 @@ async function init() {
             selected.priceNumber != null
               ? `$${selected.priceNumber.toFixed(2)}`
               : selected.price;
+          const { unitType: normalizedUnitType } = getPriceUnitInfo(selected);
+          const displayUnit = normalizedUnitType || selected.unitType || 'oz';
           let qStr =
             selected.convertedQty != null
-              ? `${selected.convertedQty.toFixed(2)} ${selected.unitType || 'oz'}`
+              ? `${selected.convertedQty.toFixed(2)} ${displayUnit}`
               : selected.size;
           const unitPrice = pricePerHomeUnit(itemName, selected);
-          const label = homeUnitLabel(itemName) || selected.unitType || 'oz';
+          const label = homeUnitLabel(itemName) || displayUnit || 'oz';
           let uStr =
             unitPrice != null
               ? `$${unitPrice.toFixed(2)}/${label}`

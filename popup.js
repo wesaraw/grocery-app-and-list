@@ -479,12 +479,14 @@ function formatFinalText(itemName, store, product, map = weightPackMap) {
       product.priceNumber != null
         ? `$${product.priceNumber.toFixed(2)}`
         : product.price;
+    const { unitType: normalizedUnitType } = getPriceUnitInfo(product);
+    const displayUnit = normalizedUnitType || product.unitType || 'oz';
     let qStr =
       product.convertedQty != null
-        ? `${product.convertedQty.toFixed(2)} ${product.unitType || 'oz'}`
+        ? `${product.convertedQty.toFixed(2)} ${displayUnit}`
         : product.size;
     const unitPrice = pricePerHomeUnit(itemName, product, map);
-    const label = homeUnitLabel(itemName) || product.unitType || 'oz';
+    const label = homeUnitLabel(itemName) || displayUnit || 'oz';
     let uStr =
       unitPrice != null
         ? `$${unitPrice.toFixed(2)}/${label}`
