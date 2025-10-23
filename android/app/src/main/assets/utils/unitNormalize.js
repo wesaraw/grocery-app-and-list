@@ -198,6 +198,23 @@ export function convertWithDensity(qty, fromUnit, toUnit = 'oz', settings = {}) 
     const ml = qty * (VOLUME_TO_ML[fromKey] || 1);
     return convertToWeightFromVolume(ml, ratio);
   }
+
+  if (convertVol && WEIGHT_UNITS.has(fromKey) && VOLUME_UNITS.has(toKey)) {
+    if (!Number.isFinite(ratio) || ratio <= 0) {
+      return convert(qty, fromKey, toKey);
+    }
+    const grams = convert(qty, fromKey, 'g');
+    if (!Number.isFinite(grams)) {
+      return convert(qty, fromKey, toKey);
+    }
+    const ml = grams / ratio;
+    const targetMl = VOLUME_TO_ML[toKey];
+    if (!Number.isFinite(targetMl) || targetMl <= 0) {
+      return convert(qty, fromKey, toKey);
+    }
+    return ml / targetMl;
+  }
+
   return convert(qty, fromKey, toKey);
 }
 

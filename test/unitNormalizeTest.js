@@ -1,7 +1,8 @@
 import {
   normalizeUnit,
   convertToWeightFromVolume,
-  computeNormalizedQuantity
+  computeNormalizedQuantity,
+  convertWithDensity
 } from '../utils/unitNormalize.js';
 import { parseQuantity } from '../utils/calendarUtils.js';
 import { initUomTable, convert } from '../utils/uomConverter.js';
@@ -28,6 +29,22 @@ if (Math.abs(w - 7.79) > 0.1) {
 }
 
 await initUomTable();
+
+const densitySettings = {
+  convert_volume_to_weight: true,
+  custom_density_ratio: 26.36 / 240
+};
+
+const ozFromCup = convertWithDensity(1, 'cup', 'oz', densitySettings);
+if (Math.abs(ozFromCup - 0.93) > 0.02) {
+  throw new Error('density conversion cup -> oz failed');
+}
+
+const cupFromOz = convertWithDensity(0.93, 'oz', 'cup', densitySettings);
+if (Math.abs(cupFromOz - 1) > 0.05) {
+  throw new Error('density conversion oz -> cup failed');
+}
+
 const q = parseQuantity('1');
 if (q.value !== 1 || q.unit !== 'ea') {
   throw new Error('parseQuantity default each failed');
