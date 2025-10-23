@@ -214,6 +214,7 @@ function buildRow(item) {
       const grams = parseFloat(cupWeightStr);
       if (Number.isFinite(grams) && grams > 0) {
         ratioVal = grams / 240;
+        chk.checked = true;
         const formattedRatio = Number.isInteger(ratioVal)
           ? ratioVal.toString()
           : ratioVal.toFixed(4).replace(/\.0+$|0+$/, '');
