@@ -52,6 +52,9 @@
       margin-bottom: 12px;
       padding-bottom: 8px;
       border-bottom: 1px dashed #e0e0e0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
 
     .meal-block:last-child {
@@ -61,22 +64,79 @@
     }
 
     .meal-title {
-      font-weight: bold;
-      margin-bottom: 4px;
+      font-weight: 600;
+      margin-bottom: 2px;
+      color: #111827;
+    }
+
+    .leftover-detail {
+      font-size: 0.85rem;
+      color: #4b5563;
     }
 
     .ingredient-list {
-      margin: 0 0 6px 18px;
+      margin: 4px 0 0;
       padding: 0;
-      list-style: disc;
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
 
-    .ingredient-list li {
-      margin-bottom: 2px;
+    .ingredient-entry {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
 
-    .ingredient-list li:last-child {
-      margin-bottom: 0;
+    .ingredient-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .ingredient-name {
+      font-weight: 600;
+      color: #1f2937;
+    }
+
+    .ingredient-amount {
+      font-weight: 500;
+      color: #0f172a;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+
+    .user-breakdown {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .user-breakdown-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 0.85rem;
+      color: #334155;
+    }
+
+    .user-name {
+      font-weight: 500;
+    }
+
+    .user-amount {
+      font-variant-numeric: tabular-nums;
+      text-align: right;
     }
 
     .no-ingredients {

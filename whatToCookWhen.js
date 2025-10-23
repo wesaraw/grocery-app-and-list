@@ -374,11 +374,11 @@ function formatPortions(multiplier) {
   return `${formatted} ${formatted === '1' ? 'portion' : 'portions'}`;
 }
 
-function formatUserBreakdown(ingredient, users) {
+function buildUserBreakdownEntries(ingredient, users) {
   if (!Array.isArray(users) || !users.length) {
-    return '';
+    return [];
   }
-  const parts = users
+  return users
     .map(user => {
       if (!user) return null;
       const label =
@@ -390,13 +390,64 @@ function formatUserBreakdown(ingredient, users) {
       if (!label) return null;
       const amountText = formatIngredientAmount(ingredient, user.total);
       if (!amountText) return null;
-      return `${label}: ${amountText}`;
+      return { name: label, amount: amountText };
     })
     .filter(Boolean);
-  if (!parts.length) {
-    return '';
+}
+
+function createIngredientListItem(ingredient, totalMultiplier, users) {
+  const li = document.createElement('li');
+  li.className = 'ingredient-entry';
+  const header = document.createElement('div');
+  header.className = 'ingredient-header';
+  const name = ingredient?.name?.trim() || 'Unnamed ingredient';
+  const nameEl = document.createElement('span');
+  nameEl.className = 'ingredient-name';
+  nameEl.textContent = name;
+  header.appendChild(nameEl);
+  let amountText = '';
+  let multiplierValue = null;
+  if (typeof totalMultiplier === 'number') {
+    multiplierValue = totalMultiplier;
+  } else if (typeof totalMultiplier === 'string') {
+    const trimmed = totalMultiplier.trim();
+    if (trimmed) {
+      const parsed = Number(trimmed);
+      if (Number.isFinite(parsed)) {
+        multiplierValue = parsed;
+      }
+    }
   }
-  return ` (${parts.join(', ')})`;
+  if (Number.isFinite(multiplierValue)) {
+    amountText = formatIngredientAmount(ingredient, multiplierValue);
+  }
+  if (amountText) {
+    const amountEl = document.createElement('span');
+    amountEl.className = 'ingredient-amount';
+    amountEl.textContent = amountText;
+    header.appendChild(amountEl);
+  }
+  li.appendChild(header);
+  const breakdown = buildUserBreakdownEntries(ingredient, users);
+  if (breakdown.length) {
+    const list = document.createElement('ul');
+    list.className = 'user-breakdown';
+    breakdown.forEach(entry => {
+      const item = document.createElement('li');
+      item.className = 'user-breakdown-item';
+      const label = document.createElement('span');
+      label.className = 'user-name';
+      label.textContent = entry.name;
+      item.appendChild(label);
+      const amount = document.createElement('span');
+      amount.className = 'user-amount';
+      amount.textContent = entry.amount;
+      item.appendChild(amount);
+      list.appendChild(item);
+    });
+    li.appendChild(list);
+  }
+  return li;
 }
 
 function renderMealColumn(container, entries, mealMap) {
@@ -503,43 +554,23 @@ function renderMealColumn(container, entries, mealMap) {
         const sorted = Array.from(aggregated.entries()).sort((a, b) => a[0] - b[0]);
         sorted.forEach(([idx, info]) => {
           const ing = ingredients[idx];
-          const li = document.createElement('li');
-          const ingName = ing?.name?.trim() || 'Unnamed ingredient';
           const amount = info?.total;
-          const amountText = formatIngredientAmount(ing, amount);
-          let breakdown = '';
           const userTotals = serializeUserTotals(info?.users);
-          if (userTotals.length) {
-            breakdown = formatUserBreakdown(ing, userTotals);
-          } else if (userList) {
-            breakdown = formatUserBreakdown(ing, userList);
-          }
-          li.textContent = amountText
-            ? `${ingName}: ${amountText}${breakdown}`
-            : ingName;
-          list.appendChild(li);
+          const breakdownUsers = userTotals.length ? userTotals : userList;
+          list.appendChild(
+            createIngredientListItem(ing, amount, breakdownUsers)
+          );
         });
         if (!sorted.length) {
           ingredients.forEach(ing => {
-            const li = document.createElement('li');
-            const ingName = ing?.name?.trim() || 'Unnamed ingredient';
-            const breakdown = userList ? formatUserBreakdown(ing, userList) : '';
-            li.textContent = breakdown ? `${ingName}${breakdown}` : ingName;
-            list.appendChild(li);
+            list.appendChild(createIngredientListItem(ing, null, userList));
           });
         }
       } else {
         ingredients.forEach(ing => {
-          const li = document.createElement('li');
-          const ingName = ing?.name?.trim() || 'Unnamed ingredient';
-          const amountText = formatIngredientAmount(ing, totalMultiplier);
-          const breakdown = userList ? formatUserBreakdown(ing, userList) : '';
-          li.textContent = amountText
-            ? `${ingName}: ${amountText}${breakdown}`
-            : breakdown
-            ? `${ingName}${breakdown}`
-            : ingName;
-          list.appendChild(li);
+          list.appendChild(
+            createIngredientListItem(ing, totalMultiplier, userList)
+          );
         });
       }
       block.appendChild(list);
