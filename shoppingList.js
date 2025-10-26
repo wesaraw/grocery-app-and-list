@@ -2,6 +2,7 @@ import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
 import { getItemName } from './utils/itemStorage.js';
 import { getPriceUnitInfo } from './utils/priceUtils.js';
 import { formatQuantity } from './utils/quantityFormat.js';
+import { formatDateLabel } from './utils/dateLabel.js';
 
 function storageGet(keys) {
   return new Promise(resolve => {
@@ -233,14 +234,6 @@ function refreshVisibility() {
       state.emptyMessageEl.style.display = anyVisible ? 'none' : 'block';
     }
   }
-}
-
-function formatDateLabel(iso) {
-  if (!iso) return null;
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-  const options = { weekday: 'short', month: 'short', day: 'numeric' };
-  return date.toLocaleDateString(undefined, options);
 }
 
 function formatPrepWindowSummary(context) {
