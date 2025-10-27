@@ -76,6 +76,29 @@ chrome.storage.local.get('purchases', data => {
 
 Chrome stores this data in a database under your profile directory. **It is tied to the extension ID**, so the ID must remain the same across updates. This repository includes a `key` field in `manifest.json` that keeps the ID constant even if you reload the extension from a fresh checkout. If you remove or change this key, Chrome will treat it as a brand new extension and any saved data will not be loaded.
 
+### Repairing inflated pack weights
+
+Older versions of the Stop & Shop scraper multiplied a product’s pack count into its
+weight (for example, a single 26.7 oz bag of treats was stored as 854.4 oz when the
+bag contained 32 sticks). After updating to the fixed scrapers, run the maintenance
+tool to shrink any saved products back to their real size:
+
+1. Open the extension popup and click **Pack Count Repair**.
+2. Press **Scan and repair products**. The tool reviews every `final_product_*`
+   record in `chrome.storage.local` and rewrites the inflated weights only when the
+   unit price confirms the total should be smaller.
+3. Repeat the scan after importing an older backup so those items are repaired too.
+
+Backups exported before this fix still contain the inflated numbers. You can update
+them in place with Node.js:
+
+```bash
+node scripts/repairPackCountWeights.js "grocery_backup (100).txt" # add more files if needed
+```
+
+The script rewrites each file only when it finds entries to repair and prints a
+summary of the affected products.
+
 ### Weeks per Month
 
 Several calculations convert monthly amounts to weekly values. The extension uses `4.33` weeks per month (stored in `utils/constants.js` as `WEEKS_PER_MONTH`) as a simple average.

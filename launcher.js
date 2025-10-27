@@ -23,3 +23,7 @@ document.getElementById('open-meal-planner').addEventListener('click', () => {
 document.getElementById('open-calendar').addEventListener('click', () => {
   openWindow('whatToEatCalendar.html');
 });
+
+document.getElementById('open-pack-count-repair').addEventListener('click', () => {
+  openWindow('packCountRepair.html');
+});

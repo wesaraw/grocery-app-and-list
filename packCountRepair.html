@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Pack Count Repair</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      width: 320px;
+      margin: 0;
+      padding: 16px;
+      box-sizing: border-box;
+    }
+
+    h1 {
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    p {
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    button {
+      width: 100%;
+      padding: 8px;
+      margin: 12px 0;
+      font-size: 14px;
+    }
+
+    pre {
+      background: #f5f5f5;
+      padding: 8px;
+      max-height: 240px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 12px;
+    }
+
+    .status {
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Pack Count Repair</h1>
+  <p>Run this tool after updating the scrapers to fix stored products whose weights were
+    multiplied by their pack counts. The repair only touches saved items where the
+    unit price confirms the total weight should be smaller.</p>
+  <button id="repair-button">Scan and repair products</button>
+  <div class="status" id="status"></div>
+  <pre id="details"></pre>
+  <script type="module" src="packCountRepair.js"></script>
+</body>
+</html>
