@@ -177,11 +177,14 @@ export function scrapeStopAndShop() {
     }
 
     let totalSizeQty = null;
-    if (sizeQty != null) {
-      totalSizeQty = sizeQty * packCount;
+    if (sizeQty != null && sizeUnit) {
+      const normalizedUnit = sizeUnit.toLowerCase();
+      totalSizeQty = COUNT_UNITS.has(normalizedUnit) ? sizeQty : sizeQty * packCount;
+      sizeUnit = normalizedUnit;
     } else if (unitQty != null && unitType) {
+      const normalizedUnit = unitType.toLowerCase();
       totalSizeQty = unitQty * packCount;
-      sizeUnit = unitType;
+      sizeUnit = normalizedUnit;
     }
     sizeQty = totalSizeQty;
 
@@ -189,19 +192,23 @@ export function scrapeStopAndShop() {
     let pricePerUnit = null;
 
     if (normalizedPerUnitText) {
-      let m = normalizedPerUnitText.match(/\$([\d.]+)\/?\s*([\d.]*)\s*(\w+)/);
+      let m = normalizedPerUnitText.match(
+        /\$([\d.]+)\s*\/?\s*([\d.]*)\s*([a-zA-Z][a-zA-Z.]*?(?:\s*[a-zA-Z.]+)*)/
+      );
       let priceVal = null;
       let qtyVal = null;
       if (m) {
         priceVal = parseFloat(m[1]);
         qtyVal = parseFloat(m[2]);
-        unitType = m[3].toLowerCase().replace(/\s+/g, '');
+        unitType = m[3].toLowerCase().replace(/[\s.]+/g, '');
       } else {
-        m = normalizedPerUnitText.match(/([\d.]+)\s*¢\/?\s*([\d.]*)\s*(\w+)/);
+        m = normalizedPerUnitText.match(
+          /([\d.]+)\s*¢\s*\/?\s*([\d.]*)\s*([a-zA-Z][a-zA-Z.]*?(?:\s*[a-zA-Z.]+)*)/
+        );
         if (m) {
           priceVal = parseFloat(m[1]) / 100;
           qtyVal = parseFloat(m[2]);
-          unitType = m[3].toLowerCase().replace(/\s+/g, '');
+          unitType = m[3].toLowerCase().replace(/[\s.]+/g, '');
         }
       }
       if (m) {

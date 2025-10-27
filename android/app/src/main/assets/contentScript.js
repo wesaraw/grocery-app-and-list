@@ -143,6 +143,28 @@ function scrapeStopAndShop() {
     unit: 1
   };
 
+  const COUNT_UNITS = new Set([
+    "ea",
+    "ct",
+    "pkg",
+    "box",
+    "can",
+    "bag",
+    "bottle",
+    "stick",
+    "roll",
+    "bar",
+    "pouch",
+    "jar",
+    "packet",
+    "sleeve",
+    "slice",
+    "piece",
+    "tube",
+    "tray",
+    "unit"
+  ]);
+
   const UNIT_PHRASE_REPLACEMENTS = {
     'dry pint': 'pt',
     'dry pints': 'pt',
@@ -249,21 +271,34 @@ function scrapeStopAndShop() {
     }
 
     let totalSizeQty = null;
-    if (sizeQty != null) {
-      totalSizeQty = sizeQty * packCount;
+    if (sizeQty != null && sizeUnit) {
+      const normalizedUnit = sizeUnit.toLowerCase();
+      totalSizeQty = COUNT_UNITS.has(normalizedUnit) ? sizeQty : sizeQty * packCount;
+      sizeUnit = normalizedUnit;
     } else if (unitQty != null && unitType) {
+      const normalizedUnit = unitType.toLowerCase();
       totalSizeQty = unitQty * packCount;
-      sizeUnit = unitType;
+      sizeUnit = normalizedUnit;
     }
     sizeQty = totalSizeQty;
 
     let convertedQty = null;
     if (sizeQty != null && sizeUnit) {
-      const factor = UNIT_FACTORS[sizeUnit.toLowerCase()];
+      const normalizedUnit = sizeUnit.toLowerCase();
+      const factor = UNIT_FACTORS[normalizedUnit];
       if (factor) {
-        convertedQty = sizeQty * factor;
-        if (priceNumber != null && pricePerUnit == null) {
-          pricePerUnit = priceNumber / convertedQty;
+        if (COUNT_UNITS.has(normalizedUnit)) {
+          convertedQty = sizeQty;
+          if (!unitType) unitType = normalizedUnit;
+          if (priceNumber != null && pricePerUnit == null) {
+            pricePerUnit = priceNumber / convertedQty;
+          }
+        } else {
+          convertedQty = sizeQty * factor;
+          if (priceNumber != null && pricePerUnit == null) {
+            pricePerUnit = priceNumber / convertedQty;
+            unitType = "oz";
+          }
         }
       }
     }

@@ -111,6 +111,41 @@ console.log('perSheetWalmart', perSheetWalmart);
     throw new Error(`Expected around 0.02 but got ${perSheetWalmart}`);
   }
 
+// Stop & Shop plates regression
+const stopHtml = fs.readFileSync('test/samples/stopandshop-plates.html', 'utf8');
+const stopDom = new JSDOM(stopHtml);
+Object.defineProperty(stopDom.window.HTMLElement.prototype, 'innerText', {
+  get() {
+    return this.textContent;
+  },
+  set(v) {
+    this.textContent = v;
+  }
+});
+global.document = stopDom.window.document;
+global.window = stopDom.window;
+const { scrapeStopAndShop } = await import('../scrapers/stopandshop.js');
+const stopProducts = scrapeStopAndShop();
+const platesItem = stopProducts.find(p => /Everyday Plates/i.test(p.name));
+if (!platesItem) {
+  throw new Error('Failed to find Stop & Shop plates item');
+}
+if (platesItem.sizeQty !== 150) {
+  throw new Error(`Expected sizeQty 150 but got ${platesItem.sizeQty}`);
+}
+if (platesItem.convertedQty !== 150) {
+  throw new Error(`Expected convertedQty 150 but got ${platesItem.convertedQty}`);
+}
+if (platesItem.size !== '150 ct') {
+  throw new Error(`Expected size string "150 ct" but got ${platesItem.size}`);
+}
+if (platesItem.pricePerUnit == null || Math.abs(platesItem.pricePerUnit - 0.09) > 0.0001) {
+  throw new Error(`Expected pricePerUnit 0.09 but got ${platesItem.pricePerUnit}`);
+}
+if (platesItem.unitType !== 'ea') {
+  throw new Error(`Expected unitType "ea" but got ${platesItem.unitType}`);
+}
+
 // Walmart fl. oz parsing
 const snippetHtml = `
 <div data-testid="list-view">
