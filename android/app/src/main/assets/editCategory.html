@@ -4,13 +4,51 @@
   <meta charset="utf-8">
   <title>Edit Categories</title>
   <style>
-    body { font-family: Arial, sans-serif; width: 300px; }
-    .item { margin-bottom: 10px; }
-    input[type="text"] { width: 120px; }
+    body { font-family: Arial, sans-serif; width: 360px; }
+    .item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .item-name {
+      flex: 1 1 auto;
+    }
+    .category-input {
+      width: 120px;
+    }
+    .cap-input-wrapper {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+    }
     .category-header {
       border-top: 1px solid #ccc;
       margin-top: 10px;
+      padding-top: 6px;
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .category-header-with-input {
+      justify-content: space-between;
+    }
+    .category-header-text {
+      flex: 1 1 auto;
+    }
+    .category-cap-input,
+    .item-cap-input {
+      width: 70px;
+      text-align: right;
+    }
+    .cap-suffix {
+      font-size: 0.85em;
+      color: #555;
+    }
+    .item-cap-input[data-override="false"],
+    .category-cap-input[data-override="false"] {
+      opacity: 0.7;
     }
   </style>
 </head>
