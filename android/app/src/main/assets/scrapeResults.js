@@ -501,7 +501,8 @@ async function init() {
     if (!Number.isFinite(totalUnits) || totalUnits <= 0) {
       return true;
     }
-    if (totalUnits + tolerance < weeklyNeed) {
+    const belowWeeklyNeed = totalUnits + tolerance < weeklyNeed;
+    if (belowWeeklyNeed) {
       return true;
     }
     return totalUnits <= weeklyNeed * capMultiplier + tolerance;
