@@ -143,28 +143,6 @@ function scrapeStopAndShop() {
     unit: 1
   };
 
-  const COUNT_UNITS = new Set([
-    "ea",
-    "ct",
-    "pkg",
-    "box",
-    "can",
-    "bag",
-    "bottle",
-    "stick",
-    "roll",
-    "bar",
-    "pouch",
-    "jar",
-    "packet",
-    "sleeve",
-    "slice",
-    "piece",
-    "tube",
-    "tray",
-    "unit"
-  ]);
-
   const UNIT_PHRASE_REPLACEMENTS = {
     'dry pint': 'pt',
     'dry pints': 'pt',
