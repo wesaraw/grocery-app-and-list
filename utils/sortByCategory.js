@@ -13,7 +13,8 @@ export function renderItemsWithCategoryHeaders(
   items,
   container,
   renderFn,
-  headerState = {}
+  headerState = {},
+  options = {}
 ) {
   let lastCat = null;
   let header = null;
@@ -45,6 +46,9 @@ export function renderItemsWithCategoryHeaders(
       header = document.createElement('h3');
       header.className = 'category-header';
       header.textContent = cat;
+      if (typeof options.decorateHeader === 'function') {
+        options.decorateHeader(header, cat);
+      }
       nodes = [];
       container.appendChild(header);
     }

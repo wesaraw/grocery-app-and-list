@@ -1,9 +1,15 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
-import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from "./utils/priceUtils.js";
+import { getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
 import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
 import { formatQuantity, roundQuantity } from './utils/quantityFormat.js';
+import {
+  DEFAULT_ORDER_CAP,
+  loadCategoryCaps,
+  loadItemCaps
+} from './utils/orderCapStorage.js';
+import { WEEKS_PER_MONTH } from './utils/constants.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -30,6 +36,11 @@ let needsData = [];
 let consumptionMap = new Map();
 let weightPackMap = new Map();
 let densityMap = {};
+const EPSILON = 1e-4;
+
+function categoryKey(name) {
+  return name && name.trim() ? name : 'Other';
+}
 
 function baseGetPackInfo(product) {
   if (product && product.packCount && product.packCount > 1) {
@@ -224,6 +235,165 @@ function monthlyCost(itemName, product) {
   return unitPrice * (cons.monthly_consumption || 0);
 }
 
+function findItemRecord(itemName) {
+  return needsData.find(n => n.name === itemName);
+}
+
+function weeklyNeedFor(itemName) {
+  const cons = consumptionMap.get(itemName);
+  if (cons && Number.isFinite(cons.monthly_consumption)) {
+    const weekly = cons.monthly_consumption / WEEKS_PER_MONTH;
+    if (Number.isFinite(weekly) && weekly > 0) {
+      return weekly;
+    }
+  }
+  const itemRecord = findItemRecord(itemName);
+  if (itemRecord && Number.isFinite(itemRecord.total_needed_year)) {
+    const yearly = itemRecord.total_needed_year / 52;
+    if (Number.isFinite(yearly) && yearly > 0) {
+      return yearly;
+    }
+  }
+  return null;
+}
+
+function resolveCapMultiplier(itemName, categoryCaps, itemCaps) {
+  if (itemCaps && itemCaps[itemName] != null) {
+    return itemCaps[itemName];
+  }
+  const itemRecord = findItemRecord(itemName);
+  const category = categoryKey(itemRecord?.category);
+  if (categoryCaps && categoryCaps[category] != null) {
+    return categoryCaps[category];
+  }
+  return DEFAULT_ORDER_CAP;
+}
+
+function normalizeUnit(unit) {
+  return typeof unit === 'string' ? unit.trim().toLowerCase() : '';
+}
+
+function convertQuantity(qty, fromUnit, toUnit, info = {}) {
+  if (qty == null) return null;
+  const from = normalizeUnit(fromUnit);
+  const to = normalizeUnit(toUnit);
+  if (!from || !to) return null;
+  if (from === to) return qty;
+  const converted = convertWithDensity(qty, from, to, {
+    convert_volume_to_weight: info.convert,
+    custom_density_ratio: info.ratio
+  });
+  if (Number.isFinite(converted)) {
+    return converted;
+  }
+  const plain = convert(qty, from, to);
+  if (Number.isFinite(plain)) {
+    return plain;
+  }
+  return null;
+}
+
+function tryConvertProductQuantity(product, multiplier, targetUnit, info) {
+  if (targetUnit === 'each') {
+    return multiplier;
+  }
+  const target = normalizeUnit(targetUnit);
+  if (!target) return null;
+  if (product.convertedQty != null) {
+    const sourceUnit = normalizeUnit(product.unitType || product.unit || 'oz');
+    const converted = convertQuantity(
+      product.convertedQty * multiplier,
+      sourceUnit || 'oz',
+      target,
+      info
+    );
+    if (converted != null) return converted;
+  }
+  if (product.sizeQty != null && product.sizeUnit) {
+    const converted = convertQuantity(
+      product.sizeQty * multiplier,
+      product.sizeUnit,
+      target,
+      info
+    );
+    if (converted != null) return converted;
+  }
+  const { unitType, pricePerUnit } = getPriceUnitInfo(product);
+  if (pricePerUnit != null && product.priceNumber != null && unitType) {
+    const totalUnits = product.priceNumber / pricePerUnit;
+    const converted = convertQuantity(totalUnits, unitType, target, info);
+    if (converted != null) return converted;
+  }
+  return null;
+}
+
+function totalHomeUnits(itemName, product) {
+  const itemRecord = findItemRecord(itemName);
+  if (!itemRecord) return null;
+  const info = densityMap[itemName] || {};
+  const { count, weightPerPack } = getPackInfo(product, itemName);
+  const multiplier = weightPerPack ? 1 : count;
+  const homeUnit = normalizeUnit(itemRecord.home_unit || 'each');
+
+  if (homeUnit === 'each') {
+    return multiplier;
+  }
+  if (homeUnit === 'sheets') {
+    const sheets = extractSheetCount(itemName, product);
+    if (sheets != null) {
+      return sheets;
+    }
+    return null;
+  }
+
+  const direct = tryConvertProductQuantity(product, multiplier, homeUnit, info);
+  if (direct != null) {
+    return direct;
+  }
+
+  const totalOz = tryConvertProductQuantity(product, multiplier, 'oz', info);
+  if (totalOz != null) {
+    const converted = convertQuantity(totalOz, 'oz', homeUnit, info);
+    if (converted != null) {
+      return converted;
+    }
+  }
+
+  return null;
+}
+
+function computeCapLimit(weeklyNeed, multiplier, treatWhole, minPurchasable) {
+  const capMultiplier = Number.isFinite(multiplier) && multiplier > 0 ? multiplier : DEFAULT_ORDER_CAP;
+  let base = null;
+  if (Number.isFinite(weeklyNeed) && weeklyNeed > 0) {
+    const candidate = weeklyNeed * capMultiplier;
+    if (Number.isFinite(candidate) && candidate > 0) {
+      base = candidate;
+    }
+  }
+
+  if (treatWhole) {
+    const minimum = Number.isFinite(minPurchasable) && minPurchasable > 0 ? minPurchasable : 1;
+    if (base == null || base < minimum) {
+      return minimum;
+    }
+    return base;
+  }
+
+  return base;
+}
+
+function minPurchasableUnits(itemName, products) {
+  let min = Infinity;
+  for (const prod of products) {
+    const units = totalHomeUnits(itemName, prod);
+    if (Number.isFinite(units) && units > 0 && units < min) {
+      min = units;
+    }
+  }
+  return min === Infinity ? null : min;
+}
+
 function storageKey(type, item, store) {
   return `${type}_${encodeURIComponent(item)}_${encodeURIComponent(store)}`;
 }
@@ -294,7 +464,7 @@ function loadProducts(item, store) {
   });
 }
 
-function buildWeightPackMap(products) {
+function buildWeightPackMap(products, itemName) {
   const map = new Map();
   for (const p of products) {
     let info;
@@ -304,7 +474,7 @@ function buildWeightPackMap(products) {
       info = baseGetPackInfo(p);
     }
     if (info.count > 1) {
-      const key = weightKey(p, item);
+      const key = weightKey(p, itemName);
       if (key && (!map.has(key) || map.get(key).count < info.count)) {
         map.set(key, info);
       }
@@ -337,13 +507,24 @@ title.textContent = `${item} - ${store}`;
 
 async function init() {
   await initUomTable();
-  const [products, coupons, needs, consumption, mealMonth, dMap] = await Promise.all([
+  const [
+    products,
+    coupons,
+    needs,
+    consumption,
+    mealMonth,
+    dMap,
+    categoryCaps,
+    itemCapMap
+  ] = await Promise.all([
     loadProducts(item, store),
     loadCoupons(),
     loadNeeds(),
     loadMonthlyConsumption(),
     loadMealPlanMonth(),
-    loadDensityMap()
+    loadDensityMap(),
+    loadCategoryCaps(),
+    loadItemCaps()
   ]);
 
   needsData = needs;
@@ -358,8 +539,30 @@ async function init() {
 
   const week = getCurrentWeek();
   const adjusted = products.map(p => applyCoupon(p, coupons[item], week, store));
-  const filtered = adjusted; // include all scraped products
-  buildWeightPackMap(filtered);
+  buildWeightPackMap(adjusted, item);
+
+  const itemRecord = findItemRecord(item);
+  const weeklyNeed = weeklyNeedFor(item);
+  const multiplier = resolveCapMultiplier(item, categoryCaps, itemCapMap);
+  const minUnits = itemRecord?.treat_as_whole_unit
+    ? minPurchasableUnits(item, adjusted)
+    : null;
+  const capLimit = computeCapLimit(
+    weeklyNeed,
+    multiplier,
+    itemRecord?.treat_as_whole_unit,
+    minUnits
+  );
+
+  const filtered =
+    capLimit == null
+      ? adjusted
+      : adjusted.filter(prod => {
+          const totalUnits = totalHomeUnits(item, prod);
+          if (totalUnits == null) return true;
+          return totalUnits <= capLimit + EPSILON;
+        });
+
   if (filtered.length === 0) {
     container.textContent = 'No products found.';
     return;

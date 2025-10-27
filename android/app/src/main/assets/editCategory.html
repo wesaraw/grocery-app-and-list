@@ -4,21 +4,76 @@
   <meta charset="utf-8">
   <title>Edit Categories</title>
   <style>
-    body { font-family: Arial, sans-serif; width: 300px; }
-    .item { margin-bottom: 10px; }
-    input[type="text"] { width: 120px; }
+    body {
+      font-family: Arial, sans-serif;
+      width: 480px;
+      margin: 0 auto;
+      padding: 16px;
+      box-sizing: border-box;
+    }
+    h1 {
+      margin-top: 0;
+      margin-bottom: 12px;
+    }
+    label.search {
+      display: block;
+      margin-bottom: 12px;
+    }
+    #categories {
+      margin-top: 8px;
+    }
     .category-header {
       border-top: 1px solid #ccc;
-      margin-top: 10px;
+      margin-top: 12px;
+      padding-top: 8px;
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .category-cap-control {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.9em;
+    }
+    .category-cap-control .cap-input {
+      width: 72px;
+    }
+    .item {
+      padding: 10px 0;
+      border-bottom: 1px solid #eee;
+    }
+    .item-title {
+      display: block;
+      font-weight: bold;
+    }
+    .item-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-top: 6px;
+    }
+    .category-input {
+      width: 180px;
+    }
+    .cap-field {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .cap-input {
+      width: 80px;
     }
   </style>
 </head>
 <body>
   <h1>Edit Categories</h1>
-  <label>Search: <input id="searchBox" type="text" placeholder="Search"></label>
+  <label class="search">Search: <input id="searchBox" type="text" placeholder="Search"></label>
   <div id="categories"></div>
   <script src="bridge.js"></script>
-<script type="module" src="editCategory.js"></script>
+  <script type="module" src="editCategory.js"></script>
 </body>
 </html>
