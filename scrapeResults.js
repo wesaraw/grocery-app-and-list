@@ -4,6 +4,11 @@ import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from "./utils/priceUtils.js";
 import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
 import { formatQuantity, roundQuantity } from './utils/quantityFormat.js';
+import { WEEKS_PER_MONTH } from './utils/constants.js';
+import {
+  loadOrderQuantityCaps,
+  resolveOrderCapPercent
+} from './utils/orderQuantityCaps.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -30,6 +35,7 @@ let needsData = [];
 let consumptionMap = new Map();
 let weightPackMap = new Map();
 let densityMap = {};
+let needsByName = new Map();
 
 function baseGetPackInfo(product) {
   if (product && product.packCount && product.packCount > 1) {
@@ -216,6 +222,84 @@ function homeUnitLabel(itemName) {
   return u === 'each' ? 'ea' : u;
 }
 
+function itemInfo(itemName) {
+  return needsByName.get(itemName);
+}
+
+function singlePackQuantityInHomeUnit(itemName, product) {
+  const info = itemInfo(itemName);
+  if (!info) return null;
+  const homeUnit = (info.home_unit || 'each').toLowerCase();
+  const densityInfo = densityMap[itemName] || {};
+  const { count, weightPerPack } = getPackInfo(product, itemName);
+  const multiplier = weightPerPack ? 1 : count;
+
+  if (homeUnit === 'each') {
+    return multiplier;
+  }
+
+  if (homeUnit === 'sheets') {
+    const sheets = extractSheetCount(itemName, product);
+    if (sheets != null) return sheets;
+    if (!weightPerPack) return count;
+    return null;
+  }
+
+  let totalOz = null;
+  if (product.convertedQty != null) {
+    totalOz = product.convertedQty * multiplier;
+  } else if (product.sizeQty != null && product.sizeUnit) {
+    const converted = convertWithDensity(
+      product.sizeQty * multiplier,
+      product.sizeUnit,
+      'oz',
+      { convert_volume_to_weight: densityInfo.convert, custom_density_ratio: densityInfo.ratio }
+    );
+    if (Number.isFinite(converted)) {
+      totalOz = converted;
+    }
+  }
+
+  if (totalOz != null) {
+    if (homeUnit === 'oz') {
+      return totalOz;
+    }
+    const quantity = convertWithDensity(
+      totalOz,
+      'oz',
+      homeUnit,
+      { convert_volume_to_weight: densityInfo.convert, custom_density_ratio: densityInfo.ratio }
+    );
+    if (Number.isFinite(quantity) && quantity > 0) {
+      return quantity;
+    }
+  }
+
+  if (!weightPerPack) {
+    return count;
+  }
+  return null;
+}
+
+function weeklyNeedForItem(itemName) {
+  const cons = consumptionMap.get(itemName);
+  if (!cons) return 0;
+  const monthly =
+    typeof cons.monthly_consumption === 'number'
+      ? cons.monthly_consumption
+      : parseFloat(cons.monthly_consumption);
+  if (!Number.isFinite(monthly) || monthly <= 0) return 0;
+  return monthly / WEEKS_PER_MONTH;
+}
+
+function shouldIncludeProduct(itemName, product, weeklyNeed, threshold) {
+  if (weeklyNeed <= 0) return true;
+  const quantity = singlePackQuantityInHomeUnit(itemName, product);
+  if (quantity == null || !Number.isFinite(quantity)) return true;
+  if (quantity <= weeklyNeed) return true;
+  return quantity <= threshold;
+}
+
 function monthlyCost(itemName, product) {
   const cons = consumptionMap.get(itemName);
   if (!cons) return null;
@@ -337,16 +421,26 @@ title.textContent = `${item} - ${store}`;
 
 async function init() {
   await initUomTable();
-  const [products, coupons, needs, consumption, mealMonth, dMap] = await Promise.all([
+  const [
+    products,
+    coupons,
+    needs,
+    consumption,
+    mealMonth,
+    dMap,
+    caps
+  ] = await Promise.all([
     loadProducts(item, store),
     loadCoupons(),
     loadNeeds(),
     loadMonthlyConsumption(),
     loadMealPlanMonth(),
-    loadDensityMap()
+    loadDensityMap(),
+    loadOrderQuantityCaps()
   ]);
 
   needsData = needs;
+  needsByName = new Map(needs.map(n => [n.name, n]));
   densityMap = dMap;
   const consMap = new Map(consumption.map(c => [c.name, c]));
   (mealMonth || []).forEach(m => {
@@ -358,7 +452,23 @@ async function init() {
 
   const week = getCurrentWeek();
   const adjusted = products.map(p => applyCoupon(p, coupons[item], week, store));
-  const filtered = adjusted; // include all scraped products
+  const { categoryCaps = {}, itemCaps = {} } = caps || {};
+  const itemMeta = needsByName.get(item) || {};
+  const categoryName = itemMeta.category || 'Other';
+  const capPercent = resolveOrderCapPercent({
+    itemName: item,
+    categoryName,
+    itemCaps,
+    categoryCaps
+  });
+  const weeklyNeed = weeklyNeedForItem(item);
+  const capThreshold =
+    weeklyNeed > 0 ? Math.max(weeklyNeed, (weeklyNeed * capPercent) / 100) : 0;
+
+  buildWeightPackMap(adjusted);
+  const filtered = adjusted.filter(prod =>
+    shouldIncludeProduct(item, prod, weeklyNeed, capThreshold)
+  );
   buildWeightPackMap(filtered);
   if (filtered.length === 0) {
     container.textContent = 'No products found.';

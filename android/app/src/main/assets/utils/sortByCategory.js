@@ -13,7 +13,8 @@ export function renderItemsWithCategoryHeaders(
   items,
   container,
   renderFn,
-  headerState = {}
+  headerState = {},
+  headerEnhancer
 ) {
   let lastCat = null;
   let header = null;
@@ -27,7 +28,13 @@ export function renderItemsWithCategoryHeaders(
       n.style.display = hidden ? 'none' : '';
     });
     hdr.style.cursor = 'pointer';
-    hdr.addEventListener('click', () => {
+    hdr.addEventListener('click', event => {
+      if (
+        event.target &&
+        event.target.closest('input, select, textarea, button')
+      ) {
+        return;
+      }
       const isHidden = hdr.dataset.hidden === 'true';
       hdr.dataset.hidden = isHidden ? 'false' : 'true';
       nodesForHeader.forEach(n => {
@@ -45,6 +52,9 @@ export function renderItemsWithCategoryHeaders(
       header = document.createElement('h3');
       header.className = 'category-header';
       header.textContent = cat;
+      if (typeof headerEnhancer === 'function') {
+        headerEnhancer(header, cat, headerState);
+      }
       nodes = [];
       container.appendChild(header);
     }
