@@ -4,6 +4,13 @@ import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from "./utils/priceUtils.js";
 import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
 import { formatQuantity, roundQuantity } from './utils/quantityFormat.js';
+import { WEEKS_PER_MONTH } from './utils/constants.js';
+import {
+  DEFAULT_ORDER_CAP_PERCENT,
+  ITEM_CAP_PROPERTY,
+  loadCategoryCaps,
+  normalizeCapPercent,
+} from './utils/orderCapSettings.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -27,9 +34,114 @@ const loadNeeds = () => loadArray('yearlyNeeds', YEARLY_NEEDS_PATH);
 const loadMonthlyConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
 
 let needsData = [];
+let needsMap = new Map();
 let consumptionMap = new Map();
 let weightPackMap = new Map();
 let densityMap = {};
+
+function getCategoryKey(categoryName) {
+  const trimmed = (categoryName || '').trim();
+  return trimmed || 'Other';
+}
+
+function getEffectiveCapPercent(itemRecord, categoryCaps = {}) {
+  const itemOverride = normalizeCapPercent(itemRecord?.[ITEM_CAP_PROPERTY]);
+  if (itemOverride !== null) {
+    return itemOverride;
+  }
+  const categoryOverride = normalizeCapPercent(
+    categoryCaps[getCategoryKey(itemRecord?.category)]
+  );
+  if (categoryOverride !== null) {
+    return categoryOverride;
+  }
+  return DEFAULT_ORDER_CAP_PERCENT;
+}
+
+function computeWeeklyNeed(itemName) {
+  const cons = consumptionMap.get(itemName);
+  if (cons) {
+    const monthly = Number(cons.monthly_consumption);
+    if (Number.isFinite(monthly) && monthly > 0) {
+      const weeklyFromMonthly = monthly / WEEKS_PER_MONTH;
+      if (Number.isFinite(weeklyFromMonthly) && weeklyFromMonthly > 0) {
+        return weeklyFromMonthly;
+      }
+    }
+  }
+  const needs = needsMap.get(itemName);
+  if (needs) {
+    const yearly = Number(needs.total_needed_year);
+    if (Number.isFinite(yearly) && yearly > 0) {
+      const weeklyFromYearly = yearly / 52;
+      if (Number.isFinite(weeklyFromYearly) && weeklyFromYearly > 0) {
+        return weeklyFromYearly;
+      }
+    }
+  }
+  return null;
+}
+
+function totalHomeUnits(itemName, product) {
+  const itemRecord = needsMap.get(itemName);
+  if (!itemRecord || !product) {
+    return null;
+  }
+
+  const homeUnit = (itemRecord.home_unit || 'each').toLowerCase();
+  const info = densityMap[itemName] || {};
+  const { count: packCount, weightPerPack } = getPackInfo(product, itemName);
+  const multiplier = weightPerPack ? 1 : packCount;
+
+  if (homeUnit === 'each') {
+    return multiplier;
+  }
+
+  if (homeUnit === 'sheets') {
+    const sheets = extractSheetCount(itemName, product);
+    if (Number.isFinite(sheets) && sheets > 0) {
+      return sheets;
+    }
+    return null;
+  }
+
+  const densitySettings = {
+    convert_volume_to_weight: info.convert,
+    custom_density_ratio: info.ratio,
+  };
+
+  if (product.convertedQty != null) {
+    const totalOz = product.convertedQty * multiplier;
+    if (Number.isFinite(totalOz) && totalOz > 0) {
+      const converted = convertWithDensity(
+        totalOz,
+        'oz',
+        itemRecord.home_unit,
+        densitySettings
+      );
+      if (Number.isFinite(converted) && converted > 0) {
+        return converted;
+      }
+      if (homeUnit === 'oz') {
+        return totalOz;
+      }
+    }
+  }
+
+  if (product.sizeQty != null && product.sizeUnit) {
+    const converted = convertWithDensity(
+      product.sizeQty * multiplier,
+      product.sizeUnit,
+      itemRecord.home_unit,
+      densitySettings
+    );
+    if (Number.isFinite(converted) && converted > 0) {
+      return converted;
+    }
+  }
+
+  return null;
+}
 
 function baseGetPackInfo(product) {
   if (product && product.packCount && product.packCount > 1) {
@@ -337,16 +449,26 @@ title.textContent = `${item} - ${store}`;
 
 async function init() {
   await initUomTable();
-  const [products, coupons, needs, consumption, mealMonth, dMap] = await Promise.all([
+  const [
+    products,
+    coupons,
+    needs,
+    consumption,
+    mealMonth,
+    dMap,
+    categoryCaps,
+  ] = await Promise.all([
     loadProducts(item, store),
     loadCoupons(),
     loadNeeds(),
     loadMonthlyConsumption(),
     loadMealPlanMonth(),
-    loadDensityMap()
+    loadDensityMap(),
+    loadCategoryCaps(),
   ]);
 
   needsData = needs;
+  needsMap = new Map(needs.map(n => [n.name, n]));
   densityMap = dMap;
   const consMap = new Map(consumption.map(c => [c.name, c]));
   (mealMonth || []).forEach(m => {
@@ -358,7 +480,30 @@ async function init() {
 
   const week = getCurrentWeek();
   const adjusted = products.map(p => applyCoupon(p, coupons[item], week, store));
-  const filtered = adjusted; // include all scraped products
+  buildWeightPackMap(adjusted);
+
+  const needsRecord = needsMap.get(item);
+  const capPercent = needsRecord
+    ? getEffectiveCapPercent(needsRecord, categoryCaps)
+    : DEFAULT_ORDER_CAP_PERCENT;
+  const capMultiplier = capPercent > 0 ? capPercent / 100 : null;
+  const weeklyNeed = computeWeeklyNeed(item);
+  const tolerance = 1e-6;
+
+  const filtered = adjusted.filter(prod => {
+    if (!prod) {
+      return false;
+    }
+    if (!capMultiplier || !weeklyNeed) {
+      return true;
+    }
+    const totalUnits = totalHomeUnits(item, prod);
+    if (!Number.isFinite(totalUnits) || totalUnits <= 0) {
+      return true;
+    }
+    return totalUnits <= weeklyNeed * capMultiplier + tolerance;
+  });
+
   buildWeightPackMap(filtered);
   if (filtered.length === 0) {
     container.textContent = 'No products found.';
