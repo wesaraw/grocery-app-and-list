@@ -166,6 +166,9 @@ if (!dentastixItem) {
 if (Math.abs(dentastixItem.sizeQty - 26.7) > 0.0001) {
   throw new Error(`Expected sizeQty 26.7 but got ${dentastixItem.sizeQty}`);
 }
+if (dentastixItem.sizeUnit !== 'oz') {
+  throw new Error(`Expected sizeUnit "oz" but got ${dentastixItem.sizeUnit}`);
+}
 if (dentastixItem.size !== '26.7 oz') {
   throw new Error(`Expected size string "26.7 oz" but got ${dentastixItem.size}`);
 }
@@ -178,6 +181,9 @@ if (!greeniesItem) {
 }
 if (Math.abs(greeniesItem.sizeQty - 7.9) > 0.0001) {
   throw new Error(`Expected sizeQty 7.9 but got ${greeniesItem.sizeQty}`);
+}
+if (greeniesItem.sizeUnit !== 'oz') {
+  throw new Error(`Expected sizeUnit "oz" but got ${greeniesItem.sizeUnit}`);
 }
 if (greeniesItem.size !== '7.9 oz') {
   throw new Error(`Expected size string "7.9 oz" but got ${greeniesItem.size}`);

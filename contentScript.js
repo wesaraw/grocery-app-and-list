@@ -189,8 +189,10 @@ function scrapeStopAndShop() {
     return normalized;
   }
 
+  const WEIGHT_UNIT_PATTERN =
+    'fl\\s*oz|oz|lb|kg|ml|l|gal|g|qt|pt|cup|tbsp|tsp';
   const UNIT_PATTERN =
-    'fl\\s*oz|oz|lb|kg|ml|l|gal|g|qt|pt|cup|tbsp|tsp|ea|ct|pkg|box|can|bag|bottle|stick|roll|bar|pouch|jar|packet|sleeve|slice|piece|tube|tray|unit';
+    `${WEIGHT_UNIT_PATTERN}|ea|ct|pkg|box|can|bag|bottle|stick|roll|bar|pouch|jar|packet|sleeve|slice|piece|tube|tray|unit`;
   const UNIT_PATTERN_NO_SPACE = UNIT_PATTERN.replace(/\\s\*/g, '');
 
   const sanitize = str =>
@@ -285,7 +287,10 @@ function scrapeStopAndShop() {
     let sizeUnit = null;
     const normalizedUnitSize = normalizeUnitPhrases(unitSize);
     if (normalizedUnitSize) {
-      const m = normalizedUnitSize.match(new RegExp(`([\\d./]+)\\s*(${UNIT_PATTERN})`, 'i'));
+      let m = normalizedUnitSize.match(new RegExp(`([\\d./]+)\\s*(${WEIGHT_UNIT_PATTERN})`, 'i'));
+      if (!m) {
+        m = normalizedUnitSize.match(new RegExp(`([\\d./]+)\\s*(${UNIT_PATTERN})`, 'i'));
+      }
       if (m) {
         sizeQty = parseNumber(m[1]);
         sizeUnit = m[2].toLowerCase().replace(/[\s.]+/g, '');
