@@ -196,6 +196,29 @@ function scrapeStopAndShop() {
   const sanitize = str =>
     str?.replace(/<[^>]*>/g, ' ').replace(/&nbsp;|&#160;/gi, ' ').replace(/\s+/g, ' ').trim();
 
+  const COUNT_UNITS = new Set([
+    'ea',
+    'ct',
+    'count',
+    'pkg',
+    'box',
+    'can',
+    'bag',
+    'bottle',
+    'stick',
+    'roll',
+    'bar',
+    'pouch',
+    'jar',
+    'packet',
+    'sleeve',
+    'slice',
+    'piece',
+    'tube',
+    'tray',
+    'unit'
+  ]);
+
   const matchPack = str => {
     if (!str) return null;
     const s = sanitize(str);
@@ -273,11 +296,19 @@ function scrapeStopAndShop() {
     let totalSizeQty = null;
     if (sizeQty != null && sizeUnit) {
       const normalizedUnit = sizeUnit.toLowerCase();
-      totalSizeQty = COUNT_UNITS.has(normalizedUnit) ? sizeQty : sizeQty * packCount;
+      const shouldMultiply =
+        COUNT_UNITS.has(normalizedUnit) &&
+        packCount > 1 &&
+        Math.abs(sizeQty - packCount) > 0.0001;
+      totalSizeQty = shouldMultiply ? sizeQty * packCount : sizeQty;
       sizeUnit = normalizedUnit;
     } else if (unitQty != null && unitType) {
       const normalizedUnit = unitType.toLowerCase();
-      totalSizeQty = unitQty * packCount;
+      const shouldMultiply =
+        COUNT_UNITS.has(normalizedUnit) &&
+        packCount > 1 &&
+        Math.abs(unitQty - packCount) > 0.0001;
+      totalSizeQty = shouldMultiply ? unitQty * packCount : unitQty;
       sizeUnit = normalizedUnit;
     }
     sizeQty = totalSizeQty;
@@ -471,11 +502,22 @@ function scrapeWalmart() {
     }
 
     let totalSizeQty = null;
-    if (sizeQty != null) {
-      totalSizeQty = sizeQty * packCount;
+    if (sizeQty != null && sizeUnit) {
+      const normalizedUnit = sizeUnit.toLowerCase();
+      const shouldMultiply =
+        COUNT_UNITS.has(normalizedUnit) &&
+        packCount > 1 &&
+        Math.abs(sizeQty - packCount) > 0.0001;
+      totalSizeQty = shouldMultiply ? sizeQty * packCount : sizeQty;
+      sizeUnit = normalizedUnit;
     } else if (unitQty != null && unitType) {
-      totalSizeQty = unitQty * packCount;
-      sizeUnit = unitType;
+      const normalizedUnit = unitType.toLowerCase();
+      const shouldMultiply =
+        COUNT_UNITS.has(normalizedUnit) &&
+        packCount > 1 &&
+        Math.abs(unitQty - packCount) > 0.0001;
+      totalSizeQty = shouldMultiply ? unitQty * packCount : unitQty;
+      sizeUnit = normalizedUnit;
     }
     sizeQty = totalSizeQty;
 
@@ -1076,11 +1118,22 @@ function scrapeRocheBros() {
     }
 
     let totalSizeQty = null;
-    if (sizeQty != null) {
-      totalSizeQty = sizeQty * packCount;
+    if (sizeQty != null && sizeUnit) {
+      const normalizedUnit = sizeUnit.toLowerCase();
+      const shouldMultiply =
+        COUNT_UNITS.has(normalizedUnit) &&
+        packCount > 1 &&
+        Math.abs(sizeQty - packCount) > 0.0001;
+      totalSizeQty = shouldMultiply ? sizeQty * packCount : sizeQty;
+      sizeUnit = normalizedUnit;
     } else if (unitQty != null && unitType) {
-      totalSizeQty = unitQty * packCount;
-      sizeUnit = unitType;
+      const normalizedUnit = unitType.toLowerCase();
+      const shouldMultiply =
+        COUNT_UNITS.has(normalizedUnit) &&
+        packCount > 1 &&
+        Math.abs(unitQty - packCount) > 0.0001;
+      totalSizeQty = shouldMultiply ? unitQty * packCount : unitQty;
+      sizeUnit = normalizedUnit;
     }
     sizeQty = totalSizeQty;
 

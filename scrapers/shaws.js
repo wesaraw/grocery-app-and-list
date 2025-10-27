@@ -203,11 +203,22 @@ export function scrapeShaws() {
   }
 
     let totalSizeQty = null;
-    if (sizeQty != null) {
-      totalSizeQty = sizeQty * packCount;
+    if (sizeQty != null && sizeUnit) {
+      const normalizedUnit = sizeUnit.toLowerCase();
+      const shouldMultiply =
+        COUNT_UNITS.has(normalizedUnit) &&
+        packCount > 1 &&
+        Math.abs(sizeQty - packCount) > 0.0001;
+      totalSizeQty = shouldMultiply ? sizeQty * packCount : sizeQty;
+      sizeUnit = normalizedUnit;
     } else if (unitQty != null && unitType) {
-      totalSizeQty = unitQty * packCount;
-      sizeUnit = unitType;
+      const normalizedUnit = unitType.toLowerCase();
+      const shouldMultiply =
+        COUNT_UNITS.has(normalizedUnit) &&
+        packCount > 1 &&
+        Math.abs(unitQty - packCount) > 0.0001;
+      totalSizeQty = shouldMultiply ? unitQty * packCount : unitQty;
+      sizeUnit = normalizedUnit;
     }
     sizeQty = totalSizeQty;
 

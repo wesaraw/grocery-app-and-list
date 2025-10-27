@@ -179,11 +179,19 @@ export function scrapeStopAndShop() {
     let totalSizeQty = null;
     if (sizeQty != null && sizeUnit) {
       const normalizedUnit = sizeUnit.toLowerCase();
-      totalSizeQty = COUNT_UNITS.has(normalizedUnit) ? sizeQty : sizeQty * packCount;
+      const shouldMultiply =
+        COUNT_UNITS.has(normalizedUnit) &&
+        packCount > 1 &&
+        Math.abs(sizeQty - packCount) > 0.0001;
+      totalSizeQty = shouldMultiply ? sizeQty * packCount : sizeQty;
       sizeUnit = normalizedUnit;
     } else if (unitQty != null && unitType) {
       const normalizedUnit = unitType.toLowerCase();
-      totalSizeQty = unitQty * packCount;
+      const shouldMultiply =
+        COUNT_UNITS.has(normalizedUnit) &&
+        packCount > 1 &&
+        Math.abs(unitQty - packCount) > 0.0001;
+      totalSizeQty = shouldMultiply ? unitQty * packCount : unitQty;
       sizeUnit = normalizedUnit;
     }
     sizeQty = totalSizeQty;

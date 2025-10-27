@@ -146,6 +146,46 @@ if (platesItem.unitType !== 'ea') {
   throw new Error(`Expected unitType "ea" but got ${platesItem.unitType}`);
 }
 
+const dogTreatsHtml = fs.readFileSync('test/samples/stopandshop-dog-treats.html', 'utf8');
+const dogTreatsDom = new JSDOM(dogTreatsHtml);
+Object.defineProperty(dogTreatsDom.window.HTMLElement.prototype, 'innerText', {
+  get() {
+    return this.textContent;
+  },
+  set(v) {
+    this.textContent = v;
+  }
+});
+global.document = dogTreatsDom.window.document;
+global.window = dogTreatsDom.window;
+const dogTreatProducts = scrapeStopAndShop();
+const dentastixItem = dogTreatProducts.find(p => /Dentastix/i.test(p.name));
+if (!dentastixItem) {
+  throw new Error('Failed to find Stop & Shop Dentastix item');
+}
+if (Math.abs(dentastixItem.sizeQty - 26.7) > 0.0001) {
+  throw new Error(`Expected sizeQty 26.7 but got ${dentastixItem.sizeQty}`);
+}
+if (dentastixItem.size !== '26.7 oz') {
+  throw new Error(`Expected size string "26.7 oz" but got ${dentastixItem.size}`);
+}
+if (dentastixItem.packCount !== 32) {
+  throw new Error(`Expected packCount 32 but got ${dentastixItem.packCount}`);
+}
+const greeniesItem = dogTreatProducts.find(p => /Greenies/i.test(p.name));
+if (!greeniesItem) {
+  throw new Error('Failed to find Stop & Shop Greenies item');
+}
+if (Math.abs(greeniesItem.sizeQty - 7.9) > 0.0001) {
+  throw new Error(`Expected sizeQty 7.9 but got ${greeniesItem.sizeQty}`);
+}
+if (greeniesItem.size !== '7.9 oz') {
+  throw new Error(`Expected size string "7.9 oz" but got ${greeniesItem.size}`);
+}
+if (greeniesItem.packCount !== 30) {
+  throw new Error(`Expected packCount 30 but got ${greeniesItem.packCount}`);
+}
+
 // Walmart fl. oz parsing
 const snippetHtml = `
 <div data-testid="list-view">
