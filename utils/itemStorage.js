@@ -200,8 +200,13 @@ export async function convertArrayToNames(arr) {
       if (mapped && mapped !== item.name) {
         return { ...item, name: mapped };
       }
-      if (item.name == null) {
-        return { ...item, name: mapped || id };
+      const hasExistingName =
+        typeof item.name === 'string' && item.name.trim().length > 0;
+      if (!hasExistingName) {
+        const fallback = mapped || id;
+        if (fallback != null) {
+          return { ...item, name: fallback };
+        }
       }
     }
     return item;
@@ -243,7 +248,20 @@ export async function loadArray(key) {
         ? stored.some((item, idx) => {
             const updated = withNames[idx];
             if (!item || !updated) return false;
-            return item.name !== updated.name;
+            const nextName = updated.name;
+            if (typeof nextName !== 'string') return false;
+            const trimmed = nextName.trim();
+            if (!trimmed) return false;
+            if (/^\d+$/.test(trimmed)) return false;
+            const updatedId =
+              updated.id != null
+                ? String(updated.id)
+                : item.id != null
+                ? String(item.id)
+                : null;
+            if (updatedId != null && trimmed === updatedId) return false;
+            if (item.name === nextName) return false;
+            return true;
           })
         : false;
       if (needsUpdate) {

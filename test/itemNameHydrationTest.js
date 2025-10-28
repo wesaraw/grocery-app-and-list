@@ -71,6 +71,19 @@ if (!entry || entry.name !== 'Green Beans') {
   throw new Error('Expected expiration data to hydrate the Green Beans name');
 }
 
+if (
+  !Array.isArray(storageData.expirationData) ||
+  storageData.expirationData[0].name !== 'Green Beans'
+) {
+  throw new Error('Hydrated expiration data should persist the Green Beans name');
+}
+
+const secondPass = await loadItemArray('expirationData');
+const secondEntry = secondPass.find(item => item.id === '8616');
+if (!secondEntry || secondEntry.name !== 'Green Beans') {
+  throw new Error('Second hydration pass should keep the descriptive name');
+}
+
 const map = await getItemNameMap();
 if (map['Green Beans'] !== '8616') {
   throw new Error('itemNameMap should map Green Beans to 8616 after hydration');
