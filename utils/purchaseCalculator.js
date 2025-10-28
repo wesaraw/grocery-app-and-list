@@ -8,6 +8,7 @@ import {
 import { loadDensityMap } from './unitNormalize.js';
 import { loadUsers, loadUserPortionMultipliers } from './userData.js';
 import { canonicalName } from './nameUtils.js';
+import { getItemNameMap } from './itemStorage.js';
 
 
 function sumRange(arr, start, end) {
@@ -80,12 +81,35 @@ export async function calculatePurchaseNeeds(
   startDate = null,
   endDate = null
 ) {
-  const canonicalKey = name => canonicalName(name || '');
+  let nameIdMap = {};
+  try {
+    nameIdMap = (await getItemNameMap()) || {};
+  } catch (_err) {
+    nameIdMap = {};
+  }
+  const idNameMap = {};
+  Object.entries(nameIdMap).forEach(([name, id]) => {
+    if (id != null) {
+      idNameMap[String(id)] = name;
+    }
+  });
+  const resolveStoredName = raw => {
+    if (raw == null) return '';
+    const str = String(raw).trim();
+    if (!str) return '';
+    return idNameMap[str] || str;
+  };
+  const normalizedName = raw => {
+    const resolved = resolveStoredName(raw);
+    return resolved || '';
+  };
+  const canonicalKey = name => canonicalName(resolveStoredName(name));
 
   const needsUnitMap = new Map();
   const needsByCanonical = new Map();
   needs.forEach(n => {
-    const key = canonicalKey(n.name);
+    const displayName = normalizedName(n?.name);
+    const key = canonicalKey(n?.name);
     if (!key) {
       return;
     }
@@ -102,6 +126,7 @@ export async function calculatePurchaseNeeds(
     } else {
       needsByCanonical.set(key, {
         ...n,
+        name: displayName || n.name,
         canonical: key,
         base_total_needed_year: n.total_needed_year || 0
       });
@@ -127,17 +152,17 @@ export async function calculatePurchaseNeeds(
 
   const expMap = new Map();
   expiration.forEach(item => {
-    const key = canonicalKey(item.name);
+    const key = canonicalKey(item?.name);
     if (!key) return;
     if (!expMap.has(key)) {
-      expMap.set(key, item);
+      expMap.set(key, { ...item, name: normalizedName(item?.name) || item?.name });
     }
   });
 
   const mealMap = new Map();
   if (useMealPlanTotals) {
     mealYear.forEach(m => {
-      const key = canonicalKey(m.name);
+    const key = canonicalKey(m?.name);
       if (!key) return;
       const total = Number(m.total_needed_year) || 0;
       mealMap.set(key, (mealMap.get(key) || 0) + total);

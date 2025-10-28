@@ -10,7 +10,12 @@ import {
 } from './utils/sortByCategory.js';
 import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from "./utils/priceUtils.js";
 import { loadPurchases } from './utils/purchaseStorage.js';
-import { loadArray as loadItemArray, convertArrayToNames, getItemId } from './utils/itemStorage.js';
+import {
+  loadArray as loadItemArray,
+  convertArrayToNames,
+  getItemId,
+  getItemNameMap
+} from './utils/itemStorage.js';
 import { resolveNextPrepWindow } from './utils/calendarUtils.js';
 import { formatQuantity, roundQuantity } from './utils/quantityFormat.js';
 
@@ -186,6 +191,82 @@ let mealMonthMap = new Map();
 let mealPlanMonthMap = new Map();
 let selectionsData = [];
 let cookingDaysData = {};
+let itemNameToIdMap = {};
+let itemIdToNameMap = {};
+
+function resolveItemName(name) {
+  if (name == null) return '';
+  const str = String(name);
+  return itemIdToNameMap[str] || str;
+}
+
+function aliasKeys(name) {
+  if (name == null) return [];
+  const keys = new Set();
+  const str = String(name);
+  if (str) keys.add(str);
+  const resolved = resolveItemName(str);
+  if (resolved && resolved !== str) {
+    keys.add(resolved);
+  }
+  const idFromResolved = itemNameToIdMap[resolved];
+  if (idFromResolved) {
+    keys.add(idFromResolved);
+  }
+  const idFromOriginal = itemNameToIdMap[str];
+  if (idFromOriginal) {
+    keys.add(idFromOriginal);
+  }
+  return Array.from(keys);
+}
+
+function lookupByNameOrId(map, name) {
+  if (!map || typeof map.get !== 'function') return undefined;
+  for (const key of aliasKeys(name)) {
+    if (map.has(key)) {
+      return map.get(key);
+    }
+  }
+  return undefined;
+}
+
+function findNeedItem(itemName) {
+  const aliases = aliasKeys(itemName);
+  return needsData.find(n => aliases.includes(n?.name));
+}
+
+function densityInfoFor(itemName) {
+  const resolved = resolveItemName(itemName);
+  return densityMap[resolved] || densityMap[itemName] || {};
+}
+
+function resolvedNameKey(name) {
+  const resolved = resolveItemName(name);
+  if (resolved && resolved.trim()) return resolved;
+  if (name == null) return '';
+  const str = String(name).trim();
+  return str;
+}
+
+function mapByResolvedName(list, transform = entry => entry) {
+  const map = new Map();
+  (list || []).forEach(entry => {
+    if (!entry) return;
+    const key = resolvedNameKey(entry.name);
+    if (!key) return;
+    map.set(key, transform(entry, key));
+  });
+  return map;
+}
+
+function normalizeEntriesByName(list) {
+  return (list || []).map(entry => {
+    if (!entry) return entry;
+    const key = resolvedNameKey(entry.name);
+    if (!key || key === entry.name) return entry;
+    return { ...entry, name: key };
+  });
+}
 
 let resolveInit;
 const initReady = new Promise(resolve => {
@@ -288,7 +369,7 @@ function weightKey(product, itemName) {
     }
   }
   if (product.sizeQty != null && product.sizeUnit) {
-    const info = densityMap[itemName] || {};
+    const info = densityInfoFor(itemName);
     const oz = convertWithDensity(
       product.sizeQty,
       product.sizeUnit,
@@ -324,9 +405,9 @@ function getPackCount(product, map = weightPackMap, itemName = null) {
 
 function packsForNeed(itemName, needAmt, product, map = weightPackMap) {
   if (!product || needAmt == null || isNaN(needAmt)) return null;
-  const item = needsData.find(n => n.name === itemName);
+  const item = findNeedItem(itemName);
   if (!item) return null;
-  const info = densityMap[itemName] || {};
+  const info = densityInfoFor(itemName);
   const { count: pack, weightPerPack } = getPackInfo(product, map, itemName);
   if (!pack || pack <= 0) return null;
 
@@ -358,7 +439,7 @@ function packsForNeed(itemName, needAmt, product, map = weightPackMap) {
 }
 
 function needText(itemName, needAmt, product = null, map = weightPackMap) {
-  const item = needsData.find(n => n.name === itemName);
+  const item = findNeedItem(itemName);
   if (!item || needAmt == null || isNaN(needAmt)) return '';
   const packs = product ? packsForNeed(itemName, needAmt, product, map) : null;
   const packStr =
@@ -367,9 +448,10 @@ function needText(itemName, needAmt, product = null, map = weightPackMap) {
 }
 
 async function buildWeightPackMap(item, stores) {
+  const resolvedItem = resolveItemName(item);
   const map = new Map();
   for (const s of stores) {
-    const arr = await loadScraped(item, s);
+    const arr = await loadScraped(resolvedItem, s);
     for (const p of arr) {
       let info;
       if (p && p.packCount && p.packCount > 1) {
@@ -378,7 +460,7 @@ async function buildWeightPackMap(item, stores) {
         info = baseGetPackInfo(p);
       }
       if (info.count > 1) {
-        const key = weightKey(p, item);
+        const key = weightKey(p, resolvedItem);
         if (key && (!map.has(key) || map.get(key).count < info.count)) {
           map.set(key, info);
         }
@@ -391,7 +473,7 @@ async function buildWeightPackMap(item, stores) {
 
 
 function extractSheetCount(itemName, product) {
-  const sqft = sheetSqFtFor(itemName);
+  const sqft = sheetSqFtFor(resolveItemName(itemName));
   const { pricePerUnit: ppu, unitType: ut } = getPriceUnitInfo(product);
   if (ppu != null && ut && /^(?:sf|sqft)$/.test(ut) && product.priceNumber != null) {
     const totalSqFt = product.priceNumber / ppu;
@@ -409,14 +491,14 @@ function extractSheetCount(itemName, product) {
 }
 
 function pricePerHomeUnit(itemName, product, map = weightPackMap) {
-  const item = needsData.find(n => n.name === itemName);
+  const item = findNeedItem(itemName);
   if (!item || !product) return null;
-  const info = densityMap[itemName] || {};
+  const info = densityInfoFor(itemName);
   const { count: pack, weightPerPack } = getPackInfo(product, map, itemName);
   const mult = weightPerPack ? 1 : pack;
   const unit = item.home_unit ? item.home_unit.toLowerCase() : 'each';
   if (unit === 'sheets') {
-    const sheetSqFt = sheetSqFtFor(itemName);
+    const sheetSqFt = sheetSqFtFor(resolveItemName(itemName));
     const { pricePerUnit: ppu, unitType: ut } = getPriceUnitInfo(product);
     if (ppu != null && ut) {
       if (/^(?:sf|sqft)$/.test(ut)) {
@@ -466,18 +548,18 @@ function pricePerHomeUnit(itemName, product, map = weightPackMap) {
 }
 
 function monthlyCost(itemName, product, map = weightPackMap) {
-  const cons = consumptionMap.get(itemName);
+  const cons = lookupByNameOrId(consumptionMap, itemName);
   if (!cons) return null;
   const unitPrice = pricePerHomeUnit(itemName, product, map);
   if (unitPrice == null) return null;
   const base = cons.monthly_consumption || 0;
   const hasCalendar = calendarData && Object.keys(calendarData).length > 0;
-  const planned = hasCalendar ? mealPlanMonthMap.get(itemName) || 0 : 0;
+  const planned = hasCalendar ? lookupByNameOrId(mealPlanMonthMap, itemName) || 0 : 0;
   return unitPrice * (base + planned);
 }
 
 function homeUnitLabel(itemName) {
-  const item = needsData.find(n => n.name === itemName);
+  const item = findNeedItem(itemName);
   if (!item || !item.home_unit) return null;
   const u = item.home_unit.toLowerCase();
   return u === 'each' ? 'ea' : u;
@@ -548,27 +630,37 @@ async function init() {
     density,
     cookingDays
   } = await getData();
-  needsData = needs;
+  const nameMap = await getItemNameMap();
+  itemNameToIdMap = nameMap || {};
+  itemIdToNameMap = {};
+  Object.entries(itemNameToIdMap).forEach(([name, id]) => {
+    if (id != null) {
+      itemIdToNameMap[String(id)] = name;
+    }
+  });
+  const normalizedNeeds = normalizeEntriesByName(needs);
+  needsData = normalizedNeeds;
   densityMap = density;
-  selectionsData = selections;
-  const sortedNeeds = sortItemsByCategory(needs);
-  const consMap = new Map(consumption.map(c => [c.name, c]));
+  selectionsData = normalizeEntriesByName(selections);
+  const sortedNeeds = sortItemsByCategory(normalizedNeeds);
+  const consMap = mapByResolvedName(consumption, (c, key) =>
+    key === c.name ? c : { ...c, name: key }
+  );
   const hasCalendar = calendar && Object.keys(calendar).length > 0;
-  mealMonthMap = new Map(
-    (mealMonth || []).map(m => [m.name, m.monthly_consumption])
-  );
-  mealPlanMonthMap = new Map(
-    (mealMonth || []).map(m => [m.name, m.monthly_consumption])
-  );
+  mealMonthMap = mapByResolvedName(mealMonth, m => m.monthly_consumption);
+  mealPlanMonthMap = mapByResolvedName(mealMonth, m => m.monthly_consumption);
   if (!hasCalendar) {
     (mealMonth || []).forEach(m => {
-      const rec = consMap.get(m.name);
+      const rec = lookupByNameOrId(consMap, m.name);
       if (rec) rec.monthly_consumption += m.monthly_consumption;
-      else
-        consMap.set(m.name, {
-          name: m.name,
+      else {
+        const key = resolvedNameKey(m.name);
+        if (!key) return;
+        consMap.set(key, {
+          name: key,
           monthly_consumption: m.monthly_consumption
         });
+      }
     });
   }
   consumptionData = Array.from(consMap.values());
@@ -597,13 +689,14 @@ async function init() {
     densityMap,
     isoDate
   );
-  const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
-  const stockMap = new Map(stock.map(i => [i.name, i]));
+  const normalizedPurchaseInfo = normalizeEntriesByName(purchaseInfo);
+  const purchaseMap = mapByResolvedName(normalizedPurchaseInfo);
+  const stockMap = mapByResolvedName(stock);
   const itemsContainer = document.getElementById('items');
 
   renderItemsWithCategoryHeaders(sortedNeeds, itemsContainer, item => {
     const li = document.createElement('li');
-    const needInfo = purchaseMap.get(item.name);
+    const needInfo = lookupByNameOrId(purchaseMap, item.name);
     const needAmt = needInfo ? Math.round(needInfo.toBuy) : null;
     const amountText =
       needInfo && !isNaN(needAmt) ? needText(item.name, needAmt) : '';
@@ -619,7 +712,7 @@ async function init() {
     finalImg.width = 50;
     finalImg.height = 50;
     finalImg.style.display = 'none';
-    const currentQty = stockMap.get(item.name)?.amount || 0;
+    const currentQty = lookupByNameOrId(stockMap, item.name)?.amount || 0;
     const weeklyNeed = item.total_needed_year ? item.total_needed_year / 52 : 0;
     const showByStock = currentQty < weeklyNeed;
     const showByNeed =
@@ -629,7 +722,7 @@ async function init() {
     finalMap.set(item.name, rec);
     getFinal(item.name).then(async store => {
       const product = await getFinalProduct(item.name);
-      const stores = selections
+      const stores = selectionsData
         .filter(s => s.name === item.name)
         .map(s => s.store);
       const weightMap = await buildWeightPackMap(item.name, stores);
@@ -720,14 +813,15 @@ async function refreshNeeds(stock = stockData, consumed = consumedYearData) {
     densityMap,
     isoDate
   );
-  const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
-  const stockMap = new Map(stock.map(i => [i.name, i]));
+  const normalizedPurchaseInfo = normalizeEntriesByName(purchaseInfo);
+  const purchaseMap = mapByResolvedName(normalizedPurchaseInfo);
+  const stockMap = mapByResolvedName(stock);
   const text = filterText.trim().toLowerCase();
   const searchActive = text.length > 0;
   needsData.forEach(item => {
     const rec = finalMap.get(item.name);
     if (rec && rec.btn) {
-      const needInfo = purchaseMap.get(item.name);
+      const needInfo = lookupByNameOrId(purchaseMap, item.name);
       const needAmt = needInfo ? Math.round(needInfo.toBuy) : null;
       rec.needAmt = needAmt;
       const amountText =
@@ -735,7 +829,7 @@ async function refreshNeeds(stock = stockData, consumed = consumedYearData) {
           ? needText(item.name, needAmt, rec.product, rec.weightMap)
           : '';
       rec.btn.textContent = item.name + amountText;
-      const qty = stockMap.get(item.name)?.amount || 0;
+      const qty = lookupByNameOrId(stockMap, item.name)?.amount || 0;
       const weekly = item.total_needed_year ? item.total_needed_year / 52 : 0;
       const passesStock = qty < weekly;
       const passesZeroQty = !hideZeroItems || qty > 0;
@@ -763,26 +857,28 @@ async function rerenderAll() {
     mealsByCategory,
     cookingDays
   } = await getData();
-  needsData = needs;
-  selectionsData = selections;
-  const sortedNeeds = sortItemsByCategory(needs);
-  const consMap = new Map(consumption.map(c => [c.name, c]));
+  const normalizedNeeds = normalizeEntriesByName(needs);
+  needsData = normalizedNeeds;
+  selectionsData = normalizeEntriesByName(selections);
+  const sortedNeeds = sortItemsByCategory(normalizedNeeds);
+  const consMap = mapByResolvedName(consumption, (c, key) =>
+    key === c.name ? c : { ...c, name: key }
+  );
   const hasCalendar = calendar && Object.keys(calendar).length > 0;
-  mealMonthMap = new Map(
-    (mealMonth || []).map(m => [m.name, m.monthly_consumption])
-  );
-  mealPlanMonthMap = new Map(
-    (mealMonth || []).map(m => [m.name, m.monthly_consumption])
-  );
+  mealMonthMap = mapByResolvedName(mealMonth, m => m.monthly_consumption);
+  mealPlanMonthMap = mapByResolvedName(mealMonth, m => m.monthly_consumption);
   if (!hasCalendar) {
     (mealMonth || []).forEach(m => {
-      const rec = consMap.get(m.name);
+      const rec = lookupByNameOrId(consMap, m.name);
       if (rec) rec.monthly_consumption += m.monthly_consumption;
-      else
-        consMap.set(m.name, {
-          name: m.name,
+      else {
+        const key = resolvedNameKey(m.name);
+        if (!key) return;
+        consMap.set(key, {
+          name: key,
           monthly_consumption: m.monthly_consumption
         });
+      }
     });
   }
   consumptionData = Array.from(consMap.values());
@@ -811,8 +907,9 @@ async function rerenderAll() {
     densityMap,
     isoDate
   );
-  const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
-  const stockMap = new Map(stock.map(i => [i.name, i]));
+  const normalizedPurchaseInfo = normalizeEntriesByName(purchaseInfo);
+  const purchaseMap = mapByResolvedName(normalizedPurchaseInfo);
+  const stockMap = mapByResolvedName(stock);
   const text = filterText.trim().toLowerCase();
   const searchActive = text.length > 0;
   const itemsContainer = document.getElementById('items');
@@ -820,7 +917,7 @@ async function rerenderAll() {
   finalMap.clear();
   renderItemsWithCategoryHeaders(sortedNeeds, itemsContainer, item => {
     const li = document.createElement('li');
-    const needInfo = purchaseMap.get(item.name);
+    const needInfo = lookupByNameOrId(purchaseMap, item.name);
     const needAmt = needInfo ? Math.round(needInfo.toBuy) : null;
     const amountText =
       needInfo && !isNaN(needAmt) ? needText(item.name, needAmt) : '';
@@ -836,7 +933,7 @@ async function rerenderAll() {
     finalImg.width = 50;
     finalImg.height = 50;
     finalImg.style.display = 'none';
-    const currentQty = stockMap.get(item.name)?.amount || 0;
+    const currentQty = lookupByNameOrId(stockMap, item.name)?.amount || 0;
     const weeklyNeed = item.total_needed_year ? item.total_needed_year / 52 : 0;
     const passesStock = currentQty < weeklyNeed;
     const passesZeroQty = !hideZeroItems || currentQty > 0;
@@ -971,7 +1068,8 @@ async function commitSelections() {
     densityMap,
     isoDate
   );
-  const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
+  const normalizedPurchaseInfo = normalizeEntriesByName(purchaseInfo);
+  const purchaseMap = mapByResolvedName(normalizedPurchaseInfo);
 
   const { prepDays, endDate: prepWindowEndDate } = resolveNextPrepWindow(
     cookingDaysData,
@@ -995,16 +1093,17 @@ async function commitSelections() {
       isoDate,
       prepWindowEndDate
     );
-    prepPurchaseMap = new Map(prepPurchaseInfo.map(p => [p.name, p]));
+    const normalizedPrepPurchaseInfo = normalizeEntriesByName(prepPurchaseInfo);
+    prepPurchaseMap = mapByResolvedName(normalizedPrepPurchaseInfo);
   }
   const hasPrepWindow = prepWindowEndDate != null;
 
   for (const item of needsData) {
-    const needRecord = purchaseMap.get(item.name);
+    const needRecord = lookupByNameOrId(purchaseMap, item.name);
     if (!needRecord || needRecord.toBuy <= 0) continue;
     const { store, product } = await loadCommitData(item.name);
     if (!product) continue;
-    const info = densityMap[item.name] || {};
+    const info = densityInfoFor(item.name);
     const { count: pack, weightPerPack } = getPackInfo(
       product,
       new Map(),
@@ -1042,7 +1141,8 @@ async function commitSelections() {
     let prepWindowAmount = hasPrepWindow ? 0 : null;
     let prepWindowPacks = hasPrepWindow ? 0 : null;
     if (hasPrepWindow) {
-      const prepNeed = prepPurchaseMap?.get(item.name)?.toBuy || 0;
+      const prepNeed =
+        prepPurchaseMap ? lookupByNameOrId(prepPurchaseMap, item.name)?.toBuy || 0 : 0;
       const cappedPrepNeed = Math.min(needRecord.toBuy, Math.max(0, prepNeed));
       if (cappedPrepNeed > 0) {
         prepWindowPacks = Math.ceil(cappedPrepNeed / perPackHomeQty);
