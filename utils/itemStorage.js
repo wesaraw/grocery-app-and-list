@@ -8,12 +8,118 @@ function buildReverseMap(map) {
   return reverse;
 }
 
+let mapHydrationPromise = null;
+
+function collectNameEntries(val, out, visited = new WeakSet()) {
+  if (!val || typeof val !== 'object') return;
+  if (visited.has(val)) return;
+  visited.add(val);
+  if (Array.isArray(val)) {
+    val.forEach(entry => collectNameEntries(entry, out, visited));
+    return;
+  }
+
+  const id =
+    val.id != null
+      ? val.id
+      : val.itemId != null
+      ? val.itemId
+      : val.item_id != null
+      ? val.item_id
+      : null;
+  const name =
+    typeof val.name === 'string'
+      ? val.name
+      : typeof val.itemName === 'string'
+      ? val.itemName
+      : typeof val.item_name === 'string'
+      ? val.item_name
+      : null;
+
+  if (name && name.trim().length > 0 && id != null && String(name) !== String(id)) {
+    out[name] = String(id);
+  }
+
+  Object.values(val).forEach(child => {
+    if (child && typeof child === 'object') {
+      collectNameEntries(child, out, visited);
+    }
+  });
+}
+
+function loadSelected(keys) {
+  return new Promise(resolve => {
+    try {
+      chrome.storage.local.get(keys, data => resolve(data || {}));
+    } catch (e) {
+      resolve({});
+    }
+  });
+}
+
+async function rebuildNameMap() {
+  const sources = await loadSelected([
+    NAME_ID_KEY,
+    'yearlyNeeds',
+    'monthlyConsumption',
+    'expirationData',
+    'currentStock'
+  ]);
+
+  const existing = sources[NAME_ID_KEY] || {};
+  const needsHydration = Object.keys(existing).length > 0 &&
+    Object.entries(existing).every(([name, id]) => {
+      if (name == null) return true;
+      const trimmed = String(name).trim();
+      if (!trimmed) return true;
+      if (trimmed === String(id)) return true;
+      return /^\d+$/.test(trimmed);
+    });
+
+  if (!needsHydration) {
+    return existing;
+  }
+
+  const rebuilt = {};
+  ['yearlyNeeds', 'monthlyConsumption', 'expirationData', 'currentStock'].forEach(key => {
+    collectNameEntries(sources[key], rebuilt);
+  });
+
+  if (Object.keys(rebuilt).length === 0) {
+    return existing;
+  }
+
+  // Preserve any existing non-numeric entries
+  Object.entries(existing).forEach(([name, id]) => {
+    if (!rebuilt[name]) {
+      rebuilt[name] = id;
+    }
+  });
+
+  await saveMap(rebuilt);
+  return rebuilt;
+}
+
 function loadMap() {
   return new Promise(resolve => {
     try {
-      chrome.storage.local.get(NAME_ID_KEY, data => {
+      chrome.storage.local.get(NAME_ID_KEY, async data => {
         const idMap = data[NAME_ID_KEY] || {};
-        resolve(idMap);
+        if (!mapHydrationPromise) {
+          mapHydrationPromise = rebuildNameMap().finally(() => {
+            mapHydrationPromise = null;
+          });
+        }
+        let hydrated = idMap;
+        try {
+          const rebuilt = await mapHydrationPromise;
+          if (rebuilt && Object.keys(rebuilt).length) {
+            hydrated = rebuilt;
+          }
+        } catch (e) {
+          hydrated = idMap;
+        }
+        resolve(hydrated);
       });
     } catch (e) {
       resolve({});
@@ -74,8 +180,9 @@ export async function convertArrayToIds(arr) {
   for (const item of arr) {
     if (item && item.name != null && item.id == null) {
       const id = await getItemId(item.name);
-      const { name, ...rest } = item;
-      result.push({ ...rest, id });
+      result.push({ ...item, id });
+    } else if (item && item.id != null) {
+      result.push({ ...item, id: String(item.id) });
     } else {
       result.push(item);
     }
@@ -87,9 +194,15 @@ export async function convertArrayToNames(arr) {
   const map = await loadMap();
   const reverse = buildReverseMap(map);
   return arr.map(item => {
-    if (item && item.id != null && item.name == null) {
-      const id = item.id;
-      return { ...item, name: reverse[id] || id };
+    if (item && item.id != null) {
+      const id = String(item.id);
+      const mapped = reverse[id];
+      if (mapped && mapped !== item.name) {
+        return { ...item, name: mapped };
+      }
+      if (item.name == null) {
+        return { ...item, name: mapped || id };
+      }
     }
     return item;
   });
@@ -126,6 +239,17 @@ export async function loadArray(key) {
         chrome.storage.local.set({ [key]: stored });
       }
       const withNames = await convertArrayToNames(stored);
+      const needsUpdate = Array.isArray(stored)
+        ? stored.some((item, idx) => {
+            const updated = withNames[idx];
+            if (!item || !updated) return false;
+            return item.name !== updated.name;
+          })
+        : false;
+      if (needsUpdate) {
+        const rewritten = await convertArrayToIds(withNames);
+        chrome.storage.local.set({ [key]: rewritten });
+      }
       resolve(withNames);
     });
   });
