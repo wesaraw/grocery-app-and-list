@@ -91,10 +91,33 @@ function formatUnitLabel(text) {
     .join(' ');
 }
 
+function sanitizePortionCount(value) {
+  const num = typeof value === 'string' ? Number(value) : value;
+  if (!Number.isFinite(num) || num <= 0) {
+    return 1;
+  }
+  return num;
+}
+
 function formatNormalizedQuantity(value) {
   if (!Number.isFinite(value)) return null;
   const formatted = formatQuantity(value);
   return formatted === '' ? null : formatted;
+}
+
+function formatPortionCount(value) {
+  const sanitized = sanitizePortionCount(value);
+  const formatted = formatQuantity(sanitized);
+  return formatted === '' ? String(sanitized) : formatted;
+}
+
+function formatWeightValue(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num) || num <= 0) {
+    return '1';
+  }
+  const formatted = formatQuantity(num);
+  return formatted === '' ? String(num) : formatted;
 }
 
 function formatIngredientAmount(ingredient) {
@@ -148,6 +171,7 @@ function normalizeMealRecord(meal) {
   if (!Array.isArray(meal.ingredients)) {
     meal.ingredients = [];
   }
+  meal.totalPortions = sanitizePortionCount(meal.totalPortions);
   normalizeIngredientPrepFlags(meal.ingredients);
 }
 
@@ -551,6 +575,7 @@ function createRows(meal, arr) {
   let imageTd;
   let nameTd;
   let weightTd;
+  let portionTd;
   let editBtn;
   if (!Array.isArray(meal.users)) {
     const def = meal.people === undefined ? (meal.active === false ? 0 : 1) : meal.people;
@@ -709,9 +734,15 @@ function createRows(meal, arr) {
 
       weightTd = document.createElement('td');
       weightTd.style.textAlign = 'center';
-      weightTd.textContent = meal.weight ?? 1;
+      weightTd.textContent = formatWeightValue(meal.weight);
       if (ingredients.length > 1) weightTd.rowSpan = ingredients.length;
       spanCells.push(weightTd);
+
+      portionTd = document.createElement('td');
+      portionTd.style.textAlign = 'center';
+      portionTd.textContent = formatPortionCount(meal.totalPortions);
+      if (ingredients.length > 1) portionTd.rowSpan = ingredients.length;
+      spanCells.push(portionTd);
 
       const groupTd = document.createElement('td');
       const groupChk = document.createElement('input');
@@ -769,6 +800,7 @@ function createRows(meal, arr) {
       tr.appendChild(prepTd);
       tr.appendChild(leftoverTd);
       tr.appendChild(weightTd);
+      tr.appendChild(portionTd);
       tr.appendChild(groupTd);
     }
 
@@ -1002,8 +1034,13 @@ function createRows(meal, arr) {
 
     weightTd = document.createElement('td');
     weightTd.style.textAlign = 'center';
-    weightTd.textContent = meal.weight ?? 1;
+    weightTd.textContent = formatWeightValue(meal.weight);
     spanCells.push(weightTd);
+
+    portionTd = document.createElement('td');
+    portionTd.style.textAlign = 'center';
+    portionTd.textContent = formatPortionCount(meal.totalPortions);
+    spanCells.push(portionTd);
 
     const groupTd = document.createElement('td');
     const groupChk = document.createElement('input');
@@ -1032,6 +1069,7 @@ function createRows(meal, arr) {
     tr.appendChild(prepTd);
     tr.appendChild(leftoverTd);
     tr.appendChild(weightTd);
+    tr.appendChild(portionTd);
     tr.appendChild(groupTd);
     tr.appendChild(ingTd);
     tr.appendChild(prepItemTd);
@@ -1068,6 +1106,7 @@ function createRows(meal, arr) {
     let newImage = null;
     let newIngBtn;
     let weightInput;
+    let portionInput;
 
     function updateRowSpans() {
       const val = baseSpan + addedRows.length;
@@ -1083,6 +1122,7 @@ function createRows(meal, arr) {
         (bookInput && bookInput.value.trim()) ||
         (categorySelect && categorySelect.value !== type) ||
         (weightInput && weightInput.value.trim()) ||
+        (portionInput && portionInput.value.trim()) ||
         rowsInfo.some(r => {
           if (r.nameInput.value.trim() || r.qtyInput.value.trim()) return true;
           if (r.prepInput && r.prepInput.checked !== r.initialPrep) return true;
@@ -1226,6 +1266,26 @@ function createRows(meal, arr) {
     weightInput.value = meal.weight ?? 1;
     weightInput.addEventListener('input', checkSave);
 
+    if (weightTd) {
+      weightTd.textContent = '';
+      weightTd.appendChild(weightInput);
+    }
+
+    portionInput = document.createElement('input');
+    portionInput.type = 'number';
+    portionInput.min = '0.01';
+    portionInput.step = '0.01';
+    portionInput.style.width = '48px';
+    portionInput.style.marginTop = '2px';
+    portionInput.style.display = 'block';
+    portionInput.value = sanitizePortionCount(meal.totalPortions);
+    portionInput.addEventListener('input', checkSave);
+
+    if (portionTd) {
+      portionTd.textContent = '';
+      portionTd.appendChild(portionInput);
+    }
+
     bookInput = document.createElement('input');
     bookInput.style.display = 'block';
     bookInput.style.marginTop = '2px';
@@ -1313,6 +1373,13 @@ function createRows(meal, arr) {
           changed = true;
         }
       }
+      if (portionInput) {
+        const normalized = sanitizePortionCount(portionInput.value);
+        if (normalized !== meal.totalPortions) {
+          meal.totalPortions = normalized;
+          changed = true;
+        }
+      }
       const newIngs = [];
       rowsInfo.forEach(r => {
         const n = r.nameInput.value.trim();
@@ -1391,6 +1458,13 @@ function createRows(meal, arr) {
       if (changeBtn) changeBtn.remove();
       if (fileInput) fileInput.remove();
       if (weightInput) weightInput.remove();
+      if (portionInput) portionInput.remove();
+      if (weightTd) {
+        weightTd.textContent = formatWeightValue(meal.weight);
+      }
+      if (portionTd) {
+        portionTd.textContent = formatPortionCount(meal.totalPortions);
+      }
       newImage = null;
       setMealImage(imageTd.querySelector('img.meal-img'), meal);
       editBtn.classList.remove('editing');

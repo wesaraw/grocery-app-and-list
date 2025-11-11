@@ -26,6 +26,21 @@ export function parseQuantity(str) {
   return { value, unit };
 }
 
+export function getMealPortionCount(meal) {
+  if (!meal || typeof meal !== 'object') {
+    return 1;
+  }
+  const raw = meal.totalPortions;
+  if (raw == null || raw === '') {
+    return 1;
+  }
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return 1;
+  }
+  return parsed;
+}
+
 const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const WEEKDAY_INDEX = WEEKDAY_NAMES.reduce((map, name, idx) => {
   map[name.toLowerCase()] = idx;
@@ -264,6 +279,7 @@ export function aggregateCalendar(
           if (leftoverFactor <= 0) return;
           const effectiveMultiplier = userMultiplier * leftoverFactor;
           const mult = perUser ? meal.multiplier ?? 1 : meal.people ?? meal.multiplier ?? 1;
+          const portionCount = getMealPortionCount(meal);
           (meal.ingredients || []).forEach(ing => {
             const { value, unit } = parseQuantity(ing.serving_size || ing.amount);
             if (!value) return;
@@ -281,7 +297,8 @@ export function aggregateCalendar(
               arr = Array(53).fill(0);
               result.set(ing.name, arr);
             }
-            arr[week] += qty * mult * effectiveMultiplier;
+            const perPortionQty = qty / portionCount;
+            arr[week] += perPortionQty * mult * effectiveMultiplier;
             arr[week] = roundQuantity(arr[week]);
           });
         });

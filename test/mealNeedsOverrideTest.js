@@ -11,7 +11,8 @@ const storage = {
       lunchDinner: ['Monday']
     },
     {
-      breakfast: ['Monday']
+      breakfast: ['Monday'],
+      lunchDinner: ['Monday']
     }
   ],
   userPortionMultipliers: [1, 1.5],
@@ -21,9 +22,10 @@ const storage = {
     {
       id: 'B1',
       name: 'Override Breakfast',
-      ingredients: [{ name: 'Egg', amount: '1 ea' }],
+      ingredients: [{ name: 'Egg', amount: '8 ea' }],
       users: [true, true],
-      userPortionOverrides: [undefined, 2]
+      userPortionOverrides: [undefined, 2],
+      totalPortions: 4
     }
   ],
   lunchDinnerMeals: [
@@ -31,7 +33,7 @@ const storage = {
       id: 'L1',
       name: 'Regular Lunch',
       ingredients: [{ name: 'Lettuce', amount: '1 ea' }],
-      users: [true, false]
+      users: [true, true]
     }
   ],
   snackMeals: [],
@@ -110,14 +112,24 @@ const eggEntry = monthlyArr.find(item => item.name === 'Egg');
 if (!eggEntry) {
   throw new Error('Expected Egg entry in monthly needs after override');
 }
-const expectedEgg = ((2 * 1 + 1 * 2) * 52) / 12; // Alice default multiplier, Bob override of 2
+const eggPerPortion = 8 / 4; // per-serving egg count after totalPortions scaling
+const aliceWeeklyEggs = eggPerPortion * 2 * 1; // two breakfast slots for Alice
+const bobWeeklyEggs = eggPerPortion * 1 * 2; // Bob override of 2 on a single slot
+const expectedEgg = ((aliceWeeklyEggs + bobWeeklyEggs) * 52) / 12;
 if (Math.abs(eggEntry.monthly_consumption - expectedEgg) > 1e-6) {
   throw new Error(
     `Egg consumption mismatch: ${eggEntry.monthly_consumption} vs expected ${expectedEgg}`
   );
 }
-if (monthlyArr.some(item => item.name === 'Lettuce')) {
-  throw new Error('Lunch ingredient should be absent when slot is fully overridden');
+const lettuceEntry = monthlyArr.find(item => item.name === 'Lettuce');
+if (!lettuceEntry) {
+  throw new Error('Expected Lettuce entry for default portion meal');
+}
+const expectedLettuce = ((1 * 1.5) * 52) / 12; // Bob keeps default one-portion lunch with 1.5 multiplier
+if (Math.abs(lettuceEntry.monthly_consumption - expectedLettuce) > 1e-6) {
+  throw new Error(
+    `Lettuce consumption mismatch: ${lettuceEntry.monthly_consumption} vs expected ${expectedLettuce}`
+  );
 }
 
 console.log('meal slot override needs test passed');

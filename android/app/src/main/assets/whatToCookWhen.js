@@ -7,7 +7,11 @@ import {
 import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
 import { loadUsers, loadUserPortionMultipliers } from './utils/userData.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
-import { parseQuantity, expandCalendarValue } from './utils/calendarUtils.js';
+import {
+  parseQuantity,
+  expandCalendarValue,
+  getMealPortionCount
+} from './utils/calendarUtils.js';
 import { canonicalName } from './utils/nameUtils.js';
 import { loadDensityMap, computeNormalizedQuantity } from './utils/unitNormalize.js';
 import { formatQuantity } from './utils/quantityFormat.js';
@@ -342,8 +346,15 @@ function formatNormalizedSuffix(ingredientName, totalQuantity, unit, baseUnitTex
   return `(Converts to ${formatted} ${normalizedUnit})`;
 }
 
-function formatIngredientAmount(ingredient, multiplier) {
+function sanitizePortionCount(value) {
+  return Number.isFinite(value) && value > 0 ? value : 1;
+}
+
+function formatIngredientAmount(ingredient, multiplier, portionCount = 1) {
   if (!ingredient) return '';
+  if (!Number.isFinite(multiplier) || multiplier <= 0) {
+    return '';
+  }
   const sourceValue =
     ingredient.serving_size != null ? ingredient.serving_size : ingredient.amount;
   const raw =
@@ -357,7 +368,8 @@ function formatIngredientAmount(ingredient, multiplier) {
   if (!value) {
     return raw;
   }
-  const total = value * multiplier;
+  const perPortion = value / sanitizePortionCount(portionCount);
+  const total = perPortion * multiplier;
   const formatted = formatNumber(total);
   if (!formatted) {
     return raw;
@@ -387,7 +399,7 @@ function parseMultiplier(value) {
   return null;
 }
 
-function buildUserBreakdownEntries(ingredient, users) {
+function buildUserBreakdownEntries(ingredient, users, portionCount = 1) {
   if (!Array.isArray(users) || !users.length) {
     return [];
   }
@@ -401,14 +413,24 @@ function buildUserBreakdownEntries(ingredient, users) {
           ? String(user.id)
           : null;
       if (!label) return null;
-      const amountText = formatIngredientAmount(ingredient, user.total);
+      const amountText = formatIngredientAmount(
+        ingredient,
+        user.total,
+        portionCount
+      );
       if (!amountText) return null;
       return { name: label, amount: amountText };
     })
     .filter(Boolean);
 }
 
-function createIngredientListItem(ingredient, totalMultiplier, users, options = {}) {
+function createIngredientListItem(
+  ingredient,
+  totalMultiplier,
+  portionCount,
+  users,
+  options = {}
+) {
   const li = document.createElement('li');
   li.className = 'ingredient-entry';
   const header = document.createElement('div');
@@ -420,7 +442,7 @@ function createIngredientListItem(ingredient, totalMultiplier, users, options = 
   header.appendChild(nameEl);
   let amountText = '';
   if (Number.isFinite(totalMultiplier) && totalMultiplier > 0) {
-    amountText = formatIngredientAmount(ingredient, totalMultiplier);
+    amountText = formatIngredientAmount(ingredient, totalMultiplier, portionCount);
   }
   if (amountText) {
     const amountEl = document.createElement('span');
@@ -429,7 +451,7 @@ function createIngredientListItem(ingredient, totalMultiplier, users, options = 
     header.appendChild(amountEl);
   }
   li.appendChild(header);
-  const breakdown = buildUserBreakdownEntries(ingredient, users);
+  const breakdown = buildUserBreakdownEntries(ingredient, users, portionCount);
   if (breakdown.length) {
     const list = document.createElement('ul');
     list.className = 'user-breakdown';
@@ -548,6 +570,7 @@ function buildIngredientEntries(meal, normalized) {
     Array.isArray(normalized.userList) && normalized.userList.length
       ? normalized.userList
       : null;
+  const portionCount = sanitizePortionCount(getMealPortionCount(meal));
   const hasPartialPrep =
     !normalized.wholeMeal &&
     Array.isArray(normalized.prepItems) &&
@@ -581,18 +604,28 @@ function buildIngredientEntries(meal, normalized) {
         const ingredient = ingredients[idx];
         const userTotals = serializeUserTotals(info.users);
         const breakdownUsers = userTotals.length ? userTotals : baseUsers;
-        result.push({ ingredient, amount: info.total, users: breakdownUsers });
+        result.push({
+          ingredient,
+          amount: info.total,
+          portionCount,
+          users: breakdownUsers
+        });
       });
       return result;
     }
     ingredients.forEach(ingredient => {
-      result.push({ ingredient, amount: null, users: baseUsers });
+      result.push({ ingredient, amount: null, portionCount, users: baseUsers });
     });
     return result;
   }
 
   ingredients.forEach(ingredient => {
-    result.push({ ingredient, amount: normalized.totalMultiplier, users: baseUsers });
+    result.push({
+      ingredient,
+      amount: normalized.totalMultiplier,
+      portionCount,
+      users: baseUsers
+    });
   });
   return result;
 }
@@ -636,7 +669,13 @@ function buildMealBlockFromEntries(normalized, ingredientEntries, options = {}) 
     list.className = 'ingredient-list';
     entries.forEach(entry => {
       list.appendChild(
-        createIngredientListItem(entry.ingredient, entry.amount, entry.users, options)
+        createIngredientListItem(
+          entry.ingredient,
+          entry.amount,
+          entry.portionCount,
+          entry.users,
+          options
+        )
       );
     });
     block.appendChild(list);

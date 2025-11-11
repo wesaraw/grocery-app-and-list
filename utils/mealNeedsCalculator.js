@@ -16,6 +16,7 @@ import {
 import { loadJSON } from './dataLoader.js';
 import { initUomTable, convert } from './uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './unitNormalize.js';
+import { getMealPortionCount } from './calendarUtils.js';
 import {
   loadUsers,
   loadUserCategoryDays,
@@ -464,7 +465,9 @@ export async function calculateAndSaveMealNeeds(options = {}) {
             custom_density_ratio: info.ratio
           });
         }
-        const need = qty * monthlySpots;
+        const portionCount = getMealPortionCount(meal);
+        const perPortionQty = qty / portionCount;
+        const need = perPortionQty * monthlySpots;
         monthlyMap[ing.name] = (monthlyMap[ing.name] || 0) + need;
         if (!monthlyBreakdown[ing.name]) monthlyBreakdown[ing.name] = {};
         if (!monthlyBreakdown[ing.name][meal.name]) {

@@ -24,6 +24,14 @@ const DEFAULT_ITEM = {
   category: 'mass import'
 };
 
+function sanitizePortionCount(value) {
+  const num = typeof value === 'string' ? Number(value) : value;
+  if (!Number.isFinite(num) || num <= 0) {
+    return 1;
+  }
+  return num;
+}
+
 async function loadArray(key, path) {
   const arr = await loadItemArray(key);
   if (arr.length > 0) return arr;
@@ -146,6 +154,7 @@ function loadMeals(category) {
           if (!Array.isArray(m.ingredients)) {
             m.ingredients = [];
           }
+          m.totalPortions = sanitizePortionCount(m.totalPortions);
           m.ingredients.forEach(ing => {
             if (!ing || typeof ing !== 'object') return;
             if (ing.prepAhead === undefined) ing.prepAhead = false;
@@ -189,6 +198,28 @@ function resolveCategoryId(rawCategory) {
   return 'lunchDinner';
 }
 
+function parsePortionText(raw) {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const match = trimmed.match(/[-+]?[0-9]*\.?[0-9]+/);
+  if (!match) return null;
+  const normalized = Number(match[0]);
+  if (!Number.isFinite(normalized) || normalized <= 0) return null;
+  return normalized;
+}
+
+function readPortionFromElement(mealElement) {
+  if (!mealElement) return 1;
+  const tags = ['totalPortions', 'portions', 'portionCount', 'yield', 'servings'];
+  for (const tag of tags) {
+    const text = mealElement.querySelector(tag)?.textContent;
+    const parsed = parsePortionText(text);
+    if (parsed != null) return parsed;
+  }
+  return 1;
+}
+
 export function parseMealsFromXml(text) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(text, 'application/xml');
@@ -206,6 +237,7 @@ export function parseMealsFromXml(text) {
     meal.group = (mEl.querySelector('group')?.textContent.trim() || '').toLowerCase() === 'true';
     const weight = parseFloat(mEl.querySelector('weight')?.textContent.trim());
     meal.weight = !isNaN(weight) && weight > 0 ? weight : 1;
+    meal.totalPortions = sanitizePortionCount(readPortionFromElement(mEl));
     meal.ingredients = [];
     mEl.querySelectorAll('ingredients > item').forEach(iEl => {
       const name = iEl.querySelector('name')?.textContent.trim();
@@ -238,6 +270,7 @@ async function addMeal(meal, userCount) {
   for (const ing of normalizedIngredients) {
     await ensureItemExists(ing.name, ing.unit);
   }
+  const totalPortions = sanitizePortionCount(meal.totalPortions);
   let usersArr = meal.users || [];
   if (usersArr.length < userCount) {
     for (let i = usersArr.length; i < userCount; i++) usersArr.push(false);
@@ -255,6 +288,7 @@ async function addMeal(meal, userCount) {
     prepAhead: false,
     image: meal.image || null,
     weight: meal.weight,
+    totalPortions,
     groupMeal: meal.group
   });
   await saveMeals(meal.category, arr);

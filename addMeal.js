@@ -7,6 +7,14 @@ const mealType = params.get('type') || 'lunchDinner';
 let MEAL_KEY, MEAL_PATH, label;
 const UOM_PATH = 'Required for grocery app/uom_conversion_table.json';
 
+function sanitizePortionCount(value) {
+  const num = typeof value === 'string' ? Number(value) : value;
+  if (!Number.isFinite(num) || num <= 0) {
+    return 1;
+  }
+  return num;
+}
+
 function loadMeals() {
   return new Promise(async resolve => {
     chrome.storage.local.get(MEAL_KEY, async data => {
@@ -21,6 +29,7 @@ function loadMeals() {
           if (!Array.isArray(m.ingredients)) {
             m.ingredients = [];
           }
+          m.totalPortions = sanitizePortionCount(m.totalPortions);
           m.ingredients.forEach(ing => {
             if (!ing || typeof ing !== 'object') return;
             if (ing.prepAhead === undefined) ing.prepAhead = false;
@@ -114,6 +123,7 @@ async function init() {
   const prepAheadLabel = document.getElementById('prepAheadLbl');
   const leftoverBox = document.getElementById('leftoverChk');
   const weightInput = document.getElementById('weightInput');
+  const portionInput = document.getElementById('portionInput');
   const groupChk = document.getElementById('groupChk');
   const recipeBookInput = document.getElementById('recipeBookInput');
   function togglePrepAhead() {
@@ -206,6 +216,7 @@ async function init() {
 
     const weight = parseFloat(weightInput.value);
     const mealWeight = !isNaN(weight) && weight > 0 ? weight : 1;
+    const mealPortions = sanitizePortionCount(portionInput ? portionInput.value : 1);
 
     const meals = await loadMeals();
     meals.push({
@@ -217,6 +228,7 @@ async function init() {
       prepAhead: preparedBox.checked && prepAheadBox.checked,
       image: null,
       weight: mealWeight,
+      totalPortions: mealPortions,
       groupMeal: groupChk.checked,
       leftoverOk: leftoverBox.checked,
     });
