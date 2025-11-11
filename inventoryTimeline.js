@@ -343,10 +343,10 @@ function buildGrid(items, headerState = {}, startWeek = 1) {
     nutritionBtn.type = 'button';
     nutritionBtn.className = 'nutrition-sync-button';
     nutritionBtn.textContent = 'Sync Nutrition';
-    nutritionBtn.addEventListener('click', () => {
+    nutritionBtn.addEventListener('click', async () => {
       const state = nutritionBtn.dataset.state;
       if (state === 'pending') {
-        openOrFocusWindow(`nutritionConfirm.html?item=${encodeURIComponent(item.name)}`, 520, 600);
+        await queueNutritionConfirmForItem(item.name, { prioritize: true });
         return;
       }
       const force = state === 'ready' || state === 'stale';
@@ -419,6 +419,8 @@ const nutritionButtons = new Map();
 const nutritionQueue = [];
 const queuedNutritionNames = new Set();
 const nutritionRetryCounts = new Map();
+const pendingConfirmQueue = [];
+let activeConfirmItem = null;
 const NUTRITION_RETRY_LIMIT = 3;
 const NUTRITION_MIN_DELAY_MS = 350;
 const NUTRITION_MAX_DELAY_MS = 5000;
@@ -456,6 +458,81 @@ function showTransientNutritionStatus(message, type = 'info', duration = 6000) {
     nutritionTransientTimer = null;
     updateNutritionStatusBanner();
   }, duration);
+}
+
+function openNextPendingConfirm() {
+  if (activeConfirmItem) return;
+  while (pendingConfirmQueue.length) {
+    const nextEntry = pendingConfirmQueue.shift();
+    if (!nextEntry || !nextEntry.itemName) continue;
+    activeConfirmItem = { ...nextEntry };
+    openOrFocusWindow(
+      `nutritionConfirm.html?item=${encodeURIComponent(nextEntry.itemName)}`,
+      520,
+      600
+    );
+    return;
+  }
+  activeConfirmItem = null;
+}
+
+function queueNutritionConfirmEntry(entry, { prioritize = false } = {}) {
+  if (!entry) return;
+  const itemName = entry.itemName || '';
+  const normalizedName = entry.normalizedName || canonicalName(itemName);
+  if (!itemName || !normalizedName) return;
+
+  const normalizedEntry = { ...entry, itemName, normalizedName };
+
+  if (activeConfirmItem && activeConfirmItem.normalizedName === normalizedName) {
+    activeConfirmItem = { ...normalizedEntry };
+    openOrFocusWindow(
+      `nutritionConfirm.html?item=${encodeURIComponent(itemName)}`,
+      520,
+      600
+    );
+    return;
+  }
+
+  const existingIndex = pendingConfirmQueue.findIndex(
+    queued => queued && queued.normalizedName === normalizedName
+  );
+  if (existingIndex !== -1) {
+    pendingConfirmQueue[existingIndex] = { ...normalizedEntry };
+    if (prioritize && existingIndex !== 0) {
+      const [existing] = pendingConfirmQueue.splice(existingIndex, 1);
+      pendingConfirmQueue.unshift(existing);
+    }
+  } else if (prioritize) {
+    pendingConfirmQueue.unshift({ ...normalizedEntry });
+  } else {
+    pendingConfirmQueue.push({ ...normalizedEntry });
+  }
+
+  openNextPendingConfirm();
+}
+
+async function queueNutritionConfirmForItem(name, options = {}) {
+  if (!name) return;
+  try {
+    const pending = await getPendingMatch(name);
+    if (pending) {
+      queueNutritionConfirmEntry(pending, options);
+    } else {
+      openOrFocusWindow(
+        `nutritionConfirm.html?item=${encodeURIComponent(name)}`,
+        520,
+        600
+      );
+    }
+  } catch (err) {
+    console.error('Unable to open nutrition confirmation window', err);
+    openOrFocusWindow(
+      `nutritionConfirm.html?item=${encodeURIComponent(name)}`,
+      520,
+      600
+    );
+  }
 }
 
 async function updateNutritionStatusBanner() {
@@ -550,14 +627,17 @@ async function processNutritionQueue() {
   try {
     const result = await ensureIngredientRecordForItem(item);
     if (result.status === 'needs-confirmation') {
-      const existing = await getPendingMatch(item.name);
-      if (!existing) {
+      let pendingEntry = await getPendingMatch(item.name);
+      if (!pendingEntry) {
         await setPendingMatch(item.name, {
           candidates: result.candidates,
           unitDefault: item.home_unit || item.unit_default || 'g',
           source: 'timeline'
         });
-        openOrFocusWindow(`nutritionConfirm.html?item=${encodeURIComponent(item.name)}`, 520, 600);
+        pendingEntry = await getPendingMatch(item.name);
+      }
+      if (pendingEntry) {
+        queueNutritionConfirmEntry(pendingEntry, { prioritize: true });
       }
     } else if (result.status === 'missing-api-key') {
       if (!missingApiKeyWarningShown) {
@@ -837,12 +917,35 @@ async function init() {
       const newMap = changes.pendingIngredientMatches.newValue || {};
       const oldMap = changes.pendingIngredientMatches.oldValue || {};
       const oldKeys = new Set(Object.keys(oldMap || {}));
+      const newKeys = new Set(Object.keys(newMap || {}));
+
+      for (let i = pendingConfirmQueue.length - 1; i >= 0; i--) {
+        const queued = pendingConfirmQueue[i];
+        if (!queued || !newKeys.has(queued.normalizedName)) {
+          pendingConfirmQueue.splice(i, 1);
+        } else {
+          pendingConfirmQueue[i] = { ...newMap[queued.normalizedName] };
+        }
+      }
+
+      if (activeConfirmItem) {
+        if (!newKeys.has(activeConfirmItem.normalizedName)) {
+          activeConfirmItem = null;
+        } else {
+          activeConfirmItem = { ...newMap[activeConfirmItem.normalizedName] };
+        }
+      }
+
       Object.values(newMap).forEach(entry => {
-        if (!entry || !entry.normalizedName) return;
-        if (!oldKeys.has(entry.normalizedName) && entry.itemName) {
-          openOrFocusWindow(`nutritionConfirm.html?item=${encodeURIComponent(entry.itemName)}`, 520, 600);
+        if (!entry || !entry.normalizedName || !entry.itemName) return;
+        if (!oldKeys.has(entry.normalizedName)) {
+          queueNutritionConfirmEntry(entry);
         }
       });
+
+      if (!activeConfirmItem) {
+        openNextPendingConfirm();
+      }
     }
     if (changes.fdcApiKey) {
       missingApiKeyWarningShown = false;
