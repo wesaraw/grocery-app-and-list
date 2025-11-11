@@ -210,7 +210,7 @@ export async function searchFdcFoods(query, options = {}) {
     query,
     pageSize: Math.min(options.pageSize || 10, MAX_PAGE_SIZE),
     requireAllWords: false,
-    includeDataTypes: options.includeDataTypes || ['Foundation', 'SR Legacy', 'Survey (FNDDS)', 'Branded']
+    dataType: options.dataType || options.includeDataTypes || ['Foundation', 'SR Legacy', 'Survey (FNDDS)', 'Branded']
   };
   const response = await fetchJson(`${SEARCH_URL}?api_key=${encodeURIComponent(apiKey)}`, {
     method: 'POST',
