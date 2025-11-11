@@ -16,6 +16,25 @@
       font-weight: bold;
       margin-bottom: 12px;
     }
+    .search-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .search-row input {
+      flex: 1;
+      padding: 6px 8px;
+      font-size: 0.95em;
+    }
+    .search-row button {
+      padding: 6px 14px;
+      font-size: 0.95em;
+    }
+    .spinner {
+      font-size: 0.85em;
+      color: #555;
+    }
     .candidate {
       border: 1px solid #ccc;
       border-radius: 4px;
@@ -53,11 +72,20 @@
     .status.warning {
       color: #9c5700;
     }
+    .search-status {
+      margin-bottom: 12px;
+    }
   </style>
 </head>
 <body>
   <h1>Confirm Nutrition Match</h1>
   <div id="itemName"></div>
+  <form id="searchForm" class="search-row">
+    <input id="searchInput" type="text" placeholder="Search USDA foods" aria-label="Search USDA foods">
+    <button id="searchBtn" type="submit">Search</button>
+    <span id="searchSpinner" class="spinner" hidden>Searching…</span>
+  </form>
+  <div id="searchStatus" class="status search-status"></div>
   <div id="candidates"></div>
   <div class="actions">
     <button id="confirmBtn" disabled>Confirm Selection</button>

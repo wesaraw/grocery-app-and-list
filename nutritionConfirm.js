@@ -1,18 +1,53 @@
 import {
   getPendingMatch,
-  removePendingMatch
+  removePendingMatch,
+  setPendingMatch
 } from './utils/nutritionMatching.js';
-import { persistIngredientSelection } from './utils/fdcClient.js';
+import {
+  persistIngredientSelection,
+  searchFdcFoods,
+  rankCandidates,
+  MissingFdcApiKeyError
+} from './utils/fdcClient.js';
 
 let itemName = '';
 let pendingMatch = null;
 let selectedFdcId = null;
+let searchInputEl = null;
+let searchButtonEl = null;
+let searchSpinnerEl = null;
+let searchStatusEl = null;
 
 function renderStatus(message, type = 'info') {
   const statusEl = document.getElementById('status');
   if (!statusEl) return;
   statusEl.textContent = message || '';
   statusEl.className = `status ${type}`.trim();
+}
+
+function renderSearchStatus(message, type = 'info') {
+  if (!searchStatusEl) return;
+  if (!message) {
+    searchStatusEl.textContent = '';
+    searchStatusEl.className = 'status search-status';
+    searchStatusEl.style.display = 'none';
+    return;
+  }
+  searchStatusEl.textContent = message;
+  searchStatusEl.className = `status search-status ${type}`.trim();
+  searchStatusEl.style.display = 'block';
+}
+
+function setSearchLoading(loading) {
+  if (searchButtonEl) searchButtonEl.disabled = loading;
+  if (searchInputEl) searchInputEl.disabled = loading;
+  if (searchSpinnerEl) {
+    if (loading) {
+      searchSpinnerEl.hidden = false;
+    } else {
+      searchSpinnerEl.hidden = true;
+    }
+  }
 }
 
 function enableConfirm(enabled) {
@@ -23,6 +58,7 @@ function enableConfirm(enabled) {
 function renderCandidates() {
   const container = document.getElementById('candidates');
   container.innerHTML = '';
+  selectedFdcId = null;
   if (!pendingMatch || !pendingMatch.candidates?.length) {
     const empty = document.createElement('p');
     empty.textContent = 'No candidate matches to display.';
@@ -70,10 +106,18 @@ async function loadPending() {
     itemEl.textContent = itemName || '';
     renderStatus('No pending matches for this item.', 'error');
     enableConfirm(false);
+    if (searchInputEl) searchInputEl.disabled = true;
+    if (searchButtonEl) searchButtonEl.disabled = true;
+    if (searchSpinnerEl) searchSpinnerEl.hidden = true;
+    renderSearchStatus('');
     return;
   }
   itemEl.textContent = pendingMatch.itemName || itemName;
   renderCandidates();
+  setSearchLoading(false);
+  if (searchInputEl) {
+    searchInputEl.value = pendingMatch.lastSearchQuery || pendingMatch.itemName || itemName;
+  }
 }
 
 async function confirmSelection() {
@@ -92,6 +136,7 @@ async function confirmSelection() {
     });
     await removePendingMatch(itemName);
     renderStatus('Nutrition data saved.', 'success');
+    renderSearchStatus('');
     setTimeout(() => window.close(), 750);
   } catch (err) {
     console.error('Failed to persist selection', err);
@@ -103,7 +148,67 @@ async function confirmSelection() {
 async function skipSelection() {
   await removePendingMatch(itemName);
   renderStatus('Match skipped. You can retry from the inventory timeline.', 'warning');
+  renderSearchStatus('');
   setTimeout(() => window.close(), 750);
+}
+
+async function handleSearch(event) {
+  event.preventDefault();
+  if (!pendingMatch) {
+    renderSearchStatus('This item no longer requires confirmation.', 'warning');
+    return;
+  }
+
+  const rawQuery = searchInputEl?.value?.trim();
+  const query = rawQuery || pendingMatch.lastSearchQuery || pendingMatch.itemName || itemName;
+  if (!query) {
+    renderSearchStatus('Enter a term to search.', 'warning');
+    return;
+  }
+
+  if (searchInputEl) {
+    searchInputEl.value = query;
+  }
+
+  setSearchLoading(true);
+  renderSearchStatus('Searching…');
+  try {
+    const foods = await searchFdcFoods(query, { pageSize: 25 });
+    const ranked = rankCandidates(pendingMatch.itemName || itemName || query, foods);
+    const sanitized = ranked.map(candidate => {
+      const { _original, ...rest } = candidate;
+      return rest;
+    });
+
+    const nextMatch = {
+      ...pendingMatch,
+      itemName: pendingMatch.itemName || itemName,
+      lastSearchQuery: query,
+      updatedAt: new Date().toISOString()
+    };
+    if (sanitized.length) {
+      nextMatch.candidates = sanitized;
+    }
+
+    await setPendingMatch(itemName, nextMatch);
+    pendingMatch = await getPendingMatch(itemName);
+    renderCandidates();
+
+    if (sanitized.length) {
+      renderSearchStatus(`Showing ${sanitized.length} result${sanitized.length === 1 ? '' : 's'} for "${query}".`, 'success');
+    } else {
+      renderSearchStatus(`No results found for "${query}".`, 'warning');
+    }
+  } catch (err) {
+    console.error('Nutrition search failed', err);
+    if (err instanceof MissingFdcApiKeyError || err?.code === 'MISSING_FDC_API_KEY') {
+      renderSearchStatus('Add your FDC website API key to search USDA foods.', 'error');
+    } else {
+      renderSearchStatus('Search failed. Please try again.', 'error');
+    }
+  } finally {
+    setSearchLoading(false);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -113,7 +218,17 @@ document.addEventListener('DOMContentLoaded', () => {
     renderStatus('No item specified.', 'error');
     return;
   }
+  searchInputEl = document.getElementById('searchInput');
+  searchButtonEl = document.getElementById('searchBtn');
+  searchSpinnerEl = document.getElementById('searchSpinner');
+  searchStatusEl = document.getElementById('searchStatus');
+  renderSearchStatus('');
+
   loadPending();
   document.getElementById('confirmBtn').addEventListener('click', confirmSelection);
   document.getElementById('skipBtn').addEventListener('click', skipSelection);
+  const searchForm = document.getElementById('searchForm');
+  if (searchForm) {
+    searchForm.addEventListener('submit', handleSearch);
+  }
 });
