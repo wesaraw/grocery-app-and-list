@@ -52,6 +52,15 @@ const ingredientMap = {
       { amount: 1, measureUnit: 'slice', modifier: '', gramWeight: 28 }
     ]
   },
+  'red bell pepper': {
+    perGramVector: {
+      energy: 0.5,
+      vitamin_b1: 0.0006
+    },
+    portions: [
+      { amount: 1, measureUnit: 'ea', modifier: 'pepper', gramWeight: 85 }
+    ]
+  },
   water: {
     perGramVector: {},
     portions: []
@@ -70,6 +79,7 @@ const meal = {
     { name: 'Chicken Breast', amount: '200 g' },
     { name: 'Vegetable Broth', amount: '1 cup' },
     { name: 'Cheddar Cheese', amount: '2 slice' },
+    { name: 'Red Bell Pepper', amount: '0.5 each' },
     { name: 'Water', amount: '100 g' },
     { name: 'Mystery', amount: '1 each' }
   ]
@@ -89,14 +99,16 @@ if (!totals || !totals.perRecipe || !totals.perServing) {
   throw new Error('Missing nutrition totals structure');
 }
 
-assertClose(totals.perRecipe.energy, 448.012046, 'Per-recipe energy mismatch');
-assertClose(totals.perServing.energy, 112.003012, 'Per-serving energy mismatch');
+assertClose(totals.perRecipe.energy, 469.262046, 'Per-recipe energy mismatch');
+assertClose(totals.perServing.energy, 117.315512, 'Per-serving energy mismatch');
 assertClose(totals.perRecipe.protein, 66.802409, 'Per-recipe protein mismatch');
 assertClose(totals.perServing.protein, 16.700602, 'Per-serving protein mismatch');
 assertClose(totals.perRecipe.fat, 16.8, 'Per-recipe fat mismatch');
 assertClose(totals.perServing.fat, 4.2, 'Per-serving fat mismatch');
-assertClose(totals.totalRecipeWeight, 596.120461, 'Total recipe weight mismatch');
-assertClose(totals.totalServingWeight, 149.030115, 'Total serving weight mismatch');
+assertClose(totals.totalRecipeWeight, 638.620461, 'Total recipe weight mismatch');
+assertClose(totals.totalServingWeight, 159.655115, 'Total serving weight mismatch');
+assertClose(totals.perRecipe.vitamin_b1, 0.0255, 'Per-recipe vitamin B1 mismatch');
+assertClose(totals.perServing.vitamin_b1, 0.006375, 'Per-serving vitamin B1 mismatch');
 
 if (!Array.isArray(totals.missingIngredients) || totals.missingIngredients.length !== 2) {
   throw new Error('Expected two missing ingredients');

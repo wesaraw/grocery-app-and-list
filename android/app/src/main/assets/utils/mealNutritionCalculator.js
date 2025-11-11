@@ -113,6 +113,11 @@ function buildUnitVariants(unit) {
   const singular = base.replace(/s$/, '');
   if (singular && singular !== base) variants.add(singular);
   if (base.endsWith('es')) variants.add(base.slice(0, -2));
+  if (base === 'each') {
+    variants.add('ea');
+  } else if (base === 'ea') {
+    variants.add('each');
+  }
   if (base === 'ea' || base === 'each') {
     variants.add('serving');
     variants.add('nlea serving');
