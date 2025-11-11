@@ -80,6 +80,9 @@ function renderCandidates() {
       renderStatus('');
     });
 
+    const body = document.createElement('div');
+    body.className = 'candidate-body';
+
     const header = document.createElement('header');
     header.textContent = candidate.description || 'Untitled food';
 
@@ -91,9 +94,11 @@ function renderCandidates() {
       ${candidate.householdServingFullText ? `<small>Portion: ${candidate.householdServingFullText}</small>` : ''}
     `;
 
+    body.appendChild(header);
+    body.appendChild(details);
+
     wrapper.appendChild(input);
-    wrapper.appendChild(header);
-    wrapper.appendChild(details);
+    wrapper.appendChild(body);
     container.appendChild(wrapper);
   });
   enableConfirm(false);
