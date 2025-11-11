@@ -3,7 +3,8 @@ const DEFAULT_HEIGHT = 600;
 
 const WINDOW_SIZE_OVERRIDES = {
   'backup.html': { width: 420, height: 420 },
-  'uomChange.html': { width: 400 }
+  'uomChange.html': { width: 400 },
+  'mealNutritionInfo.html': { width: 520, height: 640 }
 };
 
 function resolveWindowSize(path, width, height) {

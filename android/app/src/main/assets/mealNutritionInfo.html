@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Meal Nutrition</title>
+  <link rel="stylesheet" href="nutritionInfo.css">
+</head>
+<body>
+  <h1 id="mealTitle">Meal Nutrition</h1>
+  <div id="status" class="status"></div>
+  <div id="meta"></div>
+  <section id="missingSection" aria-live="polite" style="display: none;">
+    <h2>Missing Data</h2>
+    <ul id="missingList"></ul>
+  </section>
+  <pre id="nutritionOutput" class="nutrition-output">Loading…</pre>
+  <script type="module" src="mealNutritionInfo.js"></script>
+</body>
+</html>

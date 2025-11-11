@@ -1,11 +1,17 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
+import { loadDensityMap } from './utils/unitNormalize.js';
+import { getIngredientMap } from './utils/ingredientStorage.js';
+import { updateMealNutritionTotals } from './utils/mealNutritionCalculator.js';
+import { initUomTable } from './utils/uomConverter.js';
 
 const params = new URLSearchParams(location.search);
 const mealType = params.get('type') || 'lunchDinner';
 let MEAL_KEY, MEAL_PATH, label;
 const UOM_PATH = 'Required for grocery app/uom_conversion_table.json';
+let densityMap = {};
+let ingredientMap = {};
 
 function sanitizePortionCount(value) {
   const num = typeof value === 'string' ? Number(value) : value;
@@ -47,6 +53,13 @@ function loadMeals() {
 }
 
 function saveMeals(arr) {
+  if (Array.isArray(arr)) {
+    arr.forEach(meal => {
+      if (meal && typeof meal === 'object') {
+        updateMealNutritionTotals(meal, { ingredientMap, densityMap });
+      }
+    });
+  }
   return new Promise(resolve => {
     chrome.storage.local.set({ [MEAL_KEY]: arr }, () => resolve());
   });
@@ -114,13 +127,20 @@ function anyFilled(row) {
 
 async function init() {
   await initializeMealCategories();
+  await initUomTable();
   const info = MEAL_TYPES[mealType] || MEAL_TYPES.lunchDinner;
   MEAL_KEY = info.key;
   MEAL_PATH = info.path;
   label = info.label;
   const titleEl = document.getElementById('title');
   if (titleEl) titleEl.textContent = `Add ${label} Meal`;
-  const units = await loadUnits();
+  const [density, ingredients, units] = await Promise.all([
+    loadDensityMap(),
+    getIngredientMap(),
+    loadUnits()
+  ]);
+  densityMap = density || {};
+  ingredientMap = ingredients || {};
   const tbody = document.getElementById('mealBody');
   const rows = [];
   const preparedBox = document.getElementById('preparedChk');
@@ -224,7 +244,7 @@ async function init() {
     const mealPortions = sanitizePortionCount(portionInput ? portionInput.value : 1);
 
     const meals = await loadMeals();
-    meals.push({
+    const newMeal = {
       name: mealName,
       recipeBook: recipeBookInput.value.trim() || '',
       ingredients,
@@ -237,7 +257,9 @@ async function init() {
       groupMeal: groupChk.checked,
       leftoverOk: leftoverBox.checked,
       instructions: ''
-    });
+    };
+    updateMealNutritionTotals(newMeal, { ingredientMap, densityMap });
+    meals.push(newMeal);
     await saveMeals(meals);
     await calculateAndSaveMealNeeds();
     window.close();

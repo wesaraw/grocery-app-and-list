@@ -6,6 +6,9 @@ import { loadDensityMap, saveDensityMap } from './utils/unitNormalize.js';
 import { loadItemSeasons, saveItemSeasons } from './utils/seasonData.js';
 import { WEEKS_PER_MONTH } from './utils/constants.js';
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
+import { getIngredientMap } from './utils/ingredientStorage.js';
+import { updateMealNutritionTotals } from './utils/mealNutritionCalculator.js';
+import { initUomTable } from './utils/uomConverter.js';
 import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
 
 // Paths for inventory data used when adding new items
@@ -23,6 +26,9 @@ const DEFAULT_ITEM = {
   shelf: 26, // weeks
   category: 'mass import'
 };
+
+let ingredientMapCache = {};
+let densityMapCache = {};
 
 function sanitizePortionCount(value) {
   const num = typeof value === 'string' ? Number(value) : value;
@@ -173,6 +179,16 @@ function loadMeals(category) {
 
 function saveMeals(category, arr) {
   const info = MEAL_TYPES[category] || MEAL_TYPES.lunchDinner;
+  if (Array.isArray(arr)) {
+    arr.forEach(meal => {
+      if (meal && typeof meal === 'object') {
+        updateMealNutritionTotals(meal, {
+          ingredientMap: ingredientMapCache,
+          densityMap: densityMapCache
+        });
+      }
+    });
+  }
   return new Promise(resolve => {
     chrome.storage.local.set({ [info.key]: arr }, () => resolve());
   });
@@ -282,8 +298,14 @@ async function addMeal(meal, userCount) {
   } else if (usersArr.length > userCount) {
     usersArr = usersArr.slice(0, userCount);
   }
+  const [latestDensity, latestIngredients] = await Promise.all([
+    loadDensityMap(),
+    getIngredientMap()
+  ]);
+  densityMapCache = latestDensity || {};
+  ingredientMapCache = latestIngredients || {};
   const arr = await loadMeals(meal.category);
-  arr.push({
+  const newMeal = {
     name: meal.name,
     recipeBook: meal.recipeBook || '',
     ingredients: normalizedIngredients,
@@ -295,7 +317,12 @@ async function addMeal(meal, userCount) {
     weight: meal.weight,
     totalPortions,
     groupMeal: meal.group
+  };
+  updateMealNutritionTotals(newMeal, {
+    ingredientMap: ingredientMapCache,
+    densityMap: densityMapCache
   });
+  arr.push(newMeal);
   await saveMeals(meal.category, arr);
   await calculateAndSaveMealNeeds();
 }
@@ -304,7 +331,14 @@ export async function importMealsFromText(text, images = {}, progressCallbacks =
   const { onStart = () => {}, onProgress = () => {}, onError = () => {}, onComplete = () => {} } = progressCallbacks;
 
   await initializeMealCategories();
-  const users = await loadUsers();
+  await initUomTable();
+  const [users, initialDensity, initialIngredients] = await Promise.all([
+    loadUsers(),
+    loadDensityMap(),
+    getIngredientMap()
+  ]);
+  densityMapCache = initialDensity || {};
+  ingredientMapCache = initialIngredients || {};
   const meals = parseMealsFromXml(text);
   const total = meals.length;
 

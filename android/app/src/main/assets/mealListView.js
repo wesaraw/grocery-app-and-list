@@ -27,6 +27,9 @@ import {
   nextUnusedItemId
 } from './utils/itemStorage.js';
 import { formatQuantity } from './utils/quantityFormat.js';
+import { getIngredientMap } from './utils/ingredientStorage.js';
+import { updateMealNutritionTotals } from './utils/mealNutritionCalculator.js';
+import { NUTRIENT_DEFINITIONS } from './utils/fdcNutrientMap.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -62,8 +65,13 @@ let deleteMode = false;
 const deleteButtons = [];
 let needsMap = new Map();
 let densityMap = {};
+let ingredientMap = {};
 const UOM_PATH = 'Required for grocery app/uom_conversion_table.json';
 let units = [];
+
+const NUTRIENT_DEFINITION_MAP = new Map(
+  NUTRIENT_DEFINITIONS.map(def => [def.key, def])
+);
 
 function extractUnitText(raw) {
   if (typeof raw !== 'string') return '';
@@ -178,6 +186,79 @@ function normalizeMealRecord(meal) {
   }
   meal.totalPortions = sanitizePortionCount(meal.totalPortions);
   normalizeIngredientPrepFlags(meal.ingredients);
+}
+
+function getNutritionContext() {
+  return {
+    ingredientMap,
+    densityMap,
+    needsMap
+  };
+}
+
+function refreshMealNutrition(target) {
+  const context = getNutritionContext();
+  if (Array.isArray(target)) {
+    let changed = false;
+    target.forEach(meal => {
+      if (meal && typeof meal === 'object' && updateMealNutritionTotals(meal, context)) {
+        changed = true;
+      }
+    });
+    return changed;
+  }
+  if (target && typeof target === 'object') {
+    return updateMealNutritionTotals(target, context);
+  }
+  return false;
+}
+
+function formatNutrientValue(value, key) {
+  if (!Number.isFinite(value) || value <= 0) return null;
+  const def = NUTRIENT_DEFINITION_MAP.get(key);
+  if (!def) return null;
+  const decimals = typeof def.decimals === 'number' ? def.decimals : 2;
+  const rounded = Number(value.toFixed(decimals));
+  if (!Number.isFinite(rounded)) return null;
+  const unit = def.displayUnit || def.targetUnit || '';
+  return `${rounded}${unit ? ` ${unit}` : ''}`;
+}
+
+function buildNutritionSummary(meal) {
+  const totals = meal?.nutritionTotals;
+  if (!totals) return null;
+  const summaryParts = [];
+  const energy = formatNutrientValue(totals.perServing?.energy, 'energy');
+  if (energy) summaryParts.push(`Energy: ${energy}`);
+  const protein = formatNutrientValue(totals.perServing?.protein, 'protein');
+  if (protein) summaryParts.push(`Protein: ${protein}`);
+  const missingCount = Array.isArray(totals.missingIngredients)
+    ? totals.missingIngredients.length
+    : 0;
+  if (!summaryParts.length && !missingCount) {
+    return null;
+  }
+  const container = document.createElement('div');
+  container.className = 'meal-nutrition-summary';
+  if (summaryParts.length) {
+    const summarySpan = document.createElement('span');
+    summarySpan.className = 'meal-nutrition-summary__totals';
+    summarySpan.textContent = `${summaryParts.join(' • ')} per serving`;
+    container.appendChild(summarySpan);
+  }
+  if (missingCount) {
+    if (container.childNodes.length) {
+      container.appendChild(document.createTextNode(' '));
+    }
+    const missingSpan = document.createElement('span');
+    missingSpan.className = 'meal-nutrition-summary__missing';
+    missingSpan.textContent =
+      missingCount === 1
+        ? 'Missing data for 1 ingredient'
+        : `Missing data for ${missingCount} ingredients`;
+    container.appendChild(missingSpan);
+  }
+  return container;
 }
 
 function sanitizeOverrides(source, userCount) {
@@ -302,6 +383,9 @@ async function loadUnits() {
 }
 
 function saveMeals(arr) {
+  if (Array.isArray(arr)) {
+    refreshMealNutrition(arr);
+  }
   return saveItemArray(key, arr);
 }
 
@@ -324,6 +408,9 @@ function loadMealsForType(cat) {
 function saveMealsForType(cat, arr) {
   const info = MEAL_TYPES[cat];
   if (!info) return Promise.resolve();
+  if (Array.isArray(arr)) {
+    refreshMealNutrition(arr);
+  }
   return saveItemArray(info.key, arr);
 }
 
@@ -622,7 +709,35 @@ function createRows(meal, arr) {
     return button;
   }
 
+  function buildNutritionButton() {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'meal-nutrition-btn';
+    button.textContent = 'Nutrition';
+    button.addEventListener('click', () => {
+      const query = new URLSearchParams();
+      if (type) query.set('type', type);
+      if (meal.id !== undefined && meal.id !== null) {
+        query.set('mealId', String(meal.id));
+      }
+      if (meal.name) {
+        query.set('meal', meal.name);
+      }
+      try {
+        const payload = { ...meal };
+        query.set('mealData', JSON.stringify(payload));
+      } catch (err) {
+        console.warn('Failed to serialize meal for nutrition popup', err);
+      }
+      const qs = query.toString();
+      const path = qs ? `mealNutritionInfo.html?${qs}` : 'mealNutritionInfo.html';
+      openOrFocusWindow(path);
+    });
+    return button;
+  }
+
   async function persistMealChange() {
+    refreshMealNutrition(meal);
     await saveMeals(arr);
     await calculateAndSaveMealNeeds();
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
@@ -825,7 +940,16 @@ function createRows(meal, arr) {
       const instructionsBtn = buildInstructionsButton();
       nameTd.appendChild(instructionsBtn);
       nameTd.appendChild(document.createTextNode(' '));
+      const nutritionBtn = buildNutritionButton();
+      nameTd.appendChild(nutritionBtn);
+      nameTd.appendChild(document.createTextNode(' '));
       nameTd.appendChild(delBtn);
+
+      const summaryNode = buildNutritionSummary(meal);
+      if (summaryNode) {
+        nameTd.appendChild(document.createElement('br'));
+        nameTd.appendChild(summaryNode);
+      }
 
       tr.appendChild(useTd);
       tr.appendChild(imageTd);
@@ -1439,6 +1563,7 @@ function createRows(meal, arr) {
         changed = true;
       }
       if (changed) {
+        refreshMealNutrition(meal);
         await saveMeals(arr);
         await calculateAndSaveMealNeeds();
       }
@@ -1551,7 +1676,8 @@ async function loadAndRender() {
   meals.forEach(meal => {
     if (normalizeMealOverrides(meal)) overridesChanged = true;
   });
-  if (overridesChanged) {
+  const nutritionChanged = refreshMealNutrition(meals);
+  if (overridesChanged || nutritionChanged) {
     await saveMeals(meals);
   }
   inventorySet = new Set(stock.map(s => canonicalName(s.name)));
@@ -1636,13 +1762,15 @@ async function loadAndRender() {
 async function init() {
   await initializeMealCategories();
   await initUomTable();
-  const [needs, dMap, u] = await Promise.all([
+  const [needs, dMap, u, ingredients] = await Promise.all([
     loadNeeds(),
     loadDensityMap(),
-    loadUnits()
+    loadUnits(),
+    getIngredientMap()
   ]);
   needsMap = new Map(needs.map(n => [canonicalName(n.name), n]));
   densityMap = dMap;
+  ingredientMap = ingredients || {};
   units = u;
   const info = MEAL_TYPES[type] || MEAL_TYPES.breakfast;
   key = info.key;
@@ -1723,18 +1851,49 @@ async function init() {
   await loadAndRender();
 
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && changes.currentStock) {
+    if (area !== 'local') return;
+    const reloads = [];
+    if (changes.ingredientRecords) {
+      reloads.push(
+        getIngredientMap()
+          .then(map => {
+            ingredientMap = map || {};
+          })
+          .catch(err => {
+            console.error('Failed to refresh ingredient records', err);
+          })
+      );
+    }
+    if (changes.densityRatios) {
+      reloads.push(
+        loadDensityMap()
+          .then(map => {
+            densityMap = map || {};
+          })
+          .catch(err => {
+            console.error('Failed to refresh density ratios', err);
+          })
+      );
+    }
+    if (reloads.length) {
+      Promise.all(reloads)
+        .then(() => loadAndRender())
+        .catch(err => {
+          console.error('Failed to refresh meal list after nutrition data change', err);
+        });
+    }
+    if (changes.currentStock) {
       const newStock = changes.currentStock.newValue || [];
       inventorySet = new Set(newStock.map(s => canonicalName(s.name)));
       updateInventoryDisplay();
     }
-    if (area === 'local' && changes.users) {
+    if (changes.users) {
       loadAndRender();
     }
-    if (area === 'local' && changes[key]) {
+    if (changes[key]) {
       loadAndRender();
     }
-    if (area === 'local' && changes[WHAT_TO_COOK_VISIBILITY_KEY]) {
+    if (changes[WHAT_TO_COOK_VISIBILITY_KEY]) {
       loadWhatToCookVisibility()
         .then(map => {
           whatToCookVisibility = map;

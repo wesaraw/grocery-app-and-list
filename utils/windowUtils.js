@@ -6,7 +6,8 @@ const WINDOW_SIZE_OVERRIDES = {
   'uomChange.html': { width: 400 },
   'apiKeys.html': { width: 360, height: 220 },
   'nutritionInfo.html': { width: 420, height: 520 },
-  'nutritionConfirm.html': { width: 520, height: 640 }
+  'nutritionConfirm.html': { width: 520, height: 640 },
+  'mealNutritionInfo.html': { width: 520, height: 640 }
 };
 
 function resolveWindowSize(path, width, height) {
