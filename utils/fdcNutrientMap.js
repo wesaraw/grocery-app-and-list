@@ -165,6 +165,11 @@ function convertToDisplayUnit(valueInTarget, definition) {
   return valueInTarget;
 }
 
+export function convertNutrientValueToDisplay(valueInTarget, definition) {
+  if (!definition) return null;
+  return convertToDisplayUnit(valueInTarget, definition);
+}
+
 function buildBaseMap(nutrientEntries) {
   const map = {};
   const entries = Array.isArray(nutrientEntries) ? nutrientEntries : [];

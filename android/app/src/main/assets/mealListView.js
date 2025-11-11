@@ -29,7 +29,10 @@ import {
 import { formatQuantity } from './utils/quantityFormat.js';
 import { getIngredientMap } from './utils/ingredientStorage.js';
 import { updateMealNutritionTotals } from './utils/mealNutritionCalculator.js';
-import { NUTRIENT_DEFINITIONS } from './utils/fdcNutrientMap.js';
+import {
+  NUTRIENT_DEFINITIONS,
+  convertNutrientValueToDisplay
+} from './utils/fdcNutrientMap.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -217,8 +220,10 @@ function formatNutrientValue(value, key) {
   if (!Number.isFinite(value) || value <= 0) return null;
   const def = NUTRIENT_DEFINITION_MAP.get(key);
   if (!def) return null;
+  const displayValue = convertNutrientValueToDisplay(value, def);
+  if (!Number.isFinite(displayValue) || displayValue <= 0) return null;
   const decimals = typeof def.decimals === 'number' ? def.decimals : 2;
-  const rounded = Number(value.toFixed(decimals));
+  const rounded = Number(displayValue.toFixed(decimals));
   if (!Number.isFinite(rounded)) return null;
   const unit = def.displayUnit || def.targetUnit || '';
   return `${rounded}${unit ? ` ${unit}` : ''}`;

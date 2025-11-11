@@ -1,5 +1,10 @@
 import { updateMealNutritionTotals } from '../utils/mealNutritionCalculator.js';
 import { initUomTable } from '../utils/uomConverter.js';
+import {
+  convertNutrientValueToDisplay,
+  NUTRIENT_DEFINITIONS,
+  formatDisplayValue
+} from '../utils/fdcNutrientMap.js';
 import { pathToFileURL } from 'url';
 import fs from 'fs';
 
@@ -117,4 +122,24 @@ if (unchanged) {
 
 if (meal.nutritionTotals.updatedAt !== updatedAt) {
   throw new Error('updatedAt changed despite no nutrition update');
+}
+
+const thiamineDefinition = NUTRIENT_DEFINITIONS.find(def => def.key === 'vitamin_b1');
+if (!thiamineDefinition) {
+  throw new Error('Expected vitamin B1 definition to be present');
+}
+
+const thiamineDisplay = convertNutrientValueToDisplay(0.00006, thiamineDefinition);
+if (Math.abs(thiamineDisplay - 0.06) > 1e-6) {
+  throw new Error(`Vitamin B1 conversion mismatch: expected 0.06 got ${thiamineDisplay}`);
+}
+
+const formattedThiamine = formatDisplayValue(
+  thiamineDisplay,
+  thiamineDefinition.displayUnit,
+  thiamineDefinition.decimals
+);
+
+if (!formattedThiamine.includes('0.06')) {
+  throw new Error(`Expected formatted thiamine string to include 0.06, got ${formattedThiamine}`);
 }

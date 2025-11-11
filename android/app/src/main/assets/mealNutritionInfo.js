@@ -3,7 +3,8 @@ import { loadArray as loadItemArray } from './utils/itemStorage.js';
 import { canonicalName } from './utils/nameUtils.js';
 import {
   NUTRIENT_DEFINITIONS,
-  formatDisplayValue
+  formatDisplayValue,
+  convertNutrientValueToDisplay
 } from './utils/fdcNutrientMap.js';
 import {
   calculateMealNutritionTotals,
@@ -197,8 +198,14 @@ function renderNutrients(totals) {
   const lines = NUTRIENT_DEFINITIONS.map(def => {
     const unit = def.displayUnit || def.targetUnit || '';
     const decimals = typeof def.decimals === 'number' ? def.decimals : 2;
-    const perServing = totals.perServing?.[def.key];
-    const perRecipe = totals.perRecipe?.[def.key];
+    const perServing = convertNutrientValueToDisplay(
+      totals.perServing?.[def.key],
+      def
+    );
+    const perRecipe = convertNutrientValueToDisplay(
+      totals.perRecipe?.[def.key],
+      def
+    );
     const perServingText =
       perServing == null ? '—' : formatDisplayValue(perServing, unit, decimals);
     const perRecipeText =
