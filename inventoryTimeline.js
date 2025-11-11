@@ -5,7 +5,13 @@ import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
 import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
 import { formatQuantity } from './utils/quantityFormat.js';
 
-import { ensureIngredientRecordForItem, isIngredientRecordStale } from './utils/fdcClient.js';
+import {
+  ensureIngredientRecordForItem,
+  isIngredientRecordStale,
+  searchFdcFoods,
+  rankCandidates,
+  MissingFdcApiKeyError
+} from './utils/fdcClient.js';
 import { getIngredientByItemName, getIngredientMap } from './utils/ingredientStorage.js';
 import { getFdcApiKey } from './utils/apiKeyStorage.js';
 import {
@@ -349,8 +355,11 @@ function buildGrid(items, headerState = {}, startWeek = 1) {
         await queueNutritionConfirmForItem(item.name, { prioritize: true });
         return;
       }
-      const force = state === 'ready' || state === 'stale';
-      enqueueNutritionItem(item.name, { force });
+      if (state === 'editable' || state === 'stale') {
+        await beginNutritionEdit(item);
+        return;
+      }
+      enqueueNutritionItem(item.name, { force: false });
       nutritionDelayMs = NUTRITION_MIN_DELAY_MS;
       if (!processingNutrition) {
         processNutritionQueue();
@@ -512,6 +521,67 @@ function queueNutritionConfirmEntry(entry, { prioritize = false } = {}) {
   openNextPendingConfirm();
 }
 
+async function beginNutritionEdit(item) {
+  if (!item || !item.name) return;
+
+  try {
+    const pending = await getPendingMatch(item.name);
+    if (pending) {
+      queueNutritionConfirmEntry(pending, { prioritize: true });
+      return;
+    }
+  } catch (err) {
+    console.error('Unable to load pending match for edit', err);
+  }
+
+  const unitDefault = item.home_unit || item.unit_default || item.unit || 'g';
+
+  let foods;
+  try {
+    foods = await searchFdcFoods(item.name, { pageSize: 25 });
+  } catch (error) {
+    if (error instanceof MissingFdcApiKeyError || error?.code === 'MISSING_FDC_API_KEY') {
+      if (!missingApiKeyWarningShown) {
+        missingApiKeyWarningShown = true;
+      }
+      setNutritionStatus('Set your FDC website API key to enable nutrition syncing.', 'warning');
+    } else {
+      const message = error?.message ? ` ${error.message}` : '';
+      showTransientNutritionStatus(`USDA search failed for ${item.name}.${message}`, 'error');
+    }
+    return;
+  }
+
+  const ranked = rankCandidates(item.name, foods);
+  if (!ranked.length) {
+    showTransientNutritionStatus(`No USDA FDC matches found for ${item.name}.`, 'warning');
+    return;
+  }
+
+  const candidates = ranked.map(candidate => {
+    const { _original, ...rest } = candidate;
+    return rest;
+  });
+
+  try {
+    await setPendingMatch(item.name, {
+      candidates,
+      unitDefault,
+      source: 'manual-edit',
+      lastSearchQuery: item.name
+    });
+    const pendingEntry = await getPendingMatch(item.name);
+    if (pendingEntry) {
+      queueNutritionConfirmEntry(pendingEntry, { prioritize: true });
+    }
+    await updateNutritionButtons();
+  } catch (err) {
+    console.error('Unable to stage nutrition edit', err);
+    const message = err?.message ? ` ${err.message}` : '';
+    showTransientNutritionStatus(`Unable to prepare nutrition edit for ${item.name}.${message}`, 'error');
+  }
+}
+
 async function queueNutritionConfirmForItem(name, options = {}) {
   if (!name) return;
   try {
@@ -577,15 +647,16 @@ async function updateNutritionButtons() {
       button.classList.add('pending');
       button.classList.remove('sync-needed');
       button.dataset.state = 'pending';
-    } else if (hasData && !stale) {
-      button.textContent = 'Refresh Nutrition';
-      button.classList.remove('pending', 'sync-needed');
-      button.dataset.state = 'ready';
-    } else if (hasData && stale) {
-      button.textContent = 'Refresh Nutrition';
-      button.classList.add('sync-needed');
+    } else if (hasData) {
+      button.textContent = 'Edit Nutrition';
       button.classList.remove('pending');
-      button.dataset.state = 'stale';
+      if (stale) {
+        button.classList.add('sync-needed');
+        button.dataset.state = 'stale';
+      } else {
+        button.classList.remove('sync-needed');
+        button.dataset.state = 'editable';
+      }
     } else {
       button.textContent = 'Sync Nutrition';
       button.classList.add('sync-needed');
