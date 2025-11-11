@@ -15,7 +15,8 @@
     "https://www.amazon.com/*",
     "https://www.shaws.com/*",
     "https://onlineshopping.rochebros.com/*",
-    "https://www.hannaford.com/*"
+    "https://www.hannaford.com/*",
+    "https://api.nal.usda.gov/*"
   ],
   "action": {
     "default_popup": "launcher.html"

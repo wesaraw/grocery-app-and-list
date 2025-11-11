@@ -11,6 +11,10 @@ import {
   convertArrayToNames
 } from './utils/itemStorage.js';
 
+import { ensureIngredientRecordForItem } from './utils/fdcClient.js';
+import { setPendingMatch } from './utils/nutritionMatching.js';
+import { openOrFocusWindow } from './utils/windowUtils.js';
+
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
@@ -24,6 +28,52 @@ const DEFAULTS = {
   monthly: 0,
   shelf: 26 // weeks
 };
+
+const commitButton = document.getElementById('commit');
+const nutritionStatusEl = document.getElementById('nutritionStatus');
+const apiKeyHintEl = document.getElementById('apiKeyHint');
+const openApiKeyButton = document.getElementById('openApiKey');
+
+let commitInProgress = false;
+let itemPersisted = false;
+
+if (openApiKeyButton) {
+  openApiKeyButton.addEventListener('click', () => {
+    openOrFocusWindow('apiKeys.html', 420, 240);
+  });
+}
+
+function clearNutritionStatus() {
+  if (!nutritionStatusEl) return;
+  nutritionStatusEl.textContent = '';
+  nutritionStatusEl.className = 'nutrition-status';
+  nutritionStatusEl.style.display = 'none';
+}
+
+function updateNutritionStatus(type, message) {
+  if (!nutritionStatusEl) return;
+  const allowed = new Set(['loading', 'success', 'error', 'info', 'warning']);
+  const statusType = allowed.has(type) ? type : 'info';
+  nutritionStatusEl.textContent = message;
+  nutritionStatusEl.className = `nutrition-status ${statusType}`;
+  nutritionStatusEl.style.display = 'block';
+}
+
+function hideApiKeyHint() {
+  if (apiKeyHintEl) {
+    apiKeyHintEl.style.display = 'none';
+  }
+}
+
+function showApiKeyHint() {
+  if (apiKeyHintEl) {
+    apiKeyHintEl.style.display = 'block';
+  }
+}
+
+function scheduleClose(delayMs = 400) {
+  window.setTimeout(() => window.close(), delayMs);
+}
 
 function monthsFromWeeks(weeks) {
   return weeks / WEEKS_PER_MONTH;
@@ -144,6 +194,14 @@ function highlightError(el) {
 }
 
 async function commit() {
+  if (commitInProgress) return;
+  if (itemPersisted) {
+    if (apiKeyHintEl && apiKeyHintEl.style.display === 'block') {
+      openOrFocusWindow('apiKeys.html', 420, 240);
+    }
+    return;
+  }
+
   const nameEl = document.getElementById('name');
   const stockEl = document.getElementById('stock');
   const categoryEl = document.getElementById('category');
@@ -170,6 +228,13 @@ async function commit() {
     return;
   }
   document.getElementById('warning').style.display = 'none';
+  clearNutritionStatus();
+  hideApiKeyHint();
+  commitInProgress = true;
+  if (commitButton) {
+    commitButton.disabled = true;
+  }
+  updateNutritionStatus('loading', 'Saving item and syncing nutrition data…');
 
   const yearly = parseFloat(document.getElementById('yearly').value) || DEFAULTS.yearly;
   const unit = document.getElementById('unit').value.trim() || DEFAULTS.unit;
@@ -337,7 +402,55 @@ async function commit() {
     saveItemSeasons(itemSeasons)
   ]);
 
-  window.close();
+  itemPersisted = true;
+
+  try {
+    const result = await ensureIngredientRecordForItem({
+      name,
+      home_unit: unit,
+      category
+    });
+    if (result.status === 'needs-confirmation') {
+      updateNutritionStatus('info', 'Confirm the nutrition match in the new window.');
+      await setPendingMatch(name, {
+        candidates: result.candidates,
+        unitDefault: unit || 'g',
+        source: 'add-item'
+      });
+      openOrFocusWindow(`nutritionConfirm.html?item=${encodeURIComponent(name)}`, 520, 600);
+      scheduleClose(600);
+    } else if (result.status === 'missing-api-key') {
+      updateNutritionStatus(
+        'warning',
+        'Item saved. Add your FDC website API key to finish syncing nutrition data.'
+      );
+      showApiKeyHint();
+      commitInProgress = false;
+      return;
+    } else if (result.status === 'no-results') {
+      updateNutritionStatus('info', 'Item saved, but no nutrition matches were found.');
+      scheduleClose(1200);
+    } else if (result.status === 'matched' || result.status === 'updated' || result.status === 'exists') {
+      updateNutritionStatus('success', 'Nutrition data synced successfully.');
+      scheduleClose(600);
+    } else if (result.status === 'error') {
+      updateNutritionStatus('error', 'Item saved, but syncing nutrition data failed.');
+      commitInProgress = false;
+      return;
+    } else {
+      updateNutritionStatus('info', 'Item saved. Nutrition data will sync shortly.');
+      scheduleClose(800);
+    }
+  } catch (err) {
+    console.error('Unable to sync nutrition data for new item', err);
+    updateNutritionStatus('error', 'Item saved, but syncing nutrition data failed.');
+    commitInProgress = false;
+    return;
+  }
+
+  commitInProgress = false;
 }
 
-document.getElementById('commit').addEventListener('click', commit);
+if (commitButton) {
+  commitButton.addEventListener('click', commit);
+}

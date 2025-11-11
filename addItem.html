@@ -15,6 +15,66 @@
       0%, 100% { background-color: #ffcdd2; }
       50% { background-color: #fff; }
     }
+    .nutrition-status {
+      display: none;
+      margin-top: 12px;
+      padding: 8px 10px;
+      border-radius: 4px;
+      font-size: 0.85em;
+      line-height: 1.4;
+    }
+    .nutrition-status.info {
+      display: block;
+      background: #e3f2fd;
+      color: #0d47a1;
+    }
+    .nutrition-status.success {
+      display: block;
+      background: #e8f5e9;
+      color: #1b5e20;
+    }
+    .nutrition-status.error,
+    .nutrition-status.warning {
+      display: block;
+      background: #ffebee;
+      color: #b71c1c;
+    }
+    .nutrition-status.loading {
+      display: block;
+      background: #ede7f6;
+      color: #4527a0;
+      position: relative;
+      padding-left: 30px;
+    }
+    .nutrition-status.loading::before {
+      content: '';
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      animation: spin 1s linear infinite;
+      transform: translateY(-50%);
+    }
+    @keyframes spin {
+      from { transform: translateY(-50%) rotate(0deg); }
+      to { transform: translateY(-50%) rotate(360deg); }
+    }
+    .api-key-hint {
+      display: none;
+      margin-top: 10px;
+      font-size: 0.85em;
+      padding: 8px 10px;
+      background: #fff8e1;
+      color: #795548;
+      border-radius: 4px;
+    }
+    .api-key-hint button {
+      margin-top: 6px;
+    }
   </style>
 </head>
 <body>
@@ -54,8 +114,13 @@
     <div id="seasonContainer"></div>
     <button type="button" id="addSeasonBtn">Add Range</button>
   </div>
-  <button id="commit">Comit</button>
+  <button id="commit">Commit</button>
   <div id="warning" style="color: red; display: none;">Incomplete data</div>
+  <div id="nutritionStatus" class="nutrition-status" aria-live="polite"></div>
+  <div id="apiKeyHint" class="api-key-hint">
+    <div>Item saved. Add your FDC website API key to sync nutrition data.</div>
+    <button type="button" id="openApiKey">Open API Key Settings</button>
+  </div>
   <script type="module" src="addItem.js"></script>
 </body>
 </html>

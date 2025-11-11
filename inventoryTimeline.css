@@ -61,3 +61,69 @@ thead th.item-image {
 .category-spacer {
   border-top: 1px solid #ccc;
 }
+
+.nutrition-button-row {
+  margin-top: 4px;
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.nutrition-button-row button {
+  font-size: 0.8em;
+  padding: 2px 6px;
+  margin-top: 2px;
+  cursor: pointer;
+}
+
+.nutrition-info-button {
+  background-color: #eef6ff;
+  border: 1px solid #b3d7ff;
+  color: #0b5394;
+}
+
+.nutrition-info-button:hover {
+  background-color: #d6e9ff;
+}
+
+.nutrition-sync-button {
+  background-color: #f3f3f3;
+  border: 1px solid #ccc;
+  color: #333;
+}
+
+.nutrition-sync-button:hover {
+  background-color: #e4e4e4;
+}
+
+.nutrition-sync-button.pending {
+  background-color: #f5c16c;
+  color: #3a2500;
+}
+
+.nutrition-sync-button.sync-needed {
+  background-color: #e6e6e6;
+  color: #333;
+}
+
+.nutrition-status {
+  display: none;
+  margin: 8px 10px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.nutrition-status.info {
+  display: block;
+  background-color: #eef6ff;
+  color: #0b5394;
+  border: 1px solid #b3d7ff;
+}
+
+.nutrition-status.warning {
+  display: block;
+  background-color: #fff4e5;
+  color: #9c5700;
+  border: 1px solid #f2c879;
+}

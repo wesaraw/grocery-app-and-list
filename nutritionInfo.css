@@ -1,0 +1,53 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 16px;
+  width: 420px;
+}
+
+h1 {
+  margin-top: 0;
+  font-size: 1.4em;
+}
+
+#meta {
+  margin-bottom: 12px;
+  font-size: 0.9em;
+}
+
+#meta strong {
+  display: inline-block;
+  min-width: 120px;
+}
+
+.status {
+  margin-top: 10px;
+  font-size: 0.9em;
+}
+
+.status.warning {
+  color: #9c5700;
+}
+
+.status.error {
+  color: #a40000;
+}
+
+.status.info {
+  color: #0b5394;
+}
+
+.nutrition-output {
+  background: #f7f7f7;
+  border: 1px solid #ddd;
+  padding: 12px;
+  white-space: pre-wrap;
+  font-family: 'Courier New', monospace;
+  max-height: 400px;
+  overflow-y: auto;
+  font-size: 0.9em;
+}
+
+.meta-secondary {
+  color: #555;
+  margin-top: 6px;
+}

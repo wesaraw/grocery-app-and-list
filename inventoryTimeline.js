@@ -5,6 +5,16 @@ import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
 import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
 import { formatQuantity } from './utils/quantityFormat.js';
 
+import { ensureIngredientRecordForItem, isIngredientRecordStale } from './utils/fdcClient.js';
+import { getIngredientByItemName, getIngredientMap } from './utils/ingredientStorage.js';
+import { getFdcApiKey } from './utils/apiKeyStorage.js';
+import {
+  getPendingMatch,
+  getPendingMatches,
+  setPendingMatch,
+  removePendingMatch
+} from './utils/nutritionMatching.js';
+
 async function loadJSON(path) {
   const url = chrome.runtime.getURL(path);
   const res = await fetch(url);
@@ -127,6 +137,7 @@ function buildItemMap(needs, expiration, stock, consumption, mealMonth, mealBrea
     return {
       name: n.name,
       category: n.category || '',
+      home_unit: n.home_unit || '',
       units_per_purchase: 1,
       base_monthly_consumption: base,
       meal_monthly_consumption: meal,
@@ -299,9 +310,11 @@ function buildGrid(items, headerState = {}, startWeek = 1) {
     row.appendChild(imgTd);
     const th = document.createElement('th');
     th.className = 'item-label';
-    th.innerHTML = `${item.name}<br/><span class="exp-weeks">${item.expiration_weeks}w</span>` +
+    const metaDiv = document.createElement('div');
+    metaDiv.innerHTML = `${item.name}<br/><span class="exp-weeks">${item.expiration_weeks}w</span>` +
       `<br/><span class="weekly-cons">${formatQuantity(item.weekly_consumption)}/wk</span>`;
-    const span = th.querySelector('.weekly-cons');
+    th.appendChild(metaDiv);
+    const span = metaDiv.querySelector('.weekly-cons');
     if (span) {
       span.style.cursor = 'pointer';
       span.addEventListener('click', () => {
@@ -315,6 +328,37 @@ function buildGrid(items, headerState = {}, startWeek = 1) {
         openOrFocusWindow(`weeklyNeedDebug.html?${params.toString()}`, 320, 240);
       });
     }
+    const nutritionRow = document.createElement('div');
+    nutritionRow.className = 'nutrition-button-row';
+    const infoBtn = document.createElement('button');
+    infoBtn.type = 'button';
+    infoBtn.className = 'nutrition-info-button';
+    infoBtn.textContent = 'Nutrition Info';
+    infoBtn.addEventListener('click', () => {
+      openOrFocusWindow(`nutritionInfo.html?item=${encodeURIComponent(item.name)}`, 420, 520);
+    });
+    nutritionRow.appendChild(infoBtn);
+
+    const nutritionBtn = document.createElement('button');
+    nutritionBtn.type = 'button';
+    nutritionBtn.className = 'nutrition-sync-button';
+    nutritionBtn.textContent = 'Sync Nutrition';
+    nutritionBtn.addEventListener('click', () => {
+      const state = nutritionBtn.dataset.state;
+      if (state === 'pending') {
+        openOrFocusWindow(`nutritionConfirm.html?item=${encodeURIComponent(item.name)}`, 520, 600);
+        return;
+      }
+      const force = state === 'ready' || state === 'stale';
+      enqueueNutritionItem(item.name, { force });
+      nutritionDelayMs = NUTRITION_MIN_DELAY_MS;
+      if (!processingNutrition) {
+        processNutritionQueue();
+      }
+    });
+    nutritionRow.appendChild(nutritionBtn);
+    th.appendChild(nutritionRow);
+    nutritionButtons.set(item.name, { info: infoBtn, sync: nutritionBtn });
     row.appendChild(th);
     weeks.forEach((w, idx) => {
       const weekNum = idx + 1;
@@ -370,6 +414,235 @@ let globalItems = [];
 let gridContainer;
 const headerState = {};
 let currentOnly = false;
+
+const nutritionButtons = new Map();
+const nutritionQueue = [];
+const queuedNutritionNames = new Set();
+const nutritionRetryCounts = new Map();
+const NUTRITION_RETRY_LIMIT = 3;
+const NUTRITION_MIN_DELAY_MS = 350;
+const NUTRITION_MAX_DELAY_MS = 5000;
+let nutritionDelayMs = NUTRITION_MIN_DELAY_MS;
+let processingNutrition = false;
+let nutritionStatusEl = null;
+let missingApiKeyWarningShown = false;
+let nutritionTransientTimer = null;
+
+function setNutritionStatus(message, type = 'info') {
+  if (!nutritionStatusEl) return;
+  if (!message) {
+    if (nutritionTransientTimer) {
+      clearTimeout(nutritionTransientTimer);
+      nutritionTransientTimer = null;
+    }
+    nutritionStatusEl.textContent = '';
+    nutritionStatusEl.className = 'nutrition-status';
+    nutritionStatusEl.style.display = 'none';
+    return;
+  }
+  nutritionStatusEl.textContent = message;
+  nutritionStatusEl.className = `nutrition-status ${type}`.trim();
+  nutritionStatusEl.style.display = 'block';
+}
+
+function showTransientNutritionStatus(message, type = 'info', duration = 6000) {
+  if (!nutritionStatusEl) return;
+  if (nutritionTransientTimer) {
+    clearTimeout(nutritionTransientTimer);
+    nutritionTransientTimer = null;
+  }
+  setNutritionStatus(message, type);
+  nutritionTransientTimer = setTimeout(() => {
+    nutritionTransientTimer = null;
+    updateNutritionStatusBanner();
+  }, duration);
+}
+
+async function updateNutritionStatusBanner() {
+  if (nutritionTransientTimer) return;
+  const [apiKey, pending] = await Promise.all([getFdcApiKey(), getPendingMatches()]);
+  const messages = [];
+  if (!apiKey) {
+    messages.push('Add your FDC website API key to enable nutrition sync.');
+  }
+  const pendingCount = Object.keys(pending || {}).length;
+  if (pendingCount) {
+    messages.push(`${pendingCount} item${pendingCount === 1 ? '' : 's'} need nutrition match confirmation.`);
+  }
+  if (messages.length) {
+    const type = !apiKey ? 'warning' : 'info';
+    setNutritionStatus(messages.join(' '), type);
+  } else {
+    setNutritionStatus('');
+  }
+}
+
+async function updateNutritionButtons() {
+  const [pending, ingredientMap] = await Promise.all([
+    getPendingMatches(),
+    getIngredientMap()
+  ]);
+  const pendingKeys = new Set(Object.keys(pending));
+  for (const [name, buttons] of nutritionButtons.entries()) {
+    const button = buttons?.sync;
+    if (!button) continue;
+    const normalized = canonicalName(name);
+    const record = ingredientMap[normalized];
+    const hasData = record && record.perGramVector && Object.keys(record.perGramVector).length;
+    const stale = record ? isIngredientRecordStale(record) : false;
+    if (buttons?.info) {
+      buttons.info.title = hasData
+        ? 'View stored nutrition information'
+        : 'No nutrition data stored yet';
+    }
+    if (pendingKeys.has(normalized)) {
+      button.textContent = 'Review Match';
+      button.classList.add('pending');
+      button.classList.remove('sync-needed');
+      button.dataset.state = 'pending';
+    } else if (hasData && !stale) {
+      button.textContent = 'Refresh Nutrition';
+      button.classList.remove('pending', 'sync-needed');
+      button.dataset.state = 'ready';
+    } else if (hasData && stale) {
+      button.textContent = 'Refresh Nutrition';
+      button.classList.add('sync-needed');
+      button.classList.remove('pending');
+      button.dataset.state = 'stale';
+    } else {
+      button.textContent = 'Sync Nutrition';
+      button.classList.add('sync-needed');
+      button.classList.remove('pending');
+      button.dataset.state = 'missing';
+    }
+  }
+}
+
+function enqueueNutritionItem(name, { force = false } = {}) {
+  if (!name) return;
+  if (!force && queuedNutritionNames.has(name)) return;
+  if (force) {
+    queuedNutritionNames.delete(name);
+  }
+  queuedNutritionNames.add(name);
+  nutritionQueue.push(name);
+}
+
+async function processNutritionQueue() {
+  if (!nutritionQueue.length) {
+    processingNutrition = false;
+    return;
+  }
+  processingNutrition = true;
+  const name = nutritionQueue.shift();
+  queuedNutritionNames.delete(name);
+  const item = globalItems.find(it => it.name === name);
+  if (!item) {
+    nutritionRetryCounts.delete(name);
+    setTimeout(processNutritionQueue, nutritionDelayMs);
+    return;
+  }
+
+  let success = true;
+  let shouldRetry = false;
+  let errorMessage = '';
+
+  try {
+    const result = await ensureIngredientRecordForItem(item);
+    if (result.status === 'needs-confirmation') {
+      const existing = await getPendingMatch(item.name);
+      if (!existing) {
+        await setPendingMatch(item.name, {
+          candidates: result.candidates,
+          unitDefault: item.home_unit || item.unit_default || 'g',
+          source: 'timeline'
+        });
+        openOrFocusWindow(`nutritionConfirm.html?item=${encodeURIComponent(item.name)}`, 520, 600);
+      }
+    } else if (result.status === 'missing-api-key') {
+      if (!missingApiKeyWarningShown) {
+        missingApiKeyWarningShown = true;
+        setNutritionStatus('Set your FDC website API key to enable nutrition syncing.', 'warning');
+      }
+      nutritionQueue.length = 0;
+      queuedNutritionNames.clear();
+      nutritionRetryCounts.clear();
+      nutritionDelayMs = NUTRITION_MIN_DELAY_MS;
+      processingNutrition = false;
+      return;
+    } else if (result.status === 'no-results') {
+      showTransientNutritionStatus(`No USDA FDC matches found for ${item.name}.`, 'warning');
+    } else if (result.status === 'error') {
+      success = false;
+      errorMessage = result.error?.message || 'Unknown error';
+    }
+  } catch (err) {
+    success = false;
+    errorMessage = err?.message || 'Unknown error';
+    console.error('Failed to sync nutrition for', name, err);
+  }
+
+  if (!success) {
+    const retries = (nutritionRetryCounts.get(name) || 0) + 1;
+    if (retries <= NUTRITION_RETRY_LIMIT) {
+      nutritionRetryCounts.set(name, retries);
+      shouldRetry = true;
+    } else {
+      nutritionRetryCounts.delete(name);
+    }
+    if (errorMessage) {
+      const normalizedError = String(errorMessage || 'Unknown error');
+      const trimmedError =
+        normalizedError.length > 140 ? `${normalizedError.slice(0, 137)}…` : normalizedError;
+      showTransientNutritionStatus(
+        `Nutrition sync failed for ${item.name}. ${trimmedError}`,
+        'error'
+      );
+    }
+  } else {
+    nutritionRetryCounts.delete(name);
+  }
+
+  if (shouldRetry) {
+    enqueueNutritionItem(name, { force: true });
+  }
+
+  updateNutritionButtons();
+  updateNutritionStatusBanner();
+
+  nutritionDelayMs = success
+    ? NUTRITION_MIN_DELAY_MS
+    : Math.min(NUTRITION_MAX_DELAY_MS, Math.floor(nutritionDelayMs * 1.5));
+
+  setTimeout(processNutritionQueue, nutritionDelayMs);
+}
+
+async function scheduleNutritionBackfill(items = []) {
+  try {
+    const [ingredientMap, pendingMatches] = await Promise.all([
+      getIngredientMap(),
+      getPendingMatches()
+    ]);
+    const pendingKeys = new Set(Object.keys(pendingMatches || {}));
+    items.forEach(item => {
+      if (!item || !item.name) return;
+      const normalized = canonicalName(item.name);
+      if (!normalized) return;
+      if (pendingKeys.has(normalized)) return;
+      const record = ingredientMap[normalized];
+      const hasVector = record && record.perGramVector && Object.keys(record.perGramVector).length;
+      const stale = record ? isIngredientRecordStale(record) : true;
+      if (!hasVector || stale) {
+        enqueueNutritionItem(item.name);
+      }
+    });
+  } catch (error) {
+    console.error('Unable to schedule nutrition backfill', error);
+  }
+  if (!processingNutrition) {
+    processNutritionQueue();
+  }
+}
 
 async function fetchItems() {
   const data = await loadData();
@@ -429,6 +702,9 @@ async function refreshItems() {
       showGrid();
     }
   }
+  updateNutritionStatusBanner();
+  scheduleNutritionBackfill(globalItems);
+  updateNutritionButtons();
 }
 
 function resizeWindowToContent() {
@@ -455,8 +731,10 @@ function showGrid(items = globalItems) {
   showingHistory = false;
   document.getElementById('view-purchases').textContent = 'Purchase History';
   gridContainer.innerHTML = '';
+  nutritionButtons.clear();
   const startWeek = currentOnly ? getCurrentWeek() : 1;
   gridContainer.appendChild(buildGrid(items, headerState, startWeek));
+  updateNutritionButtons();
   resizeWindowToContent();
 }
 
@@ -470,6 +748,7 @@ function showPurchaseHistory() {
 
 async function init() {
   gridContainer = document.getElementById('grid-container');
+  nutritionStatusEl = document.getElementById('nutrition-status');
   await refreshItems();
 
   function applyFilter() {
@@ -547,6 +826,29 @@ async function init() {
         }
       }
     });
+    if (changes.ingredientRecords) {
+      updateNutritionButtons();
+      updateNutritionStatusBanner();
+      scheduleNutritionBackfill(globalItems);
+    }
+    if (changes.pendingIngredientMatches) {
+      updateNutritionButtons();
+      updateNutritionStatusBanner();
+      const newMap = changes.pendingIngredientMatches.newValue || {};
+      const oldMap = changes.pendingIngredientMatches.oldValue || {};
+      const oldKeys = new Set(Object.keys(oldMap || {}));
+      Object.values(newMap).forEach(entry => {
+        if (!entry || !entry.normalizedName) return;
+        if (!oldKeys.has(entry.normalizedName) && entry.itemName) {
+          openOrFocusWindow(`nutritionConfirm.html?item=${encodeURIComponent(entry.itemName)}`, 520, 600);
+        }
+      });
+    }
+    if (changes.fdcApiKey) {
+      missingApiKeyWarningShown = false;
+      updateNutritionStatusBanner();
+      scheduleNutritionBackfill(globalItems);
+    }
     if (updated) {
       if (showingHistory) {
         showPurchaseHistory();
@@ -639,6 +941,12 @@ async function init() {
   document.getElementById('mealPlanner').addEventListener('click', () => {
     openOrFocusWindow('mealPlanner.html');
   });
+  const apiKeysBtn = document.getElementById('apiKeysBtn');
+  if (apiKeysBtn) {
+    apiKeysBtn.addEventListener('click', () => {
+      openOrFocusWindow('apiKeys.html', 380, 240);
+    });
+  }
 }
 
 document.addEventListener('DOMContentLoaded', init);
