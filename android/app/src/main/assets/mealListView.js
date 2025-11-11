@@ -168,6 +168,11 @@ function normalizeMealRecord(meal) {
   if (meal.prepAhead === undefined) meal.prepAhead = false;
   if (meal.leftoverOk === undefined) meal.leftoverOk = false;
   if (meal.recipeBook === undefined) meal.recipeBook = '';
+  if (typeof meal.instructions !== 'string') {
+    meal.instructions = '';
+  } else {
+    meal.instructions = meal.instructions.trim();
+  }
   if (!Array.isArray(meal.ingredients)) {
     meal.ingredients = [];
   }
@@ -592,6 +597,31 @@ function createRows(meal, arr) {
   const costPromises = [];
   let firstTotalTd = null;
 
+  function buildInstructionsButton() {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'meal-instructions-btn';
+    const hasInstructions = meal.instructions && meal.instructions.length > 0;
+    button.textContent = hasInstructions ? 'Instructions' : 'Add instructions';
+    if (!hasInstructions) {
+      button.classList.add('meal-instructions-btn--empty');
+    }
+    button.addEventListener('click', () => {
+      const query = new URLSearchParams();
+      if (type) query.set('type', type);
+      if (meal.id !== undefined && meal.id !== null) {
+        query.set('mealId', String(meal.id));
+      }
+      if (meal.name) {
+        query.set('meal', meal.name);
+      }
+      const qs = query.toString();
+      const path = qs ? `mealInstructions.html?${qs}` : 'mealInstructions.html';
+      openOrFocusWindow(path);
+    });
+    return button;
+  }
+
   async function persistMealChange() {
     await saveMeals(arr);
     await calculateAndSaveMealNeeds();
@@ -792,6 +822,9 @@ function createRows(meal, arr) {
       nameTd.appendChild(document.createElement('br'));
       nameTd.appendChild(editBtn);
       nameTd.appendChild(document.createTextNode(' '));
+      const instructionsBtn = buildInstructionsButton();
+      nameTd.appendChild(instructionsBtn);
+      nameTd.appendChild(document.createTextNode(' '));
       nameTd.appendChild(delBtn);
 
       tr.appendChild(useTd);
@@ -985,6 +1018,9 @@ function createRows(meal, arr) {
     });
     nameTd.appendChild(document.createElement('br'));
     nameTd.appendChild(editBtn);
+    nameTd.appendChild(document.createTextNode(' '));
+    const instructionsBtn = buildInstructionsButton();
+    nameTd.appendChild(instructionsBtn);
     nameTd.appendChild(document.createTextNode(' '));
     nameTd.appendChild(delBtn);
 

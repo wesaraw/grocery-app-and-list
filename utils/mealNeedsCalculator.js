@@ -71,6 +71,11 @@ function loadMeals(type) {
           if (m.leftoverOk === undefined) m.leftoverOk = false;
           if (m.weight === undefined) m.weight = 1;
           if (m.groupMeal === undefined) m.groupMeal = false;
+          if (typeof m.instructions !== 'string') {
+            m.instructions = '';
+          } else {
+            m.instructions = m.instructions.trim();
+          }
         });
       }
       resolve(arr || []);

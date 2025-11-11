@@ -19,6 +19,11 @@ function loadMeals(type) {
           if (m.prepared === undefined) m.prepared = false;
           if (m.prepAhead === undefined) m.prepAhead = false;
           if (m.leftoverOk === undefined) m.leftoverOk = false;
+          if (typeof m.instructions !== 'string') {
+            m.instructions = '';
+          } else {
+            m.instructions = m.instructions.trim();
+          }
           if (!Array.isArray(m.ingredients)) {
             m.ingredients = [];
           }

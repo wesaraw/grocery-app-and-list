@@ -630,11 +630,51 @@ function buildIngredientEntries(meal, normalized) {
   return result;
 }
 
+function createInstructionsButton(meal) {
+  if (!meal) return null;
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'meal-instructions-btn';
+  const instructions = typeof meal.instructions === 'string' ? meal.instructions.trim() : '';
+  const hasInstructions = instructions.length > 0;
+  button.textContent = hasInstructions ? 'Instructions' : 'Add instructions';
+  if (!hasInstructions) {
+    button.classList.add('meal-instructions-btn--empty');
+  }
+  button.addEventListener('click', () => {
+    const query = new URLSearchParams();
+    let typeId = null;
+    const typeCandidates = [meal.categoryId, meal.category, meal.type];
+    typeCandidates.some(candidate => {
+      if (candidate && MEAL_TYPES[candidate]) {
+        typeId = candidate;
+        return true;
+      }
+      return false;
+    });
+    if (typeId) {
+      query.set('type', typeId);
+    }
+    if (meal.id !== undefined && meal.id !== null) {
+      query.set('mealId', String(meal.id));
+    }
+    if (meal.name) {
+      query.set('meal', meal.name);
+    }
+    const qs = query.toString();
+    const url = qs ? `mealInstructions.html?${qs}` : 'mealInstructions.html';
+    openOrFocusWindow(url);
+  });
+  return button;
+}
+
 function buildMealBlockFromEntries(normalized, ingredientEntries, options = {}) {
   if (!normalized) return null;
   const entries = Array.isArray(ingredientEntries) ? ingredientEntries : [];
   const block = document.createElement('div');
   block.className = 'meal-block';
+  const header = document.createElement('div');
+  header.className = 'meal-block-header';
   const title = document.createElement('div');
   title.className = 'meal-title';
   const portionText = formatPortions(normalized.totalMultiplier);
@@ -644,7 +684,17 @@ function buildMealBlockFromEntries(normalized, ingredientEntries, options = {}) 
   title.textContent = portionText
     ? `${normalized.displayName} (${portionText})${targetText}`
     : `${normalized.displayName}${targetText}`;
-  block.appendChild(title);
+  header.appendChild(title);
+
+  const showInstructionsButton = options?.variant !== 'print';
+  const instructionsBtn = showInstructionsButton
+    ? createInstructionsButton(normalized.meal)
+    : null;
+  if (instructionsBtn) {
+    header.appendChild(instructionsBtn);
+  }
+
+  block.appendChild(header);
 
   if (normalized.leftoverDates.length) {
     const detail = document.createElement('div');

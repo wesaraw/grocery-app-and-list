@@ -26,6 +26,11 @@ function loadMeals() {
           if (m.prepAhead === undefined) m.prepAhead = false;
           if (m.leftoverOk === undefined) m.leftoverOk = false;
           if (m.recipeBook === undefined) m.recipeBook = '';
+          if (typeof m.instructions !== 'string') {
+            m.instructions = '';
+          } else {
+            m.instructions = m.instructions.trim();
+          }
           if (!Array.isArray(m.ingredients)) {
             m.ingredients = [];
           }
@@ -230,7 +235,8 @@ async function init() {
       weight: mealWeight,
       totalPortions: mealPortions,
       groupMeal: groupChk.checked,
-      leftoverOk: leftoverBox.checked
+      leftoverOk: leftoverBox.checked,
+      instructions: ''
     });
     await saveMeals(meals);
     await calculateAndSaveMealNeeds();

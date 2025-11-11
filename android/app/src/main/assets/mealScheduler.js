@@ -350,6 +350,11 @@ async function loadMeals(type) {
         if (m.prepared === undefined) m.prepared = false;
         if (m.leftoverOk === undefined) m.leftoverOk = false;
         if (m.recipeBook === undefined) m.recipeBook = '';
+        if (typeof m.instructions !== 'string') {
+          m.instructions = '';
+        } else {
+          m.instructions = m.instructions.trim();
+        }
       }
     });
   }
