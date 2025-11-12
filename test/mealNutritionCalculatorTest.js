@@ -58,7 +58,7 @@ const ingredientMap = {
       vitamin_b1: 0.0006
     },
     portions: [
-      { amount: 1, measureUnit: 'ea', modifier: 'pepper', gramWeight: 85 }
+      { amount: 1, measureUnit: 'peppers', modifier: 'red bell', gramWeight: 85 }
     ]
   },
   water: {
@@ -109,6 +109,9 @@ assertClose(totals.totalRecipeWeight, 638.620461, 'Total recipe weight mismatch'
 assertClose(totals.totalServingWeight, 159.655115, 'Total serving weight mismatch');
 assertClose(totals.perRecipe.vitamin_b1, 0.0255, 'Per-recipe vitamin B1 mismatch');
 assertClose(totals.perServing.vitamin_b1, 0.006375, 'Per-serving vitamin B1 mismatch');
+
+const pepperGrams = totals.perRecipe.vitamin_b1 / ingredientMap['red bell pepper'].perGramVector.vitamin_b1;
+assertClose(pepperGrams, 42.5, 'Derived gram weight for red bell pepper mismatch');
 
 if (!Array.isArray(totals.missingIngredients) || totals.missingIngredients.length !== 2) {
   throw new Error('Expected two missing ingredients');

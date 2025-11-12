@@ -104,7 +104,46 @@ function buildDensitySettings(info = {}) {
   return settings;
 }
 
-function buildUnitVariants(unit) {
+function addTokenForms(set, token) {
+  const normalized = typeof token === 'string' ? token.trim().toLowerCase() : '';
+  if (!normalized) return;
+  set.add(normalized);
+  if (normalized.endsWith('es')) {
+    set.add(normalized.slice(0, -2));
+  }
+  if (normalized.endsWith('s')) {
+    set.add(normalized.slice(0, -1));
+  } else {
+    set.add(`${normalized}s`);
+  }
+}
+
+function tokenizePortionString(value) {
+  if (!value || typeof value !== 'string') return [];
+  return value
+    .split(/[^a-z0-9%]+/gi)
+    .map(part => part.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function collectTokensFromStrings(set, ...values) {
+  values.forEach(value => {
+    tokenizePortionString(value).forEach(token => addTokenForms(set, token));
+  });
+}
+
+function collectIngredientTokens(ingredient, record) {
+  const tokens = new Set();
+  if (ingredient) {
+    collectTokensFromStrings(tokens, ingredient.name, ingredient.display_name, ingredient.original_name);
+  }
+  if (record) {
+    collectTokensFromStrings(tokens, record.display_name, record.fdc_description, record.description, record.name);
+  }
+  return tokens;
+}
+
+function buildUnitVariants(unit, extraTokens = new Set()) {
   const variants = new Set();
   if (!unit) return variants;
   const base = unit.trim().toLowerCase();
@@ -121,14 +160,20 @@ function buildUnitVariants(unit) {
   if (base === 'ea' || base === 'each') {
     variants.add('serving');
     variants.add('nlea serving');
+    const tokens = extraTokens instanceof Set ? extraTokens : new Set(extraTokens || []);
+    tokens.forEach(token => addTokenForms(variants, token));
   }
   return variants;
 }
 
-function gramsFromPortion(value, unit, record) {
+function gramsFromPortion(value, unit, record, options = {}) {
   if (!record || !Array.isArray(record.portions)) return null;
   const normalizedUnit = typeof unit === 'string' ? unit.trim().toLowerCase() : '';
-  const variants = buildUnitVariants(normalizedUnit);
+  const ingredientTokens =
+    options && options.ingredientTokens instanceof Set
+      ? options.ingredientTokens
+      : new Set(options?.ingredientTokens || []);
+  const variants = buildUnitVariants(normalizedUnit, ingredientTokens);
   let fallback = null;
   for (const portion of record.portions) {
     if (!portion) continue;
@@ -140,16 +185,7 @@ function gramsFromPortion(value, unit, record) {
     const measure = typeof portion.measureUnit === 'string' ? portion.measureUnit.trim().toLowerCase() : '';
     const modifier = typeof portion.modifier === 'string' ? portion.modifier.trim().toLowerCase() : '';
     const candidates = new Set();
-    if (measure) {
-      candidates.add(measure);
-      candidates.add(measure.replace(/s$/, ''));
-    }
-    if (modifier) {
-      candidates.add(modifier);
-      candidates.add(modifier.replace(/s$/, ''));
-      candidates.add(`${modifier} ${measure}`.trim());
-      candidates.add(`${measure} ${modifier}`.trim());
-    }
+    collectTokensFromStrings(candidates, measure, modifier, `${modifier} ${measure}`);
     if (!fallback && (measure.includes('serving') || modifier.includes('serving'))) {
       fallback = { grams, amount };
     }
@@ -190,7 +226,7 @@ function gramsFromConversion(value, unit, densityInfo, record, options = {}) {
         normalizedResult.unit,
         densityInfo,
         record,
-        { skipNormalization: true }
+        { ...options, skipNormalization: true }
       );
       if (recursive != null) {
         return roundValue(recursive);
@@ -198,7 +234,7 @@ function gramsFromConversion(value, unit, densityInfo, record, options = {}) {
     }
   }
 
-  const viaPortion = gramsFromPortion(value, normalized, record);
+  const viaPortion = gramsFromPortion(value, normalized, record, options);
   if (viaPortion != null) {
     return roundValue(viaPortion);
   }
@@ -253,7 +289,10 @@ function computeIngredientGrams(ingredient, ingredientMap, densityMap) {
   if (byMass != null) {
     return { grams: byMass, record, reason: null };
   }
-  const converted = gramsFromConversion(value, unit, densityInfo, record);
+  const ingredientTokens = collectIngredientTokens(ingredient, record);
+  const converted = gramsFromConversion(value, unit, densityInfo, record, {
+    ingredientTokens
+  });
   if (converted != null) {
     return { grams: converted, record, reason: null };
   }
