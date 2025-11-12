@@ -15,6 +15,15 @@ function canonicalMassUnit(unit) {
   if (normalized === 'mg' || normalized === 'milligram' || normalized === 'milligrams') {
     return 'mg';
   }
+  if (
+    normalized === 'mcg' ||
+    normalized === 'ug' ||
+    normalized === 'µg' ||
+    normalized === 'microgram' ||
+    normalized === 'micrograms'
+  ) {
+    return 'mcg';
+  }
   if (normalized === 'g' || normalized === 'gram' || normalized === 'grams') {
     return 'g';
   }
@@ -52,13 +61,32 @@ export function convertBetweenMassUnits(value, fromUnit, toUnit) {
   const to = canonicalMassUnit(toUnit);
   if (!from || !to) return null;
   if (from === to) return value;
-  if (from === 'g' && to === 'mg') {
-    return convertGramsToMilligrams(value);
-  }
-  if (from === 'mg' && to === 'g') {
-    return convertMilligramsToGrams(value);
-  }
-  return null;
+  const massFactors = { g: 1, mg: 1 / 1000, mcg: 1 / 1000000 };
+  const fromFactor = massFactors[from];
+  const toFactor = massFactors[to];
+  if (fromFactor == null || toFactor == null) return null;
+  const grams = value * fromFactor;
+  return grams / toFactor;
+}
+
+export function convertGramsToMicrograms(value) {
+  if (!Number.isFinite(value)) return null;
+  return value * 1000000;
+}
+
+export function convertMicrogramsToGrams(value) {
+  if (!Number.isFinite(value)) return null;
+  return value / 1000000;
+}
+
+export function convertMilligramsToMicrograms(value) {
+  if (!Number.isFinite(value)) return null;
+  return value * 1000;
+}
+
+export function convertMicrogramsToMilligrams(value) {
+  if (!Number.isFinite(value)) return null;
+  return value / 1000;
 }
 
 function convertToBase(value, unit, definition) {
@@ -75,6 +103,9 @@ function convertToBase(value, unit, definition) {
   }
   if (canonicalUnit === 'mg') {
     return convertMilligramsToGrams(value);
+  }
+  if (canonicalUnit === 'mcg') {
+    return convertMicrogramsToGrams(value);
   }
   return null;
 }
@@ -94,6 +125,9 @@ function convertFromBase(value, unit, definition) {
   if (canonicalUnit === 'mg') {
     return convertGramsToMilligrams(value);
   }
+  if (canonicalUnit === 'mcg') {
+    return convertGramsToMicrograms(value);
+  }
   return null;
 }
 
@@ -102,7 +136,7 @@ export function getSupportedUnitsForDefinition(definition) {
   if (definition.targetUnit === 'kcal') {
     return ['kcal'];
   }
-  return ['g', 'mg'];
+  return ['g', 'mg', 'mcg'];
 }
 
 export function getDefaultUnitForDefinition(definition) {
@@ -113,6 +147,15 @@ export function getDefaultUnitForDefinition(definition) {
   const display = normalizeUnit(definition.displayUnit);
   if (display === 'mg' || display === 'milligram' || display === 'milligrams') {
     return 'mg';
+  }
+  if (
+    display === 'mcg' ||
+    display === 'ug' ||
+    display === 'µg' ||
+    display === 'microgram' ||
+    display === 'micrograms'
+  ) {
+    return 'mcg';
   }
   return 'g';
 }
@@ -237,6 +280,10 @@ export default {
   convertBetweenMassUnits,
   convertGramsToMilligrams,
   convertMilligramsToGrams,
+  convertGramsToMicrograms,
+  convertMicrogramsToGrams,
+  convertMilligramsToMicrograms,
+  convertMicrogramsToMilligrams,
   getSupportedUnitsForDefinition,
   getDefaultUnitForDefinition,
   convertTargetValueToUnit,

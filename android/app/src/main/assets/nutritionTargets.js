@@ -127,6 +127,8 @@ function createRow(definition) {
       ? 'Kilocalories (kcal)'
       : unit === 'mg'
       ? 'Milligrams (mg)'
+      : unit === 'mcg'
+      ? 'Micrograms (mcg)'
       : 'Grams (g)';
     select.appendChild(option);
   });
