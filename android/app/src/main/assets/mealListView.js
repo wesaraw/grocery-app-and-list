@@ -34,6 +34,10 @@ import {
   convertNutrientValueToDisplay
 } from './utils/fdcNutrientMap.js';
 import { loadGlobalProduceMeasures } from './utils/unitResolver.js';
+import {
+  loadNutritionTargetLookup,
+  NUTRITION_TARGETS_STORAGE_KEY
+} from './utils/nutritionTargets.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -71,6 +75,7 @@ let needsMap = new Map();
 let densityMap = {};
 let ingredientMap = {};
 let globalProduceMeasures = {};
+let nutritionTargetLookup = {};
 const UOM_PATH = 'Required for grocery app/uom_conversion_table.json';
 let units = [];
 
@@ -193,12 +198,23 @@ function normalizeMealRecord(meal) {
   normalizeIngredientPrepFlags(meal.ingredients);
 }
 
+async function reloadNutritionTargets() {
+  try {
+    const lookup = await loadNutritionTargetLookup(NUTRIENT_DEFINITIONS);
+    nutritionTargetLookup = lookup || {};
+  } catch (error) {
+    console.error('Failed to load nutrition targets', error);
+    nutritionTargetLookup = {};
+  }
+}
+
 function getNutritionContext() {
   return {
     ingredientMap,
     densityMap,
     needsMap,
-    globalProduceMeasures
+    globalProduceMeasures,
+    nutritionTargets: nutritionTargetLookup
   };
 }
 
@@ -232,6 +248,80 @@ function formatNutrientValue(value, key) {
   return `${rounded}${unit ? ` ${unit}` : ''}`;
 }
 
+function formatScorePercent(percent) {
+  if (!Number.isFinite(percent) || percent < 0) return '0%';
+  const rounded = Math.min(999, Math.round(percent));
+  return `${rounded}%`;
+}
+
+function formatScoreTarget(entry) {
+  if (!entry) return null;
+  if (Number.isFinite(entry.targetInputValue) && entry.targetInputValue > 0 && entry.targetInputUnit) {
+    return `${entry.targetInputValue} ${entry.targetInputUnit}`.trim();
+  }
+  const def = NUTRIENT_DEFINITION_MAP.get(entry.key);
+  const unit = entry.targetUnit || def?.targetUnit || '';
+  const baseValue = Number(entry.targetValue);
+  if (!Number.isFinite(baseValue) || baseValue <= 0) return null;
+  if (def) {
+    const displayValue = convertNutrientValueToDisplay(baseValue, def);
+    if (Number.isFinite(displayValue)) {
+      const decimals = typeof def.decimals === 'number' ? def.decimals : 2;
+      const rounded = Number(displayValue.toFixed(decimals));
+      if (Number.isFinite(rounded)) {
+        return `${rounded}${unit ? ` ${unit}` : ''}`.trim();
+      }
+    }
+  }
+  const rounded = Math.round(baseValue * 100) / 100;
+  return `${rounded}${unit ? ` ${unit}` : ''}`.trim();
+}
+
+function buildNutritionScoreList(totals) {
+  const perServingScores = totals?.nutrientScores?.perServing;
+  if (!perServingScores) return null;
+  const entries = Object.values(perServingScores);
+  if (!entries.length) return null;
+  const container = document.createElement('div');
+  container.className = 'meal-nutrition-scores';
+  entries
+    .slice()
+    .sort((a, b) => {
+      const labelA = (a?.label || a?.key || '').toLowerCase();
+      const labelB = (b?.label || b?.key || '').toLowerCase();
+      if (labelA < labelB) return -1;
+      if (labelA > labelB) return 1;
+      return 0;
+    })
+    .forEach(entry => {
+      if (!entry) return;
+      const item = document.createElement('div');
+      item.className = 'meal-nutrition-score';
+      const labelSpan = document.createElement('span');
+      labelSpan.className = 'meal-nutrition-score__label';
+      labelSpan.textContent = entry.label || entry.key || 'Nutrient';
+      const valueSpan = document.createElement('span');
+      valueSpan.className = 'meal-nutrition-score__value';
+      const percentText = formatScorePercent(entry.percentComplete);
+      valueSpan.textContent = `${entry.points ?? 0}/10 • ${percentText}`;
+      const tooltipParts = [];
+      const targetText = formatScoreTarget(entry);
+      if (targetText) {
+        tooltipParts.push(`Target ${targetText}`);
+      }
+      const perServingText = formatNutrientValue(entry.perServingValue, entry.key);
+      if (perServingText) {
+        tooltipParts.push(`${perServingText} per serving`);
+      }
+      tooltipParts.push(`${entry.points ?? 0}/10 (${percentText})`);
+      item.title = tooltipParts.join(' • ');
+      item.appendChild(labelSpan);
+      item.appendChild(valueSpan);
+      container.appendChild(item);
+    });
+  return container;
+}
+
 function buildNutritionSummary(meal) {
   const totals = meal?.nutritionTotals;
   if (!totals) return null;
@@ -243,7 +333,8 @@ function buildNutritionSummary(meal) {
   const missingCount = Array.isArray(totals.missingIngredients)
     ? totals.missingIngredients.length
     : 0;
-  if (!summaryParts.length && !missingCount) {
+  const scoreList = buildNutritionScoreList(totals);
+  if (!summaryParts.length && !missingCount && !scoreList) {
     return null;
   }
   const container = document.createElement('div');
@@ -265,6 +356,12 @@ function buildNutritionSummary(meal) {
         ? 'Missing data for 1 ingredient'
         : `Missing data for ${missingCount} ingredients`;
     container.appendChild(missingSpan);
+  }
+  if (scoreList) {
+    if (container.childNodes.length) {
+      container.appendChild(document.createElement('br'));
+    }
+    container.appendChild(scoreList);
   }
   return container;
 }
@@ -1781,6 +1878,7 @@ async function init() {
   densityMap = dMap;
   globalProduceMeasures = defaults || {};
   ingredientMap = ingredients || {};
+  await reloadNutritionTargets();
   units = u;
   const info = MEAL_TYPES[type] || MEAL_TYPES.breakfast;
   key = info.key;
@@ -1883,6 +1981,11 @@ async function init() {
           .catch(err => {
             console.error('Failed to refresh density ratios', err);
           })
+      );
+    }
+    if (changes[NUTRITION_TARGETS_STORAGE_KEY]) {
+      reloads.push(
+        reloadNutritionTargets()
       );
     }
     if (reloads.length) {

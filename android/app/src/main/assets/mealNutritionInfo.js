@@ -14,12 +14,19 @@ import {
 import { getIngredientMap, updateIngredient } from './utils/ingredientStorage.js';
 import { loadDensityMap } from './utils/unitNormalize.js';
 import { loadGlobalProduceMeasures } from './utils/unitResolver.js';
+import {
+  loadNutritionTargetLookup,
+  NUTRITION_TARGETS_STORAGE_KEY
+} from './utils/nutritionTargets.js';
 
 const params = new URLSearchParams(window.location.search);
 const requestedType = params.get('type') || '';
 const requestedMealId = params.get('mealId') || '';
 const requestedMealName = params.get('meal') || '';
 const serializedMealData = params.get('mealData') || '';
+const NUTRIENT_DEFINITION_MAP = new Map(
+  NUTRIENT_DEFINITIONS.map(def => [def.key, def])
+);
 
 const titleEl = document.getElementById('mealTitle');
 const statusEl = document.getElementById('status');
@@ -29,6 +36,8 @@ const missingListEl = document.getElementById('missingList');
 const nutritionOutputEl = document.getElementById('nutritionOutput');
 const resolvedSectionEl = document.getElementById('resolvedSection');
 const resolvedListEl = document.getElementById('resolvedList');
+const scoreSectionEl = document.getElementById('scoreSection');
+const scoreListEl = document.getElementById('scoreList');
 const fixDialog = document.getElementById('fixDialog');
 const fixForm = document.getElementById('fixForm');
 const fixDescriptionEl = document.getElementById('fixDescription');
@@ -43,6 +52,7 @@ let fallbackMeal = parseMealData(serializedMealData);
 let ingredientMap = {};
 let densityMap = {};
 let globalProduceMeasures = {};
+let nutritionTargetLookup = {};
 let currentMeals = [];
 let currentMealIndex = -1;
 let currentTypeId = requestedType && MEAL_TYPES[requestedType] ? requestedType : null;
@@ -112,6 +122,32 @@ function formatPortionCount(value) {
 function formatWeight(value) {
   if (!Number.isFinite(value) || value <= 0) return '—';
   return formatDisplayValue(value, 'g', 2);
+}
+
+function formatScoreValue(value, key) {
+  if (!Number.isFinite(value) || value <= 0) return null;
+  const def = NUTRIENT_DEFINITION_MAP.get(key);
+  if (!def) return null;
+  const displayValue = convertNutrientValueToDisplay(value, def);
+  if (!Number.isFinite(displayValue)) return null;
+  const decimals = typeof def.decimals === 'number' ? def.decimals : 2;
+  const rounded = Number(displayValue.toFixed(decimals));
+  if (!Number.isFinite(rounded)) return null;
+  const unit = def.displayUnit || def.targetUnit || '';
+  return `${rounded}${unit ? ` ${unit}` : ''}`.trim();
+}
+
+function formatScoreTarget(entry) {
+  if (!entry) return null;
+  if (Number.isFinite(entry.targetInputValue) && entry.targetInputValue > 0 && entry.targetInputUnit) {
+    return `${entry.targetInputValue} ${entry.targetInputUnit}`.trim();
+  }
+  return formatScoreValue(entry.targetValue, entry.key);
+}
+
+function formatScorePercent(percent) {
+  if (!Number.isFinite(percent) || percent < 0) return '0%';
+  return `${Math.min(999, Math.round(percent))}%`;
 }
 
 function formatOunceEquivalent(meta) {
@@ -297,6 +333,78 @@ function renderResolvedIngredients(totals) {
     resolvedListEl.appendChild(li);
   });
   resolvedSectionEl.style.display = '';
+}
+
+function renderNutrientScores(totals) {
+  if (!scoreSectionEl || !scoreListEl) return;
+  const perServingScores = totals?.nutrientScores?.perServing;
+  if (!perServingScores) {
+    scoreSectionEl.style.display = 'none';
+    scoreListEl.innerHTML = '';
+    return;
+  }
+  const entries = Object.values(perServingScores);
+  if (!entries.length) {
+    scoreSectionEl.style.display = 'none';
+    scoreListEl.innerHTML = '';
+    return;
+  }
+  scoreListEl.innerHTML = '';
+  entries
+    .slice()
+    .sort((a, b) => {
+      const labelA = (a?.label || a?.key || '').toLowerCase();
+      const labelB = (b?.label || b?.key || '').toLowerCase();
+      if (labelA < labelB) return -1;
+      if (labelA > labelB) return 1;
+      return 0;
+    })
+    .forEach(entry => {
+      if (!entry) return;
+      const item = document.createElement('div');
+      item.className = 'nutrient-score';
+      const header = document.createElement('div');
+      header.className = 'nutrient-score__header';
+      const labelSpan = document.createElement('span');
+      labelSpan.className = 'nutrient-score__label';
+      labelSpan.textContent = entry.label || entry.key || 'Nutrient';
+      const percentText = formatScorePercent(entry.percentComplete);
+      const valueSpan = document.createElement('span');
+      valueSpan.className = 'nutrient-score__value';
+      valueSpan.textContent = `${entry.points ?? 0}/10 • ${percentText}`;
+      header.appendChild(labelSpan);
+      header.appendChild(valueSpan);
+      item.appendChild(header);
+      const details = [];
+      const targetText = formatScoreTarget(entry);
+      if (targetText) {
+        details.push(`Target ${targetText}`);
+      }
+      const perServingText = formatScoreValue(entry.perServingValue, entry.key);
+      if (perServingText) {
+        details.push(`${perServingText} per serving`);
+      }
+      if (details.length) {
+        const detailEl = document.createElement('div');
+        detailEl.className = 'nutrient-score__details';
+        detailEl.textContent = details.join(' • ');
+        item.appendChild(detailEl);
+      }
+      const bar = document.createElement('div');
+      bar.className = 'nutrient-score__bar';
+      for (let i = 0; i < 10; i += 1) {
+        const block = document.createElement('span');
+        block.className = 'nutrient-score__block';
+        if (i < (entry.points ?? 0)) {
+          block.classList.add('nutrient-score__block--filled');
+        }
+        bar.appendChild(block);
+      }
+      bar.setAttribute('aria-hidden', 'true');
+      item.appendChild(bar);
+      scoreListEl.appendChild(item);
+    });
+  scoreSectionEl.style.display = '';
 }
 
 function getGlobalPresets(name) {
@@ -563,6 +671,7 @@ async function applyFixMeasure(state, measure) {
     ingredientMap,
     densityMap,
     globalProduceMeasures,
+    nutritionTargets: nutritionTargetLookup,
     promptForMeasure: payload => {
       const name = payload?.ingredient?.name || '';
       if (canonicalName(name) === normalizedTarget) {
@@ -761,7 +870,8 @@ function resolveMealTotals(meal) {
   const calculated = calculateMealNutritionTotals(meal, {
     ingredientMap,
     densityMap,
-    globalProduceMeasures
+    globalProduceMeasures,
+    nutritionTargets: nutritionTargetLookup
   });
   return {
     totals: {
@@ -824,19 +934,22 @@ function render() {
   renderMeta(meal, totals, source);
   renderMissing(totals);
   renderResolvedIngredients(totals);
+  renderNutrientScores(totals);
   renderNutrients(totals);
   renderMealStatus(meal, totals, source);
 }
 
 async function loadContext() {
-  const [ingredients, density, defaults] = await Promise.all([
+  const [ingredients, density, defaults, targets] = await Promise.all([
     getIngredientMap(),
     loadDensityMap(),
-    loadGlobalProduceMeasures()
+    loadGlobalProduceMeasures(),
+    loadNutritionTargetLookup(NUTRIENT_DEFINITIONS)
   ]);
   ingredientMap = ingredients || {};
   densityMap = density || {};
   globalProduceMeasures = defaults || {};
+  nutritionTargetLookup = targets || {};
 }
 
 function registerStorageListener() {
@@ -847,8 +960,15 @@ function registerStorageListener() {
     const mealKeys = keys.filter(key => key.endsWith('Meals'));
     const ingredientChanged = Boolean(changes.ingredientRecords);
     const densityChanged = Boolean(changes.densityRatios);
+    const nutritionTargetsChanged = Boolean(changes[NUTRITION_TARGETS_STORAGE_KEY]);
     const categoriesChanged = Boolean(changes.mealCategories);
-    if (!mealKeys.length && !ingredientChanged && !densityChanged && !categoriesChanged) {
+    if (
+      !mealKeys.length &&
+      !ingredientChanged &&
+      !densityChanged &&
+      !categoriesChanged &&
+      !nutritionTargetsChanged
+    ) {
       return;
     }
     (async () => {
@@ -856,7 +976,7 @@ function registerStorageListener() {
         await initializeMealCategories();
         await locateMeal();
       }
-      if (ingredientChanged || densityChanged) {
+      if (ingredientChanged || densityChanged || nutritionTargetsChanged) {
         await loadContext();
       }
       render();

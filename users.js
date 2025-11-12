@@ -28,6 +28,7 @@ const editBtn = document.getElementById('editNamesBtn');
 const saveNamesBtn = document.getElementById('saveNamesBtn');
 const overrideBtn = document.getElementById('mealSlotOverrideBtn');
 const schedulerBtn = document.getElementById('mealSchedulerBtn');
+const nutritionTargetsBtn = document.getElementById('nutritionTargetsBtn');
 
 if (overrideBtn) {
   overrideBtn.addEventListener('click', () => {
@@ -38,6 +39,12 @@ if (overrideBtn) {
 if (schedulerBtn) {
   schedulerBtn.addEventListener('click', () => {
     openOrFocusWindow('mealScheduler.html', 960, 720);
+  });
+}
+
+if (nutritionTargetsBtn) {
+  nutritionTargetsBtn.addEventListener('click', () => {
+    openOrFocusWindow('nutritionTargets.html', 520, 640);
   });
 }
 

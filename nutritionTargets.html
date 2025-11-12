@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Nutrition Targets</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 16px 20px 24px;
+      max-width: 720px;
+      color: #222;
+      background: #f5f5f5;
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 24px;
+    }
+
+    p.intro {
+      margin: 0 0 16px;
+      font-size: 14px;
+      color: #444;
+    }
+
+    form {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      padding: 16px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead th {
+      text-align: left;
+      font-size: 13px;
+      font-weight: 600;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    tbody th {
+      text-align: left;
+      font-size: 14px;
+      font-weight: 500;
+      padding: 10px 8px 10px 0;
+      border-bottom: 1px solid #f0f0f0;
+      width: 45%;
+    }
+
+    tbody td {
+      padding: 6px 0 6px 8px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .target-inputs {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .target-inputs input[type="number"] {
+      width: 140px;
+      padding: 6px 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+
+    .target-inputs input[type="number"].error {
+      border-color: #c62828;
+      box-shadow: 0 0 0 1px rgba(198, 40, 40, 0.15);
+    }
+
+    .target-inputs select {
+      padding: 6px 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+      min-width: 120px;
+    }
+
+    .target-inputs select[disabled] {
+      color: #666;
+      background: #f7f7f7;
+    }
+
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 16px;
+      gap: 8px;
+    }
+
+    .actions button {
+      padding: 8px 16px;
+      font-size: 14px;
+      border-radius: 4px;
+      border: 1px solid #1976d2;
+      background: #1976d2;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    .actions button.secondary {
+      background: #fff;
+      color: #1976d2;
+    }
+
+    .status {
+      margin-top: 12px;
+      font-size: 13px;
+      min-height: 18px;
+      color: #1b5e20;
+    }
+
+    .status.error {
+      color: #c62828;
+    }
+
+    .unit-hint {
+      display: block;
+      font-size: 12px;
+      color: #777;
+      margin-top: 2px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      body {
+        color: #eee;
+        background: #1f1f1f;
+      }
+
+      form {
+        background: #2b2b2b;
+        box-shadow: none;
+      }
+
+      thead th {
+        border-color: #3c3c3c;
+      }
+
+      tbody th,
+      tbody td {
+        border-color: #333;
+      }
+
+      .target-inputs input[type="number"],
+      .target-inputs select {
+        border-color: #555;
+        background: #1f1f1f;
+        color: #eee;
+      }
+
+      .target-inputs select[disabled] {
+        color: #aaa;
+        background: #2a2a2a;
+      }
+
+      .actions button.secondary {
+        background: transparent;
+      }
+
+      .status {
+        color: #8bc34a;
+      }
+
+      .status.error {
+        color: #ef9a9a;
+      }
+
+      .unit-hint {
+        color: #aaa;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Nutrition Targets</h1>
+  <p class="intro">Set the shared daily goals for each tracked nutrient. These targets are used by every user profile.</p>
+  <form id="targetsForm">
+    <table aria-describedby="status">
+      <thead>
+        <tr>
+          <th scope="col">Nutrient</th>
+          <th scope="col">Daily target</th>
+        </tr>
+      </thead>
+      <tbody id="targetsBody"></tbody>
+    </table>
+    <div class="actions">
+      <button type="submit">Save targets</button>
+      <button type="button" class="secondary" id="clearTargetsBtn">Clear all</button>
+    </div>
+  </form>
+  <div id="status" class="status" role="status" aria-live="polite"></div>
+  <script type="module" src="nutritionTargets.js"></script>
+</body>
+</html>

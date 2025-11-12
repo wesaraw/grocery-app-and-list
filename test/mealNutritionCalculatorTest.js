@@ -25,6 +25,10 @@ global.fetch = async url => ({
 
 await initUomTable();
 const globalDefaults = await loadGlobalProduceMeasures();
+const nutritionTargetLookup = {
+  energy: { key: 'energy', label: 'Energy', unit: 'kcal', value: 600, baseValue: 600, targetUnit: 'kcal' },
+  protein: { key: 'protein', label: 'Protein', unit: 'g', value: 35, baseValue: 35, targetUnit: 'g' }
+};
 
 function assertClose(actual, expected, message) {
   if (Math.abs(actual - expected) > 1e-3) {
@@ -154,6 +158,7 @@ const changed = updateMealNutritionTotals(meal, {
   ingredientMap,
   densityMap,
   globalProduceMeasures: globalDefaults,
+  nutritionTargets: nutritionTargetLookup,
   promptForMeasure: () => ({ grams: 10, label: 'user estimate', confidence: 'medium' }),
   persistResolvedMeasure: data => {
     persistedMeasures.push(data);
@@ -265,12 +270,41 @@ if (!(perRecipeEnergy > 0)) {
 
 const perServingEnergy = totals.perServing.energy;
 assertClose(perServingEnergy * portionCount, perRecipeEnergy, 'Per-serving energy mismatch');
+const nutrientScores = totals.nutrientScores?.perServing;
+if (!nutrientScores) {
+  throw new Error('Expected nutrient scores to be present');
+}
+const energyScore = nutrientScores.energy;
+if (!energyScore) {
+  throw new Error('Energy score missing from nutrient totals');
+}
+assertClose(energyScore.perServingValue, perServingEnergy, 'Energy score per-serving mismatch');
+const expectedEnergyPercent = (perServingEnergy / nutritionTargetLookup.energy.baseValue) * 100;
+const roundedEnergyPercent = Math.round(expectedEnergyPercent * 100) / 100;
+assertClose(energyScore.percentComplete, roundedEnergyPercent, 'Energy score percent mismatch');
+const expectedEnergyPoints = Math.min(10, Math.floor(expectedEnergyPercent / 10));
+if (energyScore.points !== expectedEnergyPoints) {
+  throw new Error('Energy score points mismatch');
+}
+if (energyScore.targetInputValue !== nutritionTargetLookup.energy.value) {
+  throw new Error('Energy score target input mismatch');
+}
+const proteinPerServing = totals.perServing.protein;
+const proteinScore = nutrientScores.protein;
+if (!proteinScore) {
+  throw new Error('Protein score missing from nutrient totals');
+}
+assertClose(proteinScore.perServingValue, proteinPerServing, 'Protein score per-serving mismatch');
+const expectedProteinPercent = (proteinPerServing / nutritionTargetLookup.protein.baseValue) * 100;
+const roundedProteinPercent = Math.round(expectedProteinPercent * 100) / 100;
+assertClose(proteinScore.percentComplete, roundedProteinPercent, 'Protein score percent mismatch');
 
 const updatedAt = totals.updatedAt;
 const unchanged = updateMealNutritionTotals(meal, {
   ingredientMap,
   densityMap,
-  globalProduceMeasures: globalDefaults
+  globalProduceMeasures: globalDefaults,
+  nutritionTargets: nutritionTargetLookup
 });
 
 if (unchanged) {

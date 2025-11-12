@@ -39,7 +39,7 @@ const storageData = {
         { name: 'Olive Oil', amount: '1 cup' }
       ],
       nutritionTotals: {
-        version: 1,
+        version: 2,
         perRecipe: {},
         perServing: {},
         missingIngredients: [
@@ -54,7 +54,8 @@ const storageData = {
         totalRecipeWeight: 0,
         totalServingWeight: 0,
         portionCount: 4,
-        updatedAt: '2025-01-01T00:00:00.000Z'
+        updatedAt: '2025-01-01T00:00:00.000Z',
+        nutrientScores: null
       }
     }
   ],

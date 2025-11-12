@@ -25,6 +25,28 @@
         opacity: 0.8;
         font-style: italic;
       }
+      .meal-nutrition-scores {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 8px;
+        margin-top: 4px;
+        font-size: 11px;
+      }
+      .meal-nutrition-score {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 4px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        border: 1px solid #e0e0e0;
+        background: #f7f7f7;
+      }
+      .meal-nutrition-score__label {
+        font-weight: 600;
+      }
+      .meal-nutrition-score__value {
+        color: #333;
+      }
       .portion-input {
         width: 52px;
         margin-left: 4px;
@@ -62,6 +84,11 @@
         width: 16px;
         height: 16px;
       }
+      tr.focused-meal td,
+      tr.focused-meal th {
+        background-color: #fff4b2;
+        transition: background-color 0.6s ease;
+      }
   </style>
 </head>
 <body>
@@ -72,6 +99,7 @@
   </label>
   <button id="addMeal">Add Meal</button>
   <button id="removeMeal">Remove Meal</button>
+  <button id="repairMealIds">Correct meal id errors</button>
   <table>
     <thead>
       <tr>
@@ -93,7 +121,6 @@
     </thead>
     <tbody id="mealBody"></tbody>
   </table>
-  <script src="bridge.js"></script>
-<script type="module" src="mealListView.js"></script>
+  <script type="module" src="mealListView.js"></script>
 </body>
 </html>

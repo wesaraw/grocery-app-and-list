@@ -6,6 +6,8 @@ import { getIngredientMap } from './utils/ingredientStorage.js';
 import { updateMealNutritionTotals } from './utils/mealNutritionCalculator.js';
 import { initUomTable } from './utils/uomConverter.js';
 import { loadGlobalProduceMeasures } from './utils/unitResolver.js';
+import { NUTRIENT_DEFINITIONS } from './utils/fdcNutrientMap.js';
+import { loadNutritionTargetLookup } from './utils/nutritionTargets.js';
 
 const params = new URLSearchParams(location.search);
 const mealType = params.get('type') || 'lunchDinner';
@@ -14,6 +16,7 @@ const UOM_PATH = 'Required for grocery app/uom_conversion_table.json';
 let densityMap = {};
 let ingredientMap = {};
 let globalProduceMeasures = {};
+let nutritionTargetLookup = {};
 
 function sanitizePortionCount(value) {
   const num = typeof value === 'string' ? Number(value) : value;
@@ -58,7 +61,12 @@ function saveMeals(arr) {
   if (Array.isArray(arr)) {
     arr.forEach(meal => {
       if (meal && typeof meal === 'object') {
-        updateMealNutritionTotals(meal, { ingredientMap, densityMap, globalProduceMeasures });
+        updateMealNutritionTotals(meal, {
+          ingredientMap,
+          densityMap,
+          globalProduceMeasures,
+          nutritionTargets: nutritionTargetLookup
+        });
       }
     });
   }
@@ -136,15 +144,17 @@ async function init() {
   label = info.label;
   const titleEl = document.getElementById('title');
   if (titleEl) titleEl.textContent = `Add ${label} Meal`;
-  const [density, ingredients, defaults, units] = await Promise.all([
+  const [density, ingredients, defaults, units, targets] = await Promise.all([
     loadDensityMap(),
     getIngredientMap(),
     loadGlobalProduceMeasures(),
-    loadUnits()
+    loadUnits(),
+    loadNutritionTargetLookup(NUTRIENT_DEFINITIONS)
   ]);
   densityMap = density || {};
   ingredientMap = ingredients || {};
   globalProduceMeasures = defaults || {};
+  nutritionTargetLookup = targets || {};
   const tbody = document.getElementById('mealBody');
   const rows = [];
   const preparedBox = document.getElementById('preparedChk');
@@ -262,7 +272,12 @@ async function init() {
       leftoverOk: leftoverBox.checked,
       instructions: '',
     };
-    updateMealNutritionTotals(newMeal, { ingredientMap, densityMap, globalProduceMeasures });
+    updateMealNutritionTotals(newMeal, {
+      ingredientMap,
+      densityMap,
+      globalProduceMeasures,
+      nutritionTargets: nutritionTargetLookup
+    });
     meals.push(newMeal);
     await saveMeals(meals);
     await calculateAndSaveMealNeeds();
