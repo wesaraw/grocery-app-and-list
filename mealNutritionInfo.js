@@ -1,5 +1,5 @@
 import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
-import { loadArray as loadItemArray } from './utils/itemStorage.js';
+import { loadArray as loadItemArray, saveArray as saveItemArray } from './utils/itemStorage.js';
 import { canonicalName } from './utils/nameUtils.js';
 import {
   NUTRIENT_DEFINITIONS,
@@ -8,10 +8,12 @@ import {
 } from './utils/fdcNutrientMap.js';
 import {
   calculateMealNutritionTotals,
-  MEAL_NUTRITION_VERSION
+  MEAL_NUTRITION_VERSION,
+  updateMealNutritionTotals
 } from './utils/mealNutritionCalculator.js';
-import { getIngredientMap } from './utils/ingredientStorage.js';
+import { getIngredientMap, updateIngredient } from './utils/ingredientStorage.js';
 import { loadDensityMap } from './utils/unitNormalize.js';
+import { loadGlobalProduceMeasures } from './utils/unitResolver.js';
 
 const params = new URLSearchParams(window.location.search);
 const requestedType = params.get('type') || '';
@@ -25,14 +27,29 @@ const metaEl = document.getElementById('meta');
 const missingSectionEl = document.getElementById('missingSection');
 const missingListEl = document.getElementById('missingList');
 const nutritionOutputEl = document.getElementById('nutritionOutput');
+const resolvedSectionEl = document.getElementById('resolvedSection');
+const resolvedListEl = document.getElementById('resolvedList');
+const fixDialog = document.getElementById('fixDialog');
+const fixForm = document.getElementById('fixForm');
+const fixDescriptionEl = document.getElementById('fixDescription');
+const fixOptionsEl = document.getElementById('fixOptions');
+const fixCustomRadio = document.getElementById('fixCustomRadio');
+const fixCustomInput = document.getElementById('fixCustomInput');
+const fixErrorEl = document.getElementById('fixError');
+const fixCancelBtn = document.getElementById('fixCancel');
+const fixConfirmBtn = document.getElementById('fixConfirm');
 
 let fallbackMeal = parseMealData(serializedMealData);
 let ingredientMap = {};
 let densityMap = {};
+let globalProduceMeasures = {};
 let currentMeals = [];
 let currentMealIndex = -1;
 let currentTypeId = requestedType && MEAL_TYPES[requestedType] ? requestedType : null;
 let mealNotFound = false;
+let activeFixState = null;
+
+registerFixDialogEvents();
 
 function parseMealData(raw) {
   if (!raw) return null;
@@ -183,10 +200,448 @@ function renderMissing(totals) {
     const li = document.createElement('li');
     const name = entry?.name || 'Unnamed ingredient';
     const reason = describeMissingReason(entry?.reason);
-    li.textContent = `${name} — ${reason}`;
+    const text = document.createElement('span');
+    text.textContent = `${name} — ${reason}`;
+    li.appendChild(text);
+    if (entry?.reason === 'conversion-failed') {
+      const fixBtn = document.createElement('button');
+      fixBtn.type = 'button';
+      fixBtn.className = 'missing-fix-button';
+      fixBtn.textContent = 'Fix';
+      fixBtn.addEventListener('click', () => openFixDialog(entry));
+      li.appendChild(fixBtn);
+    }
     missingListEl.appendChild(li);
   });
   missingSectionEl.style.display = '';
+}
+
+function renderResolvedIngredients(totals) {
+  if (!resolvedSectionEl || !resolvedListEl) return;
+  const resolvedMap = totals?.resolvedIngredients && typeof totals.resolvedIngredients === 'object'
+    ? totals.resolvedIngredients
+    : {};
+  const names = Object.keys(resolvedMap);
+  if (!names.length) {
+    resolvedSectionEl.style.display = 'none';
+    resolvedListEl.innerHTML = '';
+    return;
+  }
+  names.sort((a, b) => (a || '').localeCompare(b || '', undefined, { sensitivity: 'base' }));
+  resolvedListEl.innerHTML = '';
+  names.forEach(name => {
+    const li = document.createElement('li');
+    const titleSpan = document.createElement('span');
+    titleSpan.textContent = name || 'Ingredient';
+    li.appendChild(titleSpan);
+    const meta = resolvedMap[name] || {};
+    const details = [];
+    const weight = formatWeight(meta.grams);
+    if (weight && weight !== '—') {
+      details.push(weight);
+    }
+    if (meta.source) {
+      details.push(`Source: ${meta.source}`);
+    }
+    if (meta.confidence) {
+      details.push(`Confidence: ${meta.confidence}`);
+    }
+    if (meta.sizeTag) {
+      details.push(`Size: ${meta.sizeTag}`);
+    }
+    if (details.length) {
+      const detailText = details.join(' • ');
+      const metaSpan = document.createElement('span');
+      metaSpan.className = 'resolved-meta';
+      metaSpan.textContent = detailText;
+      metaSpan.title = detailText;
+      li.appendChild(metaSpan);
+    }
+    resolvedListEl.appendChild(li);
+  });
+  resolvedSectionEl.style.display = '';
+}
+
+function getGlobalPresets(name) {
+  if (!name) return [];
+  const normalized = canonicalName(name);
+  if (!normalized) return [];
+  const entry = globalProduceMeasures?.[normalized];
+  if (!entry || !Array.isArray(entry.measures)) return [];
+  return entry.measures
+    .map(measure => ({
+      label: measure.label || 'Portion',
+      unit: measure.unit || 'each',
+      qty: Number(measure.qty) || 1,
+      grams: Number(measure.grams),
+      source: measure.source || 'global',
+      confidence: measure.confidence || null,
+      sizeTag: measure.sizeTag || null
+    }))
+    .filter(measure => Number.isFinite(measure.grams) && measure.grams > 0);
+}
+
+function findIngredientInMeal(meal, ingredientName) {
+  if (!meal || !Array.isArray(meal.ingredients)) return null;
+  const target = canonicalName(ingredientName || '');
+  if (!target) return null;
+  return (
+    meal.ingredients.find(ingredient => canonicalName(ingredient?.name || '') === target) || null
+  );
+}
+
+function setFixError(message = '') {
+  if (!fixErrorEl) return;
+  fixErrorEl.textContent = message;
+}
+
+function updateCustomInputState() {
+  if (!fixCustomInput) return;
+  const isCustom = Boolean(fixCustomRadio?.checked);
+  fixCustomInput.disabled = !isCustom;
+  if (!isCustom) {
+    fixCustomInput.value = '';
+  }
+}
+
+function openDialogElement() {
+  if (!fixDialog) return;
+  if (typeof fixDialog.showModal === 'function') {
+    if (!fixDialog.open) {
+      fixDialog.showModal();
+    }
+  } else {
+    fixDialog.setAttribute('open', 'open');
+    fixDialog.style.display = 'block';
+  }
+}
+
+function closeDialogElement() {
+  if (!fixDialog) return;
+  if (typeof fixDialog.close === 'function') {
+    if (fixDialog.open) {
+      fixDialog.close();
+    }
+  } else {
+    fixDialog.removeAttribute('open');
+    fixDialog.style.display = 'none';
+  }
+}
+
+function resetFixDialogState() {
+  activeFixState = null;
+  if (fixOptionsEl) {
+    fixOptionsEl.innerHTML = '';
+  }
+  if (fixCustomRadio) {
+    fixCustomRadio.checked = false;
+  }
+  if (fixCustomInput) {
+    fixCustomInput.value = '';
+    fixCustomInput.disabled = false;
+  }
+  if (fixConfirmBtn) {
+    fixConfirmBtn.disabled = false;
+  }
+  setFixError('');
+}
+
+function openFixDialog(entry) {
+  if (!fixDialog || !fixForm) return;
+  const meal = getActiveMeal();
+  if (!meal) return;
+  const ingredientName = entry?.name || '';
+  const ingredient = findIngredientInMeal(meal, ingredientName);
+  activeFixState = {
+    meal,
+    ingredient,
+    ingredientName,
+    presets: [],
+    defaultIndex: -1
+  };
+  const amountText = ingredient?.amount || ingredient?.serving_size || '';
+  if (fixDescriptionEl) {
+    if (ingredientName && amountText) {
+      fixDescriptionEl.textContent = `Provide a gram weight for ${amountText} of ${ingredientName}.`;
+    } else if (ingredientName) {
+      fixDescriptionEl.textContent = `Provide a gram weight for ${ingredientName}.`;
+    } else {
+      fixDescriptionEl.textContent = 'Provide a gram weight for this ingredient.';
+    }
+  }
+  const presets = getGlobalPresets(ingredientName);
+  activeFixState.presets = presets;
+  const defaultsEntry = globalProduceMeasures?.[canonicalName(ingredientName)];
+  let defaultIndex = -1;
+  if (presets.length) {
+    const defaultSize = defaultsEntry?.defaultEachSize || null;
+    if (defaultSize) {
+      defaultIndex = presets.findIndex(preset => preset.sizeTag === defaultSize);
+    }
+    if (defaultIndex === -1) {
+      defaultIndex = 0;
+    }
+  }
+  activeFixState.defaultIndex = defaultIndex;
+  if (fixOptionsEl) {
+    fixOptionsEl.innerHTML = '';
+    presets.forEach((preset, index) => {
+      const optionId = `fixPreset_${index}`;
+      const label = document.createElement('label');
+      label.className = 'fix-option';
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = 'measureChoice';
+      radio.value = String(index);
+      radio.id = optionId;
+      if (index === defaultIndex) {
+        radio.checked = true;
+      }
+      const textSpan = document.createElement('span');
+      const parts = [preset.label || `Option ${index + 1}`];
+      const weightText = formatWeight(preset.grams);
+      if (weightText && weightText !== '—') {
+        parts.push(weightText);
+      }
+      if (preset.sizeTag) {
+        parts.push(`Size: ${preset.sizeTag}`);
+      }
+      if (preset.source) {
+        parts.push(`Source: ${preset.source}`);
+      }
+      textSpan.textContent = parts.join(' • ');
+      label.appendChild(radio);
+      label.appendChild(textSpan);
+      fixOptionsEl.appendChild(label);
+    });
+  }
+  if (fixCustomRadio) {
+    fixCustomRadio.checked = defaultIndex === -1;
+  }
+  if (fixConfirmBtn) {
+    fixConfirmBtn.disabled = false;
+  }
+  if (fixCustomInput) {
+    fixCustomInput.value = '';
+  }
+  setFixError('');
+  updateCustomInputState();
+  openDialogElement();
+  if (fixForm) {
+    const firstOption = fixForm.querySelector('input[name="measureChoice"]');
+    if (firstOption) {
+      firstOption.focus();
+    } else if (fixCustomInput) {
+      fixCustomInput.focus();
+    }
+  }
+}
+
+async function persistResolvedMeasureEntries(entries) {
+  if (!Array.isArray(entries) || !entries.length) return;
+  const now = new Date().toISOString();
+  for (const entry of entries) {
+    const ingredientName = entry?.ingredient?.name;
+    const measure = entry?.measure;
+    if (!ingredientName || !measure) continue;
+    const grams = Number(measure.grams);
+    if (!Number.isFinite(grams) || grams <= 0) continue;
+    const qty = Number(measure.qty) || 1;
+    const normalizedMeasure = {
+      label: measure.label || measure.unit || 'portion',
+      unit: measure.unit || 'each',
+      qty,
+      grams,
+      source: measure.source || 'local',
+      confidence: measure.confidence || null,
+      sizeTag: measure.sizeTag || null,
+      updatedAt: now
+    };
+    const record = ingredientMap[canonicalName(ingredientName)] || ingredientMap[ingredientName];
+    const existingMeasures = Array.isArray(record?.measures) ? record.measures.slice() : [];
+    let replaced = false;
+    const merged = existingMeasures.map(existing => {
+      if (
+        (existing.label || '') === normalizedMeasure.label &&
+        (existing.unit || '') === normalizedMeasure.unit &&
+        (existing.sizeTag || '') === (normalizedMeasure.sizeTag || '')
+      ) {
+        replaced = true;
+        return { ...existing, ...normalizedMeasure };
+      }
+      return existing;
+    });
+    if (!replaced) {
+      merged.push(normalizedMeasure);
+    }
+    const updatedRecord = await updateIngredient(ingredientName, { measures: merged });
+    if (updatedRecord) {
+      const key = updatedRecord.normalized_name || canonicalName(ingredientName);
+      ingredientMap = {
+        ...ingredientMap,
+        [key]: updatedRecord,
+        [ingredientName]: updatedRecord
+      };
+    }
+  }
+}
+
+async function persistActiveMeal(meal) {
+  if (!meal) return;
+  if (!currentMeals.length || currentMealIndex < 0 || !currentTypeId) {
+    fallbackMeal = sanitizeMeal(meal);
+    return;
+  }
+  const info = MEAL_TYPES[currentTypeId];
+  if (!info || !info.key) {
+    fallbackMeal = sanitizeMeal(meal);
+    return;
+  }
+  currentMeals[currentMealIndex] = sanitizeMeal(meal);
+  await saveItemArray(info.key, currentMeals);
+}
+
+async function applyFixMeasure(state, measure) {
+  if (!state || !measure) return;
+  const meal = state.meal;
+  const ingredient = state.ingredient;
+  if (!meal || !ingredient) return;
+  const grams = Number(measure.grams);
+  if (!Number.isFinite(grams) || grams <= 0) {
+    throw new Error('Invalid gram weight');
+  }
+  const normalizedTarget = canonicalName(state.ingredientName || ingredient.name || '');
+  const promptResponse = {
+    qty: Number(measure.qty) || 1,
+    grams,
+    unit: measure.unit || 'each',
+    label: measure.label || 'manual-entry',
+    source: measure.source || 'user',
+    confidence: measure.confidence || null,
+    sizeTag: measure.sizeTag || null
+  };
+  const pendingPersists = [];
+  const changed = updateMealNutritionTotals(meal, {
+    ingredientMap,
+    densityMap,
+    globalProduceMeasures,
+    promptForMeasure: payload => {
+      const name = payload?.ingredient?.name || '';
+      if (canonicalName(name) === normalizedTarget) {
+        return { ...promptResponse };
+      }
+      return null;
+    },
+    persistResolvedMeasure: data => {
+      if (data?.ingredient?.name && data?.measure) {
+        pendingPersists.push({
+          ingredient: data.ingredient,
+          measure: data.measure
+        });
+      }
+    }
+  });
+  if (pendingPersists.length) {
+    await persistResolvedMeasureEntries(pendingPersists);
+  }
+  await persistActiveMeal(meal);
+  render();
+  return changed;
+}
+
+async function handleFixSubmit(event) {
+  event.preventDefault();
+  if (!activeFixState) {
+    closeFixDialog();
+    return;
+  }
+  const formData = new FormData(fixForm);
+  let choice = formData.get('measureChoice');
+  if (!choice) {
+    if (activeFixState.presets.length) {
+      setFixError('Select a portion size to continue.');
+      return;
+    }
+    choice = 'custom';
+  }
+  let selectedMeasure = null;
+  if (choice === 'custom') {
+    const grams = Number(fixCustomInput?.value);
+    if (!Number.isFinite(grams) || grams <= 0) {
+      setFixError('Enter a gram weight greater than zero.');
+      if (fixCustomInput) fixCustomInput.focus();
+      return;
+    }
+    selectedMeasure = {
+      label: 'Custom grams',
+      unit: 'each',
+      qty: 1,
+      grams,
+      source: 'user',
+      confidence: 'medium',
+      sizeTag: null
+    };
+  } else {
+    const index = parseInt(choice, 10);
+    if (Number.isNaN(index) || !activeFixState.presets[index]) {
+      setFixError('Select a valid portion option.');
+      return;
+    }
+    selectedMeasure = activeFixState.presets[index];
+  }
+  setFixError('');
+  if (fixConfirmBtn) {
+    fixConfirmBtn.disabled = true;
+  }
+  try {
+    await applyFixMeasure(activeFixState, selectedMeasure);
+    closeFixDialog();
+  } catch (error) {
+    console.error('Failed to resolve ingredient measure', error);
+    setFixError('Unable to save this weight. Please try again.');
+    if (fixConfirmBtn) {
+      fixConfirmBtn.disabled = false;
+    }
+  }
+}
+
+function closeFixDialog() {
+  closeDialogElement();
+  resetFixDialogState();
+}
+
+function registerFixDialogEvents() {
+  if (fixForm) {
+    fixForm.addEventListener('change', event => {
+      if (event.target && event.target.name === 'measureChoice') {
+        updateCustomInputState();
+        setFixError('');
+      }
+    });
+    fixForm.addEventListener('submit', event => {
+      handleFixSubmit(event).catch(err => {
+        console.error('Unexpected error handling fix submission', err);
+        setFixError('An unexpected error occurred.');
+        if (fixConfirmBtn) {
+          fixConfirmBtn.disabled = false;
+        }
+      });
+    });
+  }
+  if (fixCancelBtn) {
+    fixCancelBtn.addEventListener('click', () => {
+      closeFixDialog();
+    });
+  }
+  if (fixDialog) {
+    fixDialog.addEventListener('cancel', event => {
+      event.preventDefault();
+      closeFixDialog();
+    });
+    fixDialog.addEventListener('close', () => {
+      resetFixDialogState();
+    });
+  }
 }
 
 function renderNutrients(totals) {
@@ -265,7 +720,11 @@ function resolveMealTotals(meal) {
   ) {
     return { totals: stored, source: 'stored' };
   }
-  const calculated = calculateMealNutritionTotals(meal, { ingredientMap, densityMap });
+  const calculated = calculateMealNutritionTotals(meal, {
+    ingredientMap,
+    densityMap,
+    globalProduceMeasures
+  });
   return {
     totals: {
       version: MEAL_NUTRITION_VERSION,
@@ -326,17 +785,20 @@ function render() {
   }
   renderMeta(meal, totals, source);
   renderMissing(totals);
+  renderResolvedIngredients(totals);
   renderNutrients(totals);
   renderMealStatus(meal, totals, source);
 }
 
 async function loadContext() {
-  const [ingredients, density] = await Promise.all([
+  const [ingredients, density, defaults] = await Promise.all([
     getIngredientMap(),
-    loadDensityMap()
+    loadDensityMap(),
+    loadGlobalProduceMeasures()
   ]);
   ingredientMap = ingredients || {};
   densityMap = density || {};
+  globalProduceMeasures = defaults || {};
 }
 
 function registerStorageListener() {

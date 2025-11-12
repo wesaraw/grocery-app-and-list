@@ -10,6 +10,7 @@ import { getIngredientMap } from './utils/ingredientStorage.js';
 import { updateMealNutritionTotals } from './utils/mealNutritionCalculator.js';
 import { initUomTable } from './utils/uomConverter.js';
 import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
+import { loadGlobalProduceMeasures } from './utils/unitResolver.js';
 
 // Paths for inventory data used when adding new items
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -29,6 +30,7 @@ const DEFAULT_ITEM = {
 
 let ingredientMapCache = {};
 let densityMapCache = {};
+let globalProduceMeasuresCache = {};
 
 function sanitizePortionCount(value) {
   const num = typeof value === 'string' ? Number(value) : value;
@@ -184,7 +186,8 @@ function saveMeals(category, arr) {
       if (meal && typeof meal === 'object') {
         updateMealNutritionTotals(meal, {
           ingredientMap: ingredientMapCache,
-          densityMap: densityMapCache
+          densityMap: densityMapCache,
+          globalProduceMeasures: globalProduceMeasuresCache
         });
       }
     });
@@ -298,12 +301,14 @@ async function addMeal(meal, userCount) {
   } else if (usersArr.length > userCount) {
     usersArr = usersArr.slice(0, userCount);
   }
-  const [latestDensity, latestIngredients] = await Promise.all([
+  const [latestDensity, latestIngredients, defaults] = await Promise.all([
     loadDensityMap(),
-    getIngredientMap()
+    getIngredientMap(),
+    loadGlobalProduceMeasures()
   ]);
   densityMapCache = latestDensity || {};
   ingredientMapCache = latestIngredients || {};
+  globalProduceMeasuresCache = defaults || {};
   const arr = await loadMeals(meal.category);
   const newMeal = {
     name: meal.name,
@@ -320,7 +325,8 @@ async function addMeal(meal, userCount) {
   };
   updateMealNutritionTotals(newMeal, {
     ingredientMap: ingredientMapCache,
-    densityMap: densityMapCache
+    densityMap: densityMapCache,
+    globalProduceMeasures: globalProduceMeasuresCache
   });
   arr.push(newMeal);
   await saveMeals(meal.category, arr);
@@ -332,13 +338,15 @@ export async function importMealsFromText(text, images = {}, progressCallbacks =
 
   await initializeMealCategories();
   await initUomTable();
-  const [users, initialDensity, initialIngredients] = await Promise.all([
+  const [users, initialDensity, initialIngredients, initialDefaults] = await Promise.all([
     loadUsers(),
     loadDensityMap(),
-    getIngredientMap()
+    getIngredientMap(),
+    loadGlobalProduceMeasures()
   ]);
   densityMapCache = initialDensity || {};
   ingredientMapCache = initialIngredients || {};
+  globalProduceMeasuresCache = initialDefaults || {};
   const meals = parseMealsFromXml(text);
   const total = meals.length;
 

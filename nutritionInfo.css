@@ -74,3 +74,103 @@ h1 {
 #missingSection li {
   margin-bottom: 4px;
 }
+
+.missing-fix-button {
+  margin-left: 8px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #0b5394;
+  cursor: pointer;
+  font-size: 0.85em;
+  text-decoration: underline;
+}
+
+.missing-fix-button:hover,
+.missing-fix-button:focus {
+  text-decoration: none;
+}
+
+#resolvedSection {
+  margin-bottom: 12px;
+  font-size: 0.9em;
+}
+
+#resolvedSection h2 {
+  margin: 0 0 6px;
+  font-size: 1.05em;
+}
+
+#resolvedSection ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+#resolvedSection li {
+  margin-bottom: 6px;
+}
+
+.resolved-meta {
+  display: block;
+  color: #555;
+  font-size: 0.82em;
+  margin-top: 2px;
+}
+
+dialog {
+  border: 1px solid #bbb;
+  border-radius: 6px;
+  padding: 16px;
+  max-width: 360px;
+}
+
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.fix-description {
+  margin-top: 0;
+  font-size: 0.9em;
+}
+
+.fix-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0;
+}
+
+.fix-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9em;
+}
+
+.custom-option {
+  margin-bottom: 8px;
+}
+
+#fixCustomInput {
+  margin-left: 8px;
+  width: 80px;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0;
+  margin: 12px 0 0;
+}
+
+.dialog-actions button {
+  min-width: 72px;
+}
+
+.error-message {
+  color: #a40000;
+  min-height: 1em;
+  font-size: 0.82em;
+  margin: 4px 0 0;
+}

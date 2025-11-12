@@ -1,0 +1,32 @@
+[
+  {
+    "canonicalName": "red bell pepper",
+    "aliases": ["red pepper", "bell pepper"],
+    "defaultEachSize": "medium",
+    "measures": [
+      { "label": "Small Pepper", "unit": "each", "qty": 1, "grams": 95, "confidence": "medium", "sizeTag": "small" },
+      { "label": "Medium Pepper", "unit": "each", "qty": 1, "grams": 120, "confidence": "high", "sizeTag": "medium" },
+      { "label": "Large Pepper", "unit": "each", "qty": 1, "grams": 155, "confidence": "medium", "sizeTag": "large" }
+    ]
+  },
+  {
+    "canonicalName": "yellow onion",
+    "aliases": ["brown onion", "onion"],
+    "defaultEachSize": "medium",
+    "measures": [
+      { "label": "Small Onion", "unit": "each", "qty": 1, "grams": 115, "confidence": "medium", "sizeTag": "small" },
+      { "label": "Medium Onion", "unit": "each", "qty": 1, "grams": 150, "confidence": "high", "sizeTag": "medium" },
+      { "label": "Large Onion", "unit": "each", "qty": 1, "grams": 225, "confidence": "medium", "sizeTag": "large" }
+    ]
+  },
+  {
+    "canonicalName": "garlic",
+    "aliases": ["garlic clove"],
+    "defaultEachSize": "medium",
+    "measures": [
+      { "label": "Small Clove", "unit": "each", "qty": 1, "grams": 3, "confidence": "medium", "sizeTag": "small" },
+      { "label": "Medium Clove", "unit": "each", "qty": 1, "grams": 5, "confidence": "high", "sizeTag": "medium" },
+      { "label": "Large Clove", "unit": "each", "qty": 1, "grams": 7, "confidence": "medium", "sizeTag": "large" }
+    ]
+  }
+]

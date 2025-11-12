@@ -255,6 +255,49 @@ function extractPortions(details) {
   return portions;
 }
 
+function extractMeasures(details, updatedAt) {
+  const measures = [];
+  const timestamp = updatedAt || new Date().toISOString();
+  const pushMeasure = ({ label, unit, qty, grams }) => {
+    const gramsNumber = Number(grams);
+    if (!Number.isFinite(gramsNumber) || gramsNumber <= 0) return;
+    const quantity = Number(qty);
+    measures.push({
+      label: (label || unit || 'portion').trim(),
+      unit: (unit || 'portion').trim(),
+      qty: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
+      grams: gramsNumber,
+      source: 'fdc:portion',
+      confidence: 'medium',
+      sizeTag: null,
+      updatedAt: timestamp
+    });
+  };
+
+  if (Array.isArray(details?.foodPortions)) {
+    details.foodPortions.forEach(portion => {
+      if (!portion) return;
+      pushMeasure({
+        label: portion.modifier || portion.portionDescription || '',
+        unit: portion.measureUnit?.abbreviation || portion.measureUnit?.name || '',
+        qty: portion.amount ?? 1,
+        grams: portion.gramWeight ?? null
+      });
+    });
+  }
+
+  if (details?.householdServingFullText || details?.servingSizeInGrams) {
+    pushMeasure({
+      label: details.householdServingFullText || '',
+      unit: details.servingSizeUnit || 'serving',
+      qty: details.servingSize ?? 1,
+      grams: details.servingSizeInGrams ?? null
+    });
+  }
+
+  return measures;
+}
+
 export function isIngredientRecordStale(record, maxAgeMs = STALE_MS) {
   if (!record) return true;
   if (!maxAgeMs) return false;
@@ -265,6 +308,7 @@ export function isIngredientRecordStale(record, maxAgeMs = STALE_MS) {
 
 async function persistIngredient(itemName, unitDefault, candidate, details, confidence) {
   const nutrientData = mapNutrientsFromDetails(details);
+  const now = new Date().toISOString();
   const record = await saveIngredient({
     display_name: itemName,
     normalized_name: canonicalName(itemName),
@@ -273,10 +317,11 @@ async function persistIngredient(itemName, unitDefault, candidate, details, conf
     fdc_data_type: details.dataType || candidate.dataType || null,
     fdc_description: details.description || candidate.description || '',
     confidence: confidence ?? candidate.score ?? null,
-    last_checked_at: new Date().toISOString(),
+    last_checked_at: now,
     perGramVector: nutrientData.perGramVector,
     nutrients: nutrientData.nutrients,
     portions: extractPortions(details),
+    measures: extractMeasures(details, now),
     metadata: {
       searchQuery: itemName,
       brandOwner: details.brandOwner || candidate.brandOwner || '',
@@ -356,7 +401,8 @@ export async function refreshIngredientDetails(fdcId, context = {}) {
       details,
       perGramVector: nutrientData.perGramVector,
       nutrients: nutrientData.nutrients,
-      portions: extractPortions(details)
+      portions: extractPortions(details),
+      measures: extractMeasures(details)
     };
   } catch (err) {
     if (err instanceof MissingFdcApiKeyError || err.code === 'MISSING_FDC_API_KEY') {

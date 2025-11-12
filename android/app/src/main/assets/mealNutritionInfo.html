@@ -13,7 +13,30 @@
     <h2>Missing Data</h2>
     <ul id="missingList"></ul>
   </section>
+  <section id="resolvedSection" aria-live="polite" style="display: none;">
+    <h2>Resolved Ingredients</h2>
+    <ul id="resolvedList"></ul>
+  </section>
   <pre id="nutritionOutput" class="nutrition-output">Loading…</pre>
+  <dialog id="fixDialog" aria-modal="true" aria-labelledby="fixTitle">
+    <form id="fixForm">
+      <h2 id="fixTitle">Resolve Ingredient</h2>
+      <p id="fixDescription" class="fix-description"></p>
+      <div id="fixOptions" class="fix-options" role="radiogroup" aria-labelledby="fixTitle"></div>
+      <div class="fix-option custom-option">
+        <label>
+          <input type="radio" name="measureChoice" value="custom" id="fixCustomRadio">
+          Custom grams
+        </label>
+        <input type="number" id="fixCustomInput" min="0" step="0.1" aria-label="Custom gram weight">
+      </div>
+      <p id="fixError" class="error-message" role="alert" aria-live="assertive"></p>
+      <menu class="dialog-actions">
+        <button type="button" id="fixCancel">Cancel</button>
+        <button type="submit" id="fixConfirm">Save</button>
+      </menu>
+    </form>
+  </dialog>
   <script type="module" src="mealNutritionInfo.js"></script>
 </body>
 </html>

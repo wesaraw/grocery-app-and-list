@@ -1,66 +1,12 @@
 import { canonicalName } from './nameUtils.js';
-import { parseQuantity, getMealPortionCount } from './calendarUtils.js';
-import { computeNormalizedQuantity, convertWithDensity } from './unitNormalize.js';
-import { convert } from './uomConverter.js';
+import { getMealPortionCount } from './calendarUtils.js';
 import { computeQuantityFromPerGram, NUTRIENT_DEFINITIONS } from './fdcNutrientMap.js';
+import { resolveIngredientAmount } from './unitResolver.js';
 
 const MEAL_NUTRITION_VERSION = 1;
 const ROUNDING_PRECISION = 1e6;
 const EPSILON = 1e-6;
 
-const MASS_UNIT_FACTORS = {
-  g: 1,
-  gram: 1,
-  grams: 1,
-  kg: 1000,
-  kilogram: 1000,
-  kilograms: 1000,
-  mg: 1 / 1000,
-  milligram: 1 / 1000,
-  milligrams: 1 / 1000,
-  mcg: 1 / 1000000,
-  ug: 1 / 1000000,
-  'µg': 1 / 1000000,
-  microgram: 1 / 1000000,
-  micrograms: 1 / 1000000,
-  oz: 28.349523125,
-  ounce: 28.349523125,
-  ounces: 28.349523125,
-  lb: 453.59237,
-  lbs: 453.59237,
-  pound: 453.59237,
-  pounds: 453.59237
-};
-
-const VOLUME_UNITS = new Set([
-  'ml',
-  'milliliter',
-  'milliliters',
-  'l',
-  'liter',
-  'liters',
-  'gal',
-  'gallon',
-  'gallons',
-  'qt',
-  'quart',
-  'quarts',
-  'pt',
-  'pint',
-  'pints',
-  'cup',
-  'cups',
-  'tbsp',
-  'tablespoon',
-  'tablespoons',
-  'tsp',
-  'teaspoon',
-  'teaspoons',
-  'fl oz',
-  'floz',
-  'fluidounce',
-  'fluidounces'
-]);
 
 const NUTRIENT_KEYS = NUTRIENT_DEFINITIONS.map(def => def.key);
 
@@ -94,175 +40,7 @@ function lookupDensityInfo(name, densityMap = {}) {
   return null;
 }
 
-function buildDensitySettings(info = {}) {
-  if (!info || typeof info !== 'object') return {};
-  const settings = {};
-  if (info.convert !== undefined) settings.convert_volume_to_weight = !!info.convert;
-  if (info.ratio != null) settings.custom_density_ratio = info.ratio;
-  if (info.normalized) settings.normalized = info.normalized;
-  if (info.prepState) settings.prepState = info.prepState;
-  return settings;
-}
-
-function addTokenForms(set, token) {
-  const normalized = typeof token === 'string' ? token.trim().toLowerCase() : '';
-  if (!normalized) return;
-  set.add(normalized);
-  if (normalized.endsWith('es')) {
-    set.add(normalized.slice(0, -2));
-  }
-  if (normalized.endsWith('s')) {
-    set.add(normalized.slice(0, -1));
-  } else {
-    set.add(`${normalized}s`);
-  }
-}
-
-function tokenizePortionString(value) {
-  if (!value || typeof value !== 'string') return [];
-  return value
-    .split(/[^a-z0-9%]+/gi)
-    .map(part => part.trim().toLowerCase())
-    .filter(Boolean);
-}
-
-function collectTokensFromStrings(set, ...values) {
-  values.forEach(value => {
-    tokenizePortionString(value).forEach(token => addTokenForms(set, token));
-  });
-}
-
-function collectIngredientTokens(ingredient, record) {
-  const tokens = new Set();
-  if (ingredient) {
-    collectTokensFromStrings(tokens, ingredient.name, ingredient.display_name, ingredient.original_name);
-  }
-  if (record) {
-    collectTokensFromStrings(tokens, record.display_name, record.fdc_description, record.description, record.name);
-  }
-  return tokens;
-}
-
-function buildUnitVariants(unit, extraTokens = new Set()) {
-  const variants = new Set();
-  if (!unit) return variants;
-  const base = unit.trim().toLowerCase();
-  if (!base) return variants;
-  variants.add(base);
-  const singular = base.replace(/s$/, '');
-  if (singular && singular !== base) variants.add(singular);
-  if (base.endsWith('es')) variants.add(base.slice(0, -2));
-  if (base === 'each') {
-    variants.add('ea');
-  } else if (base === 'ea') {
-    variants.add('each');
-  }
-  if (base === 'ea' || base === 'each') {
-    variants.add('serving');
-    variants.add('nlea serving');
-    const tokens = extraTokens instanceof Set ? extraTokens : new Set(extraTokens || []);
-    tokens.forEach(token => addTokenForms(variants, token));
-  }
-  return variants;
-}
-
-function gramsFromPortion(value, unit, record, options = {}) {
-  if (!record || !Array.isArray(record.portions)) return null;
-  const normalizedUnit = typeof unit === 'string' ? unit.trim().toLowerCase() : '';
-  const ingredientTokens =
-    options && options.ingredientTokens instanceof Set
-      ? options.ingredientTokens
-      : new Set(options?.ingredientTokens || []);
-  const variants = buildUnitVariants(normalizedUnit, ingredientTokens);
-  let fallback = null;
-  for (const portion of record.portions) {
-    if (!portion) continue;
-    const grams = Number(portion.gramWeight);
-    const amount = Number(portion.amount) || 1;
-    if (!Number.isFinite(grams) || grams <= 0 || !Number.isFinite(amount) || amount <= 0) {
-      continue;
-    }
-    const measure = typeof portion.measureUnit === 'string' ? portion.measureUnit.trim().toLowerCase() : '';
-    const modifier = typeof portion.modifier === 'string' ? portion.modifier.trim().toLowerCase() : '';
-    const candidates = new Set();
-    collectTokensFromStrings(candidates, measure, modifier, `${modifier} ${measure}`);
-    if (!fallback && (measure.includes('serving') || modifier.includes('serving'))) {
-      fallback = { grams, amount };
-    }
-    if (!variants.size) continue;
-    for (const candidate of candidates) {
-      if (candidate && variants.has(candidate)) {
-        return roundValue((value / amount) * grams);
-      }
-    }
-  }
-  if ((normalizedUnit === 'ea' || normalizedUnit === 'each') && fallback) {
-    return roundValue((value / fallback.amount) * fallback.grams);
-  }
-  return null;
-}
-
-function gramsFromKnownMass(value, unit) {
-  if (!Number.isFinite(value) || value <= 0) return null;
-  const normalized = typeof unit === 'string' ? unit.trim().toLowerCase() : '';
-  if (!normalized) return null;
-  const factor = MASS_UNIT_FACTORS[normalized];
-  if (factor == null) return null;
-  return roundValue(value * factor);
-}
-
-function gramsFromConversion(value, unit, densityInfo, record, options = {}) {
-  if (!Number.isFinite(value) || value <= 0) return null;
-  const normalized = typeof unit === 'string' ? unit.trim().toLowerCase() : '';
-  if (!normalized) return null;
-
-  const densitySettings = buildDensitySettings(densityInfo);
-
-  if (!options.skipNormalization) {
-    const normalizedResult = computeNormalizedQuantity(value, normalized, densitySettings);
-    if (normalizedResult && normalizedResult.quantity != null && normalizedResult.unit) {
-      const recursive = gramsFromConversion(
-        normalizedResult.quantity,
-        normalizedResult.unit,
-        densityInfo,
-        record,
-        { ...options, skipNormalization: true }
-      );
-      if (recursive != null) {
-        return roundValue(recursive);
-      }
-    }
-  }
-
-  const viaPortion = gramsFromPortion(value, normalized, record, options);
-  if (viaPortion != null) {
-    return roundValue(viaPortion);
-  }
-
-  const convertibleUnit = MASS_UNIT_FACTORS[normalized] != null || VOLUME_UNITS.has(normalized);
-  if (!convertibleUnit && !(densityInfo && densityInfo.normalized)) {
-    return null;
-  }
-
-  const ouncesViaDensity = convertWithDensity(value, normalized, 'oz', densitySettings);
-  if (Number.isFinite(ouncesViaDensity) && ouncesViaDensity > 0) {
-    const gramsFromOunces = gramsFromKnownMass(ouncesViaDensity, 'oz');
-    if (gramsFromOunces != null) {
-      return roundValue(gramsFromOunces);
-    }
-  }
-
-  if (MASS_UNIT_FACTORS[normalized] != null || VOLUME_UNITS.has(normalized)) {
-    const converted = convert(value, normalized, 'g');
-    if (Number.isFinite(converted) && converted > 0) {
-      return roundValue(converted);
-    }
-  }
-
-  return null;
-}
-
-function computeIngredientGrams(ingredient, ingredientMap, densityMap) {
+function computeIngredientResolution(ingredient, ingredientMap, densityMap, resolverOptions = {}) {
   if (!ingredient || typeof ingredient !== 'object') {
     return { grams: null, record: null, reason: 'missing-ingredient' };
   }
@@ -272,31 +50,16 @@ function computeIngredientGrams(ingredient, ingredientMap, densityMap) {
   }
   const record = lookupIngredientRecord(name, ingredientMap);
   const densityInfo = lookupDensityInfo(name, densityMap);
-  const amountText =
-    typeof ingredient.amount === 'string' && ingredient.amount.trim()
-      ? ingredient.amount
-      : typeof ingredient.serving_size === 'string' && ingredient.serving_size.trim()
-      ? ingredient.serving_size
-      : null;
-  if (!amountText) {
-    return { grams: null, record, reason: 'missing-amount' };
-  }
-  const { value, unit } = parseQuantity(amountText);
-  if (!Number.isFinite(value) || value <= 0) {
-    return { grams: null, record, reason: 'invalid-quantity' };
-  }
-  const byMass = gramsFromKnownMass(value, unit);
-  if (byMass != null) {
-    return { grams: byMass, record, reason: null };
-  }
-  const ingredientTokens = collectIngredientTokens(ingredient, record);
-  const converted = gramsFromConversion(value, unit, densityInfo, record, {
-    ingredientTokens
+  const resolution = resolveIngredientAmount(ingredient, record, null, {
+    densityInfo,
+    globalDefaults: resolverOptions.globalProduceMeasures,
+    promptForMeasure: resolverOptions.promptForMeasure,
+    persistResolvedMeasure: resolverOptions.persistResolvedMeasure
   });
-  if (converted != null) {
-    return { grams: converted, record, reason: null };
+  if (!resolution || resolution.grams == null) {
+    return { grams: null, record, reason: resolution?.reason || 'conversion-failed' };
   }
-  return { grams: null, record, reason: 'conversion-failed' };
+  return { grams: resolution.grams, record, reason: null, metadata: resolution };
 }
 
 function baseTotals() {
@@ -336,6 +99,20 @@ function compareTotals(previous, next) {
     if ((prevEntry.name || '') !== (nextEntry.name || '')) return false;
     if ((prevEntry.reason || '') !== (nextEntry.reason || '')) return false;
   }
+  const prevResolved = previous.resolvedIngredients || {};
+  const nextResolved = next.resolvedIngredients || {};
+  const prevKeys = Object.keys(prevResolved).sort();
+  const nextKeys = Object.keys(nextResolved).sort();
+  if (prevKeys.length !== nextKeys.length) return false;
+  for (let i = 0; i < nextKeys.length; i += 1) {
+    if (prevKeys[i] !== nextKeys[i]) return false;
+    const prevMeta = prevResolved[prevKeys[i]] || {};
+    const nextMeta = nextResolved[nextKeys[i]] || {};
+    if (!numbersEqual(prevMeta.grams ?? 0, nextMeta.grams ?? 0)) return false;
+    if ((prevMeta.source || '') !== (nextMeta.source || '')) return false;
+    if ((prevMeta.confidence || '') !== (nextMeta.confidence || '')) return false;
+    if ((prevMeta.sizeTag || '') !== (nextMeta.sizeTag || '')) return false;
+  }
   return true;
 }
 
@@ -347,24 +124,45 @@ export function calculateMealNutritionTotals(meal, context = {}) {
       portionCount: 1,
       totalRecipeWeight: 0,
       totalServingWeight: 0,
-      missingIngredients: []
+      missingIngredients: [],
+      resolvedIngredients: {}
     };
   }
-  const { ingredientMap = {}, densityMap = {} } = context;
+  const {
+    ingredientMap = {},
+    densityMap = {},
+    globalProduceMeasures = null,
+    promptForMeasure = null,
+    persistResolvedMeasure = null
+  } = context;
   const { perRecipe, perServing } = baseTotals();
   const missingIngredients = [];
   const ingredients = Array.isArray(meal.ingredients) ? meal.ingredients : [];
   let totalRecipeWeight = 0;
+  const resolvedIngredients = {};
 
   ingredients.forEach(ingredient => {
-    const { grams, record, reason } = computeIngredientGrams(
+    const { grams, record, reason, metadata } = computeIngredientResolution(
       ingredient,
       ingredientMap,
-      densityMap
+      densityMap,
+      {
+        globalProduceMeasures,
+        promptForMeasure,
+        persistResolvedMeasure
+      }
     );
     const name = ingredient?.name || '';
     if (grams != null && grams > 0) {
       totalRecipeWeight += grams;
+      if (metadata) {
+        resolvedIngredients[name] = {
+          grams: roundValue(grams),
+          source: metadata.source || null,
+          confidence: metadata.confidence || null,
+          sizeTag: metadata.sizeTag || null
+        };
+      }
     }
     if (!record || !record.perGramVector || Object.keys(record.perGramVector).length === 0) {
       missingIngredients.push({ name, reason: record ? 'missing-nutrient-data' : 'missing-ingredient-record' });
@@ -401,7 +199,8 @@ export function calculateMealNutritionTotals(meal, context = {}) {
     portionCount: roundValue(safePortions),
     totalRecipeWeight: roundedRecipeWeight,
     totalServingWeight: roundedServingWeight,
-    missingIngredients
+    missingIngredients,
+    resolvedIngredients
   };
 }
 

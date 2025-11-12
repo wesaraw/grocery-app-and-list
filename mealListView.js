@@ -33,6 +33,7 @@ import {
   NUTRIENT_DEFINITIONS,
   convertNutrientValueToDisplay
 } from './utils/fdcNutrientMap.js';
+import { loadGlobalProduceMeasures } from './utils/unitResolver.js';
 
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -69,6 +70,7 @@ const deleteButtons = [];
 let needsMap = new Map();
 let densityMap = {};
 let ingredientMap = {};
+let globalProduceMeasures = {};
 const UOM_PATH = 'Required for grocery app/uom_conversion_table.json';
 let units = [];
 
@@ -195,7 +197,8 @@ function getNutritionContext() {
   return {
     ingredientMap,
     densityMap,
-    needsMap
+    needsMap,
+    globalProduceMeasures
   };
 }
 
@@ -1767,14 +1770,16 @@ async function loadAndRender() {
 async function init() {
   await initializeMealCategories();
   await initUomTable();
-  const [needs, dMap, u, ingredients] = await Promise.all([
+  const [needs, dMap, defaults, u, ingredients] = await Promise.all([
     loadNeeds(),
     loadDensityMap(),
+    loadGlobalProduceMeasures(),
     loadUnits(),
     getIngredientMap()
   ]);
   needsMap = new Map(needs.map(n => [canonicalName(n.name), n]));
   densityMap = dMap;
+  globalProduceMeasures = defaults || {};
   ingredientMap = ingredients || {};
   units = u;
   const info = MEAL_TYPES[type] || MEAL_TYPES.breakfast;

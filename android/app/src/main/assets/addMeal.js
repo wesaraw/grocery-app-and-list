@@ -5,6 +5,7 @@ import { loadDensityMap } from './utils/unitNormalize.js';
 import { getIngredientMap } from './utils/ingredientStorage.js';
 import { updateMealNutritionTotals } from './utils/mealNutritionCalculator.js';
 import { initUomTable } from './utils/uomConverter.js';
+import { loadGlobalProduceMeasures } from './utils/unitResolver.js';
 
 const params = new URLSearchParams(location.search);
 const mealType = params.get('type') || 'lunchDinner';
@@ -12,6 +13,7 @@ let MEAL_KEY, MEAL_PATH, label;
 const UOM_PATH = 'Required for grocery app/uom_conversion_table.json';
 let densityMap = {};
 let ingredientMap = {};
+let globalProduceMeasures = {};
 
 function sanitizePortionCount(value) {
   const num = typeof value === 'string' ? Number(value) : value;
@@ -56,7 +58,7 @@ function saveMeals(arr) {
   if (Array.isArray(arr)) {
     arr.forEach(meal => {
       if (meal && typeof meal === 'object') {
-        updateMealNutritionTotals(meal, { ingredientMap, densityMap });
+        updateMealNutritionTotals(meal, { ingredientMap, densityMap, globalProduceMeasures });
       }
     });
   }
@@ -134,13 +136,15 @@ async function init() {
   label = info.label;
   const titleEl = document.getElementById('title');
   if (titleEl) titleEl.textContent = `Add ${label} Meal`;
-  const [density, ingredients, units] = await Promise.all([
+  const [density, ingredients, defaults, units] = await Promise.all([
     loadDensityMap(),
     getIngredientMap(),
+    loadGlobalProduceMeasures(),
     loadUnits()
   ]);
   densityMap = density || {};
   ingredientMap = ingredients || {};
+  globalProduceMeasures = defaults || {};
   const tbody = document.getElementById('mealBody');
   const rows = [];
   const preparedBox = document.getElementById('preparedChk');
@@ -258,7 +262,7 @@ async function init() {
       leftoverOk: leftoverBox.checked,
       instructions: ''
     };
-    updateMealNutritionTotals(newMeal, { ingredientMap, densityMap });
+    updateMealNutritionTotals(newMeal, { ingredientMap, densityMap, globalProduceMeasures });
     meals.push(newMeal);
     await saveMeals(meals);
     await calculateAndSaveMealNeeds();
