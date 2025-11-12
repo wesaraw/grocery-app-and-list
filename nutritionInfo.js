@@ -3,6 +3,8 @@ import { getPendingMatch } from './utils/nutritionMatching.js';
 import { gramsForUnit, formatDisplayValue } from './utils/fdcNutrientMap.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
 
+const GRAMS_PER_OUNCE = 28.349523125;
+
 let itemName = '';
 let uomInitPromise = null;
 
@@ -119,19 +121,31 @@ function renderNutrients(record, gramsPerUnit) {
     return;
   }
   const unitLabel = record.unit_default || 'unit';
+  const ouncesPerUnit =
+    gramsPerUnit != null && Number.isFinite(gramsPerUnit) && gramsPerUnit > 0
+      ? gramsPerUnit / GRAMS_PER_OUNCE
+      : null;
   const lines = record.nutrients.map(n => {
     const per100g =
       n.displayPer100g != null
         ? formatDisplayValue(n.displayPer100g, n.displayUnit, n.decimals)
         : '—';
     let perUnitText = '';
+    let perOunceText = '';
     if (gramsPerUnit != null && n.displayPerGram != null) {
       const perUnitValue = n.displayPerGram * gramsPerUnit;
       perUnitText = formatDisplayValue(perUnitValue, n.displayUnit, n.decimals);
+      if (ouncesPerUnit && Number.isFinite(ouncesPerUnit) && ouncesPerUnit > 0) {
+        const perOunceValue = perUnitValue / ouncesPerUnit;
+        perOunceText = formatDisplayValue(perOunceValue, n.displayUnit, n.decimals);
+      }
     }
     const segments = [];
     if (perUnitText) {
       segments.push(`${perUnitText} per ${unitLabel}`);
+    }
+    if (perOunceText) {
+      segments.push(`per oz: ${perOunceText}`);
     }
     if (n.displayPer100g != null) {
       segments.push(`per 100g: ${per100g}`);
