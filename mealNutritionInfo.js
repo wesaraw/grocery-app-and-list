@@ -114,6 +114,19 @@ function formatWeight(value) {
   return formatDisplayValue(value, 'g', 2);
 }
 
+function formatOunceEquivalent(meta) {
+  if (!meta || typeof meta !== 'object') return '';
+  const grams = Number(meta.grams);
+  if (!Number.isFinite(grams) || grams <= 0) return '';
+  const source = meta.source;
+  if (!source) return '';
+  const normalized = String(source).toLowerCase();
+  if (!normalized.startsWith('density')) return '';
+  const ounces = grams / 28.349523125;
+  const formatted = formatDisplayValue(ounces, 'oz', 2);
+  return formatted && formatted !== '—' ? formatted : '';
+}
+
 function describeMissingReason(reason) {
   switch (reason) {
     case 'missing-ingredient-record':
@@ -258,6 +271,10 @@ function renderResolvedIngredients(totals) {
     const weight = formatWeight(meta.grams);
     if (weight && weight !== '—') {
       details.push(weight);
+      const ounceEquivalent = formatOunceEquivalent(meta);
+      if (ounceEquivalent) {
+        details.push(ounceEquivalent);
+      }
     }
     if (meta.source) {
       const sourceLabel = formatResolutionSource(meta.source);

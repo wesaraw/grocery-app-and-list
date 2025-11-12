@@ -36,7 +36,7 @@ const storageData = {
       totalPortions: 4,
       ingredients: [
         { name: 'Red Bell Pepper', amount: '1 each' },
-        { name: 'Olive Oil', amount: '5 g' }
+        { name: 'Olive Oil', amount: '1 cup' }
       ],
       nutritionTotals: {
         version: 1,
@@ -45,7 +45,12 @@ const storageData = {
         missingIngredients: [
           { name: 'Red Bell Pepper', reason: 'conversion-failed' }
         ],
-        resolvedIngredients: {},
+        resolvedIngredients: {
+          'Olive Oil': {
+            grams: 240,
+            source: 'density:fallback'
+          }
+        },
         totalRecipeWeight: 0,
         totalServingWeight: 0,
         portionCount: 4,
@@ -215,6 +220,20 @@ const resolvedItems = window.document.querySelectorAll('#resolvedList li');
 assert.ok(resolvedItems.length >= 2, 'Resolved list should include both ingredients with provenance');
 const resolvedNames = Array.from(resolvedItems).map(item => item.firstChild.textContent.trim());
 assert.ok(resolvedNames.includes('Red Bell Pepper'), 'Resolved list should include the red bell pepper entry');
+const densityItem = Array.from(resolvedItems).find(item => {
+  const label = item.firstChild?.textContent?.trim() || '';
+  return label.toLowerCase() === 'olive oil';
+});
+assert.ok(densityItem, 'Resolved list should include the olive oil entry');
+const densityMeta = densityItem.querySelector('.resolved-meta');
+const densityMetaText = densityMeta?.textContent || '';
+assert.ok(densityMetaText.includes('oz'), 'Density fallback entry should display ounce equivalent');
+const gramsIndex = densityMetaText.indexOf('g');
+const ounceIndex = densityMetaText.indexOf('oz');
+assert.ok(
+  gramsIndex !== -1 && ounceIndex !== -1 && ounceIndex > gramsIndex,
+  'Ounce equivalent should appear after the gram value in the resolved metadata'
+);
 
 await flush();
 
