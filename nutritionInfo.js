@@ -132,11 +132,16 @@ function renderNutrients(record, gramsPerUnit) {
         : '—';
     let perUnitText = '';
     let perOunceText = '';
-    if (gramsPerUnit != null && n.displayPerGram != null) {
-      const perUnitValue = n.displayPerGram * gramsPerUnit;
-      perUnitText = formatDisplayValue(perUnitValue, n.displayUnit, n.decimals);
-      if (ouncesPerUnit && Number.isFinite(ouncesPerUnit) && ouncesPerUnit > 0) {
-        const perOunceValue = perUnitValue / ouncesPerUnit;
+    if (n.displayPerGram != null) {
+      if (gramsPerUnit != null) {
+        const perUnitValue = n.displayPerGram * gramsPerUnit;
+        perUnitText = formatDisplayValue(perUnitValue, n.displayUnit, n.decimals);
+        if (ouncesPerUnit && Number.isFinite(ouncesPerUnit) && ouncesPerUnit > 0) {
+          const perOunceValue = perUnitValue / ouncesPerUnit;
+          perOunceText = formatDisplayValue(perOunceValue, n.displayUnit, n.decimals);
+        }
+      } else {
+        const perOunceValue = n.displayPerGram * GRAMS_PER_OUNCE;
         perOunceText = formatDisplayValue(perOunceValue, n.displayUnit, n.decimals);
       }
     }

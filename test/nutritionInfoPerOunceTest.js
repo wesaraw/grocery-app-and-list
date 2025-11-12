@@ -159,7 +159,7 @@ assert.ok(/per oz:/i.test(text), 'Rendered nutrition text should include a per o
 const perUnitIndex = text.indexOf('per g');
 const perOzIndex = text.toLowerCase().indexOf('per oz');
 const per100Index = text.indexOf('per 100g');
-assert.ok(perUnitIndex !== -1, 'Per unit segment should be present');
+assert.ok(perUnitIndex !== -1, 'Per unit segment should be present for gram-based defaults');
 assert.ok(perOzIndex !== -1, 'Per ounce segment should be present');
 assert.ok(per100Index !== -1, 'Per 100g segment should be present');
 assert.ok(
@@ -171,6 +171,42 @@ const expectedPerOz = `per oz: ${(3.64 * 28.349523125).toFixed(2)} kcal`;
 assert.ok(
   text.includes(expectedPerOz),
   `Per ounce value should match expected formatting (${expectedPerOz})`
+);
+
+// Simulate a volume-based default unit where gramsPerUnit cannot be derived.
+const previousText = text;
+storageData.ingredientRecords.couscous.unit_default = 'cup';
+await new Promise(resolve => {
+  chrome.storage.local.set({ ingredientRecords: storageData.ingredientRecords }, resolve);
+});
+
+const updatedForVolume = await waitFor(() => {
+  const current = output.textContent || '';
+  return current && current !== previousText;
+});
+
+assert.ok(
+  updatedForVolume,
+  'Nutrition output should refresh after changing the default unit to a volume value'
+);
+
+const volumeText = output.textContent || '';
+assert.ok(/per oz:/i.test(volumeText), 'Volume defaults should still include a per oz segment');
+const volumePerOzIndex = volumeText.toLowerCase().indexOf('per oz');
+const volumePer100Index = volumeText.indexOf('per 100g');
+assert.ok(volumePerOzIndex !== -1, 'Per ounce segment should exist for volume defaults');
+assert.ok(volumePer100Index !== -1, 'Per 100g segment should exist for volume defaults');
+assert.ok(
+  volumePerOzIndex < volumePer100Index,
+  'Per ounce information should precede the per 100g segment for volume defaults'
+);
+assert.ok(
+  !volumeText.includes(' per g '),
+  'Per unit segment should be omitted when gramsPerUnit is unavailable'
+);
+assert.ok(
+  volumeText.includes(expectedPerOz),
+  'Fallback ounce value should match the per-gram derived calculation'
 );
 
 console.log('nutritionInfoPerOunceTest passed');
