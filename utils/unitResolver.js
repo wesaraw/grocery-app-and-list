@@ -367,9 +367,17 @@ function resolveViaDensity(value, unit, densityInfo, record, ingredientTokens) {
     if (recursive) return recursive;
   }
   const measures = Array.isArray(record?.measures) ? record.measures : [];
-  const viaMeasure = resolveViaMeasures(value, normalizedUnit, measures, ingredientTokens, () => true);
+  const viaMeasure = resolveViaMeasures(
+    value,
+    normalizedUnit,
+    measures,
+    ingredientTokens,
+    densityInfo.__skipFdcPortions ? measure => measure.source !== 'fdc:portion' : () => true
+  );
   if (viaMeasure) {
-    return { ...viaMeasure, source: viaMeasure.source || 'density' };
+    const derivedSource =
+      viaMeasure.source || (densityInfo.__fallback ? 'density:fallback' : densityInfo.source || 'density');
+    return { ...viaMeasure, source: derivedSource };
   }
   const convertableUnit = MASS_UNIT_FACTORS[normalizedUnit] != null || VOLUME_UNITS.has(normalizedUnit) || densityInfo.normalized;
   if (!convertableUnit) return null;
@@ -377,13 +385,15 @@ function resolveViaDensity(value, unit, densityInfo, record, ingredientTokens) {
   if (Number.isFinite(ouncesViaDensity) && ouncesViaDensity > 0) {
     const gramsFromOunces = gramsFromKnownMass(ouncesViaDensity, 'oz');
     if (gramsFromOunces != null) {
-      return { grams: gramsFromOunces, source: 'density', confidence: densityInfo.confidence || 'low', sizeTag: null };
+      const source = densityInfo.__fallback ? 'density:fallback' : densityInfo.source || 'density';
+      return { grams: gramsFromOunces, source, confidence: densityInfo.confidence || 'low', sizeTag: null };
     }
   }
   if (MASS_UNIT_FACTORS[normalizedUnit] != null || VOLUME_UNITS.has(normalizedUnit)) {
     const converted = convertQuantity(value, normalizedUnit, 'g');
     if (converted != null) {
-      return { grams: roundValue(converted), source: 'density', confidence: 'low', sizeTag: null };
+      const source = densityInfo.__fallback ? 'density:fallback' : densityInfo.source || 'density';
+      return { grams: roundValue(converted), source, confidence: 'low', sizeTag: null };
     }
   }
   return null;
@@ -431,17 +441,29 @@ export function resolveIngredientAmount(ingredient, record, amountText, options 
   if (!Number.isFinite(value) || value <= 0) {
     return { grams: null, reason: 'invalid-quantity' };
   }
-  const mass = gramsFromKnownMass(value, unit);
+  const rawUnit = typeof unit === 'string' ? unit.trim() : '';
+  const normalizedUnit = rawUnit ? rawUnit.toLowerCase() : '';
+  const effectiveUnit = normalizedUnit || rawUnit || '';
+  const unitIsVolume = normalizedUnit && VOLUME_UNITS.has(normalizedUnit);
+  const mass = gramsFromKnownMass(value, normalizedUnit || (rawUnit ? rawUnit.toLowerCase() : rawUnit));
   if (mass != null) {
     return { grams: mass, source: 'unit:mass', confidence: 'high', sizeTag: null };
   }
   const ingredientTokens = collectIngredientTokens(ingredient, record);
   const measures = Array.isArray(record?.measures) ? record.measures : [];
-  const fdcMatch = resolveViaMeasures(value, unit, measures, ingredientTokens, measure => measure.source === 'fdc:portion');
-  if (fdcMatch) {
-    return fdcMatch;
+  if (!unitIsVolume) {
+    const fdcMatch = resolveViaMeasures(
+      value,
+      effectiveUnit,
+      measures,
+      ingredientTokens,
+      measure => measure.source === 'fdc:portion'
+    );
+    if (fdcMatch) {
+      return fdcMatch;
+    }
   }
-  const packMatch = resolveViaPackageMath(value, unit, record);
+  const packMatch = resolveViaPackageMath(value, effectiveUnit, record);
   if (packMatch) {
     if (options.persistResolvedMeasure) {
       options.persistResolvedMeasure({ ingredient, measure: packMatch.measure });
@@ -450,7 +472,7 @@ export function resolveIngredientAmount(ingredient, record, amountText, options 
   }
   const localMatch = resolveViaMeasures(
     value,
-    unit,
+    effectiveUnit,
     measures,
     ingredientTokens,
     measure => measure.source !== 'fdc:portion'
@@ -459,20 +481,58 @@ export function resolveIngredientAmount(ingredient, record, amountText, options 
     return localMatch;
   }
   const globalDefaults = options.globalDefaults || getGlobalProduceMeasures();
-  const globalMatch = resolveViaGlobalDefaults(value, unit, ingredient, globalDefaults);
+  const globalMatch = resolveViaGlobalDefaults(value, effectiveUnit, ingredient, globalDefaults);
   if (globalMatch) {
     if (options.persistResolvedMeasure) {
       options.persistResolvedMeasure({ ingredient, measure: globalMatch.measure });
     }
     return globalMatch.resolution;
   }
-  const densityMatch = resolveViaDensity(value, unit, options.densityInfo, record, ingredientTokens);
+  const hasExplicitConvert =
+    options.densityInfo && Object.prototype.hasOwnProperty.call(options.densityInfo, 'convert');
+  let effectiveDensityInfo = options.densityInfo || null;
+  if (!effectiveDensityInfo && unitIsVolume) {
+    effectiveDensityInfo = { convert: true, ratio: 1, __fallback: true, __skipFdcPortions: true };
+  } else if (effectiveDensityInfo && !hasExplicitConvert && unitIsVolume) {
+    const existingRatio =
+      effectiveDensityInfo.ratio != null
+        ? effectiveDensityInfo.ratio
+        : effectiveDensityInfo.custom_density_ratio;
+    const merged = { ...effectiveDensityInfo, convert: true };
+    if (existingRatio != null) {
+      merged.ratio = existingRatio;
+    } else {
+      merged.ratio = 1;
+      merged.__fallback = true;
+    }
+    merged.__skipFdcPortions = true;
+    effectiveDensityInfo = merged;
+  }
+  const densityMatch = resolveViaDensity(
+    value,
+    effectiveUnit,
+    effectiveDensityInfo,
+    record,
+    ingredientTokens
+  );
   if (densityMatch) {
     return densityMatch;
   }
+  if (unitIsVolume) {
+    const deferredFdcMatch = resolveViaMeasures(
+      value,
+      effectiveUnit,
+      measures,
+      ingredientTokens,
+      measure => measure.source === 'fdc:portion'
+    );
+    if (deferredFdcMatch) {
+      return deferredFdcMatch;
+    }
+  }
   const promptMatch = resolveViaPrompt(
     value,
-    unit,
+    effectiveUnit,
     ingredient,
     options.promptForMeasure,
     options.persistResolvedMeasure

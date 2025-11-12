@@ -134,6 +134,25 @@ function describeMissingReason(reason) {
   }
 }
 
+function formatResolutionSource(source) {
+  if (source == null) return '';
+  const raw = String(source).trim();
+  if (!raw) return '';
+  const normalized = raw.toLowerCase();
+  if (normalized === 'fdc:portion') return 'FDC portion average';
+  if (normalized === 'density:fallback') return 'Density (water default)';
+  if (normalized === 'density') return 'Density override';
+  if (normalized.startsWith('density:')) {
+    const suffix = raw.slice('density:'.length).trim();
+    return suffix ? `Density (${suffix})` : 'Density override';
+  }
+  if (normalized === 'unit:mass') return 'Mass unit';
+  if (normalized === 'global') return 'Global default';
+  if (normalized === 'label') return 'Package label';
+  if (normalized === 'user') return 'User entry';
+  return raw;
+}
+
 function renderStatus(message = '', type = '') {
   if (!statusEl) return;
   statusEl.textContent = message || '';
@@ -241,7 +260,8 @@ function renderResolvedIngredients(totals) {
       details.push(weight);
     }
     if (meta.source) {
-      details.push(`Source: ${meta.source}`);
+      const sourceLabel = formatResolutionSource(meta.source);
+      details.push(`Source: ${sourceLabel || meta.source}`);
     }
     if (meta.confidence) {
       details.push(`Confidence: ${meta.confidence}`);
@@ -407,7 +427,8 @@ function openFixDialog(entry) {
         parts.push(`Size: ${preset.sizeTag}`);
       }
       if (preset.source) {
-        parts.push(`Source: ${preset.source}`);
+        const presetSource = formatResolutionSource(preset.source) || preset.source;
+        parts.push(`Source: ${presetSource}`);
       }
       textSpan.textContent = parts.join(' • ');
       label.appendChild(radio);
