@@ -137,6 +137,10 @@ function compareScoreEntry(prevEntry = {}, nextEntry = {}) {
   if (!numbersEqual(prevEntry.upperLimitValue ?? 0, nextEntry.upperLimitValue ?? 0)) return false;
   if (!numbersEqual(prevEntry.upperLimitPercent ?? 0, nextEntry.upperLimitPercent ?? 0)) return false;
   if (!numbersEqual(prevEntry.upperLimitInputValue ?? 0, nextEntry.upperLimitInputValue ?? 0)) return false;
+  if (!numbersEqual(prevEntry.pointsBeforePenalty ?? 0, nextEntry.pointsBeforePenalty ?? 0))
+    return false;
+  if (!numbersEqual(prevEntry.upperLimitPenaltyBlocks ?? 0, nextEntry.upperLimitPenaltyBlocks ?? 0))
+    return false;
   if (!numbersEqual(prevEntry.points ?? 0, nextEntry.points ?? 0)) return false;
   if ((prevEntry.upperLimitUnit || '') !== (nextEntry.upperLimitUnit || '')) return false;
   if ((prevEntry.upperLimitInputUnit || '') !== (nextEntry.upperLimitInputUnit || '')) return false;
@@ -208,6 +212,16 @@ function buildNutrientScores(perServing, nutritionTargets = {}) {
         }
       }
     }
+    const roundedUpperLimitPercent =
+      upperLimitPercent != null ? Math.round(upperLimitPercent * 100) / 100 : null;
+    const safeUpperLimitPercent = Number.isFinite(upperLimitPercent)
+      ? Math.max(0, upperLimitPercent)
+      : 0;
+    const rawPoints = computeScorePoints(percentComplete);
+    const penaltyBlocks = hasUpperLimit
+      ? Math.min(rawPoints, Math.max(0, Math.floor(safeUpperLimitPercent / 10)))
+      : 0;
+    const penalizedPoints = Math.max(0, rawPoints - penaltyBlocks);
     const definition = NUTRIENT_DEFINITION_MAP.get(key);
     perServingScores[key] = {
       key,
@@ -224,12 +238,13 @@ function buildNutrientScores(perServing, nutritionTargets = {}) {
       upperLimitUnit: hasUpperLimit ? definition?.targetUnit || target.targetUnit || '' : '',
       upperLimitInputValue: upperLimitInputValue,
       upperLimitInputUnit: upperLimitInputValue ? upperLimitInputUnit : '',
-      upperLimitPercent:
-        upperLimitPercent != null ? Math.round(upperLimitPercent * 100) / 100 : null,
+      upperLimitPercent: roundedUpperLimitPercent,
       importanceDirection: direction,
       ratio: roundValue(ratio),
       percentComplete: Math.round(percentComplete * 100) / 100,
-      points: computeScorePoints(percentComplete)
+      pointsBeforePenalty: rawPoints,
+      upperLimitPenaltyBlocks: penaltyBlocks,
+      points: penalizedPoints
     };
   });
   return Object.keys(perServingScores).length ? { perServing: perServingScores } : null;

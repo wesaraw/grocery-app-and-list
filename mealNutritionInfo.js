@@ -443,22 +443,36 @@ function renderNutrientScores(totals) {
       const bar = document.createElement('div');
       bar.className = 'nutrient-score__bar';
       const blocks = [];
-      const points = Math.max(0, Math.min(10, Number(entry.points) || 0));
-      const corruptedBlocks = Math.max(
-        0,
-        Math.min(10, Math.floor((Number(entry.upperLimitPercent) || 0) / 10))
-      );
+      const penalizedPoints = Math.max(0, Math.min(10, Number(entry.points) || 0));
+      const penaltyBlocks = (() => {
+        if (Number.isFinite(entry.upperLimitPenaltyBlocks)) {
+          return Math.max(
+            0,
+            Math.min(10, Math.floor(Number(entry.upperLimitPenaltyBlocks)))
+          );
+        }
+        return Math.max(
+          0,
+          Math.min(10, Math.floor((Number(entry.upperLimitPercent) || 0) / 10))
+        );
+      })();
+      const basePoints = (() => {
+        if (Number.isFinite(entry.pointsBeforePenalty)) {
+          return Math.max(0, Math.min(10, Math.floor(Number(entry.pointsBeforePenalty))));
+        }
+        return Math.max(0, Math.min(10, penalizedPoints + penaltyBlocks));
+      })();
       for (let i = 0; i < 10; i += 1) {
         const block = document.createElement('span');
         block.className = 'nutrient-score__block';
-        if (i < points) {
+        if (i < basePoints) {
           block.classList.add('nutrient-score__block--filled');
         }
         blocks.push(block);
         bar.appendChild(block);
       }
-      const filledBlocks = Math.min(points, blocks.length);
-      const corruptedFilledBlocks = Math.min(corruptedBlocks, filledBlocks);
+      const filledBlocks = Math.min(basePoints, blocks.length);
+      const corruptedFilledBlocks = Math.min(penaltyBlocks, filledBlocks);
       for (let i = 0; i < corruptedFilledBlocks; i += 1) {
         const blockIndex = filledBlocks - 1 - i;
         const targetBlock = blocks[blockIndex];

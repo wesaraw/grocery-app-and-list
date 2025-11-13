@@ -345,7 +345,8 @@ function buildNutritionScoreList(totals) {
       const valueSpan = document.createElement('span');
       valueSpan.className = 'meal-nutrition-score__value';
       const percentText = formatScorePercent(entry.percentComplete);
-      valueSpan.textContent = `${entry.points ?? 0}/10 • ${percentText}`;
+      const displayedPoints = Math.max(0, Math.min(10, Number(entry.points) || 0));
+      valueSpan.textContent = `${displayedPoints}/10 • ${percentText}`;
       header.appendChild(labelSpan);
       header.appendChild(valueSpan);
       const tooltipParts = [];
@@ -360,7 +361,21 @@ function buildNutritionScoreList(totals) {
       if (perServingText) {
         tooltipParts.push(`${perServingText} per serving`);
       }
-      tooltipParts.push(`${entry.points ?? 0}/10 (${percentText})`);
+      tooltipParts.push(`${displayedPoints}/10 (${percentText})`);
+      const penaltyBlocks = (() => {
+        if (Number.isFinite(entry.upperLimitPenaltyBlocks)) {
+          return Math.max(0, Math.min(10, Math.floor(Number(entry.upperLimitPenaltyBlocks))));
+        }
+        return Math.max(0, Math.min(10, Math.floor((Number(entry.upperLimitPercent) || 0) / 10)));
+      })();
+      if (penaltyBlocks > 0) {
+        const basePoints = Number.isFinite(entry.pointsBeforePenalty)
+          ? Math.max(0, Math.min(10, Math.floor(Number(entry.pointsBeforePenalty))))
+          : Math.max(0, Math.min(10, displayedPoints + penaltyBlocks));
+        tooltipParts.push(
+          `Score reduced from ${basePoints}/10 by ${penaltyBlocks} due to safe upper-limit overage`
+        );
+      }
       const upperLimitText = formatScoreUpperLimit(entry);
       if (upperLimitText) {
         tooltipParts.push(upperLimitText);
