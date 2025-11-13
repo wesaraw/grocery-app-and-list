@@ -2,6 +2,7 @@ import { JSDOM } from 'jsdom';
 import { pathToFileURL } from 'url';
 import fs from 'fs';
 import assert from 'node:assert';
+import { MEAL_NUTRITION_VERSION } from '../utils/mealNutritionCalculator.js';
 
 const baseUrl = pathToFileURL(process.cwd() + '/').href;
 
@@ -39,7 +40,7 @@ const storageData = {
         { name: 'Olive Oil', amount: '1 cup' }
       ],
       nutritionTotals: {
-        version: 2,
+        version: MEAL_NUTRITION_VERSION,
         perRecipe: {},
         perServing: {},
         missingIngredients: [

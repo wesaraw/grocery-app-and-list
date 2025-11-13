@@ -17,6 +17,8 @@ import { loadJSON } from './dataLoader.js';
 import { initUomTable, convert } from './uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './unitNormalize.js';
 import { getMealPortionCount } from './calendarUtils.js';
+import { NUTRIENT_DEFINITIONS } from './fdcNutrientMap.js';
+import { loadNutritionTargetLookup } from './nutritionTargets.js';
 import {
   loadUsers,
   loadUserCategoryDays,
@@ -98,6 +100,9 @@ export async function calculateAndSaveMealNeeds(options = {}) {
   const priceThresholds = await loadUserPriceThresholds();
   const itemSeasons = await loadItemSeasons();
   const overrides = await loadMealSlotOverrides();
+  const nutritionTargetLookup = await loadNutritionTargetLookup(NUTRIENT_DEFINITIONS).catch(
+    () => ({})
+  );
 
   const weeklyOverrideEntries = await loadWeeklyMealOverrides();
   const weeklyOverridesByDate = groupWeeklyOverridesByDateAndUser(
@@ -545,23 +550,30 @@ export async function calculateAndSaveMealNeeds(options = {}) {
     eatingDays[user] = prefs;
   });
 
-  const { whatToEatCalendar: prevCalendar, whatToEatCalendarMeta: prevMeta } = await new Promise(
-    resolve => {
-      chrome.storage.local.get(
-        ['whatToEatCalendar', 'whatToEatCalendarMeta'],
-        data => {
-          resolve({
-            whatToEatCalendar: data.whatToEatCalendar || {},
-            whatToEatCalendarMeta: data.whatToEatCalendarMeta || null
-          });
-        }
-      );
-    }
-  );
+  const storedCalendars = await new Promise(resolve => {
+    chrome.storage.local.get(
+      ['whatToEatCalendar', 'whatToEatCalendarMeta'],
+      data => {
+        resolve({
+          whatToEatCalendar: data.whatToEatCalendar || {},
+          whatToEatCalendarMeta: data.whatToEatCalendarMeta || null
+        });
+      }
+    );
+  });
+
+  let prevCalendar = storedCalendars.whatToEatCalendar;
+  let prevMeta = storedCalendars.whatToEatCalendarMeta;
 
   const freezeBefore = new Date();
   const freezeBeforeStr = freezeBefore.toISOString().split('T')[0];
   const resync = !!(options && options.resync);
+  const forceNutrientRebuild = !!(options && options.forceNutrientRebuild);
+  if (forceNutrientRebuild) {
+    prevCalendar = {};
+    prevMeta = null;
+  }
+  const skipSeeding = resync || forceNutrientRebuild;
 
   const whatCalResult = generateWhatToEatCalendar(
     users,
@@ -576,15 +588,17 @@ export async function calculateAndSaveMealNeeds(options = {}) {
     slotOverridesByUserName,
     weeklyOverridesByDate,
     {
-      previousCalendar: resync ? {} : prevCalendar,
+      previousCalendar: skipSeeding ? {} : prevCalendar,
       freezeBefore: freezeBeforeStr,
-      initialState: resync ? null : prevMeta || null
+      initialState: skipSeeding ? null : prevMeta || null,
+      nutritionTargets: nutritionTargetLookup,
+      nutrientScoreOptions: { maxPointsPerNutrient: 10 }
     }
   );
 
   let { calendar: whatCal, metadata: whatCalMeta } = whatCalResult;
 
-  if (resync && prevCalendar && typeof prevCalendar === 'object') {
+  if (resync && !forceNutrientRebuild && prevCalendar && typeof prevCalendar === 'object') {
     const mergedCal = {};
     users.forEach(user => {
       const nextUserEntries = { ...(whatCal[user] || {}) };
@@ -637,7 +651,7 @@ export async function calculateAndSaveMealNeeds(options = {}) {
       {
         preparedMealsCalendar: preparedCal,
         whatToEatCalendar: whatCal,
-        whatToEatCalendarMeta: whatCalMeta
+        whatToEatCalendarMeta: whatCalMeta || null
       },
       () => resolve()
     );

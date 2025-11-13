@@ -19,10 +19,127 @@ function toISODateString(date) {
   return date.toISOString().split('T')[0];
 }
 
+const DEFAULT_MAX_NUTRIENT_SCORE = 10;
+const NUTRIENT_SCORE_TOLERANCE = 0.0001;
+
+function cloneNutrientScoreMetadata(score) {
+  if (!score || typeof score !== 'object') {
+    return null;
+  }
+  const total = Number(
+    score.total != null ? score.total : score.totalPoints != null ? score.totalPoints : null
+  );
+  const perNutrient = {};
+  Object.entries(score.perNutrient || {}).forEach(([key, value]) => {
+    if (!key) return;
+    const numeric = Number(value);
+    if (Number.isFinite(numeric)) {
+      perNutrient[key] = numeric;
+    }
+  });
+  const hasPerNutrient = Object.keys(perNutrient).length > 0;
+  const hasTotal = Number.isFinite(total);
+  if (!hasPerNutrient && !hasTotal) {
+    return null;
+  }
+  const result = {};
+  if (hasTotal) {
+    result.total = total;
+  }
+  if (hasPerNutrient) {
+    result.perNutrient = perNutrient;
+  }
+  return result;
+}
+
+function buildMealLookupFromSubscriptions(subscriptions = {}) {
+  const lookup = new Map();
+  Object.values(subscriptions || {}).forEach(prefs => {
+    Object.values(prefs || {}).forEach(meals => {
+      (meals || []).forEach(meal => {
+        if (!meal || typeof meal !== 'object') return;
+        if (meal.id != null) {
+          lookup.set(`id:${String(meal.id)}`, meal);
+        }
+        if (meal.name) {
+          lookup.set(`name:${meal.name}`, meal);
+        }
+      });
+    });
+  });
+  return lookup;
+}
+
+function buildNutrientGoalConfig(targetLookup = {}, options = {}) {
+  if (!targetLookup || typeof targetLookup !== 'object') {
+    return null;
+  }
+  const entries = Object.values(targetLookup).filter(
+    entry => entry && entry.key
+  );
+  if (!entries.length) return null;
+  const sortedByRank = entries
+    .map((entry, index) => {
+      const rankValue = Number(entry.importanceRank);
+      return {
+        ...entry,
+        normalizedRank: Number.isFinite(rankValue) ? rankValue : index + 1
+      };
+    })
+    .sort((a, b) => {
+      if (a.normalizedRank !== b.normalizedRank) {
+        return a.normalizedRank - b.normalizedRank;
+      }
+      return (a.key || '').localeCompare(b.key || '');
+    });
+  const uniqueEntries = [];
+  const seenKeys = new Set();
+  sortedByRank.forEach(entry => {
+    if (!entry.key || seenKeys.has(entry.key)) return;
+    seenKeys.add(entry.key);
+    uniqueEntries.push(entry);
+  });
+  const total = uniqueEntries.length;
+  if (!total) return null;
+  const maxPoints = Number.isFinite(options?.maxPointsPerNutrient)
+    ? Math.max(1, Number(options.maxPointsPerNutrient))
+    : DEFAULT_MAX_NUTRIENT_SCORE;
+  const goalsByKey = {};
+  const orderedKeys = [];
+  uniqueEntries.forEach((entry, index) => {
+    const key = entry.key;
+    if (!key) return;
+    const resolvedRank = Number(entry.normalizedRank);
+    const clampedRank = Number.isFinite(resolvedRank)
+      ? Math.max(1, Math.min(total, Math.round(resolvedRank)))
+      : index + 1;
+    const multiplier = Math.max(1, total - clampedRank + 1);
+    const goalPoints = multiplier * maxPoints;
+    goalsByKey[key] = {
+      key,
+      label: entry.label || key,
+      rank: clampedRank,
+      multiplier,
+      goalPoints
+    };
+    orderedKeys.push(key);
+  });
+  if (!orderedKeys.length) return null;
+  return {
+    orderedKeys,
+    goalsByKey,
+    totalNutrients: orderedKeys.length,
+    maxPointsPerNutrient: maxPoints
+  };
+}
+
 function normalizeForcedDay(dayValue) {
   const result = {};
   if (!dayValue || typeof dayValue !== 'object') return result;
   Object.entries(dayValue).forEach(([categoryId, slotValue]) => {
+    if (typeof categoryId === 'string' && categoryId.startsWith('_')) {
+      return;
+    }
     if (Array.isArray(slotValue)) {
       result[categoryId] = slotValue.map(item =>
         item == null ? null : normalizeCalendarEntry(item)
@@ -151,6 +268,164 @@ function incrementDateStr(dateStr) {
   return toISODateString(dt);
 }
 
+function serializeEntry(entry) {
+  if (entry == null) return null;
+  const nutrientScore = cloneNutrientScoreMetadata(entry.nutrientScore);
+  if (entry.type === 'leftover') {
+    return {
+      type: 'leftover',
+      mealId: entry.mealId,
+      leftoverSource: entry.leftoverSource ? { ...entry.leftoverSource } : null,
+      ...(nutrientScore ? { nutrientScore } : {})
+    };
+  }
+  const targets = Array.isArray(entry.leftoverTargets)
+    ? entry.leftoverTargets.map(t => ({ ...t }))
+    : [];
+  if (!targets.length && !nutrientScore) {
+    return entry.mealId;
+  }
+  return {
+    type: 'cook',
+    mealId: entry.mealId,
+    leftoverTargets: targets,
+    ...(nutrientScore ? { nutrientScore } : {})
+  };
+}
+
+function buildAllowedMealIdSet(meals) {
+  const set = new Set();
+  if (!Array.isArray(meals)) return set;
+  meals.forEach(meal => {
+    if (!meal) return;
+    const { id, name } = meal;
+    if (id !== undefined && id !== null) {
+      set.add(id);
+      set.add(String(id));
+    }
+    if (name != null && name !== '') {
+      set.add(name);
+    }
+  });
+  return set;
+}
+
+export function buildAllowedMealLookup(subscriptions = {}) {
+  const result = {};
+  if (!subscriptions || typeof subscriptions !== 'object') {
+    return result;
+  }
+  Object.entries(subscriptions).forEach(([user, prefs]) => {
+    if (!prefs || typeof prefs !== 'object') return;
+    const userMap = {};
+    Object.entries(prefs).forEach(([categoryId, meals]) => {
+      const set = buildAllowedMealIdSet(meals);
+      if (set.size) {
+        userMap[categoryId] = set;
+      }
+    });
+    if (Object.keys(userMap).length) {
+      result[user] = userMap;
+    }
+  });
+  return result;
+}
+
+function isMealAllowed(allowedSet, mealId) {
+  if (!allowedSet || allowedSet.size === 0) return false;
+  if (allowedSet.has(mealId)) return true;
+  if (mealId != null) {
+    const str = String(mealId);
+    if (allowedSet.has(str)) return true;
+  }
+  return false;
+}
+
+function filterCalendarEntryForAllowed(entry, allowedSet) {
+  if (entry == null) return null;
+  const normalized = normalizeCalendarEntry(entry);
+  if (!normalized) return null;
+  if (normalized.type === 'cook') {
+    if (!isMealAllowed(allowedSet, normalized.mealId)) {
+      return null;
+    }
+  }
+  return serializeEntry(normalized);
+}
+
+function filterCalendarValueByAllowed(value, allowedSet) {
+  if (Array.isArray(value)) {
+    const filtered = value.map(item => filterCalendarEntryForAllowed(item, allowedSet));
+    const keep = filtered.some(item => item != null);
+    if (!keep) {
+      return { keep: false, value: null };
+    }
+    return {
+      keep: true,
+      value: filtered.map(item => (item == null ? null : item))
+    };
+  }
+  if (value == null) {
+    return { keep: false, value: null };
+  }
+  if (typeof value === 'string') {
+    const filtered = filterCalendarEntryForAllowed(value, allowedSet);
+    if (!filtered) {
+      return { keep: false, value: null };
+    }
+    return { keep: true, value: filtered };
+  }
+  if (typeof value === 'object') {
+    const isEntry =
+      value.mealId != null || value.id != null || value.name != null || value.type != null;
+    if (isEntry) {
+      const filtered = filterCalendarEntryForAllowed(value, allowedSet);
+      if (!filtered) {
+        return { keep: false, value: null };
+      }
+      return { keep: true, value: filtered };
+    }
+    const keys = Object.keys(value);
+    const next = {};
+    let hasAny = false;
+    keys.forEach(key => {
+      const { keep, value: filtered } = filterCalendarValueByAllowed(value[key], allowedSet);
+      if (keep) {
+        next[key] = filtered;
+        hasAny = true;
+      }
+    });
+    return hasAny ? { keep: true, value: next } : { keep: false, value: null };
+  }
+  return { keep: false, value: null };
+}
+
+export function filterCalendarDayByAllowedMeals(dayValue, allowedCategories = null) {
+  if (dayValue == null) return null;
+  if (Array.isArray(dayValue)) {
+    const { keep, value } = filterCalendarValueByAllowed(dayValue, allowedCategories);
+    return keep ? value : null;
+  }
+  if (typeof dayValue !== 'object') {
+    return null;
+  }
+  const result = {};
+  let hasValues = false;
+  Object.entries(dayValue).forEach(([categoryId, value]) => {
+    if (typeof categoryId === 'string' && categoryId.startsWith('_')) {
+      result[categoryId] = cloneValue(value);
+      return;
+    }
+    const allowedSet = allowedCategories ? allowedCategories[categoryId] : null;
+    const { keep, value: filtered } = filterCalendarValueByAllowed(value, allowedSet);
+    if (keep) {
+      result[categoryId] = filtered;
+      hasValues = true;
+    }
+  });
+  return hasValues || Object.keys(result).some(key => key.startsWith('_')) ? result : null;
+}
+
 export function generateWhatToEatCalendar(
   users,
   preparedCal,
@@ -168,11 +443,153 @@ export function generateWhatToEatCalendar(
   const {
     previousCalendar = null,
     freezeBefore = null,
-    initialState = null
+    initialState = null,
+    nutritionTargets = null,
+    nutrientScoreOptions = null
   } = options || {};
 
   const freezeBeforeStr =
     typeof freezeBefore === 'string' && freezeBefore ? freezeBefore : null;
+
+  const allowedMealsByUser = buildAllowedMealLookup(subscriptions);
+  const nutrientGoalConfig = buildNutrientGoalConfig(
+    nutritionTargets,
+    nutrientScoreOptions
+  );
+  const mealLookup = buildMealLookupFromSubscriptions(subscriptions);
+  const mealNutrientCache = new WeakMap();
+  const dayNutritionStateByUser = {};
+
+  function resolveMealFromLookup(mealId) {
+    if (mealId == null) return null;
+    const idKey = `id:${String(mealId)}`;
+    const nameKey = `name:${String(mealId)}`;
+    return mealLookup.get(idKey) || mealLookup.get(nameKey) || null;
+  }
+
+  function ensureNutrientDayState(user, dateStr) {
+    if (!nutrientGoalConfig) return null;
+    if (!dayNutritionStateByUser[user]) {
+      dayNutritionStateByUser[user] = {};
+    }
+    const userState = dayNutritionStateByUser[user];
+    if (!userState[dateStr]) {
+      const totals = {};
+      const remaining = {};
+      nutrientGoalConfig.orderedKeys.forEach(key => {
+        const goal = nutrientGoalConfig.goalsByKey[key];
+        totals[key] = 0;
+        remaining[key] = goal?.goalPoints || 0;
+      });
+      userState[dateStr] = { totals, remaining };
+    }
+    return userState[dateStr];
+  }
+
+  function buildNutrientSummaryFromState(dayState) {
+    if (!nutrientGoalConfig || !dayState) {
+      return null;
+    }
+    const perNutrient = {};
+    nutrientGoalConfig.orderedKeys.forEach(key => {
+      const goalPoints = nutrientGoalConfig.goalsByKey[key]?.goalPoints || 0;
+      const total = Math.max(0, Math.min(goalPoints, dayState.totals[key] || 0));
+      perNutrient[key] = {
+        goal: goalPoints,
+        achieved: total
+      };
+    });
+    return {
+      orderedKeys: nutrientGoalConfig.orderedKeys.slice(),
+      perNutrient,
+      totalNutrients: nutrientGoalConfig.totalNutrients,
+      maxPointsPerNutrient: nutrientGoalConfig.maxPointsPerNutrient
+    };
+  }
+
+  function getMealNutrientVector(meal) {
+    if (!nutrientGoalConfig || !meal) return null;
+    if (mealNutrientCache.has(meal)) {
+      return mealNutrientCache.get(meal);
+    }
+    const perNutrient = {};
+    let total = 0;
+    const perServingScores = meal?.nutritionTotals?.nutrientScores?.perServing || {};
+    nutrientGoalConfig.orderedKeys.forEach(key => {
+      const goal = nutrientGoalConfig.goalsByKey[key];
+      if (!goal) {
+        perNutrient[key] = 0;
+        return;
+      }
+      const entry = perServingScores[key];
+      const rawPoints = Number(entry?.points);
+      const capped = Number.isFinite(rawPoints)
+        ? Math.max(0, Math.min(nutrientGoalConfig.maxPointsPerNutrient, rawPoints))
+        : 0;
+      const weighted = capped * goal.multiplier;
+      perNutrient[key] = weighted;
+      total += weighted;
+    });
+    const vector = { perNutrient, total };
+    mealNutrientCache.set(meal, vector);
+    return vector;
+  }
+
+  function computeAppliedPoints(vector, dayState) {
+    if (!nutrientGoalConfig || !vector || !dayState) {
+      return { total: 0, perNutrient: {} };
+    }
+    const perNutrient = {};
+    let total = 0;
+    nutrientGoalConfig.orderedKeys.forEach(key => {
+      const raw = vector.perNutrient[key] || 0;
+      if (raw <= 0) {
+        perNutrient[key] = 0;
+        return;
+      }
+      const remaining =
+        dayState.remaining[key] != null
+          ? dayState.remaining[key]
+          : nutrientGoalConfig.goalsByKey[key]?.goalPoints || 0;
+      const applied = Math.min(raw, remaining);
+      perNutrient[key] = applied;
+      total += applied;
+    });
+    return { total, perNutrient };
+  }
+
+  function scoreMealForDay(user, dateStr, meal) {
+    if (!nutrientGoalConfig || !meal) {
+      return { total: 0, perNutrient: {} };
+    }
+    const dayState = ensureNutrientDayState(user, dateStr);
+    if (!dayState) {
+      return { total: 0, perNutrient: {} };
+    }
+    const vector = getMealNutrientVector(meal);
+    if (!vector) {
+      return { total: 0, perNutrient: {} };
+    }
+    return computeAppliedPoints(vector, dayState);
+  }
+
+  function applyMealNutrition(user, dateStr, meal) {
+    if (!nutrientGoalConfig || !meal) return null;
+    const dayState = ensureNutrientDayState(user, dateStr);
+    if (!dayState) return null;
+    const vector = getMealNutrientVector(meal);
+    if (!vector) return null;
+    const applied = computeAppliedPoints(vector, dayState);
+    Object.entries(applied.perNutrient || {}).forEach(([key, value]) => {
+      const numeric = Number(value) || 0;
+      if (numeric <= 0) return;
+      dayState.totals[key] = (dayState.totals[key] || 0) + numeric;
+      const goalPoints = nutrientGoalConfig.goalsByKey[key]?.goalPoints || 0;
+      const remaining = goalPoints - dayState.totals[key];
+      dayState.remaining[key] = remaining > 0 ? remaining : 0;
+    });
+    return applied;
+  }
 
   let snapshotBase = null;
   if (initialState && typeof initialState === 'object') {
@@ -204,13 +621,16 @@ export function generateWhatToEatCalendar(
     users.forEach(user => {
       const prevUser = previousCalendar[user] || {};
       const targetUser = calendar[user];
+      const allowedForUser = allowedMealsByUser[user] || null;
       Object.entries(prevUser).forEach(([dateStr, dayValue]) => {
         if (freezeBeforeStr && dateStr >= freezeBeforeStr) return;
-        targetUser[dateStr] = cloneValue(dayValue);
+        const filteredDay = filterCalendarDayByAllowedMeals(dayValue, allowedForUser);
+        if (!filteredDay) return;
+        targetUser[dateStr] = filteredDay;
         preservedDates.add(dateStr);
         const forcedDay = forcedByDate.get(dateStr) || {};
         const existingUser = normalizeForcedUserEntry(forcedDay[user]);
-        const normalizedForced = normalizeForcedDay(dayValue);
+        const normalizedForced = normalizeForcedDay(filteredDay);
         Object.entries(normalizedForced).forEach(([categoryId, slotValue]) => {
           const slotMap = normalizeForcedCategorySlots(slotValue);
           if (!existingUser[categoryId]) {
@@ -353,28 +773,6 @@ export function generateWhatToEatCalendar(
 
   function createLeftoverEntry(mealId, source) {
     return { type: 'leftover', mealId, leftoverSource: source || null };
-  }
-
-  function serializeEntry(entry) {
-    if (entry == null) return null;
-    if (entry.type === 'leftover') {
-      return {
-        type: 'leftover',
-        mealId: entry.mealId,
-        leftoverSource: entry.leftoverSource ? { ...entry.leftoverSource } : null
-      };
-    }
-    const targets = Array.isArray(entry.leftoverTargets)
-      ? entry.leftoverTargets.map(t => ({ ...t }))
-      : [];
-    if (!targets.length) {
-      return entry.mealId;
-    }
-    return {
-      type: 'cook',
-      mealId: entry.mealId,
-      leftoverTargets: targets
-    };
   }
 
   function rotateArray(arr, seed) {
@@ -958,8 +1356,13 @@ export function generateWhatToEatCalendar(
           if (!candidateList.length) {
             candidateList = activeCandidates.slice();
           }
-          const weightedList = candidateList.map(candidate => candidate.weighted);
-          const meal = pickWeighted(weightedList, sizeState, forcedMealId);
+          const meal = pickSharedCandidate(
+            candidateList,
+            sizeState,
+            forcedMealId,
+            user,
+            dateStr
+          );
           if (!meal) break;
           const mealId = meal.id || meal.name;
           const candidate = bucket.map.get(mealId);
@@ -996,9 +1399,9 @@ export function generateWhatToEatCalendar(
       return null;
     }
 
-    function prioritizeSharedCandidates(candidates, categoryId, dateStr) {
-      const empty = { primary: [], secondary: [], lookup: new Map() };
-      if (!Array.isArray(candidates) || !candidates.length) return empty;
+  function prioritizeSharedCandidates(candidates, categoryId, dateStr) {
+    const empty = { primary: [], secondary: [], lookup: new Map() };
+    if (!Array.isArray(candidates) || !candidates.length) return empty;
       const enriched = candidates.map(candidate => {
         let minDays = Infinity;
         candidate.users.forEach(user => {
@@ -1053,12 +1456,55 @@ export function generateWhatToEatCalendar(
         return rotateArray(sorted, seed);
       }
 
-      return {
-        primary: orderCandidates(primaryInfo, 'primary'),
-        secondary: orderCandidates(secondaryInfo, 'secondary'),
-        lookup
-      };
+    return {
+      primary: orderCandidates(primaryInfo, 'primary'),
+      secondary: orderCandidates(secondaryInfo, 'secondary'),
+      lookup
+    };
+  }
+
+  function pickSharedCandidate(candidateList, sizeState, forcedMealId, user, dateStr) {
+    if (!Array.isArray(candidateList) || !candidateList.length) {
+      return null;
     }
+    if (!nutrientGoalConfig) {
+      const weightedList = candidateList.map(candidate => candidate.weighted);
+      return pickWeighted(weightedList, sizeState, forcedMealId);
+    }
+    const forcedCandidate =
+      forcedMealId != null
+        ? candidateList.find(candidate => candidate?.mealId === forcedMealId)
+        : null;
+    if (forcedCandidate) {
+      return forcedCandidate.meal;
+    }
+    const dayState = ensureNutrientDayState(user, dateStr);
+    if (!dayState) {
+      const weightedList = candidateList.map(candidate => candidate.weighted);
+      return pickWeighted(weightedList, sizeState, forcedMealId);
+    }
+    const scored = candidateList.map(candidate => {
+      const meal = candidate?.meal || null;
+      const vector = meal ? getMealNutrientVector(meal) : null;
+      const scoreInfo = vector ? computeAppliedPoints(vector, dayState) : null;
+      return { candidate, score: scoreInfo ? scoreInfo.total : 0 };
+    });
+    let maxScore = -Infinity;
+    scored.forEach(item => {
+      if (item.score > maxScore) maxScore = item.score;
+    });
+    if (!Number.isFinite(maxScore)) maxScore = 0;
+    const topCandidates = scored
+      .filter(item => Math.abs(item.score - maxScore) < NUTRIENT_SCORE_TOLERANCE)
+      .map(item => item.candidate)
+      .filter(Boolean);
+    if (topCandidates.length === 1) {
+      return topCandidates[0].meal;
+    }
+    const pool = topCandidates.length ? topCandidates : candidateList;
+    const weightedList = pool.map(candidate => candidate.weighted);
+    return pickWeighted(weightedList, sizeState, forcedMealId);
+  }
 
     users.forEach(user => {
       calendar[user][dateStr] = calendar[user][dateStr] || {};
@@ -1074,6 +1520,29 @@ export function generateWhatToEatCalendar(
       function getContext(categoryId) {
         if (contextCache[categoryId]) return contextCache[categoryId];
         return ensureContext(user, categoryId);
+      }
+
+      function updateDaySummaryMetadata() {
+        if (!write || !nutrientGoalConfig) return;
+        const dayState = ensureNutrientDayState(user, dateStr);
+        if (!dayState) return;
+        const summary = buildNutrientSummaryFromState(dayState);
+        if (!summary) return;
+        // Namespaced key so category loops can ignore it while UI can read progress data.
+        calendar[user][dateStr]._nutrientSummary = summary;
+      }
+
+      function recordMealNutritionForEntry(entry, meal, mealId) {
+        if (!write || !nutrientGoalConfig || !entry) return;
+        const resolvedMeal = meal || resolveMealFromLookup(mealId);
+        if (!resolvedMeal) return;
+        const applied = applyMealNutrition(user, dateStr, resolvedMeal);
+        if (!applied) return;
+        entry.nutrientScore = {
+          total: applied.total,
+          perNutrient: { ...applied.perNutrient }
+        };
+        updateDaySummaryMetadata();
       }
 
       function attemptPick(categoryId, slotKey, normalizedSlotOverride, options = {}) {
@@ -1159,6 +1628,45 @@ export function generateWhatToEatCalendar(
             usedSharedAssignment = true;
           }
         }
+        function selectMealFromCandidates(candidateEntries, weightState, forcedId) {
+          if (!Array.isArray(candidateEntries) || !candidateEntries.length) {
+            return null;
+          }
+          if (!nutrientGoalConfig) {
+            return pickWeighted(candidateEntries, weightState, forcedId);
+          }
+          const forcedChoice =
+            forcedId != null
+              ? candidateEntries.find(entry => {
+                  const id = entry?.meal?.id || entry?.meal?.name;
+                  return id != null && id === forcedId;
+                })
+              : null;
+          if (forcedChoice) {
+            return forcedChoice.meal;
+          }
+          const scoredEntries = candidateEntries.map(entry => {
+            const meal = entry?.meal || null;
+            const scoreInfo = meal ? scoreMealForDay(user, dateStr, meal) : null;
+            const total = scoreInfo ? scoreInfo.total : 0;
+            return { entry, total };
+          });
+          let maxScore = -Infinity;
+          scoredEntries.forEach(item => {
+            if (item.total > maxScore) maxScore = item.total;
+          });
+          if (!Number.isFinite(maxScore)) maxScore = 0;
+          const tiedEntries = scoredEntries
+            .filter(item => Math.abs(item.total - maxScore) < NUTRIENT_SCORE_TOLERANCE)
+            .map(item => item.entry)
+            .filter(Boolean);
+          if (tiedEntries.length === 1) {
+            return tiedEntries[0].meal;
+          }
+          const pool = tiedEntries.length ? tiedEntries : candidateEntries;
+          return pickWeighted(pool, weightState, forcedId);
+        }
+
         if (chosenId == null) {
           const pickList = requirePrepared
             ? context.preparedChooseList.length
@@ -1198,7 +1706,7 @@ export function generateWhatToEatCalendar(
             candidateList = pickList;
           }
           if (candidateList.length) {
-            const meal = pickWeighted(candidateList, state, forcedMealId);
+            const meal = selectMealFromCandidates(candidateList, state, forcedMealId);
             if (meal) {
               chosenId = meal.id || meal.name;
               chosenMeal = meal;
@@ -1351,6 +1859,11 @@ export function generateWhatToEatCalendar(
                 }
               );
               updateRecencyForEntry(slotResults[slotIndex]);
+              recordMealNutritionForEntry(
+                slotResults[slotIndex],
+                null,
+                sourceInfo.entry.mealId
+              );
               return true;
             }
           }
@@ -1360,6 +1873,7 @@ export function generateWhatToEatCalendar(
               forcedEntry.leftoverSource || null
             );
             updateRecencyForEntry(slotResults[slotIndex]);
+            recordMealNutritionForEntry(slotResults[slotIndex], null, forcedEntry.mealId);
             return true;
           }
           return false;
@@ -1378,9 +1892,24 @@ export function generateWhatToEatCalendar(
           }
           const forcedMealId =
             forcedEntry && forcedEntry.type === 'cook' ? forcedEntry.mealId : null;
+          let forcedMeal = null;
+          if (forcedMealId) {
+            if (overrideCategory) {
+              const overrideContext = getContext(overrideCategory);
+              forcedMeal =
+                overrideContext?.meals.find(
+                  m => (m.id || m.name) === forcedMealId
+                ) || null;
+            }
+            if (!forcedMeal) {
+              const baseContext = getContext(cat);
+              forcedMeal =
+                baseContext?.meals.find(m => (m.id || m.name) === forcedMealId) || null;
+            }
+          }
           let pick = null;
           const pickOptions = {
-            requirePrepared,
+            requirePrepared: requirePrepared || (forcedMeal?.prepared ? true : false),
             forcedMealId,
             forcedEntry
           };
@@ -1395,11 +1924,14 @@ export function generateWhatToEatCalendar(
           if (!pick && baseSlotActive) {
             pick = attemptPick(cat, slotIndex, undefined, pickOptions);
           }
+          if (forcedMealId && pick && pick.chosenId !== forcedMealId) {
+            pick = null;
+          }
           if (!pick && forcedMealId) {
             const entry = createCookEntry(forcedMealId);
             slotResults[slotIndex] = entry;
-            let fallbackMeal = null;
-            if (overrideCategory) {
+            let fallbackMeal = forcedMeal;
+            if (!fallbackMeal && overrideCategory) {
               const overrideContext = getContext(overrideCategory);
               fallbackMeal =
                 overrideContext?.meals.find(
@@ -1429,6 +1961,7 @@ export function generateWhatToEatCalendar(
               );
             }
             updateRecencyForEntry(entry);
+            recordMealNutritionForEntry(entry, fallbackMeal, forcedMealId);
             return true;
           }
           if (!pick) return false;
@@ -1446,6 +1979,7 @@ export function generateWhatToEatCalendar(
             );
           }
           updateRecencyForEntry(entry);
+          recordMealNutritionForEntry(entry, meal, pick.chosenId);
           return true;
         }
 

@@ -63,7 +63,7 @@ async function initThresholdControls() {
     resyncBtn.disabled = disabled;
   }
 
-  async function runCalendarBuild(options, button, loadingLabel) {
+  async function runCalendarBuild(options = {}, button, loadingLabel) {
     if (rebuildBtn.disabled || resyncBtn.disabled) return;
     setButtonsDisabled(true);
     const originalText = button.textContent;
@@ -76,8 +76,12 @@ async function initThresholdControls() {
     }
   }
 
-  rebuildBtn.addEventListener('click', () => runCalendarBuild(undefined, rebuildBtn, 'Rebuilding…'));
-  resyncBtn.addEventListener('click', () => runCalendarBuild({ resync: true }, resyncBtn, 'Resyncing…'));
+  rebuildBtn.addEventListener('click', () =>
+    runCalendarBuild({ forceNutrientRebuild: true }, rebuildBtn, 'Rebuilding…')
+  );
+  resyncBtn.addEventListener('click', () =>
+    runCalendarBuild({ resync: true }, resyncBtn, 'Resyncing…')
+  );
 }
 
 document.addEventListener('DOMContentLoaded', initThresholdControls);

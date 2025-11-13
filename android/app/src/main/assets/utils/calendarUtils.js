@@ -139,6 +139,36 @@ export function buildMealMap(mealsByCategory) {
   return map;
 }
 
+function normalizeNutrientScoreMetadata(value) {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+  const perNutrient = {};
+  Object.entries(value.perNutrient || {}).forEach(([key, raw]) => {
+    if (!key) return;
+    const numeric = Number(raw);
+    if (Number.isFinite(numeric)) {
+      perNutrient[key] = numeric;
+    }
+  });
+  const totalRaw =
+    value.total != null ? value.total : value.totalPoints != null ? value.totalPoints : null;
+  const total = Number(totalRaw);
+  const hasPer = Object.keys(perNutrient).length > 0;
+  const hasTotal = Number.isFinite(total);
+  if (!hasPer && !hasTotal) {
+    return null;
+  }
+  const result = {};
+  if (hasTotal) {
+    result.total = total;
+  }
+  if (hasPer) {
+    result.perNutrient = perNutrient;
+  }
+  return result;
+}
+
 export function normalizeCalendarEntry(value) {
   if (value == null) return null;
   if (typeof value === 'string') {
@@ -178,7 +208,10 @@ export function normalizeCalendarEntry(value) {
                 : null
           }
         : null;
-    return { mealId, type, leftoverTargets, leftoverSource };
+    const nutrientScore = normalizeNutrientScoreMetadata(value.nutrientScore);
+    return nutrientScore
+      ? { mealId, type, leftoverTargets, leftoverSource, nutrientScore }
+      : { mealId, type, leftoverTargets, leftoverSource };
   }
   return null;
 }
