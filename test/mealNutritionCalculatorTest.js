@@ -26,8 +26,33 @@ global.fetch = async url => ({
 await initUomTable();
 const globalDefaults = await loadGlobalProduceMeasures();
 const nutritionTargetLookup = {
-  energy: { key: 'energy', label: 'Energy', unit: 'kcal', value: 600, baseValue: 600, targetUnit: 'kcal' },
-  protein: { key: 'protein', label: 'Protein', unit: 'g', value: 35, baseValue: 35, targetUnit: 'g' }
+  energy: {
+    key: 'energy',
+    label: 'Energy',
+    unit: 'kcal',
+    value: 600,
+    baseValue: 600,
+    targetUnit: 'kcal',
+    importanceDirection: 'maximize'
+  },
+  protein: {
+    key: 'protein',
+    label: 'Protein',
+    unit: 'g',
+    value: 35,
+    baseValue: 35,
+    targetUnit: 'g',
+    importanceDirection: 'maximize'
+  },
+  sodium: {
+    key: 'sodium',
+    label: 'Sodium',
+    unit: 'mg',
+    value: 800,
+    baseValue: 800,
+    targetUnit: 'mg',
+    importanceDirection: 'minimize'
+  }
 };
 
 function assertClose(actual, expected, message) {
@@ -64,7 +89,8 @@ const ingredientMap = {
   'cheddar cheese': {
     perGramVector: {
       energy: 4,
-      fat: 0.3
+      fat: 0.3,
+      sodium: 70
     },
     measures: [
       {
@@ -279,7 +305,10 @@ if (!energyScore) {
   throw new Error('Energy score missing from nutrient totals');
 }
 assertClose(energyScore.perServingValue, perServingEnergy, 'Energy score per-serving mismatch');
-const expectedEnergyPercent = (perServingEnergy / nutritionTargetLookup.energy.baseValue) * 100;
+const expectedEnergyPercent = Math.min(
+  100,
+  (perServingEnergy / nutritionTargetLookup.energy.baseValue) * 100
+);
 const roundedEnergyPercent = Math.round(expectedEnergyPercent * 100) / 100;
 assertClose(energyScore.percentComplete, roundedEnergyPercent, 'Energy score percent mismatch');
 const expectedEnergyPoints = Math.min(10, Math.floor(expectedEnergyPercent / 10));
@@ -289,15 +318,46 @@ if (energyScore.points !== expectedEnergyPoints) {
 if (energyScore.targetInputValue !== nutritionTargetLookup.energy.value) {
   throw new Error('Energy score target input mismatch');
 }
+if (energyScore.importanceDirection !== 'maximize') {
+  throw new Error('Energy score direction not preserved');
+}
 const proteinPerServing = totals.perServing.protein;
 const proteinScore = nutrientScores.protein;
 if (!proteinScore) {
   throw new Error('Protein score missing from nutrient totals');
 }
 assertClose(proteinScore.perServingValue, proteinPerServing, 'Protein score per-serving mismatch');
-const expectedProteinPercent = (proteinPerServing / nutritionTargetLookup.protein.baseValue) * 100;
+const expectedProteinPercent = Math.min(
+  100,
+  (proteinPerServing / nutritionTargetLookup.protein.baseValue) * 100
+);
 const roundedProteinPercent = Math.round(expectedProteinPercent * 100) / 100;
 assertClose(proteinScore.percentComplete, roundedProteinPercent, 'Protein score percent mismatch');
+if (proteinScore.importanceDirection !== 'maximize') {
+  throw new Error('Protein score direction not preserved');
+}
+const sodiumPerServing = totals.perServing.sodium;
+if (!(sodiumPerServing > 0)) {
+  throw new Error('Expected sodium per-serving value to be present');
+}
+const sodiumScore = nutrientScores.sodium;
+if (!sodiumScore) {
+  throw new Error('Sodium score missing from nutrient totals');
+}
+const sodiumOverage = Math.max(0, sodiumPerServing - nutritionTargetLookup.sodium.baseValue);
+const expectedSodiumPercent = Math.round(
+  Math.min(100, Math.max(0, (1 - sodiumOverage / nutritionTargetLookup.sodium.baseValue) * 100)) * 100
+) / 100;
+assertClose(sodiumScore.percentComplete, expectedSodiumPercent, 'Sodium minimize percent mismatch');
+if (sodiumScore.importanceDirection !== 'minimize') {
+  throw new Error('Sodium score direction not preserved');
+}
+if (sodiumScore.points !== Math.min(10, Math.floor(expectedSodiumPercent / 10))) {
+  throw new Error('Sodium score points mismatch');
+}
+if (sodiumScore.ratio < 0 || sodiumScore.ratio > 1) {
+  throw new Error('Sodium ratio should be clamped between 0 and 1');
+}
 
 const updatedAt = totals.updatedAt;
 const unchanged = updateMealNutritionTotals(meal, {

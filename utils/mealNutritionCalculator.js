@@ -128,6 +128,7 @@ function compareScoreEntry(prevEntry = {}, nextEntry = {}) {
   if ((prevEntry.perServingUnit || '') !== (nextEntry.perServingUnit || '')) return false;
   if ((prevEntry.targetUnit || '') !== (nextEntry.targetUnit || '')) return false;
   if ((prevEntry.targetInputUnit || '') !== (nextEntry.targetInputUnit || '')) return false;
+  if ((prevEntry.importanceDirection || '') !== (nextEntry.importanceDirection || '')) return false;
   if (!numbersEqual(prevEntry.perServingValue ?? 0, nextEntry.perServingValue ?? 0)) return false;
   if (!numbersEqual(prevEntry.targetValue ?? 0, nextEntry.targetValue ?? 0)) return false;
   if (!numbersEqual(prevEntry.ratio ?? 0, nextEntry.ratio ?? 0)) return false;
@@ -152,7 +153,9 @@ function compareScoreMaps(previous = null, next = null) {
 }
 
 function clampRatio(value) {
-  if (!Number.isFinite(value) || value <= 0) return 0;
+  if (!Number.isFinite(value)) return 0;
+  if (value <= 0) return 0;
+  if (value >= 1) return 1;
   return value;
 }
 
@@ -171,7 +174,14 @@ function buildNutrientScores(perServing, nutritionTargets = {}) {
     if (!Number.isFinite(targetBase) || targetBase <= 0) return;
     const rawValue = Number(perServing[key]);
     const perServingValue = Number.isFinite(rawValue) ? rawValue : 0;
-    const ratio = clampRatio(perServingValue / targetBase);
+    const direction = target.importanceDirection === 'minimize' ? 'minimize' : 'maximize';
+    let ratio;
+    if (direction === 'minimize') {
+      const overage = Math.max(0, perServingValue - targetBase);
+      ratio = clampRatio(1 - overage / targetBase);
+    } else {
+      ratio = clampRatio(perServingValue / targetBase);
+    }
     const percentComplete = ratio * 100;
     const definition = NUTRIENT_DEFINITION_MAP.get(key);
     perServingScores[key] = {
@@ -184,6 +194,7 @@ function buildNutrientScores(perServing, nutritionTargets = {}) {
       targetInputValue:
         Number.isFinite(target.value) && target.value > 0 ? Number(target.value) : null,
       targetInputUnit: target.unit || '',
+      importanceDirection: direction,
       ratio: roundValue(ratio),
       percentComplete: Math.round(percentComplete * 100) / 100,
       points: computeScorePoints(percentComplete)

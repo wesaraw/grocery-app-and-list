@@ -19,7 +19,98 @@ const clearBtn = document.getElementById('clearTargetsBtn');
 const formEl = document.getElementById('targetsForm');
 
 const rowState = new Map();
+const rankOwnership = new Map();
 let statusTimer = null;
+
+const IMPORTANCE_DIRECTIONS = [
+  { value: 'maximize', label: 'Maximize (more is better)' },
+  { value: 'minimize', label: 'Minimize (keep low)' }
+];
+
+function normalizeDirection(value) {
+  const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  return normalized === 'minimize' ? 'minimize' : 'maximize';
+}
+
+function normalizeRank(value, fallback) {
+  if (value === null || value === undefined || value === '') {
+    return fallback;
+  }
+  const numeric = Number(value);
+  if (Number.isFinite(numeric) && numeric > 0) {
+    return Math.round(numeric);
+  }
+  return fallback;
+}
+
+function getEffectiveRank(state) {
+  if (!state) return 1;
+  return state.currentRank != null ? state.currentRank : state.defaultRank;
+}
+
+function rebuildRankOwnership() {
+  rankOwnership.clear();
+  rowState.forEach(state => {
+    const rank = getEffectiveRank(state);
+    rankOwnership.set(rank, state);
+    state.rankInput.value = String(rank);
+  });
+}
+
+function assignRank(state, desiredRank, { swap = false } = {}) {
+  if (!state) return;
+  const nextRank = Math.max(1, desiredRank || getEffectiveRank(state));
+  const previousRank = getEffectiveRank(state);
+  if (previousRank === nextRank) {
+    state.rankInput.value = String(nextRank);
+    rankOwnership.set(nextRank, state);
+    state.currentRank = nextRank;
+    return;
+  }
+  const displacedOwner = rankOwnership.get(nextRank);
+  if (rankOwnership.get(previousRank) === state) {
+    rankOwnership.delete(previousRank);
+  }
+  state.currentRank = nextRank;
+  state.rankInput.value = String(nextRank);
+  rankOwnership.set(nextRank, state);
+  if (displacedOwner && displacedOwner !== state) {
+    if (swap) {
+      assignRank(displacedOwner, previousRank, { swap: false });
+    } else {
+      displacedOwner.currentRank = getEffectiveRank(displacedOwner);
+      displacedOwner.rankInput.value = String(displacedOwner.currentRank);
+      rankOwnership.set(displacedOwner.currentRank, displacedOwner);
+    }
+  }
+}
+
+function applyRankOrdering() {
+  if (!targetsBody) return;
+  const ordered = Array.from(rowState.values()).sort((a, b) => {
+    const rankA = getEffectiveRank(a);
+    const rankB = getEffectiveRank(b);
+    if (rankA !== rankB) {
+      return rankA - rankB;
+    }
+    return a.defaultRank - b.defaultRank;
+  });
+  ordered.forEach(state => {
+    if (state.row && state.row.parentElement === targetsBody) {
+      targetsBody.appendChild(state.row);
+    }
+  });
+}
+
+function commitRankInput(state, { swap = false, reorder = false } = {}) {
+  if (!state) return;
+  const fallback = getEffectiveRank(state);
+  const desired = normalizeRank(state.rankInput.value, fallback);
+  assignRank(state, desired, { swap });
+  if (reorder) {
+    applyRankOrdering();
+  }
+}
 
 function formatNumber(value) {
   if (!Number.isFinite(value)) return '';
@@ -86,13 +177,14 @@ function handleUnitChange(state, nextUnit) {
   }
 }
 
-function createRow(definition) {
+function createRow(definition, index = 0) {
   const row = document.createElement('tr');
   const labelCell = document.createElement('th');
   labelCell.scope = 'row';
   const label = document.createElement('label');
+  const labelText = definition.label || definition.key;
   label.htmlFor = `target-${definition.key}`;
-  label.textContent = definition.label || definition.key;
+  label.textContent = labelText;
   labelCell.appendChild(label);
   if (definition.displayUnit && definition.displayUnit !== definition.targetUnit) {
     const hint = document.createElement('span');
@@ -140,11 +232,66 @@ function createRow(definition) {
   wrapper.appendChild(select);
   valueCell.appendChild(wrapper);
 
+  const rankCell = document.createElement('td');
+  const rankInput = document.createElement('input');
+  rankInput.type = 'number';
+  rankInput.min = '1';
+  rankInput.step = '1';
+  rankInput.inputMode = 'numeric';
+  rankInput.autocomplete = 'off';
+  rankInput.className = 'importance-rank-input';
+  rankInput.value = String(index + 1);
+  rankInput.setAttribute('aria-label', `Importance rank for ${labelText}`);
+  rankInput.addEventListener('input', () => {
+    rankInput.classList.remove('error');
+    clearStatus();
+  });
+  rankInput.addEventListener('keydown', event => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      commitRankInput(state, { swap: true, reorder: true });
+      rankInput.blur();
+    }
+  });
+  rankInput.addEventListener('blur', () => {
+    commitRankInput(state, { swap: true, reorder: true });
+  });
+  rankCell.appendChild(rankInput);
+
+  const directionCell = document.createElement('td');
+  const directionSelect = document.createElement('select');
+  directionSelect.className = 'importance-direction-select';
+  directionSelect.id = `direction-${definition.key}`;
+  directionSelect.setAttribute('aria-label', `Goal direction for ${labelText}`);
+  IMPORTANCE_DIRECTIONS.forEach(({ value, label: optionLabel }) => {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = optionLabel;
+    directionSelect.appendChild(option);
+  });
+  directionSelect.value = 'maximize';
+  directionSelect.addEventListener('change', () => {
+    clearStatus();
+  });
+  directionCell.appendChild(directionSelect);
+
   row.appendChild(labelCell);
   row.appendChild(valueCell);
+  row.appendChild(rankCell);
+  row.appendChild(directionCell);
   targetsBody.appendChild(row);
 
-  const state = { definition, input, select, currentUnit: getDefaultUnitForDefinition(definition) };
+  const state = {
+    definition,
+    row,
+    input,
+    select,
+    rankInput,
+    directionSelect,
+    currentUnit: getDefaultUnitForDefinition(definition),
+    defaultRank: index + 1,
+    currentRank: index + 1
+  };
   select.value = state.currentUnit;
   select.addEventListener('change', () => {
     const nextUnit = select.value;
@@ -152,19 +299,20 @@ function createRow(definition) {
   });
 
   rowState.set(definition.key, state);
+  rankOwnership.set(state.currentRank, state);
 }
 
 function ensureRows() {
   if (!targetsBody || rowState.size) return;
-  definitions.forEach(def => {
+  definitions.forEach((def, index) => {
     if (!def || !def.key) return;
-    createRow(def);
+    createRow(def, index);
   });
 }
 
 function populateTargets(targets = {}) {
   rowState.forEach(state => {
-    const { definition, input, select } = state;
+    const { definition, input, select, rankInput, directionSelect, defaultRank } = state;
     const entry = targets[definition.key];
     const units = getSupportedUnitsForDefinition(definition);
     let activeUnit = state.currentUnit;
@@ -185,14 +333,23 @@ function populateTargets(targets = {}) {
       input.value = '';
     }
     input.classList.remove('error');
+    const nextRank = entry ? normalizeRank(entry.importanceRank, defaultRank) : defaultRank;
+    state.currentRank = nextRank;
+    rankInput.value = String(nextRank);
+    rankInput.classList.remove('error');
+    const direction = entry ? normalizeDirection(entry.importanceDirection) : 'maximize';
+    directionSelect.value = direction;
   });
+  rebuildRankOwnership();
+  applyRankOrdering();
 }
 
 function gatherTargets() {
   const payload = {};
   let invalid = null;
   rowState.forEach(state => {
-    const { definition, input, select } = state;
+    const { definition, input, select, directionSelect } = state;
+    commitRankInput(state, { swap: true });
     const raw = input.value.trim();
     input.classList.remove('error');
     if (!raw) {
@@ -204,9 +361,13 @@ function gatherTargets() {
       if (!invalid) invalid = input;
       return;
     }
+    const normalizedRank = getEffectiveRank(state);
+    const direction = normalizeDirection(directionSelect.value);
     payload[definition.key] = {
       value: numeric,
-      unit: select.value
+      unit: select.value,
+      importanceRank: normalizedRank,
+      importanceDirection: direction
     };
   });
   return { payload, invalid };
@@ -214,13 +375,19 @@ function gatherTargets() {
 
 function clearAllTargets() {
   rowState.forEach(state => {
-    const { definition, input, select } = state;
+    const { definition, input, select, rankInput, directionSelect, defaultRank } = state;
     const defaultUnit = getDefaultUnitForDefinition(definition);
     state.currentUnit = defaultUnit;
     select.value = defaultUnit;
     input.value = '';
     input.classList.remove('error');
+    state.currentRank = defaultRank;
+    rankInput.value = String(defaultRank);
+    rankInput.classList.remove('error');
+    directionSelect.value = 'maximize';
   });
+  rebuildRankOwnership();
+  applyRankOrdering();
   clearStatus();
 }
 
@@ -235,19 +402,19 @@ if (formEl) {
     event.preventDefault();
     const { payload, invalid } = gatherTargets();
     if (invalid) {
-      setStatus('Enter a positive number for highlighted nutrients.', true);
+      setStatus('Enter valid values for the highlighted fields.', true);
       invalid.focus();
       return;
     }
     await saveNutritionTargets(payload);
-    setStatus('Nutrition targets saved.');
+    setStatus('Nutrition targets and importance saved.');
   });
 }
 
 if (clearBtn) {
   clearBtn.addEventListener('click', () => {
     clearAllTargets();
-    setStatus('Targets cleared. Remember to save to persist this change.');
+    setStatus('Targets cleared and importance reset. Remember to save to persist this change.');
   });
 }
 

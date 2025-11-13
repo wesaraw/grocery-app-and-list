@@ -277,6 +277,30 @@ function formatScoreTarget(entry) {
   return `${rounded}${unit ? ` ${unit}` : ''}`.trim();
 }
 
+function describeImportanceDirection(direction) {
+  const normalized = String(direction || '').toLowerCase();
+  if (normalized === 'minimize') {
+    return 'Goal: keep this nutrient below its ceiling';
+  }
+  if (normalized === 'maximize') {
+    return 'Goal: reach this nutrient target';
+  }
+  return '';
+}
+
+function compareNutrientScoreEntries(a, b) {
+  const rankA = Number.isFinite(a?.importanceRank) ? Number(a.importanceRank) : null;
+  const rankB = Number.isFinite(b?.importanceRank) ? Number(b.importanceRank) : null;
+  if (rankA != null && rankB != null && rankA !== rankB) {
+    return rankA - rankB;
+  }
+  const labelA = (a?.label || a?.key || '').toLowerCase();
+  const labelB = (b?.label || b?.key || '').toLowerCase();
+  if (labelA < labelB) return -1;
+  if (labelA > labelB) return 1;
+  return 0;
+}
+
 function buildNutritionScoreList(totals) {
   const perServingScores = totals?.nutrientScores?.perServing;
   if (!perServingScores) return null;
@@ -286,13 +310,7 @@ function buildNutritionScoreList(totals) {
   container.className = 'meal-nutrition-scores';
   entries
     .slice()
-    .sort((a, b) => {
-      const labelA = (a?.label || a?.key || '').toLowerCase();
-      const labelB = (b?.label || b?.key || '').toLowerCase();
-      if (labelA < labelB) return -1;
-      if (labelA > labelB) return 1;
-      return 0;
-    })
+    .sort(compareNutrientScoreEntries)
     .forEach(entry => {
       if (!entry) return;
       const item = document.createElement('div');
@@ -300,11 +318,18 @@ function buildNutritionScoreList(totals) {
       const labelSpan = document.createElement('span');
       labelSpan.className = 'meal-nutrition-score__label';
       labelSpan.textContent = entry.label || entry.key || 'Nutrient';
+      const directionDescription = describeImportanceDirection(entry.importanceDirection);
+      if (directionDescription) {
+        labelSpan.title = directionDescription;
+      }
       const valueSpan = document.createElement('span');
       valueSpan.className = 'meal-nutrition-score__value';
       const percentText = formatScorePercent(entry.percentComplete);
       valueSpan.textContent = `${entry.points ?? 0}/10 • ${percentText}`;
       const tooltipParts = [];
+      if (directionDescription) {
+        tooltipParts.push(directionDescription);
+      }
       const targetText = formatScoreTarget(entry);
       if (targetText) {
         tooltipParts.push(`Target ${targetText}`);
