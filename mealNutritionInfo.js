@@ -150,6 +150,30 @@ function formatScorePercent(percent) {
   return `${Math.min(999, Math.round(percent))}%`;
 }
 
+function describeImportanceDirection(direction) {
+  const normalized = String(direction || '').toLowerCase();
+  if (normalized === 'minimize') {
+    return 'Goal: keep this nutrient below its ceiling';
+  }
+  if (normalized === 'maximize') {
+    return 'Goal: reach this nutrient target';
+  }
+  return '';
+}
+
+function compareNutrientScoreEntries(a, b) {
+  const rankA = Number.isFinite(a?.importanceRank) ? Number(a.importanceRank) : null;
+  const rankB = Number.isFinite(b?.importanceRank) ? Number(b.importanceRank) : null;
+  if (rankA != null && rankB != null && rankA !== rankB) {
+    return rankA - rankB;
+  }
+  const labelA = (a?.label || a?.key || '').toLowerCase();
+  const labelB = (b?.label || b?.key || '').toLowerCase();
+  if (labelA < labelB) return -1;
+  if (labelA > labelB) return 1;
+  return 0;
+}
+
 function formatOunceEquivalent(meta) {
   if (!meta || typeof meta !== 'object') return '';
   const grams = Number(meta.grams);
@@ -352,13 +376,7 @@ function renderNutrientScores(totals) {
   scoreListEl.innerHTML = '';
   entries
     .slice()
-    .sort((a, b) => {
-      const labelA = (a?.label || a?.key || '').toLowerCase();
-      const labelB = (b?.label || b?.key || '').toLowerCase();
-      if (labelA < labelB) return -1;
-      if (labelA > labelB) return 1;
-      return 0;
-    })
+    .sort(compareNutrientScoreEntries)
     .forEach(entry => {
       if (!entry) return;
       const item = document.createElement('div');
@@ -368,6 +386,10 @@ function renderNutrientScores(totals) {
       const labelSpan = document.createElement('span');
       labelSpan.className = 'nutrient-score__label';
       labelSpan.textContent = entry.label || entry.key || 'Nutrient';
+      const directionDescription = describeImportanceDirection(entry.importanceDirection);
+      if (directionDescription) {
+        labelSpan.title = directionDescription;
+      }
       const percentText = formatScorePercent(entry.percentComplete);
       const valueSpan = document.createElement('span');
       valueSpan.className = 'nutrient-score__value';
@@ -383,6 +405,9 @@ function renderNutrientScores(totals) {
       const perServingText = formatScoreValue(entry.perServingValue, entry.key);
       if (perServingText) {
         details.push(`${perServingText} per serving`);
+      }
+      if (directionDescription) {
+        details.push(directionDescription);
       }
       if (details.length) {
         const detailEl = document.createElement('div');

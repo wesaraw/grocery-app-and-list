@@ -2,6 +2,7 @@ const STORAGE_KEY = 'nutritionTargets';
 export const NUTRITION_TARGETS_STORAGE_KEY = STORAGE_KEY;
 
 const ENERGY_UNITS = new Set(['kcal', 'kilocalorie', 'kilocalories']);
+const IMPORTANCE_DIRECTIONS = new Set(['maximize', 'minimize']);
 
 function normalizeUnit(unit) {
   if (!unit) return '';
@@ -43,6 +44,24 @@ function toNumber(value) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return null;
   return numeric;
+}
+
+function toPositiveInteger(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return null;
+  if (numeric <= 0) return null;
+  return Math.round(numeric);
+}
+
+function normalizeImportanceDirection(value, fallback = 'maximize') {
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (IMPORTANCE_DIRECTIONS.has(normalized)) {
+      return normalized;
+    }
+  }
+  return fallback === 'minimize' ? 'minimize' : 'maximize';
 }
 
 export function convertGramsToMilligrams(value) {
@@ -160,8 +179,9 @@ export function getDefaultUnitForDefinition(definition) {
   return 'g';
 }
 
-function normalizeTargetEntry(definition, entry) {
+function normalizeTargetEntry(definition, entry, options = {}) {
   if (!definition || !entry) return null;
+  const { fallbackRank = 1, defaultDirection = 'maximize', usedRanks } = options || {};
   const rawValue = entry.value ?? entry.amount ?? entry.target ?? entry.goal ?? entry.number ?? entry;
   const numeric = toNumber(rawValue);
   if (numeric == null || numeric <= 0) {
@@ -185,17 +205,43 @@ function normalizeTargetEntry(definition, entry) {
   if (baseValue == null || baseValue <= 0) {
     return null;
   }
-  return { value: numeric, unit, baseValue };
+  const rankSource =
+    entry.importanceRank ?? entry.rank ?? entry.priority ?? entry.order ?? entry.position ?? fallbackRank;
+  let importanceRank = toPositiveInteger(rankSource) || toPositiveInteger(fallbackRank) || 1;
+  if (importanceRank <= 0) {
+    importanceRank = 1;
+  }
+  if (usedRanks) {
+    while (usedRanks.has(importanceRank)) {
+      importanceRank += 1;
+    }
+    usedRanks.add(importanceRank);
+  }
+  const importanceDirection = normalizeImportanceDirection(
+    entry.importanceDirection ?? entry.direction ?? entry.goalDirection ?? entry.goalType,
+    defaultDirection
+  );
+  return { value: numeric, unit, baseValue, importanceRank, importanceDirection };
 }
 
 export function normalizeTargetMap(targets = {}, definitions = []) {
   const normalized = {};
-  definitions.forEach(definition => {
+  const usedRanks = new Set();
+  definitions.forEach((definition, index) => {
     const rawEntry = targets[definition.key];
     if (!rawEntry) return;
-    const normalizedEntry = normalizeTargetEntry(definition, rawEntry);
+    const normalizedEntry = normalizeTargetEntry(definition, rawEntry, {
+      fallbackRank: index + 1,
+      usedRanks,
+      defaultDirection: 'maximize'
+    });
     if (normalizedEntry) {
-      normalized[definition.key] = { value: normalizedEntry.value, unit: normalizedEntry.unit };
+      normalized[definition.key] = {
+        value: normalizedEntry.value,
+        unit: normalizedEntry.unit,
+        importanceRank: normalizedEntry.importanceRank,
+        importanceDirection: normalizedEntry.importanceDirection
+      };
     }
   });
   return normalized;
@@ -203,10 +249,15 @@ export function normalizeTargetMap(targets = {}, definitions = []) {
 
 export function buildTargetLookup(targets = {}, definitions = []) {
   const lookup = {};
-  definitions.forEach(definition => {
+  const usedRanks = new Set();
+  definitions.forEach((definition, index) => {
     const entry = targets[definition.key];
     if (!entry) return;
-    const normalizedEntry = normalizeTargetEntry(definition, entry);
+    const normalizedEntry = normalizeTargetEntry(definition, entry, {
+      fallbackRank: index + 1,
+      usedRanks,
+      defaultDirection: 'maximize'
+    });
     if (!normalizedEntry) return;
     lookup[definition.key] = {
       key: definition.key,
@@ -214,7 +265,9 @@ export function buildTargetLookup(targets = {}, definitions = []) {
       value: normalizedEntry.value,
       unit: normalizedEntry.unit,
       baseValue: normalizedEntry.baseValue,
-      targetUnit: definition.targetUnit
+      targetUnit: definition.targetUnit,
+      importanceRank: normalizedEntry.importanceRank,
+      importanceDirection: normalizedEntry.importanceDirection
     };
   });
   return lookup;
@@ -228,7 +281,14 @@ function cloneTargetsForStorage(targets) {
     if (numeric == null || numeric <= 0) return;
     const unit = entry.unit || entry.units || entry.uom;
     if (!unit) return;
-    cloned[key] = { value: numeric, unit };
+    const importanceRank = toPositiveInteger(entry.importanceRank);
+    const importanceDirection = normalizeImportanceDirection(entry.importanceDirection);
+    cloned[key] = {
+      value: numeric,
+      unit,
+      ...(importanceRank ? { importanceRank } : {}),
+      importanceDirection
+    };
   });
   return cloned;
 }

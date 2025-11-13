@@ -54,7 +54,7 @@
       font-weight: 500;
       padding: 10px 8px 10px 0;
       border-bottom: 1px solid #f0f0f0;
-      width: 45%;
+      width: 38%;
     }
 
     tbody td {
@@ -89,6 +89,28 @@
       border-radius: 4px;
       font-size: 14px;
       min-width: 120px;
+    }
+
+    .importance-rank-input {
+      width: 80px;
+      padding: 6px 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+
+    .importance-rank-input.error {
+      border-color: #c62828;
+      box-shadow: 0 0 0 1px rgba(198, 40, 40, 0.15);
+    }
+
+    .importance-direction-select {
+      padding: 6px 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+      min-width: 140px;
     }
 
     .target-inputs select[disabled] {
@@ -163,6 +185,13 @@
         color: #eee;
       }
 
+      .importance-rank-input,
+      .importance-direction-select {
+        border-color: #555;
+        background: #1f1f1f;
+        color: #eee;
+      }
+
       .target-inputs select[disabled] {
         color: #aaa;
         background: #2a2a2a;
@@ -188,13 +217,15 @@
 </head>
 <body>
   <h1>Nutrition Targets</h1>
-  <p class="intro">Set the shared daily goals for each tracked nutrient. These targets are used by every user profile.</p>
+  <p class="intro">Set the shared daily goals for each tracked nutrient, assign how important it is, and choose whether the goal should be maximized or minimized. These targets are used by every user profile.</p>
   <form id="targetsForm">
     <table aria-describedby="status">
       <thead>
         <tr>
           <th scope="col">Nutrient</th>
           <th scope="col">Daily target</th>
+          <th scope="col">Importance rank</th>
+          <th scope="col">Goal direction</th>
         </tr>
       </thead>
       <tbody id="targetsBody"></tbody>

@@ -21,6 +21,27 @@ const formEl = document.getElementById('targetsForm');
 const rowState = new Map();
 let statusTimer = null;
 
+const IMPORTANCE_DIRECTIONS = [
+  { value: 'maximize', label: 'Maximize (more is better)' },
+  { value: 'minimize', label: 'Minimize (keep low)' }
+];
+
+function normalizeDirection(value) {
+  const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  return normalized === 'minimize' ? 'minimize' : 'maximize';
+}
+
+function normalizeRank(value, fallback) {
+  if (value === null || value === undefined || value === '') {
+    return fallback;
+  }
+  const numeric = Number(value);
+  if (Number.isFinite(numeric) && numeric > 0) {
+    return Math.round(numeric);
+  }
+  return fallback;
+}
+
 function formatNumber(value) {
   if (!Number.isFinite(value)) return '';
   if (value === 0) return '0';
@@ -86,13 +107,14 @@ function handleUnitChange(state, nextUnit) {
   }
 }
 
-function createRow(definition) {
+function createRow(definition, index = 0) {
   const row = document.createElement('tr');
   const labelCell = document.createElement('th');
   labelCell.scope = 'row';
   const label = document.createElement('label');
+  const labelText = definition.label || definition.key;
   label.htmlFor = `target-${definition.key}`;
-  label.textContent = definition.label || definition.key;
+  label.textContent = labelText;
   labelCell.appendChild(label);
   if (definition.displayUnit && definition.displayUnit !== definition.targetUnit) {
     const hint = document.createElement('span');
@@ -140,11 +162,54 @@ function createRow(definition) {
   wrapper.appendChild(select);
   valueCell.appendChild(wrapper);
 
+  const rankCell = document.createElement('td');
+  const rankInput = document.createElement('input');
+  rankInput.type = 'number';
+  rankInput.min = '1';
+  rankInput.step = '1';
+  rankInput.inputMode = 'numeric';
+  rankInput.autocomplete = 'off';
+  rankInput.className = 'importance-rank-input';
+  rankInput.value = String(index + 1);
+  rankInput.setAttribute('aria-label', `Importance rank for ${labelText}`);
+  rankInput.addEventListener('input', () => {
+    rankInput.classList.remove('error');
+    clearStatus();
+  });
+  rankCell.appendChild(rankInput);
+
+  const directionCell = document.createElement('td');
+  const directionSelect = document.createElement('select');
+  directionSelect.className = 'importance-direction-select';
+  directionSelect.id = `direction-${definition.key}`;
+  directionSelect.setAttribute('aria-label', `Goal direction for ${labelText}`);
+  IMPORTANCE_DIRECTIONS.forEach(({ value, label: optionLabel }) => {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = optionLabel;
+    directionSelect.appendChild(option);
+  });
+  directionSelect.value = 'maximize';
+  directionSelect.addEventListener('change', () => {
+    clearStatus();
+  });
+  directionCell.appendChild(directionSelect);
+
   row.appendChild(labelCell);
   row.appendChild(valueCell);
+  row.appendChild(rankCell);
+  row.appendChild(directionCell);
   targetsBody.appendChild(row);
 
-  const state = { definition, input, select, currentUnit: getDefaultUnitForDefinition(definition) };
+  const state = {
+    definition,
+    input,
+    select,
+    rankInput,
+    directionSelect,
+    currentUnit: getDefaultUnitForDefinition(definition),
+    defaultRank: index + 1
+  };
   select.value = state.currentUnit;
   select.addEventListener('change', () => {
     const nextUnit = select.value;
@@ -156,15 +221,15 @@ function createRow(definition) {
 
 function ensureRows() {
   if (!targetsBody || rowState.size) return;
-  definitions.forEach(def => {
+  definitions.forEach((def, index) => {
     if (!def || !def.key) return;
-    createRow(def);
+    createRow(def, index);
   });
 }
 
 function populateTargets(targets = {}) {
   rowState.forEach(state => {
-    const { definition, input, select } = state;
+    const { definition, input, select, rankInput, directionSelect, defaultRank } = state;
     const entry = targets[definition.key];
     const units = getSupportedUnitsForDefinition(definition);
     let activeUnit = state.currentUnit;
@@ -185,6 +250,11 @@ function populateTargets(targets = {}) {
       input.value = '';
     }
     input.classList.remove('error');
+    const nextRank = entry ? normalizeRank(entry.importanceRank, defaultRank) : defaultRank;
+    rankInput.value = String(nextRank);
+    rankInput.classList.remove('error');
+    const direction = entry ? normalizeDirection(entry.importanceDirection) : 'maximize';
+    directionSelect.value = direction;
   });
 }
 
@@ -192,9 +262,10 @@ function gatherTargets() {
   const payload = {};
   let invalid = null;
   rowState.forEach(state => {
-    const { definition, input, select } = state;
+    const { definition, input, select, rankInput, directionSelect, defaultRank } = state;
     const raw = input.value.trim();
     input.classList.remove('error');
+    rankInput.classList.remove('error');
     if (!raw) {
       return;
     }
@@ -204,9 +275,24 @@ function gatherTargets() {
       if (!invalid) invalid = input;
       return;
     }
+    const rankRaw = rankInput.value.trim();
+    let normalizedRank = defaultRank;
+    if (rankRaw) {
+      const parsedRank = Number(rankRaw);
+      if (!Number.isFinite(parsedRank) || parsedRank <= 0) {
+        rankInput.classList.add('error');
+        if (!invalid) invalid = rankInput;
+        return;
+      }
+      normalizedRank = Math.round(parsedRank);
+    }
+    rankInput.value = String(normalizedRank);
+    const direction = normalizeDirection(directionSelect.value);
     payload[definition.key] = {
       value: numeric,
-      unit: select.value
+      unit: select.value,
+      importanceRank: normalizedRank,
+      importanceDirection: direction
     };
   });
   return { payload, invalid };
@@ -214,12 +300,15 @@ function gatherTargets() {
 
 function clearAllTargets() {
   rowState.forEach(state => {
-    const { definition, input, select } = state;
+    const { definition, input, select, rankInput, directionSelect, defaultRank } = state;
     const defaultUnit = getDefaultUnitForDefinition(definition);
     state.currentUnit = defaultUnit;
     select.value = defaultUnit;
     input.value = '';
     input.classList.remove('error');
+    rankInput.value = String(defaultRank);
+    rankInput.classList.remove('error');
+    directionSelect.value = 'maximize';
   });
   clearStatus();
 }
@@ -235,19 +324,19 @@ if (formEl) {
     event.preventDefault();
     const { payload, invalid } = gatherTargets();
     if (invalid) {
-      setStatus('Enter a positive number for highlighted nutrients.', true);
+      setStatus('Enter valid values for the highlighted fields.', true);
       invalid.focus();
       return;
     }
     await saveNutritionTargets(payload);
-    setStatus('Nutrition targets saved.');
+    setStatus('Nutrition targets and importance saved.');
   });
 }
 
 if (clearBtn) {
   clearBtn.addEventListener('click', () => {
     clearAllTargets();
-    setStatus('Targets cleared. Remember to save to persist this change.');
+    setStatus('Targets cleared and importance reset. Remember to save to persist this change.');
   });
 }
 
