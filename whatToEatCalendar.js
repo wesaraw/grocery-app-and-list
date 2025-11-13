@@ -226,12 +226,47 @@ function formatPoints(value) {
   return value.toFixed(1).replace(/\.0$/, '');
 }
 
+function getCompletionRatio(info) {
+  if (!info || typeof info !== 'object') return 0;
+  const achieved = Number(info.achieved);
+  const goal = Number(info.goal);
+  if (Number.isFinite(achieved) && Number.isFinite(goal) && goal > 0) {
+    const ratio = achieved / goal;
+    return Number.isFinite(ratio) ? ratio : 0;
+  }
+  const percentComplete = Number(info.percentComplete);
+  if (Number.isFinite(percentComplete)) {
+    return percentComplete / 100;
+  }
+  return 0;
+}
+
 function buildNutrientBreakdownElement(summary) {
   const container = document.createElement('div');
   container.className = 'nutrient-breakdown';
-  const keys = Array.isArray(summary?.orderedKeys) ? summary.orderedKeys : [];
-  keys.forEach(key => {
-    const info = summary?.perNutrient?.[key];
+  const perNutrient = summary?.perNutrient && typeof summary.perNutrient === 'object'
+    ? summary.perNutrient
+    : {};
+  const orderedKeys = Array.isArray(summary?.orderedKeys) ? summary.orderedKeys : [];
+  const keys = orderedKeys.length
+    ? orderedKeys.filter(key => perNutrient[key])
+    : Object.keys(perNutrient);
+  const sortedKeys = keys
+    .map(key => ({ key, ratio: getCompletionRatio(perNutrient[key]) }))
+    .sort((a, b) => {
+      if (b.ratio !== a.ratio) {
+        return b.ratio - a.ratio;
+      }
+      const percentA = Number(perNutrient[a.key]?.percentComplete);
+      const percentB = Number(perNutrient[b.key]?.percentComplete);
+      if (Number.isFinite(percentA) && Number.isFinite(percentB) && percentA !== percentB) {
+        return percentB - percentA;
+      }
+      return getNutrientLabel(a.key).localeCompare(getNutrientLabel(b.key));
+    })
+    .map(entry => entry.key);
+  sortedKeys.forEach(key => {
+    const info = perNutrient[key];
     if (!info) return;
     const line = document.createElement('div');
     line.className = 'nutrient-line';
