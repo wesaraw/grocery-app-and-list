@@ -735,6 +735,35 @@ function queueNutritionConfirmEntry(entry, { prioritize = false } = {}) {
     return;
   }
 
+  // Manual "Review Match" clicks should immediately take over the confirmation popup,
+  // even if another ingredient was already active. Move the previous active entry back
+  // into the queue (without duplicates) and open the window for the requested item.
+  if (prioritize && activeConfirmItem && activeConfirmItem.normalizedName !== normalizedName) {
+    const activeName = activeConfirmItem.normalizedName;
+    const existingActiveIndex = pendingConfirmQueue.findIndex(
+      queued => queued && queued.normalizedName === activeName
+    );
+    if (existingActiveIndex !== -1) {
+      pendingConfirmQueue.splice(existingActiveIndex, 1);
+    }
+
+    const existingPendingIndex = pendingConfirmQueue.findIndex(
+      queued => queued && queued.normalizedName === normalizedName
+    );
+    if (existingPendingIndex !== -1) {
+      pendingConfirmQueue.splice(existingPendingIndex, 1);
+    }
+
+    pendingConfirmQueue.unshift({ ...activeConfirmItem });
+    activeConfirmItem = { ...normalizedEntry };
+    openOrFocusWindow(
+      `nutritionConfirm.html?item=${encodeURIComponent(itemName)}`,
+      520,
+      600
+    );
+    return;
+  }
+
   const existingIndex = pendingConfirmQueue.findIndex(
     queued => queued && queued.normalizedName === normalizedName
   );
