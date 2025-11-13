@@ -442,13 +442,29 @@ function renderNutrientScores(totals) {
       }
       const bar = document.createElement('div');
       bar.className = 'nutrient-score__bar';
+      const blocks = [];
+      const points = Math.max(0, Math.min(10, Number(entry.points) || 0));
+      const corruptedBlocks = Math.max(
+        0,
+        Math.min(10, Math.floor((Number(entry.upperLimitPercent) || 0) / 10))
+      );
       for (let i = 0; i < 10; i += 1) {
         const block = document.createElement('span');
         block.className = 'nutrient-score__block';
-        if (i < (entry.points ?? 0)) {
+        if (i < points) {
           block.classList.add('nutrient-score__block--filled');
         }
+        blocks.push(block);
         bar.appendChild(block);
+      }
+      const filledBlocks = Math.min(points, blocks.length);
+      const corruptedFilledBlocks = Math.min(corruptedBlocks, filledBlocks);
+      for (let i = 0; i < corruptedFilledBlocks; i += 1) {
+        const blockIndex = filledBlocks - 1 - i;
+        const targetBlock = blocks[blockIndex];
+        if (targetBlock) {
+          targetBlock.classList.add('nutrient-score__block--over-limit');
+        }
       }
       bar.setAttribute('aria-hidden', 'true');
       item.appendChild(bar);

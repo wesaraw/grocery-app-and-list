@@ -184,6 +184,11 @@ h1 {
   border-color: #3b8a3f;
 }
 
+.nutrient-score__block--filled.nutrient-score__block--over-limit {
+  background: #c62828;
+  border-color: #8e0000;
+}
+
 dialog {
   border: 1px solid #bbb;
   border-radius: 6px;
