@@ -19,6 +19,7 @@ const clearBtn = document.getElementById('clearTargetsBtn');
 const formEl = document.getElementById('targetsForm');
 
 const rowState = new Map();
+const rankOwnership = new Map();
 let statusTimer = null;
 
 const IMPORTANCE_DIRECTIONS = [
@@ -40,6 +41,55 @@ function normalizeRank(value, fallback) {
     return Math.round(numeric);
   }
   return fallback;
+}
+
+function getEffectiveRank(state) {
+  if (!state) return 1;
+  return state.currentRank != null ? state.currentRank : state.defaultRank;
+}
+
+function rebuildRankOwnership() {
+  rankOwnership.clear();
+  rowState.forEach(state => {
+    const rank = getEffectiveRank(state);
+    rankOwnership.set(rank, state);
+    state.rankInput.value = String(rank);
+  });
+}
+
+function assignRank(state, desiredRank, { swap = false } = {}) {
+  if (!state) return;
+  const nextRank = Math.max(1, desiredRank || getEffectiveRank(state));
+  const previousRank = getEffectiveRank(state);
+  if (previousRank === nextRank) {
+    state.rankInput.value = String(nextRank);
+    rankOwnership.set(nextRank, state);
+    state.currentRank = nextRank;
+    return;
+  }
+  const displacedOwner = rankOwnership.get(nextRank);
+  if (rankOwnership.get(previousRank) === state) {
+    rankOwnership.delete(previousRank);
+  }
+  state.currentRank = nextRank;
+  state.rankInput.value = String(nextRank);
+  rankOwnership.set(nextRank, state);
+  if (displacedOwner && displacedOwner !== state) {
+    if (swap) {
+      assignRank(displacedOwner, previousRank, { swap: false });
+    } else {
+      displacedOwner.currentRank = getEffectiveRank(displacedOwner);
+      displacedOwner.rankInput.value = String(displacedOwner.currentRank);
+      rankOwnership.set(displacedOwner.currentRank, displacedOwner);
+    }
+  }
+}
+
+function commitRankInput(state, { swap = false } = {}) {
+  if (!state) return;
+  const fallback = getEffectiveRank(state);
+  const desired = normalizeRank(state.rankInput.value, fallback);
+  assignRank(state, desired, { swap });
 }
 
 function formatNumber(value) {
@@ -176,6 +226,16 @@ function createRow(definition, index = 0) {
     rankInput.classList.remove('error');
     clearStatus();
   });
+  rankInput.addEventListener('keydown', event => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      commitRankInput(state, { swap: true });
+      rankInput.blur();
+    }
+  });
+  rankInput.addEventListener('blur', () => {
+    commitRankInput(state, { swap: true });
+  });
   rankCell.appendChild(rankInput);
 
   const directionCell = document.createElement('td');
@@ -208,7 +268,8 @@ function createRow(definition, index = 0) {
     rankInput,
     directionSelect,
     currentUnit: getDefaultUnitForDefinition(definition),
-    defaultRank: index + 1
+    defaultRank: index + 1,
+    currentRank: index + 1
   };
   select.value = state.currentUnit;
   select.addEventListener('change', () => {
@@ -217,6 +278,7 @@ function createRow(definition, index = 0) {
   });
 
   rowState.set(definition.key, state);
+  rankOwnership.set(state.currentRank, state);
 }
 
 function ensureRows() {
@@ -251,21 +313,23 @@ function populateTargets(targets = {}) {
     }
     input.classList.remove('error');
     const nextRank = entry ? normalizeRank(entry.importanceRank, defaultRank) : defaultRank;
+    state.currentRank = nextRank;
     rankInput.value = String(nextRank);
     rankInput.classList.remove('error');
     const direction = entry ? normalizeDirection(entry.importanceDirection) : 'maximize';
     directionSelect.value = direction;
   });
+  rebuildRankOwnership();
 }
 
 function gatherTargets() {
   const payload = {};
   let invalid = null;
   rowState.forEach(state => {
-    const { definition, input, select, rankInput, directionSelect, defaultRank } = state;
+    const { definition, input, select, directionSelect } = state;
+    commitRankInput(state, { swap: true });
     const raw = input.value.trim();
     input.classList.remove('error');
-    rankInput.classList.remove('error');
     if (!raw) {
       return;
     }
@@ -275,18 +339,7 @@ function gatherTargets() {
       if (!invalid) invalid = input;
       return;
     }
-    const rankRaw = rankInput.value.trim();
-    let normalizedRank = defaultRank;
-    if (rankRaw) {
-      const parsedRank = Number(rankRaw);
-      if (!Number.isFinite(parsedRank) || parsedRank <= 0) {
-        rankInput.classList.add('error');
-        if (!invalid) invalid = rankInput;
-        return;
-      }
-      normalizedRank = Math.round(parsedRank);
-    }
-    rankInput.value = String(normalizedRank);
+    const normalizedRank = getEffectiveRank(state);
     const direction = normalizeDirection(directionSelect.value);
     payload[definition.key] = {
       value: numeric,
@@ -306,10 +359,12 @@ function clearAllTargets() {
     select.value = defaultUnit;
     input.value = '';
     input.classList.remove('error');
+    state.currentRank = defaultRank;
     rankInput.value = String(defaultRank);
     rankInput.classList.remove('error');
     directionSelect.value = 'maximize';
   });
+  rebuildRankOwnership();
   clearStatus();
 }
 
