@@ -3,7 +3,7 @@ import { getMealPortionCount } from './calendarUtils.js';
 import { computeQuantityFromPerGram, NUTRIENT_DEFINITIONS } from './fdcNutrientMap.js';
 import { resolveIngredientAmount } from './unitResolver.js';
 
-const MEAL_NUTRITION_VERSION = 2;
+const MEAL_NUTRITION_VERSION = 3;
 const ROUNDING_PRECISION = 1e6;
 const EPSILON = 1e-6;
 
@@ -134,7 +134,12 @@ function compareScoreEntry(prevEntry = {}, nextEntry = {}) {
   if (!numbersEqual(prevEntry.ratio ?? 0, nextEntry.ratio ?? 0)) return false;
   if (!numbersEqual(prevEntry.percentComplete ?? 0, nextEntry.percentComplete ?? 0)) return false;
   if (!numbersEqual(prevEntry.targetInputValue ?? 0, nextEntry.targetInputValue ?? 0)) return false;
+  if (!numbersEqual(prevEntry.upperLimitValue ?? 0, nextEntry.upperLimitValue ?? 0)) return false;
+  if (!numbersEqual(prevEntry.upperLimitPercent ?? 0, nextEntry.upperLimitPercent ?? 0)) return false;
+  if (!numbersEqual(prevEntry.upperLimitInputValue ?? 0, nextEntry.upperLimitInputValue ?? 0)) return false;
   if (!numbersEqual(prevEntry.points ?? 0, nextEntry.points ?? 0)) return false;
+  if ((prevEntry.upperLimitUnit || '') !== (nextEntry.upperLimitUnit || '')) return false;
+  if ((prevEntry.upperLimitInputUnit || '') !== (nextEntry.upperLimitInputUnit || '')) return false;
   return true;
 }
 
@@ -174,6 +179,13 @@ function buildNutrientScores(perServing, nutritionTargets = {}) {
     if (!Number.isFinite(targetBase) || targetBase <= 0) return;
     const rawValue = Number(perServing[key]);
     const perServingValue = Number.isFinite(rawValue) ? rawValue : 0;
+    const upperLimitBase = Number(target.upperLimitBaseValue);
+    const hasUpperLimit = Number.isFinite(upperLimitBase) && upperLimitBase > targetBase;
+    const upperLimitInputValue =
+      Number.isFinite(target.upperLimitValue) && target.upperLimitValue > 0
+        ? Number(target.upperLimitValue)
+        : null;
+    const upperLimitInputUnit = upperLimitInputValue ? target.upperLimitUnit || target.unit || '' : '';
     const direction = target.importanceDirection === 'minimize' ? 'minimize' : 'maximize';
     let ratio;
     if (direction === 'minimize') {
@@ -183,6 +195,19 @@ function buildNutrientScores(perServing, nutritionTargets = {}) {
       ratio = clampRatio(perServingValue / targetBase);
     }
     const percentComplete = ratio * 100;
+    let upperLimitPercent = null;
+    if (hasUpperLimit) {
+      const safeRange = upperLimitBase - targetBase;
+      if (safeRange > 0) {
+        const overage = Math.max(0, perServingValue - targetBase);
+        const progress = overage / safeRange;
+        if (overage <= 0) {
+          upperLimitPercent = 0;
+        } else {
+          upperLimitPercent = Math.max(0, Math.min(1, progress)) * 100;
+        }
+      }
+    }
     const definition = NUTRIENT_DEFINITION_MAP.get(key);
     perServingScores[key] = {
       key,
@@ -194,6 +219,13 @@ function buildNutrientScores(perServing, nutritionTargets = {}) {
       targetInputValue:
         Number.isFinite(target.value) && target.value > 0 ? Number(target.value) : null,
       targetInputUnit: target.unit || '',
+      upperLimitValue:
+        hasUpperLimit && Number.isFinite(upperLimitBase) ? roundValue(upperLimitBase) : null,
+      upperLimitUnit: hasUpperLimit ? definition?.targetUnit || target.targetUnit || '' : '',
+      upperLimitInputValue: upperLimitInputValue,
+      upperLimitInputUnit: upperLimitInputValue ? upperLimitInputUnit : '',
+      upperLimitPercent:
+        upperLimitPercent != null ? Math.round(upperLimitPercent * 100) / 100 : null,
       importanceDirection: direction,
       ratio: roundValue(ratio),
       percentComplete: Math.round(percentComplete * 100) / 100,

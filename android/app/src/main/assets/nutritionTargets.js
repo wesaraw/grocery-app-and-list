@@ -162,19 +162,42 @@ function convertValue(value, fromUnit, toUnit, definition) {
   return converted != null ? converted : value;
 }
 
-function handleUnitChange(state, nextUnit) {
-  if (!state || !nextUnit) return;
-  const { input, currentUnit, definition } = state;
-  if (!input) return;
-  const raw = input.value.trim();
-  state.currentUnit = nextUnit;
+function convertFieldValue(field, fromUnit, toUnit, definition) {
+  if (!field) return;
+  const raw = field.value.trim();
   if (!raw) return;
   const numeric = Number(raw);
   if (!Number.isFinite(numeric)) return;
-  const converted = convertValue(numeric, currentUnit, nextUnit, definition);
+  const converted = convertValue(numeric, fromUnit, toUnit, definition);
   if (converted != null) {
-    input.value = formatNumber(converted);
+    field.value = formatNumber(converted);
   }
+}
+
+function syncUnitMetadata(state) {
+  if (!state) return;
+  const unitLabel = state.currentUnit || '';
+  if (state.input) {
+    state.input.placeholder = unitLabel ? `0 (${unitLabel})` : '0';
+    state.input.title = unitLabel ? `Daily target in ${unitLabel}` : 'Daily target';
+  }
+  if (state.upperLimitInput) {
+    state.upperLimitInput.placeholder = unitLabel ? `0 (${unitLabel})` : '0';
+    state.upperLimitInput.title = unitLabel
+      ? `Safe upper limit in ${unitLabel}`
+      : 'Safe upper limit';
+  }
+}
+
+function handleUnitChange(state, nextUnit) {
+  if (!state || !nextUnit) return;
+  const { input, upperLimitInput, currentUnit, definition } = state;
+  if (!input) return;
+  const fromUnit = currentUnit;
+  state.currentUnit = nextUnit;
+  convertFieldValue(input, fromUnit, nextUnit, definition);
+  convertFieldValue(upperLimitInput, fromUnit, nextUnit, definition);
+  syncUnitMetadata(state);
 }
 
 function createRow(definition, index = 0) {
@@ -232,6 +255,27 @@ function createRow(definition, index = 0) {
   wrapper.appendChild(select);
   valueCell.appendChild(wrapper);
 
+  const upperLimitCell = document.createElement('td');
+  const upperWrapper = document.createElement('div');
+  upperWrapper.className = 'target-inputs';
+
+  const upperLimitInput = document.createElement('input');
+  upperLimitInput.type = 'number';
+  upperLimitInput.id = `upper-limit-${definition.key}`;
+  upperLimitInput.min = '0';
+  upperLimitInput.step = 'any';
+  upperLimitInput.placeholder = '0';
+  upperLimitInput.inputMode = 'decimal';
+  upperLimitInput.autocomplete = 'off';
+  upperLimitInput.setAttribute('aria-label', `Safe upper limit for ${labelText}`);
+  upperLimitInput.addEventListener('input', () => {
+    upperLimitInput.classList.remove('error');
+    clearStatus();
+  });
+
+  upperWrapper.appendChild(upperLimitInput);
+  upperLimitCell.appendChild(upperWrapper);
+
   const rankCell = document.createElement('td');
   const rankInput = document.createElement('input');
   rankInput.type = 'number';
@@ -277,6 +321,7 @@ function createRow(definition, index = 0) {
 
   row.appendChild(labelCell);
   row.appendChild(valueCell);
+  row.appendChild(upperLimitCell);
   row.appendChild(rankCell);
   row.appendChild(directionCell);
   targetsBody.appendChild(row);
@@ -285,6 +330,7 @@ function createRow(definition, index = 0) {
     definition,
     row,
     input,
+    upperLimitInput,
     select,
     rankInput,
     directionSelect,
@@ -293,6 +339,7 @@ function createRow(definition, index = 0) {
     currentRank: index + 1
   };
   select.value = state.currentUnit;
+  syncUnitMetadata(state);
   select.addEventListener('change', () => {
     const nextUnit = select.value;
     handleUnitChange(state, nextUnit);
@@ -312,7 +359,15 @@ function ensureRows() {
 
 function populateTargets(targets = {}) {
   rowState.forEach(state => {
-    const { definition, input, select, rankInput, directionSelect, defaultRank } = state;
+    const {
+      definition,
+      input,
+      upperLimitInput,
+      select,
+      rankInput,
+      directionSelect,
+      defaultRank
+    } = state;
     const entry = targets[definition.key];
     const units = getSupportedUnitsForDefinition(definition);
     let activeUnit = state.currentUnit;
@@ -323,6 +378,7 @@ function populateTargets(targets = {}) {
     }
     state.currentUnit = activeUnit;
     select.value = activeUnit;
+    syncUnitMetadata(state);
 
     if (entry && Number.isFinite(entry.value)) {
       const value = entry.unit === activeUnit
@@ -331,6 +387,20 @@ function populateTargets(targets = {}) {
       input.value = value != null ? formatNumber(value) : '';
     } else {
       input.value = '';
+    }
+    if (upperLimitInput) {
+      if (entry && Number.isFinite(entry.upperLimitValue)) {
+        const upperUnit = entry.upperLimitUnit && units.includes(entry.upperLimitUnit)
+          ? entry.upperLimitUnit
+          : entry.unit;
+        const upperValue = upperUnit === activeUnit
+          ? entry.upperLimitValue
+          : convertValue(entry.upperLimitValue, upperUnit, activeUnit, definition);
+        upperLimitInput.value = upperValue != null ? formatNumber(upperValue) : '';
+      } else {
+        upperLimitInput.value = '';
+      }
+      upperLimitInput.classList.remove('error');
     }
     input.classList.remove('error');
     const nextRank = entry ? normalizeRank(entry.importanceRank, defaultRank) : defaultRank;
@@ -348,10 +418,13 @@ function gatherTargets() {
   const payload = {};
   let invalid = null;
   rowState.forEach(state => {
-    const { definition, input, select, directionSelect } = state;
+    const { definition, input, upperLimitInput, select, directionSelect } = state;
     commitRankInput(state, { swap: true });
     const raw = input.value.trim();
     input.classList.remove('error');
+    if (upperLimitInput) {
+      upperLimitInput.classList.remove('error');
+    }
     if (!raw) {
       return;
     }
@@ -363,28 +436,55 @@ function gatherTargets() {
     }
     const normalizedRank = getEffectiveRank(state);
     const direction = normalizeDirection(directionSelect.value);
-    payload[definition.key] = {
+    const entry = {
       value: numeric,
       unit: select.value,
       importanceRank: normalizedRank,
       importanceDirection: direction
     };
+    if (upperLimitInput) {
+      const upperRaw = upperLimitInput.value.trim();
+      if (upperRaw) {
+        const upperNumeric = Number(upperRaw);
+        if (!Number.isFinite(upperNumeric) || upperNumeric <= 0 || upperNumeric <= numeric) {
+          upperLimitInput.classList.add('error');
+          if (!invalid) invalid = upperLimitInput;
+          return;
+        }
+        entry.upperLimitValue = upperNumeric;
+        entry.upperLimitUnit = select.value;
+      }
+    }
+    payload[definition.key] = entry;
   });
   return { payload, invalid };
 }
 
 function clearAllTargets() {
   rowState.forEach(state => {
-    const { definition, input, select, rankInput, directionSelect, defaultRank } = state;
+    const {
+      definition,
+      input,
+      upperLimitInput,
+      select,
+      rankInput,
+      directionSelect,
+      defaultRank
+    } = state;
     const defaultUnit = getDefaultUnitForDefinition(definition);
     state.currentUnit = defaultUnit;
     select.value = defaultUnit;
     input.value = '';
     input.classList.remove('error');
+    if (upperLimitInput) {
+      upperLimitInput.value = '';
+      upperLimitInput.classList.remove('error');
+    }
     state.currentRank = defaultRank;
     rankInput.value = String(defaultRank);
     rankInput.classList.remove('error');
     directionSelect.value = 'maximize';
+    syncUnitMetadata(state);
   });
   rebuildRankOwnership();
   applyRankOrdering();

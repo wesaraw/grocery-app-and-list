@@ -277,6 +277,24 @@ function formatScoreTarget(entry) {
   return `${rounded}${unit ? ` ${unit}` : ''}`.trim();
 }
 
+function formatScoreUpperLimit(entry) {
+  if (!entry) return null;
+  let valueText = '';
+  if (
+    Number.isFinite(entry.upperLimitInputValue) &&
+    entry.upperLimitInputValue > 0 &&
+    entry.upperLimitInputUnit
+  ) {
+    valueText = `${entry.upperLimitInputValue} ${entry.upperLimitInputUnit}`.trim();
+  }
+  if (!valueText) {
+    valueText = formatNutrientValue(entry.upperLimitValue, entry.key);
+  }
+  if (!valueText) return null;
+  const percentText = formatScorePercent(entry.upperLimitPercent);
+  return `UL ${valueText} (${percentText})`;
+}
+
 function describeImportanceDirection(direction) {
   const normalized = String(direction || '').toLowerCase();
   if (normalized === 'minimize') {
@@ -315,6 +333,8 @@ function buildNutritionScoreList(totals) {
       if (!entry) return;
       const item = document.createElement('div');
       item.className = 'meal-nutrition-score';
+      const header = document.createElement('div');
+      header.className = 'meal-nutrition-score__header';
       const labelSpan = document.createElement('span');
       labelSpan.className = 'meal-nutrition-score__label';
       labelSpan.textContent = entry.label || entry.key || 'Nutrient';
@@ -326,6 +346,8 @@ function buildNutritionScoreList(totals) {
       valueSpan.className = 'meal-nutrition-score__value';
       const percentText = formatScorePercent(entry.percentComplete);
       valueSpan.textContent = `${entry.points ?? 0}/10 • ${percentText}`;
+      header.appendChild(labelSpan);
+      header.appendChild(valueSpan);
       const tooltipParts = [];
       if (directionDescription) {
         tooltipParts.push(directionDescription);
@@ -339,9 +361,18 @@ function buildNutritionScoreList(totals) {
         tooltipParts.push(`${perServingText} per serving`);
       }
       tooltipParts.push(`${entry.points ?? 0}/10 (${percentText})`);
+      const upperLimitText = formatScoreUpperLimit(entry);
+      if (upperLimitText) {
+        tooltipParts.push(upperLimitText);
+      }
       item.title = tooltipParts.join(' • ');
-      item.appendChild(labelSpan);
-      item.appendChild(valueSpan);
+      item.appendChild(header);
+      if (upperLimitText) {
+        const upperLimitSpan = document.createElement('span');
+        upperLimitSpan.className = 'meal-nutrition-score__upper-limit';
+        upperLimitSpan.textContent = upperLimitText;
+        item.appendChild(upperLimitSpan);
+      }
       container.appendChild(item);
     });
   return container;

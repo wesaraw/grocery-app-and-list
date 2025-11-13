@@ -221,7 +221,56 @@ function normalizeTargetEntry(definition, entry, options = {}) {
     entry.importanceDirection ?? entry.direction ?? entry.goalDirection ?? entry.goalType,
     defaultDirection
   );
-  return { value: numeric, unit, baseValue, importanceRank, importanceDirection };
+  const rawUpperLimitValue =
+    entry.upperLimitValue ??
+    entry.upperLimit ??
+    entry.safeUpperLimit ??
+    entry.safeUpperLimitValue ??
+    entry.safeUpperLimitAmount ??
+    null;
+  let upperLimitValue = null;
+  let upperLimitUnit = null;
+  let upperLimitBaseValue = null;
+  const numericUpperLimit = toNumber(rawUpperLimitValue);
+  if (numericUpperLimit != null && numericUpperLimit > 0) {
+    const rawUpperLimitUnit =
+      entry.upperLimitUnit ??
+      entry.upperLimitUnits ??
+      entry.safeUpperLimitUnit ??
+      entry.safeUpperLimitUnits ??
+      entry.upperLimitUom ??
+      entry.safeUpperLimitUom ??
+      entry.upperLimitMeasure ??
+      entry.safeUpperLimitMeasure ??
+      null;
+    const resolvedUpperLimitUnit =
+      definition.targetUnit === 'kcal'
+        ? canonicalEnergyUnit(rawUpperLimitUnit) || unit
+        : canonicalMassUnit(rawUpperLimitUnit) || unit;
+    if (resolvedUpperLimitUnit && supportedUnits.includes(resolvedUpperLimitUnit)) {
+      const convertedUpperLimit = convertToBase(
+        numericUpperLimit,
+        resolvedUpperLimitUnit,
+        definition
+      );
+      if (convertedUpperLimit != null && convertedUpperLimit > baseValue) {
+        upperLimitValue = numericUpperLimit;
+        upperLimitUnit = resolvedUpperLimitUnit;
+        upperLimitBaseValue = convertedUpperLimit;
+      }
+    }
+  }
+
+  return {
+    value: numeric,
+    unit,
+    baseValue,
+    importanceRank,
+    importanceDirection,
+    ...(upperLimitValue
+      ? { upperLimitValue, upperLimitUnit, upperLimitBaseValue }
+      : {})
+  };
 }
 
 export function normalizeTargetMap(targets = {}, definitions = []) {
@@ -240,7 +289,13 @@ export function normalizeTargetMap(targets = {}, definitions = []) {
         value: normalizedEntry.value,
         unit: normalizedEntry.unit,
         importanceRank: normalizedEntry.importanceRank,
-        importanceDirection: normalizedEntry.importanceDirection
+        importanceDirection: normalizedEntry.importanceDirection,
+        ...(normalizedEntry.upperLimitValue
+          ? {
+              upperLimitValue: normalizedEntry.upperLimitValue,
+              upperLimitUnit: normalizedEntry.upperLimitUnit
+            }
+          : {})
       };
     }
   });
@@ -267,7 +322,10 @@ export function buildTargetLookup(targets = {}, definitions = []) {
       baseValue: normalizedEntry.baseValue,
       targetUnit: definition.targetUnit,
       importanceRank: normalizedEntry.importanceRank,
-      importanceDirection: normalizedEntry.importanceDirection
+      importanceDirection: normalizedEntry.importanceDirection,
+      upperLimitValue: normalizedEntry.upperLimitValue,
+      upperLimitUnit: normalizedEntry.upperLimitUnit,
+      upperLimitBaseValue: normalizedEntry.upperLimitBaseValue
     };
   });
   return lookup;
@@ -289,6 +347,14 @@ function cloneTargetsForStorage(targets) {
       ...(importanceRank ? { importanceRank } : {}),
       importanceDirection
     };
+    const upperLimitNumeric = toNumber(entry.upperLimitValue);
+    if (upperLimitNumeric != null && upperLimitNumeric > 0) {
+      const upperLimitUnit = entry.upperLimitUnit || entry.upperLimitUnits || unit;
+      if (upperLimitUnit) {
+        cloned[key].upperLimitValue = upperLimitNumeric;
+        cloned[key].upperLimitUnit = upperLimitUnit;
+      }
+    }
   });
   return cloned;
 }

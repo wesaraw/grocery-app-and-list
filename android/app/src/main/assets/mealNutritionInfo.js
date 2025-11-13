@@ -145,6 +145,24 @@ function formatScoreTarget(entry) {
   return formatScoreValue(entry.targetValue, entry.key);
 }
 
+function formatScoreUpperLimit(entry) {
+  if (!entry) return null;
+  let valueText = '';
+  if (
+    Number.isFinite(entry.upperLimitInputValue) &&
+    entry.upperLimitInputValue > 0 &&
+    entry.upperLimitInputUnit
+  ) {
+    valueText = `${entry.upperLimitInputValue} ${entry.upperLimitInputUnit}`.trim();
+  }
+  if (!valueText) {
+    valueText = formatScoreValue(entry.upperLimitValue, entry.key);
+  }
+  if (!valueText) return null;
+  const percentText = formatScorePercent(entry.upperLimitPercent);
+  return `Safe upper limit ${valueText} (${percentText})`;
+}
+
 function formatScorePercent(percent) {
   if (!Number.isFinite(percent) || percent < 0) return '0%';
   return `${Math.min(999, Math.round(percent))}%`;
@@ -414,6 +432,13 @@ function renderNutrientScores(totals) {
         detailEl.className = 'nutrient-score__details';
         detailEl.textContent = details.join(' • ');
         item.appendChild(detailEl);
+      }
+      const upperLimitText = formatScoreUpperLimit(entry);
+      if (upperLimitText) {
+        const upperLimitEl = document.createElement('div');
+        upperLimitEl.className = 'nutrient-score__upper-limit';
+        upperLimitEl.textContent = upperLimitText;
+        item.appendChild(upperLimitEl);
       }
       const bar = document.createElement('div');
       bar.className = 'nutrient-score__bar';
