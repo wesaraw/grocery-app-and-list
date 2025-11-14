@@ -866,14 +866,18 @@ async function queueNutritionConfirmForItem(name, options = {}) {
   }
 }
 
-function enqueueNutritionItem(name, { force = false } = {}) {
+function enqueueNutritionItem(name, { force = false, matchOptions } = {}) {
   if (!name) return;
   if (!force && queuedNutritionNames.has(name)) return;
   if (force) {
     queuedNutritionNames.delete(name);
   }
   queuedNutritionNames.add(name);
-  nutritionQueue.push(name);
+  const normalizedOptions =
+    matchOptions && typeof matchOptions === 'object'
+      ? { ...matchOptions }
+      : {};
+  nutritionQueue.push({ name, matchOptions: normalizedOptions });
 }
 
 async function processNutritionQueue() {
@@ -882,7 +886,12 @@ async function processNutritionQueue() {
     return;
   }
   processingNutrition = true;
-  const name = nutritionQueue.shift();
+  const entry = nutritionQueue.shift();
+  if (!entry || !entry.name) {
+    setTimeout(processNutritionQueue, nutritionDelayMs);
+    return;
+  }
+  const { name, matchOptions = {} } = entry;
   queuedNutritionNames.delete(name);
   const item = getIngredientContext(name);
   if (!item || !item.name) {
@@ -896,7 +905,7 @@ async function processNutritionQueue() {
   let errorMessage = '';
 
   try {
-    const result = await ensureIngredientRecordForItem(item);
+    const result = await ensureIngredientRecordForItem(item, matchOptions);
     if (result.status === 'needs-confirmation') {
       let pendingEntry = await getPendingMatch(item.name);
       if (!pendingEntry) {
@@ -955,7 +964,7 @@ async function processNutritionQueue() {
   }
 
   if (shouldRetry) {
-    enqueueNutritionItem(name, { force: true });
+    enqueueNutritionItem(name, { force: true, matchOptions });
   }
 
   try {

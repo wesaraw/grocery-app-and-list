@@ -16,11 +16,16 @@
       font-weight: bold;
       margin-bottom: 12px;
     }
+    #searchForm {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
     .search-row {
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-bottom: 10px;
     }
     .search-row input {
       flex: 1;
@@ -30,6 +35,22 @@
     .search-row button {
       padding: 6px 14px;
       font-size: 0.95em;
+    }
+    .brand-row {
+      align-items: center;
+    }
+    .brand-row label {
+      font-weight: 600;
+      font-size: 0.9em;
+      color: #333;
+    }
+    .brand-row input {
+      flex: 1;
+    }
+    .helper-text {
+      margin: 0;
+      font-size: 0.85em;
+      color: #555;
     }
     .spinner {
       font-size: 0.85em;
@@ -89,10 +110,17 @@
 <body>
   <h1>Confirm Nutrition Match</h1>
   <div id="itemName"></div>
-  <form id="searchForm" class="search-row">
-    <input id="searchInput" type="text" placeholder="Search USDA foods" aria-label="Search USDA foods">
-    <button id="searchBtn" type="submit">Search</button>
-    <span id="searchSpinner" class="spinner" hidden>Searching…</span>
+  <form id="searchForm">
+    <div class="search-row">
+      <input id="searchInput" type="text" placeholder="Search USDA foods" aria-label="Search USDA foods">
+      <button id="searchBtn" type="submit">Search</button>
+      <span id="searchSpinner" class="spinner" hidden>Searching…</span>
+    </div>
+    <div class="search-row brand-row">
+      <label for="brandInput">Brand name</label>
+      <input id="brandInput" type="text" placeholder="Optional brand name" aria-label="Search Branded foods by brand name">
+    </div>
+    <p class="helper-text">Adding a brand name will search the USDA Branded foods dataset using the brandName field.</p>
   </form>
   <div id="searchStatus" class="status search-status"></div>
   <div id="candidates"></div>

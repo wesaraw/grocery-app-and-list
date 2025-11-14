@@ -17,10 +17,33 @@ const DATA_TYPE_WEIGHTS = {
 
 const FORM_MATCH_BONUS = 0.08;
 const PORTION_BONUS = 0.05;
+const COOKING_STATE_BONUS = 0.05;
 const DEFAULT_THRESHOLD = 0.62;
 const STALE_MS = 1000 * 60 * 60 * 24 * 30;
 const MAX_PAGE_SIZE = 25;
 const FORM_KEYWORDS = ['raw', 'cooked', 'boiled', 'skinless', 'drained', 'dried', 'frozen', 'fresh'];
+const COOKING_STATE_KEYWORDS = {
+  cooked: [
+    'cooked',
+    'boiled',
+    'baked',
+    'roasted',
+    'grilled',
+    'fried',
+    'sauteed',
+    'steamed',
+    'smoked',
+    'broiled',
+    'toasted',
+    'poached',
+    'braised',
+    'stewed',
+    'seared'
+  ],
+  raw: ['raw', 'uncooked', 'unheated', 'sashimi', 'unpasteurized']
+};
+// Only allow auto-matching for higher-quality data sets; everything else requires manual confirmation.
+const AUTO_MATCH_DATA_TYPES = new Set(['Foundation', 'SR Legacy']);
 
 class MissingFdcApiKeyError extends Error {
   constructor() {
@@ -144,10 +167,31 @@ function getCandidateText(candidate) {
   return parts.filter(Boolean).join(' ');
 }
 
-function scoreCandidate(displayName, candidate) {
-  const nameTokens = tokenize(displayName);
-  const candidateText = getCandidateText(candidate);
-  const candidateTokens = tokenize(candidateText);
+function detectCookingState(tokens = []) {
+  if (!tokens.length) return 'unknown';
+  const set = new Set(tokens);
+  if (COOKING_STATE_KEYWORDS.cooked.some(token => set.has(token))) return 'cooked';
+  if (COOKING_STATE_KEYWORDS.raw.some(token => set.has(token))) return 'raw';
+  return 'unknown';
+}
+
+function getCookingPreferenceOrder(itemCookingState) {
+  if (itemCookingState === 'raw') {
+    return ['raw', 'unknown', 'cooked'];
+  }
+  if (itemCookingState === 'cooked') {
+    return ['cooked', 'unknown', 'raw'];
+  }
+  // Default to cooked-first when no preference is explicitly stated.
+  return ['cooked', 'unknown', 'raw'];
+}
+
+function scoreCandidate(displayName, candidate, context = {}) {
+  const nameTokens = Array.isArray(context.itemTokens) && context.itemTokens.length ? context.itemTokens : tokenize(displayName);
+  const candidateText = context.candidateText || getCandidateText(candidate);
+  const candidateTokens = Array.isArray(context.candidateTokens) && context.candidateTokens.length
+    ? context.candidateTokens
+    : tokenize(candidateText);
   const similarity = computeTokenSimilarity(nameTokens, candidateTokens);
   const jwScore = jaroWinkler(displayName, candidate.description || candidateText || '');
   const baseScore = similarity * 0.6 + jwScore * 0.4;
@@ -175,17 +219,49 @@ function sanitizeCandidate(candidate, score) {
   };
 }
 
-export function rankCandidates(displayName, candidates = []) {
+export function rankCandidates(displayName, candidates = [], options = {}) {
   if (!displayName || !Array.isArray(candidates)) return [];
+  const itemTokens = Array.isArray(options.itemTokens) && options.itemTokens.length ? options.itemTokens : tokenize(displayName);
+  const itemCookingState = detectCookingState(itemTokens);
+  const preferredCookingOrder = getCookingPreferenceOrder(itemCookingState);
   const scored = candidates.map(candidate => {
-    const score = scoreCandidate(displayName, candidate);
+    const candidateText = getCandidateText(candidate);
+    const candidateTokens = tokenize(candidateText);
+    const cookingState = detectCookingState(candidateTokens);
+    let adjustedScore = scoreCandidate(displayName, candidate, { itemTokens, candidateTokens, candidateText });
+    const preferenceIndex = preferredCookingOrder.indexOf(cookingState);
+    if (preferenceIndex === 0) {
+      adjustedScore = clamp(adjustedScore + COOKING_STATE_BONUS);
+    } else if (preferenceIndex === preferredCookingOrder.length - 1 && preferredCookingOrder[preferenceIndex] !== 'unknown') {
+      adjustedScore = clamp(adjustedScore - COOKING_STATE_BONUS);
+    } else {
+      adjustedScore = clamp(adjustedScore);
+    }
     return {
-      ...sanitizeCandidate(candidate, score),
+      ...sanitizeCandidate(candidate, adjustedScore),
+      cookingState,
       _original: candidate
     };
   });
   scored.sort((a, b) => b.score - a.score);
+  scored.itemCookingState = itemCookingState;
   return scored;
+}
+
+function findAutoMatchCandidate(ranked, preferredCookingOrder, allowedTypes = AUTO_MATCH_DATA_TYPES) {
+  if (!Array.isArray(ranked) || !ranked.length) return null;
+  const hasAllowedTypes = allowedTypes && typeof allowedTypes.has === 'function';
+  const order = Array.isArray(preferredCookingOrder) && preferredCookingOrder.length ? preferredCookingOrder : null;
+  if (order) {
+    for (const state of order) {
+      const match = ranked.find(candidate => (!hasAllowedTypes || allowedTypes.has(candidate.dataType)) && candidate.cookingState === state);
+      if (match) return match;
+    }
+  }
+  if (hasAllowedTypes) {
+    return ranked.find(candidate => allowedTypes.has(candidate.dataType)) || null;
+  }
+  return ranked[0];
 }
 
 async function fetchJson(url, options = {}) {
@@ -212,6 +288,14 @@ export async function searchFdcFoods(query, options = {}) {
     requireAllWords: false,
     dataType: options.dataType || options.includeDataTypes || ['Foundation', 'SR Legacy', 'Survey (FNDDS)', 'Branded']
   };
+  const brandName = typeof options.brandName === 'string' ? options.brandName.trim() : '';
+  if (brandName) {
+    body.brandName = brandName;
+  }
+  const brandOwner = typeof options.brandOwner === 'string' ? options.brandOwner.trim() : '';
+  if (brandOwner) {
+    body.brandOwner = brandOwner;
+  }
   const response = await fetchJson(`${SEARCH_URL}?api_key=${encodeURIComponent(apiKey)}`, {
     method: 'POST',
     headers: {
@@ -350,6 +434,9 @@ export async function ensureIngredientRecordForItem(item, options = {}) {
     return { status: 'invalid', reason: 'missing-name' };
   }
   const unitDefault = item.unit_default || item.home_unit || item.unit || options.unitDefault || 'g';
+  const itemTokens = tokenize(item.name);
+  const itemCookingState = detectCookingState(itemTokens);
+  const preferredCookingOrder = getCookingPreferenceOrder(itemCookingState);
   const existing = await getIngredientByItemName(item.name);
   if (existing && !options.force && !isIngredientRecordStale(existing, maxAgeMs)) {
     return { status: 'exists', record: existing };
@@ -363,12 +450,12 @@ export async function ensureIngredientRecordForItem(item, options = {}) {
     }
     return { status: 'error', error: err };
   }
-  const ranked = rankCandidates(item.name, foods);
+  const ranked = rankCandidates(item.name, foods, { itemTokens });
   if (!ranked.length) {
     return { status: 'no-results', candidates: [] };
   }
-  const best = ranked[0];
-  if (best.score < threshold) {
+  const best = findAutoMatchCandidate(ranked, preferredCookingOrder);
+  if (!best || best.score < threshold) {
     return {
       status: 'needs-confirmation',
       itemName: item.name,

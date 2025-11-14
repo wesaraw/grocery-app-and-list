@@ -666,14 +666,18 @@ async function updateNutritionButtons() {
   }
 }
 
-function enqueueNutritionItem(name, { force = false } = {}) {
+function enqueueNutritionItem(name, { force = false, matchOptions } = {}) {
   if (!name) return;
   if (!force && queuedNutritionNames.has(name)) return;
   if (force) {
     queuedNutritionNames.delete(name);
   }
   queuedNutritionNames.add(name);
-  nutritionQueue.push(name);
+  const normalizedOptions =
+    matchOptions && typeof matchOptions === 'object'
+      ? { ...matchOptions }
+      : {};
+  nutritionQueue.push({ name, matchOptions: normalizedOptions });
 }
 
 async function processNutritionQueue() {
@@ -682,7 +686,12 @@ async function processNutritionQueue() {
     return;
   }
   processingNutrition = true;
-  const name = nutritionQueue.shift();
+  const entry = nutritionQueue.shift();
+  if (!entry || !entry.name) {
+    setTimeout(processNutritionQueue, nutritionDelayMs);
+    return;
+  }
+  const { name, matchOptions = {} } = entry;
   queuedNutritionNames.delete(name);
   const item = globalItems.find(it => it.name === name);
   if (!item) {
@@ -696,7 +705,7 @@ async function processNutritionQueue() {
   let errorMessage = '';
 
   try {
-    const result = await ensureIngredientRecordForItem(item);
+    const result = await ensureIngredientRecordForItem(item, matchOptions);
     if (result.status === 'needs-confirmation') {
       let pendingEntry = await getPendingMatch(item.name);
       if (!pendingEntry) {
@@ -755,7 +764,7 @@ async function processNutritionQueue() {
   }
 
   if (shouldRetry) {
-    enqueueNutritionItem(name, { force: true });
+    enqueueNutritionItem(name, { force: true, matchOptions });
   }
 
   updateNutritionButtons();
@@ -1119,6 +1128,41 @@ async function init() {
   if (apiKeysBtn) {
     apiKeysBtn.addEventListener('click', () => {
       openOrFocusWindow('apiKeys.html', 380, 240);
+    });
+  }
+
+  const redoNutritionBtn = document.getElementById('redoNutrition');
+  if (redoNutritionBtn) {
+    redoNutritionBtn.addEventListener('click', () => {
+      if (!globalItems.length) return;
+      const shouldRedo = confirm(
+        'Redo USDA nutrition pairing for every item? This may take a few minutes.'
+      );
+      if (!shouldRedo) return;
+
+      let scheduled = 0;
+      globalItems.forEach(item => {
+        if (!item?.name) return;
+        enqueueNutritionItem(item.name, {
+          force: true,
+          matchOptions: { force: true }
+        });
+        scheduled += 1;
+      });
+
+      if (!scheduled) {
+        showTransientNutritionStatus('No items available for nutrition reprocessing.', 'info');
+        return;
+      }
+
+      nutritionDelayMs = NUTRITION_MIN_DELAY_MS;
+      const message = `Redoing nutrition pairing for ${scheduled} item${scheduled === 1 ? '' : 's'}.`;
+      setNutritionStatus(message, 'info');
+      showTransientNutritionStatus('Full nutrition re-sync has started in the background.', 'info');
+
+      if (!processingNutrition) {
+        processNutritionQueue();
+      }
     });
   }
 }

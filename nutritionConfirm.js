@@ -14,6 +14,7 @@ let itemName = '';
 let pendingMatch = null;
 let selectedFdcId = null;
 let searchInputEl = null;
+let brandInputEl = null;
 let searchButtonEl = null;
 let searchSpinnerEl = null;
 let searchStatusEl = null;
@@ -41,6 +42,7 @@ function renderSearchStatus(message, type = 'info') {
 function setSearchLoading(loading) {
   if (searchButtonEl) searchButtonEl.disabled = loading;
   if (searchInputEl) searchInputEl.disabled = loading;
+  if (brandInputEl) brandInputEl.disabled = loading;
   if (searchSpinnerEl) {
     if (loading) {
       searchSpinnerEl.hidden = false;
@@ -112,6 +114,7 @@ async function loadPending() {
     renderStatus('No pending matches for this item.', 'error');
     enableConfirm(false);
     if (searchInputEl) searchInputEl.disabled = true;
+    if (brandInputEl) brandInputEl.disabled = true;
     if (searchButtonEl) searchButtonEl.disabled = true;
     if (searchSpinnerEl) searchSpinnerEl.hidden = true;
     renderSearchStatus('');
@@ -122,6 +125,9 @@ async function loadPending() {
   setSearchLoading(false);
   if (searchInputEl) {
     searchInputEl.value = pendingMatch.lastSearchQuery || pendingMatch.itemName || itemName;
+  }
+  if (brandInputEl) {
+    brandInputEl.value = pendingMatch.lastBrandQuery || '';
   }
 }
 
@@ -166,6 +172,7 @@ async function handleSearch(event) {
 
   const rawQuery = searchInputEl?.value?.trim();
   const query = rawQuery || pendingMatch.lastSearchQuery || pendingMatch.itemName || itemName;
+  const brand = brandInputEl?.value?.trim() || '';
   if (!query) {
     renderSearchStatus('Enter a term to search.', 'warning');
     return;
@@ -174,11 +181,24 @@ async function handleSearch(event) {
   if (searchInputEl) {
     searchInputEl.value = query;
   }
+  if (brandInputEl) {
+    brandInputEl.value = brand;
+  }
 
   setSearchLoading(true);
-  renderSearchStatus('Searching…');
+  if (brand) {
+    renderSearchStatus(`Searching Branded foods for "${query}" in brand "${brand}"…`);
+  } else {
+    renderSearchStatus('Searching…');
+  }
   try {
-    const foods = await searchFdcFoods(query, { pageSize: 25 });
+    const searchOptions = { pageSize: 25 };
+    if (brand) {
+      searchOptions.dataType = ['Branded'];
+      searchOptions.brandName = brand;
+      searchOptions.brandOwner = brand;
+    }
+    const foods = await searchFdcFoods(query, searchOptions);
     const ranked = rankCandidates(pendingMatch.itemName || itemName || query, foods);
     const sanitized = ranked.map(candidate => {
       const { _original, ...rest } = candidate;
@@ -189,6 +209,7 @@ async function handleSearch(event) {
       ...pendingMatch,
       itemName: pendingMatch.itemName || itemName,
       lastSearchQuery: query,
+      lastBrandQuery: brand,
       updatedAt: new Date().toISOString()
     };
     if (sanitized.length) {
@@ -199,10 +220,14 @@ async function handleSearch(event) {
     pendingMatch = await getPendingMatch(itemName);
     renderCandidates();
 
+    const brandSuffix = brand ? ` in brand "${brand}"` : '';
     if (sanitized.length) {
-      renderSearchStatus(`Showing ${sanitized.length} result${sanitized.length === 1 ? '' : 's'} for "${query}".`, 'success');
+      renderSearchStatus(
+        `Showing ${sanitized.length} result${sanitized.length === 1 ? '' : 's'} for "${query}"${brandSuffix}.`,
+        'success'
+      );
     } else {
-      renderSearchStatus(`No results found for "${query}".`, 'warning');
+      renderSearchStatus(`No results found for "${query}"${brandSuffix}.`, 'warning');
     }
   } catch (err) {
     console.error('Nutrition search failed', err);
@@ -224,6 +249,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
   searchInputEl = document.getElementById('searchInput');
+  brandInputEl = document.getElementById('brandInput');
   searchButtonEl = document.getElementById('searchBtn');
   searchSpinnerEl = document.getElementById('searchSpinner');
   searchStatusEl = document.getElementById('searchStatus');
