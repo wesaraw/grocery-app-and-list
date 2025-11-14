@@ -1,7 +1,11 @@
 import {
+  PENDING_MATCH_KEY,
+  ACTIVE_PENDING_MATCH_KEY,
   getPendingMatch,
   removePendingMatch,
-  setPendingMatch
+  setPendingMatch,
+  getActivePendingMatchEntry,
+  clearActivePendingMatchEntry
 } from './utils/nutritionMatching.js';
 import {
   persistIngredientSelection,
@@ -13,11 +17,13 @@ import {
 let itemName = '';
 let pendingMatch = null;
 let selectedFdcId = null;
+let activePendingEntry = null;
 let searchInputEl = null;
 let brandInputEl = null;
 let searchButtonEl = null;
 let searchSpinnerEl = null;
 let searchStatusEl = null;
+let skipButtonEl = null;
 
 function renderStatus(message, type = 'info') {
   const statusEl = document.getElementById('status');
@@ -40,9 +46,10 @@ function renderSearchStatus(message, type = 'info') {
 }
 
 function setSearchLoading(loading) {
-  if (searchButtonEl) searchButtonEl.disabled = loading;
-  if (searchInputEl) searchInputEl.disabled = loading;
-  if (brandInputEl) brandInputEl.disabled = loading;
+  const shouldDisable = loading || !pendingMatch;
+  if (searchButtonEl) searchButtonEl.disabled = shouldDisable;
+  if (searchInputEl) searchInputEl.disabled = shouldDisable;
+  if (brandInputEl) brandInputEl.disabled = shouldDisable;
   if (searchSpinnerEl) {
     if (loading) {
       searchSpinnerEl.hidden = false;
@@ -57,15 +64,30 @@ function enableConfirm(enabled) {
   if (btn) btn.disabled = !enabled;
 }
 
-function renderCandidates() {
+function refreshActionButtons() {
+  if (skipButtonEl) {
+    skipButtonEl.disabled = !pendingMatch;
+  }
+  enableConfirm(!!pendingMatch && !!selectedFdcId);
+}
+
+function renderCandidates({ emptyMessage } = {}) {
   const container = document.getElementById('candidates');
+  if (!container) return;
   container.innerHTML = '';
   selectedFdcId = null;
-  if (!pendingMatch || !pendingMatch.candidates?.length) {
+  if (!pendingMatch) {
     const empty = document.createElement('p');
-    empty.textContent = 'No candidate matches to display.';
+    empty.textContent = emptyMessage || 'Waiting for the next item…';
     container.appendChild(empty);
-    enableConfirm(false);
+    refreshActionButtons();
+    return;
+  }
+  if (!pendingMatch.candidates?.length) {
+    const empty = document.createElement('p');
+    empty.textContent = emptyMessage || 'No candidate matches to display.';
+    container.appendChild(empty);
+    refreshActionButtons();
     return;
   }
   pendingMatch.candidates.forEach(candidate => {
@@ -78,7 +100,7 @@ function renderCandidates() {
     input.value = candidate.fdcId;
     input.addEventListener('change', () => {
       selectedFdcId = candidate.fdcId;
-      enableConfirm(true);
+      refreshActionButtons();
       renderStatus('');
     });
 
@@ -103,32 +125,113 @@ function renderCandidates() {
     wrapper.appendChild(body);
     container.appendChild(wrapper);
   });
-  enableConfirm(false);
+  refreshActionButtons();
+}
+
+function showAllCompleteState() {
+  const itemEl = document.getElementById('itemName');
+  if (itemEl) {
+    itemEl.textContent = 'All matches complete';
+  }
+  pendingMatch = null;
+  selectedFdcId = null;
+  const container = document.getElementById('candidates');
+  if (container) {
+    container.innerHTML = '';
+    const message = document.createElement('p');
+    message.textContent = 'No ingredients currently require nutrition confirmation.';
+    container.appendChild(message);
+  }
+  renderStatus('All pending matches have been processed.', 'success');
+  renderSearchStatus('');
+  setSearchLoading(false);
+  if (searchInputEl) searchInputEl.value = '';
+  if (brandInputEl) brandInputEl.value = '';
+  refreshActionButtons();
+}
+
+async function applyActivePendingEntry(entry) {
+  activePendingEntry = entry && entry.itemName ? { ...entry } : null;
+  itemName = activePendingEntry?.itemName || '';
+  if (!itemName) {
+    showAllCompleteState();
+    return;
+  }
+  await loadPending();
+}
+
+async function hydrateActiveEntry() {
+  try {
+    const entry = await getActivePendingMatchEntry();
+    await applyActivePendingEntry(entry);
+  } catch (err) {
+    console.error('Unable to hydrate active pending match', err);
+    showAllCompleteState();
+    renderStatus('Unable to load pending matches.', 'error');
+  }
+}
+
+function subscribeToStorageChanges() {
+  if (!chrome || !chrome.storage || !chrome.storage.onChanged) return;
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local' || !changes) return;
+    if (changes[ACTIVE_PENDING_MATCH_KEY]) {
+      applyActivePendingEntry(changes[ACTIVE_PENDING_MATCH_KEY].newValue || null).catch(err => {
+        console.error('Unable to update active pending match', err);
+      });
+      return;
+    }
+    if (changes[PENDING_MATCH_KEY]) {
+      const normalized = activePendingEntry?.normalizedName;
+      if (!normalized) return;
+      const newMap = changes[PENDING_MATCH_KEY].newValue || {};
+      const oldMap = changes[PENDING_MATCH_KEY].oldValue || {};
+      if ((newMap && newMap[normalized]) || (oldMap && oldMap[normalized])) {
+        loadPending().catch(err => {
+          console.error('Unable to refresh pending match', err);
+        });
+      }
+    }
+  });
 }
 
 async function loadPending() {
-  pendingMatch = await getPendingMatch(itemName);
-  const itemEl = document.getElementById('itemName');
-  if (!pendingMatch) {
-    itemEl.textContent = itemName || '';
-    renderStatus('No pending matches for this item.', 'error');
-    enableConfirm(false);
-    if (searchInputEl) searchInputEl.disabled = true;
-    if (brandInputEl) brandInputEl.disabled = true;
-    if (searchButtonEl) searchButtonEl.disabled = true;
-    if (searchSpinnerEl) searchSpinnerEl.hidden = true;
-    renderSearchStatus('');
+  if (!itemName) {
+    showAllCompleteState();
     return;
   }
-  itemEl.textContent = pendingMatch.itemName || itemName;
+  const itemEl = document.getElementById('itemName');
+  try {
+    pendingMatch = await getPendingMatch(itemName);
+  } catch (err) {
+    console.error('Unable to load pending match', err);
+    pendingMatch = null;
+  }
+
+  if (!pendingMatch) {
+    if (itemEl) itemEl.textContent = itemName;
+    renderStatus('Waiting for the next item…', 'info');
+    renderCandidates({ emptyMessage: 'Waiting for the next item…' });
+    setSearchLoading(false);
+    renderSearchStatus('');
+    if (searchInputEl) searchInputEl.value = '';
+    if (brandInputEl) brandInputEl.value = '';
+    refreshActionButtons();
+    return;
+  }
+
+  if (itemEl) itemEl.textContent = pendingMatch.itemName || itemName;
+  renderStatus('Select the best nutrition match for this item.');
   renderCandidates();
   setSearchLoading(false);
+  renderSearchStatus('');
   if (searchInputEl) {
     searchInputEl.value = pendingMatch.lastSearchQuery || pendingMatch.itemName || itemName;
   }
   if (brandInputEl) {
     brandInputEl.value = pendingMatch.lastBrandQuery || '';
   }
+  refreshActionButtons();
 }
 
 async function confirmSelection() {
@@ -146,9 +249,14 @@ async function confirmSelection() {
       confidence: candidate.score
     });
     await removePendingMatch(itemName);
-    renderStatus('Nutrition data saved.', 'success');
+    await clearActivePendingMatchEntry();
+    pendingMatch = null;
+    selectedFdcId = null;
+    renderStatus('Nutrition data saved. Loading next item…', 'success');
     renderSearchStatus('');
-    setTimeout(() => window.close(), 750);
+    renderCandidates({ emptyMessage: 'Waiting for the next item…' });
+    setSearchLoading(false);
+    refreshActionButtons();
   } catch (err) {
     console.error('Failed to persist selection', err);
     renderStatus('Failed to save selection. Please try again.', 'error');
@@ -157,10 +265,16 @@ async function confirmSelection() {
 }
 
 async function skipSelection() {
+  if (!pendingMatch) return;
   await removePendingMatch(itemName);
-  renderStatus('Match skipped. You can retry from the inventory timeline.', 'warning');
+  await clearActivePendingMatchEntry();
+  pendingMatch = null;
+  selectedFdcId = null;
+  renderStatus('Match skipped. Loading next item…', 'warning');
   renderSearchStatus('');
-  setTimeout(() => window.close(), 750);
+  renderCandidates({ emptyMessage: 'Waiting for the next item…' });
+  setSearchLoading(false);
+  refreshActionButtons();
 }
 
 async function handleSearch(event) {
@@ -242,22 +356,27 @@ async function handleSearch(event) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  const params = new URLSearchParams(window.location.search);
-  itemName = params.get('item') || '';
-  if (!itemName) {
-    renderStatus('No item specified.', 'error');
-    return;
-  }
   searchInputEl = document.getElementById('searchInput');
   brandInputEl = document.getElementById('brandInput');
   searchButtonEl = document.getElementById('searchBtn');
   searchSpinnerEl = document.getElementById('searchSpinner');
   searchStatusEl = document.getElementById('searchStatus');
+  skipButtonEl = document.getElementById('skipBtn');
   renderSearchStatus('');
+  setSearchLoading(false);
+  refreshActionButtons();
+  renderStatus('Loading pending matches…', 'info');
 
-  loadPending();
-  document.getElementById('confirmBtn').addEventListener('click', confirmSelection);
-  document.getElementById('skipBtn').addEventListener('click', skipSelection);
+  hydrateActiveEntry();
+  subscribeToStorageChanges();
+
+  const confirmBtn = document.getElementById('confirmBtn');
+  if (confirmBtn) {
+    confirmBtn.addEventListener('click', confirmSelection);
+  }
+  if (skipButtonEl) {
+    skipButtonEl.addEventListener('click', skipSelection);
+  }
   const searchForm = document.getElementById('searchForm');
   if (searchForm) {
     searchForm.addEventListener('submit', handleSearch);

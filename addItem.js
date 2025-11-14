@@ -12,7 +12,7 @@ import {
 } from './utils/itemStorage.js';
 
 import { ensureIngredientRecordForItem } from './utils/fdcClient.js';
-import { setPendingMatch } from './utils/nutritionMatching.js';
+import { getPendingMatch, setPendingMatch, setActivePendingMatchEntry } from './utils/nutritionMatching.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -417,7 +417,11 @@ async function commit() {
         unitDefault: unit || 'g',
         source: 'add-item'
       });
-      openOrFocusWindow(`nutritionConfirm.html?item=${encodeURIComponent(name)}`, 520, 600);
+      const pendingEntry = await getPendingMatch(name);
+      if (pendingEntry) {
+        await setActivePendingMatchEntry(pendingEntry);
+      }
+      openOrFocusWindow('nutritionConfirm.html', 520, 600);
       scheduleClose(600);
     } else if (result.status === 'missing-api-key') {
       updateNutritionStatus(

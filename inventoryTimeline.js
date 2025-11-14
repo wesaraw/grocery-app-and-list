@@ -18,7 +18,9 @@ import {
   getPendingMatch,
   getPendingMatches,
   setPendingMatch,
-  removePendingMatch
+  removePendingMatch,
+  setActivePendingMatchEntry,
+  clearActivePendingMatchEntry
 } from './utils/nutritionMatching.js';
 
 async function loadJSON(path) {
@@ -439,6 +441,18 @@ let nutritionStatusEl = null;
 let missingApiKeyWarningShown = false;
 let nutritionTransientTimer = null;
 
+function publishActivePendingMatch(entry) {
+  if (entry && entry.itemName && entry.normalizedName) {
+    setActivePendingMatchEntry(entry).catch(err => {
+      console.error('Unable to set active pending match', err);
+    });
+  } else {
+    clearActivePendingMatchEntry().catch(err => {
+      console.error('Unable to clear active pending match', err);
+    });
+  }
+}
+
 function setNutritionStatus(message, type = 'info') {
   if (!nutritionStatusEl) return;
   if (!message) {
@@ -475,14 +489,12 @@ function openNextPendingConfirm() {
     const nextEntry = pendingConfirmQueue.shift();
     if (!nextEntry || !nextEntry.itemName) continue;
     activeConfirmItem = { ...nextEntry };
-    openOrFocusWindow(
-      `nutritionConfirm.html?item=${encodeURIComponent(nextEntry.itemName)}`,
-      520,
-      600
-    );
+    publishActivePendingMatch(activeConfirmItem);
+    openOrFocusWindow('nutritionConfirm.html', 520, 600);
     return;
   }
   activeConfirmItem = null;
+  publishActivePendingMatch(null);
 }
 
 function queueNutritionConfirmEntry(entry, { prioritize = false } = {}) {
@@ -495,11 +507,8 @@ function queueNutritionConfirmEntry(entry, { prioritize = false } = {}) {
 
   if (activeConfirmItem && activeConfirmItem.normalizedName === normalizedName) {
     activeConfirmItem = { ...normalizedEntry };
-    openOrFocusWindow(
-      `nutritionConfirm.html?item=${encodeURIComponent(itemName)}`,
-      520,
-      600
-    );
+    publishActivePendingMatch(activeConfirmItem);
+    openOrFocusWindow('nutritionConfirm.html', 520, 600);
     return;
   }
 
@@ -589,19 +598,11 @@ async function queueNutritionConfirmForItem(name, options = {}) {
     if (pending) {
       queueNutritionConfirmEntry(pending, options);
     } else {
-      openOrFocusWindow(
-        `nutritionConfirm.html?item=${encodeURIComponent(name)}`,
-        520,
-        600
-      );
+      openOrFocusWindow('nutritionConfirm.html', 520, 600);
     }
   } catch (err) {
     console.error('Unable to open nutrition confirmation window', err);
-    openOrFocusWindow(
-      `nutritionConfirm.html?item=${encodeURIComponent(name)}`,
-      520,
-      600
-    );
+    openOrFocusWindow('nutritionConfirm.html', 520, 600);
   }
 }
 
@@ -1025,6 +1026,11 @@ async function init() {
 
       if (!activeConfirmItem) {
         openNextPendingConfirm();
+      } else {
+        publishActivePendingMatch(activeConfirmItem);
+      }
+      if (!activeConfirmItem && !pendingConfirmQueue.length) {
+        publishActivePendingMatch(null);
       }
     }
     if (changes.fdcApiKey) {
