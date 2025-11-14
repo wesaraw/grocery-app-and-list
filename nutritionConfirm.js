@@ -10,6 +10,7 @@ import {
 import {
   persistIngredientSelection,
   searchFdcFoods,
+  searchBrandedFoodsByBrand,
   rankCandidates,
   MissingFdcApiKeyError
 } from './utils/fdcClient.js';
@@ -331,18 +332,14 @@ async function handleSearch(event) {
 
   setSearchLoading(true);
   if (brand) {
-    renderSearchStatus(`Searching Branded foods for "${query}" in brand "${brand}"…`);
+    renderSearchStatus(`Searching "${query}" across brand names and owners matching "${brand}"…`);
   } else {
-    renderSearchStatus('Searching…');
+    renderSearchStatus('Searching high-quality USDA foods…');
   }
   try {
-    const searchOptions = { pageSize: 25 };
-    if (brand) {
-      searchOptions.dataType = ['Branded'];
-      searchOptions.brandName = brand;
-      searchOptions.brandOwner = brand;
-    }
-    const foods = await searchFdcFoods(query, searchOptions);
+    const foods = brand
+      ? await searchBrandedFoodsByBrand(query, brand, { pageSize: 25 })
+      : await searchFdcFoods(query, { pageSize: 25 });
     const ranked = rankCandidates(pendingMatch.itemName || itemName || query, foods);
     const sanitized = ranked.map(candidate => {
       const { _original, ...rest } = candidate;
@@ -364,7 +361,7 @@ async function handleSearch(event) {
     pendingMatch = await getPendingMatch(itemName);
     renderCandidates();
 
-    const brandSuffix = brand ? ` in brand "${brand}"` : '';
+    const brandSuffix = brand ? ` for brand "${brand}"` : '';
     if (sanitized.length) {
       renderSearchStatus(
         `Showing ${sanitized.length} result${sanitized.length === 1 ? '' : 's'} for "${query}"${brandSuffix}.`,

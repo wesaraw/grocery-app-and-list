@@ -319,6 +319,44 @@ export async function searchFdcFoods(query, options = {}) {
   return response.foods || [];
 }
 
+export async function searchBrandedFoodsByBrand(query, brand, options = {}) {
+  const trimmedBrand = typeof brand === 'string' ? brand.trim() : '';
+  const sharedOptions = {
+    ...options,
+    pageSize: Math.min(options.pageSize || 25, MAX_PAGE_SIZE),
+    dataType: options.dataType || ['Branded']
+  };
+
+  if (!trimmedBrand) {
+    return await searchFdcFoods(query, sharedOptions);
+  }
+
+  const ownerOptions = { ...sharedOptions, brandOwner: trimmedBrand };
+  delete ownerOptions.brandName;
+  const nameOptions = { ...sharedOptions, brandName: trimmedBrand };
+  delete nameOptions.brandOwner;
+
+  const [ownerResults, nameResults] = await Promise.all([
+    searchFdcFoods(query, ownerOptions),
+    searchFdcFoods(query, nameOptions)
+  ]);
+
+  if (!Array.isArray(ownerResults) && !Array.isArray(nameResults)) {
+    return [];
+  }
+
+  const merged = [];
+  const seen = new Set();
+  [ownerResults || [], nameResults || []].forEach(list => {
+    list.forEach(food => {
+      if (!food || seen.has(food.fdcId)) return;
+      seen.add(food.fdcId);
+      merged.push(food);
+    });
+  });
+  return merged;
+}
+
 export async function fetchFoodDetails(fdcId) {
   if (!fdcId) throw new Error('fdcId is required');
   const apiKey = await getFdcApiKey();
