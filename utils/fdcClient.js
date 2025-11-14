@@ -22,6 +22,7 @@ const DEFAULT_THRESHOLD = 0.62;
 const STALE_MS = 1000 * 60 * 60 * 24 * 30;
 const MAX_PAGE_SIZE = 25;
 const FORM_KEYWORDS = ['raw', 'cooked', 'boiled', 'skinless', 'drained', 'dried', 'frozen', 'fresh'];
+const DEFAULT_HIGH_QUALITY_DATA_TYPES = Object.freeze(['Foundation', 'SR Legacy', 'Survey (FNDDS)']);
 const COOKING_STATE_KEYWORDS = {
   cooked: [
     'cooked',
@@ -282,17 +283,25 @@ async function fetchJson(url, options = {}) {
 export async function searchFdcFoods(query, options = {}) {
   const apiKey = await getFdcApiKey();
   if (!apiKey) throw new MissingFdcApiKeyError();
+  const brandName = typeof options.brandName === 'string' ? options.brandName.trim() : '';
+  const brandOwner = typeof options.brandOwner === 'string' ? options.brandOwner.trim() : '';
+  const hasBrandFilter = !!(brandName || brandOwner);
+  let dataType = options.dataType || options.includeDataTypes || null;
+  if (!dataType) {
+    dataType = DEFAULT_HIGH_QUALITY_DATA_TYPES.slice();
+    if (hasBrandFilter) {
+      dataType = [...dataType, 'Branded'];
+    }
+  }
   const body = {
     query,
     pageSize: Math.min(options.pageSize || 10, MAX_PAGE_SIZE),
     requireAllWords: false,
-    dataType: options.dataType || options.includeDataTypes || ['Foundation', 'SR Legacy', 'Survey (FNDDS)', 'Branded']
+    dataType
   };
-  const brandName = typeof options.brandName === 'string' ? options.brandName.trim() : '';
   if (brandName) {
     body.brandName = brandName;
   }
-  const brandOwner = typeof options.brandOwner === 'string' ? options.brandOwner.trim() : '';
   if (brandOwner) {
     body.brandOwner = brandOwner;
   }
