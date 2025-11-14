@@ -13,6 +13,7 @@ import {
   rankCandidates,
   MissingFdcApiKeyError
 } from './utils/fdcClient.js';
+import { markIngredientNutritionExempt } from './utils/ingredientStorage.js';
 
 let itemName = '';
 let pendingMatch = null;
@@ -24,6 +25,8 @@ let searchButtonEl = null;
 let searchSpinnerEl = null;
 let searchStatusEl = null;
 let skipButtonEl = null;
+let notFoodButtonEl = null;
+let markExemptInProgress = false;
 
 function renderStatus(message, type = 'info') {
   const statusEl = document.getElementById('status');
@@ -66,9 +69,12 @@ function enableConfirm(enabled) {
 
 function refreshActionButtons() {
   if (skipButtonEl) {
-    skipButtonEl.disabled = !pendingMatch;
+    skipButtonEl.disabled = !pendingMatch || markExemptInProgress;
   }
-  enableConfirm(!!pendingMatch && !!selectedFdcId);
+  if (notFoodButtonEl) {
+    notFoodButtonEl.disabled = !pendingMatch || markExemptInProgress;
+  }
+  enableConfirm(!!pendingMatch && !!selectedFdcId && !markExemptInProgress);
 }
 
 function renderCandidates({ emptyMessage } = {}) {
@@ -277,6 +283,30 @@ async function skipSelection() {
   refreshActionButtons();
 }
 
+async function markItemAsNotFood() {
+  if (!pendingMatch || !itemName || markExemptInProgress) return;
+  markExemptInProgress = true;
+  refreshActionButtons();
+  renderStatus('Marking item as not requiring nutrition data…');
+  try {
+    await markIngredientNutritionExempt(itemName);
+    await removePendingMatch(itemName);
+    await clearActivePendingMatchEntry();
+    pendingMatch = null;
+    selectedFdcId = null;
+    renderStatus('Marked as not requiring nutrition. Loading next item…', 'success');
+    renderSearchStatus('');
+    renderCandidates({ emptyMessage: 'Waiting for the next item…' });
+    setSearchLoading(false);
+  } catch (err) {
+    console.error('Unable to mark item as nutrition exempt', err);
+    renderStatus('Failed to mark item as not requiring nutrition. Please try again.', 'error');
+  } finally {
+    markExemptInProgress = false;
+    refreshActionButtons();
+  }
+}
+
 async function handleSearch(event) {
   event.preventDefault();
   if (!pendingMatch) {
@@ -362,6 +392,7 @@ document.addEventListener('DOMContentLoaded', () => {
   searchSpinnerEl = document.getElementById('searchSpinner');
   searchStatusEl = document.getElementById('searchStatus');
   skipButtonEl = document.getElementById('skipBtn');
+  notFoodButtonEl = document.getElementById('markNotFoodBtn');
   renderSearchStatus('');
   setSearchLoading(false);
   refreshActionButtons();
@@ -376,6 +407,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   if (skipButtonEl) {
     skipButtonEl.addEventListener('click', skipSelection);
+  }
+  if (notFoodButtonEl) {
+    notFoodButtonEl.addEventListener('click', markItemAsNotFood);
   }
   const searchForm = document.getElementById('searchForm');
   if (searchForm) {

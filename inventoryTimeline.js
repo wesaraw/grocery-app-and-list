@@ -12,7 +12,11 @@ import {
   rankCandidates,
   MissingFdcApiKeyError
 } from './utils/fdcClient.js';
-import { getIngredientByItemName, getIngredientMap } from './utils/ingredientStorage.js';
+import {
+  getIngredientMap,
+  isIngredientNutritionExempt,
+  clearIngredientNutritionExempt
+} from './utils/ingredientStorage.js';
 import { getFdcApiKey } from './utils/apiKeyStorage.js';
 import {
   getPendingMatch,
@@ -361,6 +365,23 @@ function buildGrid(items, headerState = {}, startWeek = 1) {
         await beginNutritionEdit(item);
         return;
       }
+      if (state === 'exempt') {
+        const shouldReenable = confirm(
+          'This item is marked as not requiring nutrition data. Re-enable nutrition syncing?'
+        );
+        if (!shouldReenable) return;
+        try {
+          await clearIngredientNutritionExempt(item.name);
+        } catch (err) {
+          console.error('Unable to clear nutrition exemption', err);
+        }
+        enqueueNutritionItem(item.name, { force: true, matchOptions: { force: true } });
+        nutritionDelayMs = NUTRITION_MIN_DELAY_MS;
+        if (!processingNutrition) {
+          processNutritionQueue();
+        }
+        return;
+      }
       enqueueNutritionItem(item.name, { force: false });
       nutritionDelayMs = NUTRITION_MIN_DELAY_MS;
       if (!processingNutrition) {
@@ -638,12 +659,20 @@ async function updateNutritionButtons() {
     const record = ingredientMap[normalized];
     const hasData = record && record.perGramVector && Object.keys(record.perGramVector).length;
     const stale = record ? isIngredientRecordStale(record) : false;
+    const nutritionExempt = isIngredientNutritionExempt(record);
     if (buttons?.info) {
-      buttons.info.title = hasData
-        ? 'View stored nutrition information'
-        : 'No nutrition data stored yet';
+      buttons.info.title = nutritionExempt
+        ? 'Nutrition data not required for this item'
+        : hasData
+          ? 'View stored nutrition information'
+          : 'No nutrition data stored yet';
     }
-    if (pendingKeys.has(normalized)) {
+    if (nutritionExempt) {
+      button.textContent = 'Nutrition Not Needed';
+      button.classList.remove('pending');
+      button.classList.remove('sync-needed');
+      button.dataset.state = 'exempt';
+    } else if (pendingKeys.has(normalized)) {
       button.textContent = 'Review Match';
       button.classList.add('pending');
       button.classList.remove('sync-needed');
@@ -733,6 +762,11 @@ async function processNutritionQueue() {
       return;
     } else if (result.status === 'no-results') {
       showTransientNutritionStatus(`No USDA FDC matches found for ${item.name}.`, 'warning');
+    } else if (result.status === 'nutrition-exempt') {
+      showTransientNutritionStatus(
+        `${item.name} marked as not requiring nutrition data.`,
+        'info'
+      );
     } else if (result.status === 'error') {
       success = false;
       errorMessage = result.error?.message || 'Unknown error';
@@ -793,6 +827,7 @@ async function scheduleNutritionBackfill(items = []) {
       const record = ingredientMap[normalized];
       const hasVector = record && record.perGramVector && Object.keys(record.perGramVector).length;
       const stale = record ? isIngredientRecordStale(record) : true;
+      if (isIngredientNutritionExempt(record)) return;
       if (!hasVector || stale) {
         enqueueNutritionItem(item.name);
       }
@@ -1139,16 +1174,29 @@ async function init() {
 
   const redoNutritionBtn = document.getElementById('redoNutrition');
   if (redoNutritionBtn) {
-    redoNutritionBtn.addEventListener('click', () => {
+    redoNutritionBtn.addEventListener('click', async () => {
       if (!globalItems.length) return;
       const shouldRedo = confirm(
         'Redo USDA nutrition pairing for every item? This may take a few minutes.'
       );
       if (!shouldRedo) return;
 
+      let ingredientMap = {};
+      try {
+        ingredientMap = await getIngredientMap();
+      } catch (err) {
+        console.error('Unable to load ingredient records before redo', err);
+      }
       let scheduled = 0;
       globalItems.forEach(item => {
         if (!item?.name) return;
+        const normalized = canonicalName(item.name);
+        if (normalized) {
+          const record = ingredientMap?.[normalized];
+          if (isIngredientNutritionExempt(record)) {
+            return;
+          }
+        }
         enqueueNutritionItem(item.name, {
           force: true,
           matchOptions: { force: true }

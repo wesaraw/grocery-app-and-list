@@ -1,6 +1,10 @@
 import { getFdcApiKey } from './apiKeyStorage.js';
 import { canonicalName } from './nameUtils.js';
-import { saveIngredient, getIngredientByItemName } from './ingredientStorage.js';
+import {
+  saveIngredient,
+  getIngredientByItemName,
+  isIngredientNutritionExempt
+} from './ingredientStorage.js';
 import { mapNutrientsFromDetails } from './fdcNutrientMap.js';
 
 const SEARCH_URL = 'https://api.nal.usda.gov/fdc/v1/foods/search';
@@ -418,7 +422,8 @@ async function persistIngredient(itemName, unitDefault, candidate, details, conf
     metadata: {
       searchQuery: itemName,
       brandOwner: details.brandOwner || candidate.brandOwner || '',
-      foodCategory: details.foodCategory || candidate.foodCategory || ''
+      foodCategory: details.foodCategory || candidate.foodCategory || '',
+      nutritionExempt: undefined
     }
   });
   return record;
@@ -447,8 +452,13 @@ export async function ensureIngredientRecordForItem(item, options = {}) {
   const itemCookingState = detectCookingState(itemTokens);
   const preferredCookingOrder = getCookingPreferenceOrder(itemCookingState);
   const existing = await getIngredientByItemName(item.name);
-  if (existing && !options.force && !isIngredientRecordStale(existing, maxAgeMs)) {
-    return { status: 'exists', record: existing };
+  if (existing && !options.force) {
+    if (isIngredientNutritionExempt(existing)) {
+      return { status: 'nutrition-exempt', record: existing };
+    }
+    if (!isIngredientRecordStale(existing, maxAgeMs)) {
+      return { status: 'exists', record: existing };
+    }
   }
   let foods;
   try {

@@ -86,8 +86,17 @@
     .actions {
       display: flex;
       justify-content: flex-end;
+      align-items: center;
       gap: 8px;
       margin-top: 12px;
+      flex-wrap: wrap;
+    }
+    .primary-actions {
+      display: flex;
+      gap: 8px;
+    }
+    #markNotFoodBtn {
+      margin-right: auto;
     }
     .status {
       margin-top: 10px;
@@ -125,8 +134,11 @@
   <div id="searchStatus" class="status search-status"></div>
   <div id="candidates"></div>
   <div class="actions">
-    <button id="confirmBtn" disabled>Confirm Selection</button>
-    <button id="skipBtn">Skip</button>
+    <button id="markNotFoodBtn" type="button">Mark as Not Food</button>
+    <div class="primary-actions">
+      <button id="confirmBtn" disabled>Confirm Selection</button>
+      <button id="skipBtn" type="button">Skip</button>
+    </div>
   </div>
   <div id="status" class="status"></div>
   <script type="module" src="nutritionConfirm.js"></script>

@@ -166,6 +166,36 @@ export async function getIngredientByItemName(name) {
   return map[key] || null;
 }
 
+export function isIngredientNutritionExempt(record) {
+  return record?.metadata?.nutritionExempt === true;
+}
+
+export async function setIngredientNutritionExempt(name, exempt = true) {
+  if (!name) return null;
+  const normalized = canonicalName(name);
+  if (!normalized) return null;
+  const existing = await getIngredientByItemName(name);
+  const metadataUpdate = {};
+  metadataUpdate.nutritionExempt = exempt ? true : undefined;
+  const payload = {
+    display_name: existing?.display_name || name,
+    name,
+    normalized_name: existing?.normalized_name || normalized,
+    unit_default: existing?.unit_default || existing?.unitDefault || 'g',
+    metadata: metadataUpdate,
+    last_checked_at: existing?.last_checked_at || new Date().toISOString()
+  };
+  return await saveIngredient(payload);
+}
+
+export async function markIngredientNutritionExempt(name) {
+  return await setIngredientNutritionExempt(name, true);
+}
+
+export async function clearIngredientNutritionExempt(name) {
+  return await setIngredientNutritionExempt(name, false);
+}
+
 export async function saveIngredient(record) {
   if (!record) return null;
   const map = await loadMap();

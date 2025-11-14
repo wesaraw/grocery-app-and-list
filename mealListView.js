@@ -27,7 +27,11 @@ import {
   nextUnusedItemId
 } from './utils/itemStorage.js';
 import { formatQuantity } from './utils/quantityFormat.js';
-import { getIngredientMap } from './utils/ingredientStorage.js';
+import {
+  getIngredientMap,
+  isIngredientNutritionExempt,
+  clearIngredientNutritionExempt
+} from './utils/ingredientStorage.js';
 import { updateMealNutritionTotals } from './utils/mealNutritionCalculator.js';
 import {
   NUTRIENT_DEFINITIONS,
@@ -703,6 +707,23 @@ function buildIngredientNutritionControls(ingredient) {
       await beginNutritionEdit(getIngredientContext(ingredient.name));
       return;
     }
+    if (state === 'exempt') {
+      const shouldReenable = confirm(
+        'This item is marked as not requiring nutrition data. Re-enable nutrition syncing?'
+      );
+      if (!shouldReenable) return;
+      try {
+        await clearIngredientNutritionExempt(ingredient.name);
+      } catch (err) {
+        console.error('Unable to clear nutrition exemption', err);
+      }
+      enqueueNutritionItem(ingredient.name, { force: true, matchOptions: { force: true } });
+      nutritionDelayMs = NUTRITION_MIN_DELAY_MS;
+      if (!processingNutrition) {
+        processNutritionQueue();
+      }
+      return;
+    }
     enqueueNutritionItem(ingredient.name, { force: false });
     nutritionDelayMs = NUTRITION_MIN_DELAY_MS;
     if (!processingNutrition) {
@@ -930,6 +951,11 @@ async function processNutritionQueue() {
       return;
     } else if (result.status === 'no-results') {
       showTransientNutritionStatus(`No USDA FDC matches found for ${item.name}.`, 'warning');
+    } else if (result.status === 'nutrition-exempt') {
+      showTransientNutritionStatus(
+        `${item.name} marked as not requiring nutrition data.`,
+        'info'
+      );
     } else if (result.status === 'error') {
       success = false;
       errorMessage = result.error?.message || 'Unknown error';
@@ -988,17 +1014,25 @@ async function updateNutritionButtons() {
       const record = map?.[normalized];
       const hasData = record && record.perGramVector && Object.keys(record.perGramVector).length;
       const stale = record ? isIngredientRecordStale(record) : false;
+      const nutritionExempt = isIngredientNutritionExempt(record);
       entries.forEach(buttons => {
         if (!buttons) return;
         const infoButton = buttons.info;
         const syncButton = buttons.sync;
         if (infoButton && infoButton.isConnected) {
-          infoButton.title = hasData
-            ? 'View stored nutrition information'
-            : 'No nutrition data stored yet';
+          infoButton.title = nutritionExempt
+            ? 'Nutrition data not required for this item'
+            : hasData
+              ? 'View stored nutrition information'
+              : 'No nutrition data stored yet';
         }
         if (!syncButton || !syncButton.isConnected) return;
-        if (pendingKeys.has(normalized)) {
+        if (nutritionExempt) {
+          syncButton.textContent = 'Nutrition Not Needed';
+          syncButton.classList.remove('pending');
+          syncButton.classList.remove('sync-needed');
+          syncButton.dataset.state = 'exempt';
+        } else if (pendingKeys.has(normalized)) {
           syncButton.textContent = 'Review Match';
           syncButton.classList.add('pending');
           syncButton.classList.remove('sync-needed');

@@ -434,6 +434,9 @@ async function commit() {
     } else if (result.status === 'no-results') {
       updateNutritionStatus('info', 'Item saved, but no nutrition matches were found.');
       scheduleClose(1200);
+    } else if (result.status === 'nutrition-exempt') {
+      updateNutritionStatus('success', 'Item saved. Nutrition data is not required.');
+      scheduleClose(800);
     } else if (result.status === 'matched' || result.status === 'updated' || result.status === 'exists') {
       updateNutritionStatus('success', 'Nutrition data synced successfully.');
       scheduleClose(600);
