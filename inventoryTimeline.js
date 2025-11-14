@@ -737,15 +737,23 @@ async function processNutritionQueue() {
   try {
     const result = await ensureIngredientRecordForItem(item, matchOptions);
     if (result.status === 'needs-confirmation') {
-      let pendingEntry = await getPendingMatch(item.name);
-      if (!pendingEntry) {
-        await setPendingMatch(item.name, {
-          candidates: result.candidates,
-          unitDefault: item.home_unit || item.unit_default || 'g',
-          source: 'timeline'
-        });
-        pendingEntry = await getPendingMatch(item.name);
+      if (result.reason === 'missing-fdc-record') {
+        showTransientNutritionStatus(
+          `The USDA record previously matched to ${item.name} is no longer available. Please select a new match or mark it as nutrition-exempt.`,
+          'warning'
+        );
       }
+      let pendingEntry = await getPendingMatch(item.name);
+      const pendingPayload = {
+        ...(pendingEntry || {}),
+        candidates: result.candidates,
+        unitDefault: item.home_unit || item.unit_default || 'g',
+        source: pendingEntry?.source || 'timeline',
+        reason: result.reason || pendingEntry?.reason || null,
+        missingFdcId: result.missingFdcId || pendingEntry?.missingFdcId || null
+      };
+      await setPendingMatch(item.name, pendingPayload);
+      pendingEntry = await getPendingMatch(item.name);
       if (pendingEntry) {
         queueNutritionConfirmEntry(pendingEntry, { prioritize: true });
       }

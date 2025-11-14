@@ -228,7 +228,14 @@ async function loadPending() {
   }
 
   if (itemEl) itemEl.textContent = pendingMatch.itemName || itemName;
-  renderStatus('Select the best nutrition match for this item.');
+  if (pendingMatch.reason === 'missing-fdc-record') {
+    renderStatus(
+      'The previously selected USDA entry is no longer available. Please choose another match or mark the item as not requiring nutrition.',
+      'warning'
+    );
+  } else {
+    renderStatus('Select the best nutrition match for this item.');
+  }
   renderCandidates();
   setSearchLoading(false);
   renderSearchStatus('');
@@ -266,7 +273,11 @@ async function confirmSelection() {
     refreshActionButtons();
   } catch (err) {
     console.error('Failed to persist selection', err);
-    renderStatus('Failed to save selection. Please try again.', 'error');
+    if (err?.code === 'MISSING_FDC_RECORD') {
+      renderStatus('That USDA entry is no longer available. Please pick a different match.', 'warning');
+    } else {
+      renderStatus('Failed to save selection. Please try again.', 'error');
+    }
     enableConfirm(true);
   }
 }

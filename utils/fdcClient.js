@@ -58,6 +58,15 @@ class MissingFdcApiKeyError extends Error {
   }
 }
 
+class MissingFdcRecordError extends Error {
+  constructor(fdcId) {
+    super('FDC record is no longer available');
+    this.name = 'MissingFdcRecordError';
+    this.code = 'MISSING_FDC_RECORD';
+    this.fdcId = fdcId;
+  }
+}
+
 function clamp(value, min = 0, max = 1) {
   if (value < min) return min;
   if (value > max) return max;
@@ -361,7 +370,14 @@ export async function fetchFoodDetails(fdcId) {
   if (!fdcId) throw new Error('fdcId is required');
   const apiKey = await getFdcApiKey();
   if (!apiKey) throw new MissingFdcApiKeyError();
-  return await fetchJson(`${DETAILS_URL(fdcId)}?api_key=${encodeURIComponent(apiKey)}`);
+  try {
+    return await fetchJson(`${DETAILS_URL(fdcId)}?api_key=${encodeURIComponent(apiKey)}`);
+  } catch (err) {
+    if (err?.status === 404) {
+      throw new MissingFdcRecordError(fdcId);
+    }
+    throw err;
+  }
 }
 
 function extractPortions(details) {
@@ -508,6 +524,11 @@ export async function ensureIngredientRecordForItem(item, options = {}) {
     return { status: 'error', error: err };
   }
   const ranked = rankCandidates(item.name, foods, { itemTokens });
+  const buildCandidateList = () =>
+    ranked.slice(0, options.maxCandidates ?? 3).map(c => {
+      const { _original, ...rest } = c;
+      return rest;
+    });
   if (!ranked.length) {
     return { status: 'no-results', candidates: [] };
   }
@@ -516,7 +537,7 @@ export async function ensureIngredientRecordForItem(item, options = {}) {
     return {
       status: 'needs-confirmation',
       itemName: item.name,
-      candidates: ranked.slice(0, options.maxCandidates ?? 3).map(c => { const { _original, ...rest } = c; return rest; }),
+      candidates: buildCandidateList(),
       threshold
     };
   }
@@ -529,6 +550,16 @@ export async function ensureIngredientRecordForItem(item, options = {}) {
   } catch (err) {
     if (err instanceof MissingFdcApiKeyError || err.code === 'MISSING_FDC_API_KEY') {
       return { status: 'missing-api-key', error: err };
+    }
+    if (err?.code === 'MISSING_FDC_RECORD') {
+      return {
+        status: 'needs-confirmation',
+        reason: 'missing-fdc-record',
+        itemName: item.name,
+        missingFdcId: best?.fdcId || null,
+        candidates: buildCandidateList(),
+        threshold
+      };
     }
     return { status: 'error', error: err };
   }
@@ -552,10 +583,13 @@ export async function refreshIngredientDetails(fdcId, context = {}) {
     if (err instanceof MissingFdcApiKeyError || err.code === 'MISSING_FDC_API_KEY') {
       return { error: err, status: 'missing-api-key' };
     }
+    if (err?.code === 'MISSING_FDC_RECORD') {
+      return { error: err, status: 'missing-record' };
+    }
     return { error: err, status: 'error' };
   }
 }
 
 export const DEFAULT_STALE_INGREDIENT_MS = STALE_MS;
 
-export { MissingFdcApiKeyError };
+export { MissingFdcApiKeyError, MissingFdcRecordError };
