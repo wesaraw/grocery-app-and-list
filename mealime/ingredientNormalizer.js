@@ -95,6 +95,8 @@ const UNIT_DESCRIPTORS = {
   "extra large": "extra-large",
 };
 
+const FALLBACK_INGREDIENT_NAME = "Unnamed ingredient";
+
 function normalizeFractionGlyphs(text) {
   return text.replace(/[¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]/g, match => ` ${UNICODE_FRACTIONS[match]} `);
 }
@@ -243,10 +245,13 @@ export function normalizeIngredient(text, warnings = []) {
   const tokensAfterDescriptor = remainingTokens.slice(descriptorResult.consumed);
   const unitResult = findUnit(tokensAfterDescriptor);
   const nameTokens = tokensAfterDescriptor.slice(unitResult.consumed);
+  const tokensFullyConsumed = quantityResult.consumed >= tokens.length;
+  const hasNameTokens = nameTokens.length > 0;
   const sizeInfo = parseParentheticalSize(segments);
   let quantity = quantityResult.quantity !== null ? Number(quantityResult.quantity.toFixed(3)) : null;
   let unit = unitResult.unit;
   const sizeDescriptor = descriptorResult.descriptor || unitResult.descriptor || null;
+  let inferredEachFromQuantity = false;
   if (quantity === null && sizeInfo) {
     quantity = sizeInfo.amount;
     unit = unit || sizeInfo.unit;
@@ -256,11 +261,17 @@ export function normalizeIngredient(text, warnings = []) {
   if (!unit && sizeDescriptor) {
     unit = "each";
   }
+  if (!unit && quantity !== null && (hasNameTokens || tokensFullyConsumed)) {
+    unit = "each";
+    inferredEachFromQuantity = true;
+  }
+  const ingredientName = nameTokens.join(" ").trim();
+  const resolvedName = ingredientName || FALLBACK_INGREDIENT_NAME;
   const ingredient = {
     originalText,
     quantity,
     unit,
-    name: nameTokens.join(" ").trim(),
+    name: resolvedName,
     sizeAmount: sizeInfo ? sizeInfo.amount : null,
     sizeUnit: sizeInfo ? sizeInfo.unit : null,
     sizeDescriptor,
@@ -268,11 +279,8 @@ export function normalizeIngredient(text, warnings = []) {
   if (ingredient.quantity === null) {
     warnings.push({ ingredient: originalText, reason: "quantity" });
   }
-  if (!ingredient.unit && !ingredient.sizeDescriptor) {
+  if (!ingredient.unit && !ingredient.sizeDescriptor && !inferredEachFromQuantity) {
     warnings.push({ ingredient: originalText, reason: "unit" });
-  }
-  if (!ingredient.name) {
-    ingredient.name = originalText;
   }
   return ingredient;
 }

@@ -127,4 +127,31 @@ function findWarning(warnings, reason) {
   assert.strictEqual(ingredient.name, "egg");
 })();
 
+(function testPlainCountsDefaultToEach() {
+  const warnings = [];
+  const ingredient = normalizeIngredient("6 eggs", warnings);
+  assert.strictEqual(ingredient.quantity, 6);
+  assert.strictEqual(ingredient.unit, "each");
+  assert.strictEqual(ingredient.name, "eggs");
+  assert.strictEqual(warnings.length, 0);
+})();
+
+(function testSingleEachDefault() {
+  const warnings = [];
+  const ingredient = normalizeIngredient("1 lemon", warnings);
+  assert.strictEqual(ingredient.quantity, 1);
+  assert.strictEqual(ingredient.unit, "each");
+  assert.strictEqual(ingredient.name, "lemon");
+  assert.strictEqual(warnings.length, 0);
+})();
+
+(function testQuantityOnlyRowGetsPlaceholderName() {
+  const warnings = [];
+  const ingredient = normalizeIngredient("3", warnings);
+  assert.strictEqual(ingredient.quantity, 3);
+  assert.strictEqual(ingredient.unit, "each");
+  assert.strictEqual(ingredient.name, "Unnamed ingredient");
+  assert.strictEqual(warnings.length, 0);
+})();
+
 console.log("mealimeIngredientNormalizerTest passed");
