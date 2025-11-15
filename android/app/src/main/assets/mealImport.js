@@ -167,6 +167,19 @@ function loadMeals(category) {
           } else {
             m.instructions = m.instructions.trim();
           }
+          if (typeof m.cookTime !== 'string') {
+            m.cookTime = m.cookTime ? String(m.cookTime) : '';
+          } else {
+            m.cookTime = m.cookTime.trim();
+          }
+          if (typeof m.sourceUrl !== 'string') {
+            m.sourceUrl = m.sourceUrl ? String(m.sourceUrl) : '';
+          } else {
+            m.sourceUrl = m.sourceUrl.trim();
+          }
+          if (!Array.isArray(m.importWarnings)) {
+            m.importWarnings = [];
+          }
           if (!Array.isArray(m.ingredients)) {
             m.ingredients = [];
           }
@@ -319,6 +332,14 @@ async function addMeal(meal, userCount) {
   const newMeal = {
     name: meal.name,
     recipeBook: meal.recipeBook || '',
+    instructions: typeof meal.instructions === 'string' ? meal.instructions.trim() : '',
+    cookTime: typeof meal.cookTime === 'string'
+      ? meal.cookTime.trim()
+      : typeof meal.time === 'string'
+        ? meal.time.trim()
+        : '',
+    sourceUrl: typeof meal.sourceUrl === 'string' ? meal.sourceUrl.trim() : '',
+    importWarnings: Array.isArray(meal.importWarnings) ? meal.importWarnings.slice() : [],
     ingredients: normalizedIngredients,
     users: usersArr,
     people: usersArr.filter(Boolean).length,
@@ -338,6 +359,16 @@ async function addMeal(meal, userCount) {
   arr.push(newMeal);
   await saveMeals(meal.category, arr);
   await calculateAndSaveMealNeeds();
+}
+
+let addMealHandler = addMeal;
+
+export function __setMealImportTestHooks(overrides = {}) {
+  if (overrides && typeof overrides.addMeal === 'function') {
+    addMealHandler = overrides.addMeal;
+  } else {
+    addMealHandler = addMeal;
+  }
 }
 
 export async function importMealsFromText(text, images = {}, progressCallbacks = {}) {
@@ -376,7 +407,7 @@ export async function importMealsFromText(text, images = {}, progressCallbacks =
       meal.image = null;
     }
     try {
-      await addMeal(meal, users.length);
+      await addMealHandler(meal, users.length);
       successCount += 1;
     } catch (error) {
       errors.push({ meal, error });
@@ -390,6 +421,50 @@ export async function importMealsFromText(text, images = {}, progressCallbacks =
   const summary = { total, successCount, errors };
   onComplete(summary);
   return summary;
+}
+
+export async function importMealFromMealime(recipeData = {}) {
+  await initializeMealCategories();
+  await initUomTable();
+  const users = await loadUsers();
+  const normalizedMeal = {
+    category: recipeData.category || 'lunchDinner',
+    name: recipeData.name || 'Mealime Recipe',
+    recipeBook: recipeData.recipeBook || 'Mealime',
+    instructions: typeof recipeData.instructions === 'string' ? recipeData.instructions : '',
+    cookTime: typeof recipeData.cookTime === 'string'
+      ? recipeData.cookTime
+      : typeof recipeData.time === 'string'
+        ? recipeData.time
+        : '',
+    time: typeof recipeData.time === 'string'
+      ? recipeData.time
+      : typeof recipeData.cookTime === 'string'
+        ? recipeData.cookTime
+        : '',
+    sourceUrl: typeof recipeData.sourceUrl === 'string' ? recipeData.sourceUrl : '',
+    importWarnings: Array.isArray(recipeData.importWarnings)
+      ? recipeData.importWarnings.slice()
+      : [],
+    ingredients: Array.isArray(recipeData.ingredients)
+      ? recipeData.ingredients.map(ingredient => ({ ...ingredient }))
+      : [],
+    users: Array.isArray(recipeData.users) ? recipeData.users.slice() : [],
+    prepared: !!recipeData.prepared,
+    prepAhead: !!recipeData.prepAhead,
+    image: recipeData.image || null,
+    weight: recipeData.weight,
+    totalPortions: sanitizePortionCount(recipeData.totalPortions ?? recipeData.servings),
+    group: recipeData.group ?? recipeData.groupMeal,
+  };
+  await addMealHandler(normalizedMeal, users.length);
+  return {
+    name: normalizedMeal.name,
+    totalPortions: normalizedMeal.totalPortions,
+    cookTime: normalizedMeal.cookTime,
+    warnings: normalizedMeal.importWarnings.slice(),
+    sourceUrl: normalizedMeal.sourceUrl,
+  };
 }
 
 function readFileAsDataURL(file) {
