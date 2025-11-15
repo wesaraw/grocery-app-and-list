@@ -62,6 +62,8 @@ function findWarning(warnings, reason) {
   assert.strictEqual(ingredient.quantity, 2);
   assert.strictEqual(ingredient.unit, "package");
   assert.strictEqual(ingredient.name, "baby arugula");
+  assert.strictEqual(ingredient.sizeAmount, 5);
+  assert.strictEqual(ingredient.sizeUnit, "oz");
   assert.strictEqual(warnings.length, 0);
 })();
 
@@ -71,6 +73,29 @@ function findWarning(warnings, reason) {
   assert.strictEqual(ingredient.quantity, 2);
   assert.strictEqual(ingredient.unit, "package");
   assert.strictEqual(ingredient.name, "baby arugula divided");
+  assert.strictEqual(ingredient.sizeAmount, 5);
+  assert.strictEqual(ingredient.sizeUnit, "oz");
+  assert.strictEqual(warnings.length, 0);
+})();
+
+(function testPackageSizeUsedWhenQuantityMissing() {
+  const warnings = [];
+  const ingredient = normalizeIngredient("(5 oz) baby arugula", warnings);
+  assert.strictEqual(ingredient.quantity, 5);
+  assert.strictEqual(ingredient.unit, "oz");
+  assert.strictEqual(ingredient.sizeAmount, 5);
+  assert.strictEqual(ingredient.sizeUnit, "oz");
+  assert.strictEqual(warnings.length, 0);
+})();
+
+(function testGoatCheeseLogCapturesSize() {
+  const warnings = [];
+  const ingredient = normalizeIngredient("1 (4 oz) log goat cheese", warnings);
+  assert.strictEqual(ingredient.quantity, 1);
+  assert.strictEqual(ingredient.unit, "log");
+  assert.strictEqual(ingredient.name, "goat cheese");
+  assert.strictEqual(ingredient.sizeAmount, 4);
+  assert.strictEqual(ingredient.sizeUnit, "oz");
   assert.strictEqual(warnings.length, 0);
 })();
 

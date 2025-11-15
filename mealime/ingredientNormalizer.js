@@ -74,6 +74,8 @@ const UNIT_SYNONYMS = {
   bunches: "bunch",
   head: "head",
   heads: "head",
+  log: "log",
+  logs: "log",
 };
 
 function normalizeFractionGlyphs(text) {
@@ -140,6 +142,47 @@ function findUnit(tokens) {
   return { unit: null, consumed: 0 };
 }
 
+function extractParentheticalSegments(text) {
+  const segments = [];
+  const without = text.replace(/\(([^)]*)\)/g, (_, inner) => {
+    const trimmed = inner.trim();
+    if (trimmed) {
+      segments.push(trimmed);
+    }
+    return " ";
+  });
+  return { textWithoutParentheses: without, segments };
+}
+
+function parseParentheticalSize(segments) {
+  for (const segment of segments) {
+    const normalized = normalizeFractionGlyphs(segment)
+      .replace(/(\d+)-(\d+\/\d+)/g, "$1 $2")
+      .replace(/[^\d\sa-z\/\.]/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!normalized) {
+      continue;
+    }
+    const tokens = normalized.split(/\s+/).filter(Boolean);
+    const quantityResult = parseQuantityTokens(tokens);
+    if (quantityResult.quantity === null) {
+      continue;
+    }
+    const remainingTokens = tokens.slice(quantityResult.consumed);
+    const unitResult = findUnit(remainingTokens);
+    if (!unitResult.unit) {
+      continue;
+    }
+    return {
+      amount: Number(quantityResult.quantity.toFixed(3)),
+      unit: unitResult.unit,
+      text: segment.trim(),
+    };
+  }
+  return null;
+}
+
 export function normalizeIngredient(text, warnings = []) {
   if (typeof text !== "string") {
     return null;
@@ -147,8 +190,8 @@ export function normalizeIngredient(text, warnings = []) {
   const originalText = text.trim();
   let working = normalizeFractionGlyphs(originalText)
     .replace(/(\d+)-(\d+\/\d+)/g, "$1 $2");
-  const sanitized = working
-    .replace(/\([^)]*\)/g, " ")
+  const { textWithoutParentheses, segments } = extractParentheticalSegments(working);
+  const sanitized = textWithoutParentheses
     .replace(/\s+/g, " ")
     .trim();
   const tokens = sanitized.split(/\s+/).filter(Boolean);
@@ -156,11 +199,22 @@ export function normalizeIngredient(text, warnings = []) {
   const remainingTokens = tokens.slice(quantityResult.consumed);
   const unitResult = findUnit(remainingTokens);
   const nameTokens = remainingTokens.slice(unitResult.consumed);
+  const sizeInfo = parseParentheticalSize(segments);
+  let quantity = quantityResult.quantity !== null ? Number(quantityResult.quantity.toFixed(3)) : null;
+  let unit = unitResult.unit;
+  if (quantity === null && sizeInfo) {
+    quantity = sizeInfo.amount;
+    unit = unit || sizeInfo.unit;
+  } else if (!unit && sizeInfo) {
+    unit = sizeInfo.unit;
+  }
   const ingredient = {
     originalText,
-    quantity: quantityResult.quantity !== null ? Number(quantityResult.quantity.toFixed(3)) : null,
-    unit: unitResult.unit,
+    quantity,
+    unit,
     name: nameTokens.join(" ").trim(),
+    sizeAmount: sizeInfo ? sizeInfo.amount : null,
+    sizeUnit: sizeInfo ? sizeInfo.unit : null,
   };
   if (ingredient.quantity === null) {
     warnings.push({ ingredient: originalText, reason: "quantity" });
