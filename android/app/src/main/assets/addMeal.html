@@ -8,6 +8,36 @@
     table { width: 100%; border-collapse: collapse; }
     th, td { border: 1px solid #ccc; padding: 4px; }
     input[type="text"], select { width: 100%; box-sizing: border-box; }
+    .mealime-box {
+      border: 1px solid #d0d0d0;
+      background: #f6f6f6;
+      padding: 8px;
+      margin: 8px 0;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .mealime-box h2 {
+      margin: 0 0 6px;
+      font-size: 16px;
+    }
+    .mealime-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+      flex-wrap: wrap;
+    }
+    .mealime-actions button {
+      flex: 1 1 auto;
+    }
+    .mealime-status {
+      min-height: 18px;
+      font-size: 12px;
+      margin-top: 6px;
+      white-space: pre-wrap;
+    }
+    .mealime-status.success { color: #0b5e3b; }
+    .mealime-status.error { color: #b3261e; }
+    .mealime-status.info { color: #444; }
     .error {
       animation: blink-bg 1s ease-in-out 0s 2;
       background-color: #ffcdd2;
@@ -20,6 +50,20 @@
 </head>
 <body>
   <h1 id="title"></h1>
+  <div class="mealime-box">
+    <h2>Import from Mealime</h2>
+    <p style="margin: 0 0 6px;">Paste a Mealime print link or ID and we’ll fill in the meal for you.</p>
+    <input type="text" id="mealimeTarget" placeholder="https://app.mealime.com/recipe_variants/12345/print or 12345">
+    <label style="display:flex; align-items:center; margin-top:6px; gap:6px; font-size:13px;">
+      <input type="checkbox" id="mealimeAugmentChk" checked>
+      Scan steps for missing amounts
+    </label>
+    <div class="mealime-actions">
+      <button type="button" id="mealimeImportBtn">Import Mealime Recipe</button>
+      <button type="button" id="mealimeClearBtn">Clear</button>
+    </div>
+    <div id="mealimeImportStatus" class="mealime-status info"></div>
+  </div>
   <table>
     <thead>
       <tr>
