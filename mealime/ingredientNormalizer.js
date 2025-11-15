@@ -76,6 +76,23 @@ const UNIT_SYNONYMS = {
   heads: "head",
   log: "log",
   logs: "log",
+  small: "each",
+  smaller: "each",
+  medium: "each",
+  large: "each",
+  larger: "each",
+  extralarge: "each",
+  "extra large": "each",
+};
+
+const UNIT_DESCRIPTORS = {
+  small: "small",
+  smaller: "small",
+  medium: "medium",
+  large: "large",
+  larger: "large",
+  extralarge: "extra-large",
+  "extra large": "extra-large",
 };
 
 function normalizeFractionGlyphs(text) {
@@ -122,7 +139,7 @@ function parseQuantityTokens(tokens) {
 
 function findUnit(tokens) {
   if (!tokens.length) {
-    return { unit: null, consumed: 0 };
+    return { unit: null, consumed: 0, descriptor: null };
   }
   const first = cleanToken(tokens[0]);
   const second = tokens[1] ? cleanToken(tokens[1]) : "";
@@ -136,10 +153,35 @@ function findUnit(tokens) {
   for (const combo of combos) {
     if (UNIT_SYNONYMS[combo]) {
       const consumed = combo.includes(" ") ? 2 : 1;
-      return { unit: UNIT_SYNONYMS[combo], consumed };
+      return {
+        unit: UNIT_SYNONYMS[combo],
+        consumed,
+        descriptor: UNIT_DESCRIPTORS[combo] || null,
+      };
     }
   }
-  return { unit: null, consumed: 0 };
+  return { unit: null, consumed: 0, descriptor: null };
+}
+
+function extractSizeDescriptor(tokens) {
+  if (!tokens.length) {
+    return { descriptor: null, consumed: 0 };
+  }
+  const first = cleanToken(tokens[0]);
+  const second = tokens[1] ? cleanToken(tokens[1]) : "";
+  const combos = [];
+  if (first && second) {
+    combos.push({ key: `${first} ${second}`, consumed: 2 });
+  }
+  if (first) {
+    combos.push({ key: first, consumed: 1 });
+  }
+  for (const combo of combos) {
+    if (UNIT_DESCRIPTORS[combo.key]) {
+      return { descriptor: UNIT_DESCRIPTORS[combo.key], consumed: combo.consumed };
+    }
+  }
+  return { descriptor: null, consumed: 0 };
 }
 
 function extractParentheticalSegments(text) {
@@ -197,16 +239,22 @@ export function normalizeIngredient(text, warnings = []) {
   const tokens = sanitized.split(/\s+/).filter(Boolean);
   const quantityResult = parseQuantityTokens(tokens);
   const remainingTokens = tokens.slice(quantityResult.consumed);
-  const unitResult = findUnit(remainingTokens);
-  const nameTokens = remainingTokens.slice(unitResult.consumed);
+  const descriptorResult = extractSizeDescriptor(remainingTokens);
+  const tokensAfterDescriptor = remainingTokens.slice(descriptorResult.consumed);
+  const unitResult = findUnit(tokensAfterDescriptor);
+  const nameTokens = tokensAfterDescriptor.slice(unitResult.consumed);
   const sizeInfo = parseParentheticalSize(segments);
   let quantity = quantityResult.quantity !== null ? Number(quantityResult.quantity.toFixed(3)) : null;
   let unit = unitResult.unit;
+  const sizeDescriptor = descriptorResult.descriptor || unitResult.descriptor || null;
   if (quantity === null && sizeInfo) {
     quantity = sizeInfo.amount;
     unit = unit || sizeInfo.unit;
   } else if (!unit && sizeInfo) {
     unit = sizeInfo.unit;
+  }
+  if (!unit && sizeDescriptor) {
+    unit = "each";
   }
   const ingredient = {
     originalText,
@@ -215,11 +263,12 @@ export function normalizeIngredient(text, warnings = []) {
     name: nameTokens.join(" ").trim(),
     sizeAmount: sizeInfo ? sizeInfo.amount : null,
     sizeUnit: sizeInfo ? sizeInfo.unit : null,
+    sizeDescriptor,
   };
   if (ingredient.quantity === null) {
     warnings.push({ ingredient: originalText, reason: "quantity" });
   }
-  if (!ingredient.unit) {
+  if (!ingredient.unit && !ingredient.sizeDescriptor) {
     warnings.push({ ingredient: originalText, reason: "unit" });
   }
   if (!ingredient.name) {

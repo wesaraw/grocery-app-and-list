@@ -99,4 +99,32 @@ function findWarning(warnings, reason) {
   assert.strictEqual(warnings.length, 0);
 })();
 
+(function testSizeDescriptorsInferEachUnit() {
+  const warnings = [];
+  const ingredient = normalizeIngredient("1 medium red onion", warnings);
+  assert.strictEqual(ingredient.quantity, 1);
+  assert.strictEqual(ingredient.unit, "each");
+  assert.strictEqual(ingredient.sizeDescriptor, "medium");
+  assert.strictEqual(ingredient.name, "red onion");
+  assert.ok(!findWarning(warnings, "unit"));
+})();
+
+(function testDescriptorBeforeActualUnit() {
+  const warnings = [];
+  const ingredient = normalizeIngredient("2 large bunch kale", warnings);
+  assert.strictEqual(ingredient.quantity, 2);
+  assert.strictEqual(ingredient.unit, "bunch");
+  assert.strictEqual(ingredient.sizeDescriptor, "large");
+  assert.strictEqual(ingredient.name, "kale");
+})();
+
+(function testExtraLargeDescriptorWithoutUnit() {
+  const warnings = [];
+  const ingredient = normalizeIngredient("1 extra-large egg", warnings);
+  assert.strictEqual(ingredient.quantity, 1);
+  assert.strictEqual(ingredient.unit, "each");
+  assert.strictEqual(ingredient.sizeDescriptor, "extra-large");
+  assert.strictEqual(ingredient.name, "egg");
+})();
+
 console.log("mealimeIngredientNormalizerTest passed");
