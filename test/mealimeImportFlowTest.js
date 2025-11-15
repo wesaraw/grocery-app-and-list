@@ -5,7 +5,35 @@ import { pathToFileURL } from 'url';
 const { window: parserWindow } = new JSDOM('<!DOCTYPE html>');
 global.DOMParser = parserWindow.DOMParser;
 
-const storage = { users: ['Test User'] };
+const storage = {
+  users: ['Test User'],
+  yearlyNeeds: [
+    {
+      name: 'pkgsbaby arugula',
+      total_needed_year: 52,
+      home_unit: 'oz',
+      treat_as_whole_unit: false,
+      category: 'produce'
+    }
+  ],
+  monthlyConsumption: [
+    { name: 'pkgsbaby arugula', monthly_consumption: 4, unit: 'oz' }
+  ],
+  currentStock: [
+    { name: 'pkgsbaby arugula', amount: 0, unit: 'oz' }
+  ],
+  expirationData: [
+    { name: 'pkgsbaby arugula', shelf_life_months: 4 }
+  ],
+  consumedThisYear: [
+    { name: 'pkgsbaby arugula', amount: 0, unit: 'oz' }
+  ],
+  storeSelections: [],
+  purchases: {},
+  densityRatios: {},
+  itemSeasons: {},
+  itemNameMap: { 'pkgsbaby arugula': '10' }
+};
 
 global.chrome = {
   runtime: {
@@ -126,6 +154,23 @@ if (typeof savedMeal.instructions !== 'string' || savedMeal.instructions.length 
 }
 if (summary.name !== savedMeal.name || summary.totalPortions !== savedMeal.totalPortions) {
   throw new Error('Summary metadata mismatch');
+}
+const arugulaEntries = (storage.yearlyNeeds || []).filter(entry => entry.name === 'pkgsbaby arugula');
+if (arugulaEntries.length !== 1) {
+  throw new Error('Existing inventory ingredient was duplicated during import');
+}
+const blackPepperEntry = (storage.yearlyNeeds || []).find(entry => entry.name === 'black pepper');
+if (!blackPepperEntry) {
+  throw new Error('New ingredients were not added to the inventory tables');
+}
+if (!blackPepperEntry.id || storage.itemNameMap['black pepper'] !== blackPepperEntry.id) {
+  throw new Error('Serialized ID for new ingredients was not persisted correctly');
+}
+if (!Array.isArray(summary.warnings) || !summary.warnings.some(w => /inventory timeline/i.test(w))) {
+  throw new Error('Inventory warnings were not surfaced to the summary');
+}
+if (!Array.isArray(savedMeal.importWarnings) || !savedMeal.importWarnings.some(w => /inventory timeline/i.test(w))) {
+  throw new Error('Meal import warnings do not include inventory notices');
 }
 
 console.log('mealimeImportFlowTest passed');
