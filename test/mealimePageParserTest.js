@@ -59,4 +59,35 @@ assert.strictEqual(result.warnings.length, 0);
   assert.strictEqual(parsed.rawIngredients[1], '1 cup cherry tomatoes');
 })();
 
+(function testRootLevelLineItems() {
+  const snippet = `
+    <html>
+      <body>
+        <h1>Root Line Items</h1>
+        <div class="description">30 minutes | serves 2</div>
+        <h2>Grab ingredients</h2>
+        <ul>
+          <li class="line-item">
+            <div class="quantity">2 (5 oz) pkgs</div>
+            <div class="ingredient">baby arugula</div>
+            <div class="notes">divided</div>
+          </li>
+          <li class="line-item">
+            <div class="ingredient">olive oil</div>
+          </li>
+        </ul>
+        <h2>Cook & enjoy</h2>
+        <ul>
+          <li>Mix ingredients</li>
+        </ul>
+      </body>
+    </html>
+  `;
+  const { window } = new JSDOM(snippet);
+  const parsed = parseMealimeDocument(window.document);
+  assert.strictEqual(parsed.rawIngredients.length, 2);
+  assert.strictEqual(parsed.rawIngredients[0], '2 (5 oz) pkgs baby arugula divided');
+  assert.strictEqual(parsed.rawIngredients[1], 'olive oil');
+})();
+
 console.log('✅ mealimePageParserTest passed');

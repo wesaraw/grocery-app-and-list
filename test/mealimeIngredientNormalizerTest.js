@@ -65,4 +65,13 @@ function findWarning(warnings, reason) {
   assert.strictEqual(warnings.length, 0);
 })();
 
+(function testPackageWithNotesFromParser() {
+  const warnings = [];
+  const ingredient = normalizeIngredient("2 (5 oz) pkgs baby arugula divided", warnings);
+  assert.strictEqual(ingredient.quantity, 2);
+  assert.strictEqual(ingredient.unit, "package");
+  assert.strictEqual(ingredient.name, "baby arugula divided");
+  assert.strictEqual(warnings.length, 0);
+})();
+
 console.log("mealimeIngredientNormalizerTest passed");

@@ -80,15 +80,11 @@ function extractListItemsFromHeading(heading) {
   return Array.from(list.querySelectorAll("li"));
 }
 
-function extractLineItemText(li) {
-  const lineItem = li.querySelector(".line-item");
-  if (!lineItem) {
-    return null;
-  }
+function collectLineItemSections(container) {
   const sections = ["quantity", "ingredient", "notes", "details"];
   const parts = [];
   sections.forEach(section => {
-    const nodes = lineItem.querySelectorAll(`.${section}`);
+    const nodes = container.querySelectorAll(`.${section}`);
     nodes.forEach(node => {
       const text = cleanText(node.textContent);
       if (text) {
@@ -96,6 +92,20 @@ function extractLineItemText(li) {
       }
     });
   });
+  return parts;
+}
+
+function extractLineItemText(li) {
+  let container = null;
+  if (li?.classList?.contains("line-item")) {
+    container = li;
+  } else {
+    container = li.querySelector(".line-item");
+  }
+  if (!container) {
+    return null;
+  }
+  const parts = collectLineItemSections(container);
   return parts.length ? cleanText(parts.join(" ")) : null;
 }
 
