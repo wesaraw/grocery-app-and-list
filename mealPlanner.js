@@ -9,6 +9,7 @@ import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { importMealsFromFiles, importMealFromMealime } from './mealImport.js';
 import { normalizeIngredientList } from './mealime/ingredientNormalizer.js';
 import { mergeStepQuantities } from './mealime/stepQuantityMerger.js';
+import { formatMealimeIngredientsForStorage } from './mealime/ingredientFormatter.js';
 import {
   backfillIngredientsFromSteps,
   filterResolvedIngredientWarnings,
@@ -200,6 +201,7 @@ function buildMealimeMeal(payload = {}, categoryId = getSelectedMealimeCategory(
   const { ingredients, warnings: ingredientWarnings } = normalizeIngredientList(payload.rawIngredients || []);
   const stepMerge = mergeStepQuantities(payload.rawSteps || [], ingredients);
   const resolutionMap = backfillIngredientsFromSteps(ingredients, stepMerge.stepQuantities || []);
+  formatMealimeIngredientsForStorage(ingredients);
   const filteredIngredientWarnings = filterResolvedIngredientWarnings(ingredientWarnings, resolutionMap);
   const ingredientWarningMessages = filteredIngredientWarnings
     .map(formatIngredientWarningEntry)

@@ -90,6 +90,7 @@ global.fetch = async url => {
 import { parseMealimeDocument } from '../mealime/pageParser.js';
 import { normalizeIngredientList } from '../mealime/ingredientNormalizer.js';
 import { mergeStepQuantities } from '../mealime/stepQuantityMerger.js';
+import { formatMealimeIngredientsForStorage } from '../mealime/ingredientFormatter.js';
 import {
   backfillIngredientsFromSteps,
   filterResolvedIngredientWarnings,
@@ -106,6 +107,7 @@ const parsed = parseMealimeDocument(fixtureDom.window.document, {
 const { ingredients, warnings: ingredientWarnings } = normalizeIngredientList(parsed.rawIngredients);
 const stepMerge = mergeStepQuantities(parsed.rawSteps, ingredients);
 const resolutionMap = backfillIngredientsFromSteps(ingredients, stepMerge.stepQuantities);
+formatMealimeIngredientsForStorage(ingredients);
 const filteredIngredientWarnings = filterResolvedIngredientWarnings(ingredientWarnings, resolutionMap);
 const warningMessages = [
   ...(parsed.warnings || []),
@@ -170,6 +172,9 @@ if (saltIngredient.quantity !== 1 || saltIngredient.unit !== 'tsp') {
 }
 if (!saltIngredient.derivedFromSteps) {
   throw new Error('Salt ingredient does not indicate it was derived from steps');
+}
+if (saltIngredient.amount !== '1 tsp') {
+  throw new Error('Salt ingredient did not surface its formatted amount string');
 }
 const warningContainsSalt = warningList =>
   Array.isArray(warningList) && warningList.some(warning => /unable to parse .*salt/i.test(warning));
