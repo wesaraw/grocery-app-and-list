@@ -6,6 +6,12 @@
   <style>
     body { font-family: Arial, sans-serif; width: 300px; }
     button { width: 100%; margin: 5px 0; }
+    #mealimeImporter { margin-top: 15px; padding-top: 10px; border-top: 1px solid #ddd; }
+    #mealimeStatus { margin-top: 6px; font-size: 0.9em; min-height: 1.2em; }
+    #mealimeSummary { margin-top: 10px; border: 1px solid #e0e0e0; padding: 8px; border-radius: 4px; background: #fafafa; }
+    #mealimeSummary .mealime-title { font-weight: bold; }
+    #mealimeSummary .mealime-meta { color: #555; font-size: 0.9em; margin-top: 2px; }
+    #mealimeWarnings ul { margin: 4px 0 0 0; padding-left: 18px; }
   </style>
 </head>
 <body>
@@ -19,6 +25,27 @@
   <div id="importProgress" style="display:none;margin-top:10px;">
     <progress id="importProgressBar" value="0" max="1" style="width:100%;"></progress>
     <div id="importProgressText" style="text-align:center;margin-top:4px;"></div>
+  </div>
+  <div id="mealimeImporter">
+    <h2 style="font-size:1.1em;margin:10px 0 6px;">Mealime Import</h2>
+    <label for="mealimeInput">Mealime URL or Recipe ID:</label>
+    <input id="mealimeInput" type="text" placeholder="https://app.mealime.com/..." style="width:100%;" />
+    <label for="mealimeCategory" style="display:block;margin-top:6px;">Add this recipe to:</label>
+    <select id="mealimeCategory" style="width:100%;"></select>
+    <button id="mealimeImportBtn">Fetch Mealime Recipe</button>
+    <button id="mealimeConfirmBtn" style="display:none;">Add Recipe to Meals</button>
+    <div id="mealimeStatus"></div>
+    <div id="mealimeSummary" style="display:none;">
+      <div id="mealimeRecipeTitle" class="mealime-title"></div>
+      <div id="mealimeRecipeMeta" class="mealime-meta"></div>
+      <div id="mealimeSourceContainer" style="display:none;margin-top:4px;font-size:0.85em;">
+        <a id="mealimeRecipeSource" href="#" target="_blank" rel="noopener">Open recipe in Mealime</a>
+      </div>
+      <div id="mealimeWarnings" style="display:none;margin-top:6px;">
+        <strong>Warnings:</strong>
+        <ul id="mealimeWarningList"></ul>
+      </div>
+    </div>
   </div>
   <div id="thresholdControls">
     <label for="thresholdUser">User:</label>
