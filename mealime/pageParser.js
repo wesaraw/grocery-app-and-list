@@ -80,10 +80,32 @@ function extractListItemsFromHeading(heading) {
   return Array.from(list.querySelectorAll("li"));
 }
 
+function extractLineItemText(li) {
+  const lineItem = li.querySelector(".line-item");
+  if (!lineItem) {
+    return null;
+  }
+  const sections = ["quantity", "ingredient", "notes", "details"];
+  const parts = [];
+  sections.forEach(section => {
+    const nodes = lineItem.querySelectorAll(`.${section}`);
+    nodes.forEach(node => {
+      const text = cleanText(node.textContent);
+      if (text) {
+        parts.push(text);
+      }
+    });
+  });
+  return parts.length ? cleanText(parts.join(" ")) : null;
+}
+
 function extractIngredients(document) {
   const heading = findHeading(document, "grab ingredients");
   const items = extractListItemsFromHeading(heading);
-  return items.map(li => cleanText(li.textContent)).filter(Boolean);
+  return items
+    .map(li => extractLineItemText(li) || cleanText(li.textContent))
+    .map(text => cleanText(text))
+    .filter(Boolean);
 }
 
 function extractSteps(document) {

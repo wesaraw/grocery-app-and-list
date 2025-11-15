@@ -60,6 +60,8 @@ const UNIT_SYNONYMS = {
   bags: "bag",
   can: "can",
   cans: "can",
+  pkg: "package",
+  pkgs: "package",
   stick: "stick",
   sticks: "stick",
   slice: "slice",
@@ -144,10 +146,12 @@ export function normalizeIngredient(text, warnings = []) {
   }
   const originalText = text.trim();
   let working = normalizeFractionGlyphs(originalText)
-    .replace(/(\d+)-(\d+\/\d+)/g, "$1 $2")
+    .replace(/(\d+)-(\d+\/\d+)/g, "$1 $2");
+  const sanitized = working
+    .replace(/\([^)]*\)/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-  const tokens = working.split(/\s+/).filter(Boolean);
+  const tokens = sanitized.split(/\s+/).filter(Boolean);
   const quantityResult = parseQuantityTokens(tokens);
   const remainingTokens = tokens.slice(quantityResult.consumed);
   const unitResult = findUnit(remainingTokens);

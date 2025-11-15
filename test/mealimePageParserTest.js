@@ -23,4 +23,40 @@ assert.ok(result.rawIngredients[0].toLowerCase().includes('baby arugula'));
 assert.ok(result.rawSteps[0].toLowerCase().includes('wash and dry the fresh produce'));
 assert.strictEqual(result.warnings.length, 0);
 
+(function testLineItemExtraction() {
+  const snippet = `
+    <html>
+      <body>
+        <h1>Sample Recipe</h1>
+        <div class="description">30 minutes | serves 2</div>
+        <h2>Grab ingredients</h2>
+        <ul>
+          <li>
+            <div class="line-item">
+              <div class="quantity">2 (5 oz) pkgs</div>
+              <div class="ingredient">baby arugula</div>
+              <div class="notes">divided</div>
+            </div>
+          </li>
+          <li>
+            <div class="line-item">
+              <div class="quantity">1 cup</div>
+              <div class="ingredient">cherry tomatoes</div>
+            </div>
+          </li>
+        </ul>
+        <h2>Cook & enjoy</h2>
+        <ul>
+          <li>Do a thing</li>
+        </ul>
+      </body>
+    </html>
+  `;
+  const { window } = new JSDOM(snippet);
+  const parsed = parseMealimeDocument(window.document);
+  assert.strictEqual(parsed.rawIngredients.length, 2);
+  assert.strictEqual(parsed.rawIngredients[0], '2 (5 oz) pkgs baby arugula divided');
+  assert.strictEqual(parsed.rawIngredients[1], '1 cup cherry tomatoes');
+})();
+
 console.log('✅ mealimePageParserTest passed');
