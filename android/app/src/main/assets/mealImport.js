@@ -10,6 +10,7 @@ import { getIngredientMap } from './utils/ingredientStorage.js';
 import { updateMealNutritionTotals } from './utils/mealNutritionCalculator.js';
 import { initUomTable } from './utils/uomConverter.js';
 import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
+import { createInventoryLookup } from './utils/inventoryLookup.js';
 import { loadGlobalProduceMeasures } from './utils/unitResolver.js';
 import { NUTRIENT_DEFINITIONS } from './utils/fdcNutrientMap.js';
 import { loadNutritionTargetLookup } from './utils/nutritionTargets.js';
@@ -97,45 +98,58 @@ const STORE_LINKS = {
     `https://www.hannaford.com/search/product?form_state=searchForm&keyword=${name.replace(/ /g, '+')}&ieDummyTextField=&productTypeId=P`
 };
 
-async function ensureItemExists(name, unit) {
-  const needs = await loadNeeds();
-  if (needs.find(n => n.name === name)) return;
+async function ensureItemExists(name, unit, inventoryContext) {
+  if (!name || !inventoryContext) return;
+  const {
+    needs = [],
+    consumption = [],
+    stock = [],
+    expiration = [],
+    consumed = [],
+    storeSelections = [],
+    purchases = {},
+    densityMap = {},
+    itemSeasons = {},
+    hasItemByCanonical,
+    markItemPresent,
+    getOrCreateItemId
+  } = inventoryContext;
+  if (hasItemByCanonical?.(name)) {
+    markItemPresent?.(name);
+    return;
+  }
   const normalizedUnit = unit?.trim() || DEFAULT_ITEM.unit;
-  const [consumption, stock, expiration, consumed, storeSelections, purchases, densityMap, itemSeasons] = await Promise.all([
-    loadConsumption(),
-    loadStock(),
-    loadExpiration(),
-    loadConsumed(),
-    loadStoreSelections(),
-    loadPurchases(),
-    loadDensityMap(),
-    loadItemSeasons()
-  ]);
-
-  needs.push({
+  const itemId = await getOrCreateItemId?.(name);
+  const withId = payload => (itemId != null ? { id: itemId, ...payload } : payload);
+  needs.push(withId({
     name,
     total_needed_year: DEFAULT_ITEM.yearly,
     home_unit: normalizedUnit,
     treat_as_whole_unit: false,
     category: DEFAULT_ITEM.category
-  });
-  consumption.push({ name, monthly_consumption: DEFAULT_ITEM.monthly, unit: normalizedUnit });
-  stock.push({ name, amount: 0, unit: normalizedUnit });
+  }));
+  consumption.push(withId({ name, monthly_consumption: DEFAULT_ITEM.monthly, unit: normalizedUnit }));
+  stock.push(withId({ name, amount: 0, unit: normalizedUnit }));
   const shelf = DEFAULT_ITEM.shelf / WEEKS_PER_MONTH;
-  expiration.push({ name, shelf_life_months: shelf });
-  consumed.push({ name, amount: 0, unit: normalizedUnit });
-  storeSelections.push(
-    { name, store: 'Stop & Shop', price: null, convertedQty: null, pricePerUnit: null, link: STORE_LINKS['Stop & Shop'](name), image: null },
-    { name, store: 'Walmart', price: null, convertedQty: null, pricePerUnit: null, link: STORE_LINKS['Walmart'](name), image: null },
-    { name, store: 'Amazon', price: null, convertedQty: null, pricePerUnit: null, link: STORE_LINKS['Amazon'](name), image: null },
-    { name, store: 'Shaws', price: null, convertedQty: null, pricePerUnit: null, link: STORE_LINKS['Shaws'](name), image: null },
-    { name, store: 'Roche Bros', price: null, convertedQty: null, pricePerUnit: null, link: STORE_LINKS['Roche Bros'](name), image: null },
-    { name, store: 'Hannaford', price: null, convertedQty: null, pricePerUnit: null, link: STORE_LINKS['Hannaford'](name), image: null }
+  expiration.push(withId({ name, shelf_life_months: shelf }));
+  consumed.push(withId({ name, amount: 0, unit: normalizedUnit }));
+  const storeRecords = Object.entries(STORE_LINKS).map(([storeName, builder]) =>
+    withId({
+      name,
+      store: storeName,
+      price: null,
+      convertedQty: null,
+      pricePerUnit: null,
+      link: builder(name),
+      image: null
+    })
   );
+  storeSelections.push(...storeRecords);
   densityMap[name] = { convert: false, ratio: 1 };
   if (!purchases[name]) purchases[name] = [];
   purchases[name].push({ purchase_week: getCurrentWeek(), quantity_purchased: 0, date_added: new Date().toISOString() });
-  itemSeasons[name] = [];
+  if (!itemSeasons[name]) itemSeasons[name] = [];
+  markItemPresent?.(name);
 
   await Promise.all([
     save('yearlyNeeds', needs),
@@ -166,6 +180,19 @@ function loadMeals(category) {
             m.instructions = '';
           } else {
             m.instructions = m.instructions.trim();
+          }
+          if (typeof m.cookTime !== 'string') {
+            m.cookTime = m.cookTime ? String(m.cookTime) : '';
+          } else {
+            m.cookTime = m.cookTime.trim();
+          }
+          if (typeof m.sourceUrl !== 'string') {
+            m.sourceUrl = m.sourceUrl ? String(m.sourceUrl) : '';
+          } else {
+            m.sourceUrl = m.sourceUrl.trim();
+          }
+          if (!Array.isArray(m.importWarnings)) {
+            m.importWarnings = [];
           }
           if (!Array.isArray(m.ingredients)) {
             m.ingredients = [];
@@ -295,8 +322,38 @@ async function addMeal(meal, userCount) {
         prepAhead: !!ing?.prepAhead
       }))
     : [];
+  if (!Array.isArray(meal.importWarnings)) {
+    meal.importWarnings = [];
+  }
+  let inventoryLookup = null;
+  const ensureLookupLoaded = async () => {
+    if (!inventoryLookup) {
+      inventoryLookup = await createInventoryLookup({
+        loadNeeds,
+        loadConsumption,
+        loadStock,
+        loadExpiration,
+        loadConsumed,
+        loadStoreSelections,
+        loadPurchases,
+        loadDensityMap,
+        loadItemSeasons
+      });
+    }
+    return inventoryLookup;
+  };
   for (const ing of normalizedIngredients) {
-    await ensureItemExists(ing.name, ing.unit);
+    if (!ing?.name) continue;
+    const lookup = await ensureLookupLoaded();
+    if (lookup.hasItemByCanonical?.(ing.name)) {
+      continue;
+    }
+    const existedInCatalog = lookup.hasSerializedId?.(ing.name);
+    const warning = existedInCatalog
+      ? `Ingredient "${ing.name}" existed in the catalog but was missing from the inventory timeline, so default entries were created.`
+      : `Ingredient "${ing.name}" was added to the inventory timeline.`;
+    meal.importWarnings.push(warning);
+    await ensureItemExists(ing.name, ing.unit, lookup);
   }
   const totalPortions = sanitizePortionCount(meal.totalPortions);
   let usersArr = meal.users || [];
@@ -319,6 +376,14 @@ async function addMeal(meal, userCount) {
   const newMeal = {
     name: meal.name,
     recipeBook: meal.recipeBook || '',
+    instructions: typeof meal.instructions === 'string' ? meal.instructions.trim() : '',
+    cookTime: typeof meal.cookTime === 'string'
+      ? meal.cookTime.trim()
+      : typeof meal.time === 'string'
+        ? meal.time.trim()
+        : '',
+    sourceUrl: typeof meal.sourceUrl === 'string' ? meal.sourceUrl.trim() : '',
+    importWarnings: Array.isArray(meal.importWarnings) ? meal.importWarnings.slice() : [],
     ingredients: normalizedIngredients,
     users: usersArr,
     people: usersArr.filter(Boolean).length,
@@ -338,6 +403,22 @@ async function addMeal(meal, userCount) {
   arr.push(newMeal);
   await saveMeals(meal.category, arr);
   await calculateAndSaveMealNeeds();
+}
+
+let addMealHandler = addMeal;
+
+export function __setMealImportTestHooks(overrides = {}) {
+  if (overrides && typeof overrides.addMeal === 'function') {
+    const { addMeal: interceptor, skipOriginal = false } = overrides;
+    addMealHandler = async (meal, userCount) => {
+      await interceptor(meal, userCount);
+      if (!skipOriginal) {
+        await addMeal(meal, userCount);
+      }
+    };
+  } else {
+    addMealHandler = addMeal;
+  }
 }
 
 export async function importMealsFromText(text, images = {}, progressCallbacks = {}) {
@@ -376,7 +457,7 @@ export async function importMealsFromText(text, images = {}, progressCallbacks =
       meal.image = null;
     }
     try {
-      await addMeal(meal, users.length);
+      await addMealHandler(meal, users.length);
       successCount += 1;
     } catch (error) {
       errors.push({ meal, error });
@@ -390,6 +471,50 @@ export async function importMealsFromText(text, images = {}, progressCallbacks =
   const summary = { total, successCount, errors };
   onComplete(summary);
   return summary;
+}
+
+export async function importMealFromMealime(recipeData = {}) {
+  await initializeMealCategories();
+  await initUomTable();
+  const users = await loadUsers();
+  const normalizedMeal = {
+    category: recipeData.category || 'lunchDinner',
+    name: recipeData.name || 'Mealime Recipe',
+    recipeBook: recipeData.recipeBook || 'Mealime',
+    instructions: typeof recipeData.instructions === 'string' ? recipeData.instructions : '',
+    cookTime: typeof recipeData.cookTime === 'string'
+      ? recipeData.cookTime
+      : typeof recipeData.time === 'string'
+        ? recipeData.time
+        : '',
+    time: typeof recipeData.time === 'string'
+      ? recipeData.time
+      : typeof recipeData.cookTime === 'string'
+        ? recipeData.cookTime
+        : '',
+    sourceUrl: typeof recipeData.sourceUrl === 'string' ? recipeData.sourceUrl : '',
+    importWarnings: Array.isArray(recipeData.importWarnings)
+      ? recipeData.importWarnings.slice()
+      : [],
+    ingredients: Array.isArray(recipeData.ingredients)
+      ? recipeData.ingredients.map(ingredient => ({ ...ingredient }))
+      : [],
+    users: Array.isArray(recipeData.users) ? recipeData.users.slice() : [],
+    prepared: !!recipeData.prepared,
+    prepAhead: !!recipeData.prepAhead,
+    image: recipeData.image || null,
+    weight: recipeData.weight,
+    totalPortions: sanitizePortionCount(recipeData.totalPortions ?? recipeData.servings),
+    group: recipeData.group ?? recipeData.groupMeal,
+  };
+  await addMealHandler(normalizedMeal, users.length);
+  return {
+    name: normalizedMeal.name,
+    totalPortions: normalizedMeal.totalPortions,
+    cookTime: normalizedMeal.cookTime,
+    warnings: normalizedMeal.importWarnings.slice(),
+    sourceUrl: normalizedMeal.sourceUrl,
+  };
 }
 
 function readFileAsDataURL(file) {
