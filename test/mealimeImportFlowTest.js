@@ -32,7 +32,11 @@ const storage = {
   purchases: {},
   densityRatios: {},
   itemSeasons: {},
-  itemNameMap: { 'pkgsbaby arugula': '10' }
+  itemNameMap: {
+    'pkgsbaby arugula': '10',
+    'red onion': '20',
+    'flour tortillas': '21'
+  }
 };
 
 global.chrome = {
@@ -191,6 +195,20 @@ const arugulaEntries = (storage.yearlyNeeds || []).filter(entry => entry.name ==
 if (arugulaEntries.length !== 1) {
   throw new Error('Existing inventory ingredient was duplicated during import');
 }
+const redOnionEntries = (storage.yearlyNeeds || []).filter(entry => entry.name === 'red onion');
+if (redOnionEntries.length !== 1) {
+  throw new Error('Red onion should have been added to the inventory tables');
+}
+if (redOnionEntries[0].id !== '20' || storage.itemNameMap['red onion'] !== '20') {
+  throw new Error('Red onion did not reuse its serialized inventory ID');
+}
+const tortillaEntries = (storage.yearlyNeeds || []).filter(entry => entry.name === 'flour tortillas');
+if (tortillaEntries.length !== 1) {
+  throw new Error('Flour tortillas should have been added to the inventory tables');
+}
+if (tortillaEntries[0].id !== '21' || storage.itemNameMap['flour tortillas'] !== '21') {
+  throw new Error('Flour tortillas did not reuse their serialized inventory ID');
+}
 const blackPepperEntry = (storage.yearlyNeeds || []).find(entry => entry.name === 'black pepper');
 if (!blackPepperEntry) {
   throw new Error('New ingredients were not added to the inventory tables');
@@ -198,6 +216,18 @@ if (!blackPepperEntry) {
 if (!blackPepperEntry.id || storage.itemNameMap['black pepper'] !== blackPepperEntry.id) {
   throw new Error('Serialized ID for new ingredients was not persisted correctly');
 }
+const summaryHasWarning = (text) => Array.isArray(summary.warnings)
+  && summary.warnings.some(w => /inventory timeline/i.test(w) && w.includes(text));
+const mealHasWarning = (text) => Array.isArray(savedMeal.importWarnings)
+  && savedMeal.importWarnings.some(w => /inventory timeline/i.test(w) && w.includes(text));
+['red onion', 'flour tortillas'].forEach(name => {
+  if (!summaryHasWarning(name)) {
+    throw new Error(`Summary does not surface the inventory warning for ${name}`);
+  }
+  if (!mealHasWarning(name)) {
+    throw new Error(`Saved meal warnings do not mention ${name}`);
+  }
+});
 if (!Array.isArray(summary.warnings) || !summary.warnings.some(w => /inventory timeline/i.test(w))) {
   throw new Error('Inventory warnings were not surfaced to the summary');
 }

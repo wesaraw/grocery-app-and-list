@@ -5,7 +5,7 @@ const noopArray = async () => [];
 const noopObject = async () => ({ });
 
 function buildCanonicalIndex() {
-  const index = new Map();
+  const index = new Set();
   return {
     has(rawName) {
       const key = canonicalName(rawName);
@@ -15,11 +15,19 @@ function buildCanonicalIndex() {
     add(rawName) {
       const key = canonicalName(rawName);
       if (!key) return;
-      if (!index.has(key)) {
-        index.set(key, rawName);
-      }
+      index.add(key);
     }
   };
+}
+
+function canonicalKey(name) {
+  const key = canonicalName(name);
+  if (key) return key;
+  if (typeof name === 'string') {
+    const trimmed = name.trim();
+    if (trimmed) return trimmed;
+  }
+  return name;
 }
 
 export async function createInventoryLookup(loaders = {}) {
@@ -59,21 +67,21 @@ export async function createInventoryLookup(loaders = {}) {
     getItemNameMap(),
   ]);
 
-  const canonicalIndex = buildCanonicalIndex();
-  const seedNames = entry => {
+  const timelineIndex = buildCanonicalIndex();
+  const serializedIndex = buildCanonicalIndex();
+  const seedTimelineName = entry => {
     if (entry && entry.name) {
-      canonicalIndex.add(entry.name);
+      timelineIndex.add(entry.name);
     }
   };
 
-  needs.forEach(seedNames);
-  consumption.forEach(seedNames);
-  stock.forEach(seedNames);
-  expiration.forEach(seedNames);
-  consumed.forEach(seedNames);
-  // Store selections are auto-populated for every catalog item, so only the
-  // core timeline tables plus known serialized names contribute to the lookup.
-  Object.keys(itemNameMap || {}).forEach(name => canonicalIndex.add(name));
+  needs.forEach(seedTimelineName);
+  consumption.forEach(seedTimelineName);
+  stock.forEach(seedTimelineName);
+  expiration.forEach(seedTimelineName);
+  consumed.forEach(seedTimelineName);
+
+  Object.keys(itemNameMap || {}).forEach(name => serializedIndex.add(name));
 
   return {
     needs,
@@ -86,18 +94,32 @@ export async function createInventoryLookup(loaders = {}) {
     densityMap,
     itemSeasons,
     hasItemByCanonical(name) {
-      return canonicalIndex.has(name);
+      return timelineIndex.has(name);
+    },
+    hasSerializedId(name) {
+      if (serializedIndex.has(name)) return true;
+      const key = canonicalKey(name);
+      if (!key) return false;
+      if (serializedIndex.has(key)) return true;
+      return Object.prototype.hasOwnProperty.call(itemNameMap || {}, key);
     },
     markItemPresent(name) {
-      canonicalIndex.add(name);
+      timelineIndex.add(name);
     },
     async getOrCreateItemId(name) {
       if (!name) return null;
-      if (itemNameMap[name]) {
-        return itemNameMap[name];
+      const key = canonicalKey(name);
+      if (key && itemNameMap[key]) {
+        return itemNameMap[key];
       }
       const id = nextUnusedItemId(itemNameMap);
-      itemNameMap[name] = id;
+      if (key) {
+        itemNameMap[key] = id;
+        serializedIndex.add(key);
+      } else {
+        itemNameMap[name] = id;
+        serializedIndex.add(name);
+      }
       await saveItemNameMap(itemNameMap);
       return id;
     },

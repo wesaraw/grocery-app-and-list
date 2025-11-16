@@ -110,10 +110,11 @@ async function ensureItemExists(name, unit, inventoryContext) {
     purchases = {},
     densityMap = {},
     itemSeasons = {},
+    hasItemByCanonical,
     markItemPresent,
     getOrCreateItemId
   } = inventoryContext;
-  if (needs.find(n => n.name === name)) {
+  if (hasItemByCanonical?.(name)) {
     markItemPresent?.(name);
     return;
   }
@@ -347,7 +348,10 @@ async function addMeal(meal, userCount) {
     if (lookup.hasItemByCanonical?.(ing.name)) {
       continue;
     }
-    const warning = `Ingredient "${ing.name}" was added to the inventory timeline.`;
+    const existedInCatalog = lookup.hasSerializedId?.(ing.name);
+    const warning = existedInCatalog
+      ? `Ingredient "${ing.name}" existed in the catalog but was missing from the inventory timeline, so default entries were created.`
+      : `Ingredient "${ing.name}" was added to the inventory timeline.`;
     meal.importWarnings.push(warning);
     await ensureItemExists(ing.name, ing.unit, lookup);
   }
