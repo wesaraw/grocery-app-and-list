@@ -1,7 +1,7 @@
 import { formatQuantity } from '../utils/quantityFormat.js';
 
 function buildSizeText(ingredient) {
-  if (!ingredient) return '';
+  if (!ingredient || ingredient.sizeUsedAsMeasurement) return '';
   const hasSizeAmount = typeof ingredient.sizeAmount === 'number' && Number.isFinite(ingredient.sizeAmount);
   const hasSizeUnit = typeof ingredient.sizeUnit === 'string' && ingredient.sizeUnit.trim().length > 0;
   if (!hasSizeAmount && !hasSizeUnit) {

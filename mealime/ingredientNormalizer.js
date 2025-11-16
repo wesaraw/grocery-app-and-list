@@ -64,6 +64,8 @@ const UNIT_SYNONYMS = {
   pkgs: "package",
   stick: "stick",
   sticks: "stick",
+  block: "block",
+  blocks: "block",
   slice: "slice",
   slices: "slice",
   piece: "piece",
@@ -96,6 +98,15 @@ const UNIT_DESCRIPTORS = {
 };
 
 const FALLBACK_INGREDIENT_NAME = "Unnamed ingredient";
+
+const CONTAINER_UNITS = new Set([
+  "package",
+  "bag",
+  "can",
+  "block",
+  "log",
+  "stick",
+]);
 
 function normalizeFractionGlyphs(text) {
   return text.replace(/[¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]/g, match => ` ${UNICODE_FRACTIONS[match]} `);
@@ -252,11 +263,25 @@ export function normalizeIngredient(text, warnings = []) {
   let unit = unitResult.unit;
   const sizeDescriptor = descriptorResult.descriptor || unitResult.descriptor || null;
   let inferredEachFromQuantity = false;
-  if (quantity === null && sizeInfo) {
+  let containerQuantity = null;
+  let containerUnit = null;
+  let sizeUsedAsMeasurement = false;
+  const unitIsContainer = unit && CONTAINER_UNITS.has(unit);
+  const hasUsableSizeInfo = Boolean(sizeInfo && typeof sizeInfo.amount === "number" && sizeInfo.unit);
+  if (hasUsableSizeInfo && quantity !== null && unitIsContainer) {
+    containerQuantity = quantity;
+    containerUnit = unit;
     quantity = sizeInfo.amount;
-    unit = unit || sizeInfo.unit;
-  } else if (!unit && sizeInfo) {
     unit = sizeInfo.unit;
+    sizeUsedAsMeasurement = true;
+  }
+  if (!sizeUsedAsMeasurement && hasUsableSizeInfo) {
+    if (quantity === null) {
+      quantity = sizeInfo.amount;
+      unit = unit || sizeInfo.unit;
+    } else if (!unit) {
+      unit = sizeInfo.unit;
+    }
   }
   if (!unit && sizeDescriptor) {
     unit = "each";
@@ -275,6 +300,9 @@ export function normalizeIngredient(text, warnings = []) {
     sizeAmount: sizeInfo ? sizeInfo.amount : null,
     sizeUnit: sizeInfo ? sizeInfo.unit : null,
     sizeDescriptor,
+    containerQuantity,
+    containerUnit,
+    sizeUsedAsMeasurement,
   };
   if (ingredient.quantity === null) {
     warnings.push({ ingredient: originalText, reason: "quantity" });

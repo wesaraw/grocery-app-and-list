@@ -59,22 +59,24 @@ function findWarning(warnings, reason) {
 (function testPackageQuantityWithParenthetical() {
   const warnings = [];
   const ingredient = normalizeIngredient("2 (5 oz) pkgs baby arugula", warnings);
-  assert.strictEqual(ingredient.quantity, 2);
-  assert.strictEqual(ingredient.unit, "package");
+  assert.strictEqual(ingredient.quantity, 5);
+  assert.strictEqual(ingredient.unit, "oz");
   assert.strictEqual(ingredient.name, "baby arugula");
-  assert.strictEqual(ingredient.sizeAmount, 5);
-  assert.strictEqual(ingredient.sizeUnit, "oz");
+  assert.strictEqual(ingredient.containerQuantity, 2);
+  assert.strictEqual(ingredient.containerUnit, "package");
+  assert.strictEqual(ingredient.sizeUsedAsMeasurement, true);
   assert.strictEqual(warnings.length, 0);
 })();
 
 (function testPackageWithNotesFromParser() {
   const warnings = [];
   const ingredient = normalizeIngredient("2 (5 oz) pkgs baby arugula divided", warnings);
-  assert.strictEqual(ingredient.quantity, 2);
-  assert.strictEqual(ingredient.unit, "package");
+  assert.strictEqual(ingredient.quantity, 5);
+  assert.strictEqual(ingredient.unit, "oz");
   assert.strictEqual(ingredient.name, "baby arugula divided");
-  assert.strictEqual(ingredient.sizeAmount, 5);
-  assert.strictEqual(ingredient.sizeUnit, "oz");
+  assert.strictEqual(ingredient.containerQuantity, 2);
+  assert.strictEqual(ingredient.containerUnit, "package");
+  assert.strictEqual(ingredient.sizeUsedAsMeasurement, true);
   assert.strictEqual(warnings.length, 0);
 })();
 
@@ -91,11 +93,48 @@ function findWarning(warnings, reason) {
 (function testGoatCheeseLogCapturesSize() {
   const warnings = [];
   const ingredient = normalizeIngredient("1 (4 oz) log goat cheese", warnings);
-  assert.strictEqual(ingredient.quantity, 1);
-  assert.strictEqual(ingredient.unit, "log");
+  assert.strictEqual(ingredient.quantity, 4);
+  assert.strictEqual(ingredient.unit, "oz");
   assert.strictEqual(ingredient.name, "goat cheese");
-  assert.strictEqual(ingredient.sizeAmount, 4);
-  assert.strictEqual(ingredient.sizeUnit, "oz");
+  assert.strictEqual(ingredient.containerQuantity, 1);
+  assert.strictEqual(ingredient.containerUnit, "log");
+  assert.strictEqual(ingredient.sizeUsedAsMeasurement, true);
+  assert.strictEqual(warnings.length, 0);
+})();
+
+(function testContainerSizeOverridesQuantityForCheddar() {
+  const warnings = [];
+  const ingredient = normalizeIngredient("1/2 (8 oz) block cheddar cheese", warnings);
+  assert.strictEqual(ingredient.quantity, 8);
+  assert.strictEqual(ingredient.unit, "oz");
+  assert.strictEqual(ingredient.containerQuantity, 0.5);
+  assert.strictEqual(ingredient.containerUnit, "block");
+  assert.strictEqual(ingredient.sizeUsedAsMeasurement, true);
+  assert.strictEqual(ingredient.name, "cheddar cheese");
+  assert.strictEqual(warnings.length, 0);
+})();
+
+(function testContainerSizeOverridesQuantityForTomatoes() {
+  const warnings = [];
+  const ingredient = normalizeIngredient("1 (14.5 oz) can fire-roasted tomatoes", warnings);
+  assert.strictEqual(ingredient.quantity, 14.5);
+  assert.strictEqual(ingredient.unit, "oz");
+  assert.strictEqual(ingredient.containerQuantity, 1);
+  assert.strictEqual(ingredient.containerUnit, "can");
+  assert.strictEqual(ingredient.sizeUsedAsMeasurement, true);
+  assert.strictEqual(ingredient.name, "fire-roasted tomatoes");
+  assert.strictEqual(warnings.length, 0);
+})();
+
+(function testContainerSizeOverridesQuantityForBeans() {
+  const warnings = [];
+  const ingredient = normalizeIngredient("1 (15 oz) can kidney beans", warnings);
+  assert.strictEqual(ingredient.quantity, 15);
+  assert.strictEqual(ingredient.unit, "oz");
+  assert.strictEqual(ingredient.containerQuantity, 1);
+  assert.strictEqual(ingredient.containerUnit, "can");
+  assert.strictEqual(ingredient.sizeUsedAsMeasurement, true);
+  assert.strictEqual(ingredient.name, "kidney beans");
   assert.strictEqual(warnings.length, 0);
 })();
 
