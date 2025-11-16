@@ -36,7 +36,8 @@ const storage = {
     'pkgsbaby arugula': '10',
     'red onion': '20',
     'flour tortillas': '21'
-  }
+  },
+  pendingIngredientMatches: {}
 };
 
 global.chrome = {
@@ -100,6 +101,7 @@ import {
   filterResolvedIngredientWarnings,
 } from '../mealime/ingredientBackfill.js';
 import { importMealFromMealime, __setMealImportTestHooks } from '../mealImport.js';
+import { setPendingMatch, getPendingMatch, clearPendingMatches } from '../utils/nutritionMatching.js';
 
 const fixturePath = 'Balsamic Chicken Wrap with Goat Cheese, Cranberries & Lemony Arugula.html';
 const fixtureHtml = fs.readFileSync(fixturePath, 'utf8');
@@ -136,11 +138,37 @@ const mealData = {
   importWarnings: warningMessages
 };
 
+await clearPendingMatches();
 const capturedMeals = [];
+const nutritionSyncCalls = {};
+const stubNutritionSync = async (ingredient, context = {}) => {
+  if (!ingredient || !ingredient.name) return;
+  const tracker = context.attemptedNames instanceof Set ? context.attemptedNames : null;
+  const normalized = ingredient.name.toLowerCase();
+  if (tracker) {
+    if (tracker.has(normalized)) {
+      return;
+    }
+    tracker.add(normalized);
+  }
+  nutritionSyncCalls[ingredient.name] = (nutritionSyncCalls[ingredient.name] || 0) + 1;
+  if (ingredient.name === 'red onion') {
+    await setPendingMatch(ingredient.name, {
+      candidates: [{ fdcId: 'test-red-onion', description: 'Red Onion' }],
+      unitDefault: ingredient.unit || 'each',
+      source: 'meal-import'
+    });
+    if (Array.isArray(context.warnings)) {
+      context.warnings.push('Nutrition data for "red onion" requires confirmation.');
+    }
+  }
+};
 __setMealImportTestHooks({
   addMeal: async meal => {
     capturedMeals.push(meal);
-  }
+  },
+  syncNutritionForNewItem: stubNutritionSync,
+  skipOriginalNutritionSync: true
 });
 
 const summary = await importMealFromMealime(mealData);
@@ -234,5 +262,33 @@ if (!Array.isArray(summary.warnings) || !summary.warnings.some(w => /inventory t
 if (!Array.isArray(savedMeal.importWarnings) || !savedMeal.importWarnings.some(w => /inventory timeline/i.test(w))) {
   throw new Error('Meal import warnings do not include inventory notices');
 }
+if ((nutritionSyncCalls['red onion'] || 0) !== 1) {
+  throw new Error('Red onion should trigger nutrition sync exactly once');
+}
+if ((nutritionSyncCalls['flour tortillas'] || 0) !== 1) {
+  throw new Error('Flour tortillas should trigger nutrition sync exactly once');
+}
+if (nutritionSyncCalls['pkgsbaby arugula']) {
+  throw new Error('Existing inventory items should not trigger nutrition sync');
+}
+const pendingRedOnion = await getPendingMatch('red onion');
+if (!pendingRedOnion || pendingRedOnion.source !== 'meal-import') {
+  throw new Error('Pending nutrition review was not recorded for red onion');
+}
+if (!Array.isArray(pendingRedOnion.candidates) || !pendingRedOnion.candidates.length) {
+  throw new Error('Pending nutrition review for red onion is missing candidates');
+}
+const summaryHasNutritionWarning = Array.isArray(summary.warnings)
+  && summary.warnings.some(w => /red onion/i.test(w) && /nutrition/i.test(w));
+if (!summaryHasNutritionWarning) {
+  throw new Error('Summary should mention the red onion nutrition confirmation warning');
+}
+const mealHasNutritionWarning = Array.isArray(savedMeal.importWarnings)
+  && savedMeal.importWarnings.some(w => /red onion/i.test(w) && /nutrition/i.test(w));
+if (!mealHasNutritionWarning) {
+  throw new Error('Saved meal should mention the red onion nutrition confirmation warning');
+}
+
+await clearPendingMatches();
 
 console.log('mealimeImportFlowTest passed');
