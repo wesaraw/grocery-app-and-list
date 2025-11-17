@@ -38,6 +38,7 @@ let ingredientMapCache = {};
 let densityMapCache = {};
 let globalProduceMeasuresCache = {};
 let nutritionTargetLookupCache = {};
+let ensureIngredientRecordForItemHandler = ensureIngredientRecordForItem;
 
 function sanitizePortionCount(value) {
   const num = typeof value === 'string' ? Number(value) : value;
@@ -169,13 +170,28 @@ async function ensureItemExists(name, unit, inventoryContext) {
 
 function resolveIngredientUnit(ingredient) {
   if (!ingredient || typeof ingredient !== 'object') return 'g';
-  const { sizeUnit, unit } = ingredient;
-  if (typeof sizeUnit === 'string' && sizeUnit.trim().length > 0) {
-    return sizeUnit.trim();
+  const sizeUnit = typeof ingredient.sizeUnit === 'string' ? ingredient.sizeUnit.trim() : '';
+  const unit = typeof ingredient.unit === 'string' ? ingredient.unit.trim() : '';
+  const containerUnit = typeof ingredient.containerUnit === 'string' ? ingredient.containerUnit.trim() : '';
+  const containerQuantityExists = typeof ingredient.containerQuantity === 'number' && Number.isFinite(ingredient.containerQuantity);
+  const unitIsEach = unit.toLowerCase() === 'each';
+
+  if (containerUnit && (unitIsEach || !unit || (ingredient.sizeUsedAsMeasurement && containerQuantityExists))) {
+    return containerUnit;
   }
-  if (typeof unit === 'string' && unit.trim().length > 0) {
-    return unit.trim();
+
+  if (sizeUnit) {
+    return sizeUnit;
   }
+
+  if (unit) {
+    return unit;
+  }
+
+  if (containerUnit) {
+    return containerUnit;
+  }
+
   return 'g';
 }
 
@@ -186,6 +202,12 @@ function resolveServingSizeText(ingredient) {
   }
   if (typeof ingredient.amount === 'string' && ingredient.amount.trim().length > 0) {
     return ingredient.amount.trim();
+  }
+  const containerQuantityIsNumber = typeof ingredient.containerQuantity === 'number' && Number.isFinite(ingredient.containerQuantity);
+  const containerUnitText = typeof ingredient.containerUnit === 'string' ? ingredient.containerUnit.trim() : '';
+  if (containerQuantityIsNumber && containerUnitText) {
+    const quantityText = `${ingredient.containerQuantity}`;
+    return `${quantityText} ${containerUnitText}`.trim();
   }
   if (typeof ingredient.quantity === 'number' && Number.isFinite(ingredient.quantity)) {
     const quantityText = `${ingredient.quantity}`;
@@ -269,7 +291,7 @@ async function syncNutritionForNewItem(ingredient, context = {}) {
   const unitForDefault = resolveIngredientUnit(ingredient) || 'g';
   const servingSize = resolveServingSizeText(ingredient);
   try {
-    const result = await ensureIngredientRecordForItem(
+    const result = await ensureIngredientRecordForItemHandler(
       {
         name: ingredient.name,
         home_unit: unitForDefault,
@@ -542,8 +564,10 @@ export function __setMealImportTestHooks(overrides = {}) {
   const {
     addMeal: addMealOverride,
     syncNutritionForNewItem: syncNutritionOverride,
+    ensureIngredientRecordForItem: ensureIngredientOverride,
     skipOriginal = false,
-    skipOriginalNutritionSync = false
+    skipOriginalNutritionSync = false,
+    skipOriginalEnsureIngredientRecordForItem = false
   } = overrides || {};
   if (typeof addMealOverride === 'function') {
     addMealHandler = async (meal, userCount) => {
@@ -564,6 +588,17 @@ export function __setMealImportTestHooks(overrides = {}) {
     };
   } else {
     syncNutritionForNewItemHandler = syncNutritionForNewItem;
+  }
+  if (typeof ensureIngredientOverride === 'function') {
+    ensureIngredientRecordForItemHandler = async (...args) => {
+      const overrideResult = await ensureIngredientOverride(...args);
+      if (!skipOriginalEnsureIngredientRecordForItem) {
+        return ensureIngredientRecordForItem(...args);
+      }
+      return overrideResult;
+    };
+  } else {
+    ensureIngredientRecordForItemHandler = ensureIngredientRecordForItem;
   }
 }
 
@@ -706,3 +741,9 @@ export async function importMealsFromFiles(fileList, progressCallbacks = {}) {
   const xmlText = await readFileAsText(xmlFile);
   return importMealsFromText(xmlText, images, progressCallbacks);
 }
+
+export const __mealImportInternals = {
+  resolveIngredientUnit,
+  resolveServingSizeText,
+  syncNutritionForNewItem
+};

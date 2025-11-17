@@ -289,6 +289,48 @@ if (!mealHasNutritionWarning) {
   throw new Error('Saved meal should mention the red onion nutrition confirmation warning');
 }
 
+(function testContainerInstructionsDoNotTriggerWarnings() {
+  const containerIngredient = {
+    name: 'black beans',
+    originalText: '1 (15 oz) can black beans',
+    quantity: 15,
+    unit: 'oz',
+    sizeAmount: 15,
+    sizeUnit: 'oz',
+    sizeUsedAsMeasurement: true,
+    containerQuantity: 1,
+    containerUnit: 'can',
+  };
+  const containerSteps = ['Add 1 can black beans to the pot.'];
+  const containerMerge = mergeStepQuantities(containerSteps, [containerIngredient]);
+  if (containerMerge.warnings.length) {
+    throw new Error('Container-based instructions should not emit warnings.');
+  }
+  if (containerMerge.discrepancies.length) {
+    throw new Error('Container-based instructions should not produce discrepancies.');
+  }
+  if (!Array.isArray(containerMerge.stepQuantities) || !containerMerge.stepQuantities.length) {
+    throw new Error('Expected normalized step quantities for container ingredients.');
+  }
+  const beansStep = containerMerge.stepQuantities[0];
+  if (beansStep.unit !== 'oz' || beansStep.quantity !== 15) {
+    throw new Error('Container instruction units should be converted to the base unit.');
+  }
+  const blankIngredient = {
+    ...containerIngredient,
+    quantity: null,
+    unit: null,
+  };
+  const resolution = backfillIngredientsFromSteps([blankIngredient], containerMerge.stepQuantities);
+  if (blankIngredient.quantity !== 15 || blankIngredient.unit !== 'oz') {
+    throw new Error('Backfill should capture the normalized quantity/unit from container mentions.');
+  }
+  const resolutionEntry = resolution.get(containerIngredient.originalText.trim().toLowerCase());
+  if (!resolutionEntry || !resolutionEntry.quantity || !resolutionEntry.unit) {
+    throw new Error('Resolution map should mark both quantity and unit as resolved for container ingredients.');
+  }
+})();
+
 await clearPendingMatches();
 
 console.log('mealimeImportFlowTest passed');

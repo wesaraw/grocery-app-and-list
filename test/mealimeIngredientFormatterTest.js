@@ -1,6 +1,7 @@
 import assert from 'assert';
 import { parseQuantity } from '../utils/calendarUtils.js';
 import { formatMealimeIngredientForStorage } from '../mealime/ingredientFormatter.js';
+import { __mealImportInternals, __setMealImportTestHooks } from '../mealImport.js';
 
 (function testFormatterUsesSizeMeasurementForBlocks() {
   const ingredient = {
@@ -101,5 +102,38 @@ import { formatMealimeIngredientForStorage } from '../mealime/ingredientFormatte
     assert(Math.abs(parsed.value - expectedValue) < 1e-6, 'Parsed value mismatch');
   });
 })();
+
+(async function testNutritionSyncUsesContainerUnitsForServingText() {
+  const capturedPayloads = [];
+  __setMealImportTestHooks({
+    ensureIngredientRecordForItem: async payload => {
+      capturedPayloads.push(payload);
+      return { status: 'ok' };
+    },
+    skipOriginalEnsureIngredientRecordForItem: true
+  });
+  try {
+    await __mealImportInternals.syncNutritionForNewItem({
+      name: 'Black Beans',
+      unit: 'oz',
+      sizeUnit: 'oz',
+      sizeAmount: 15,
+      sizeUsedAsMeasurement: true,
+      containerQuantity: 1,
+      containerUnit: 'can'
+    });
+  } finally {
+    __setMealImportTestHooks({});
+  }
+  assert.strictEqual(capturedPayloads.length, 1, 'Expected nutrition sync payload to be captured once');
+  const payload = capturedPayloads[0];
+  assert.strictEqual(payload.home_unit, 'can');
+  assert.strictEqual(payload.unit_default, 'can');
+  assert.strictEqual(payload.unit, 'can');
+  assert.strictEqual(payload.serving_size, '1 can');
+})().catch(error => {
+  console.error(error);
+  process.exitCode = 1;
+});
 
 console.log('mealimeIngredientFormatterTest passed');

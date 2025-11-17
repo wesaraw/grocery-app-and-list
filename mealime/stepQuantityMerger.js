@@ -299,6 +299,109 @@ function formatQuantity(value) {
   return Number(value.toFixed(3));
 }
 
+function normalizeUnitKey(unit) {
+  return typeof unit === 'string' ? unit.trim().toLowerCase() : '';
+}
+
+function findUnitKey(unitTotals, targetUnit) {
+  if (!(unitTotals instanceof Map)) {
+    return null;
+  }
+  if (!targetUnit) {
+    return null;
+  }
+  if (unitTotals.has(targetUnit)) {
+    return targetUnit;
+  }
+  const normalizedTarget = normalizeUnitKey(targetUnit);
+  for (const key of unitTotals.keys()) {
+    if (normalizeUnitKey(key) === normalizedTarget) {
+      return key;
+    }
+  }
+  return null;
+}
+
+function getContainerConversion(ingredient) {
+  if (!ingredient || typeof ingredient !== 'object') {
+    return null;
+  }
+  const containerUnit = normalizeUnitKey(ingredient.containerUnit);
+  const baseUnit = normalizeUnitKey(ingredient.unit);
+  const hasContainerUnit = containerUnit.length > 0;
+  const hasBaseUnit = baseUnit.length > 0;
+  const containerQuantity =
+    typeof ingredient.containerQuantity === 'number' && Number.isFinite(ingredient.containerQuantity)
+      ? ingredient.containerQuantity
+      : null;
+  const convertedQuantity =
+    typeof ingredient.quantity === 'number' && Number.isFinite(ingredient.quantity)
+      ? ingredient.quantity
+      : null;
+  if (!hasContainerUnit || !hasBaseUnit || !containerQuantity || !convertedQuantity) {
+    return null;
+  }
+  if (!ingredient.sizeUsedAsMeasurement || containerQuantity === 0) {
+    return null;
+  }
+  const factor = convertedQuantity / containerQuantity;
+  if (!Number.isFinite(factor) || factor <= 0) {
+    return null;
+  }
+  if (containerUnit === baseUnit) {
+    return null;
+  }
+  return {
+    fromUnit: containerUnit,
+    toUnit: baseUnit,
+    factor,
+  };
+}
+
+function applyContainerConversion(entry) {
+  if (!entry || typeof entry !== 'object') {
+    return;
+  }
+  const conversion = getContainerConversion(entry.ingredient);
+  if (!conversion) {
+    return;
+  }
+  const sourceKey = findUnitKey(entry.unitTotals, conversion.fromUnit);
+  if (!sourceKey) {
+    return;
+  }
+  const rawQuantity = entry.unitTotals.get(sourceKey);
+  if (typeof rawQuantity !== 'number' || Number.isNaN(rawQuantity)) {
+    return;
+  }
+  entry.unitTotals.delete(sourceKey);
+  const convertedQuantity = rawQuantity * conversion.factor;
+  if (!Number.isFinite(convertedQuantity)) {
+    return;
+  }
+  entry.unitTotals.set(
+    conversion.toUnit,
+    (entry.unitTotals.get(conversion.toUnit) || 0) + convertedQuantity
+  );
+  if (Array.isArray(entry.mentions) && entry.mentions.length > 0) {
+    const sourceUnitNormalized = normalizeUnitKey(conversion.fromUnit);
+    entry.mentions = entry.mentions.map(mention => {
+      if (!mention || normalizeUnitKey(mention.unit) !== sourceUnitNormalized) {
+        return mention;
+      }
+      const convertedMentionQuantity =
+        typeof mention.quantity === 'number'
+          ? formatQuantity(mention.quantity * conversion.factor)
+          : formatQuantity(conversion.factor);
+      return {
+        ...mention,
+        quantity: convertedMentionQuantity,
+        unit: conversion.toUnit,
+      };
+    });
+  }
+}
+
 function normalizeInstructions(rawSteps = []) {
   return (Array.isArray(rawSteps) ? rawSteps : [])
     .map(step => (typeof step === 'string' ? step.replace(/\r/g, '').replace(/\s+\n/g, '\n').trim() : ''))
@@ -308,6 +411,7 @@ function normalizeInstructions(rawSteps = []) {
 function summarizeTotals(totals, warnings, discrepancies) {
   const stepQuantities = [];
   totals.forEach(entry => {
+    applyContainerConversion(entry);
     const unitTotals = Array.from(entry.unitTotals.entries());
     if (!unitTotals.length) {
       return;
