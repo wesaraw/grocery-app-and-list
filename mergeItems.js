@@ -15,6 +15,7 @@ const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
 const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
 const STORE_SELECTION_KEY = 'storeSelections';
 const SIMILARITY_THRESHOLD = 0.82;
+const DISMISSED_PAIRS_KEY = 'dismissedDuplicatePairs';
 const STATUS = {
   LEAVE: 'leave',
   MERGE: 'merge',
@@ -49,7 +50,8 @@ const state = {
   searchTerm: '',
   isScanning: false,
   isApplying: false,
-  lastSnapshot: null
+  lastSnapshot: null,
+  dismissedPairs: new Set()
 };
 
 const statusEl = document.getElementById('status');
@@ -112,6 +114,35 @@ const loadConsumption = () => loadArrayWithFallback('monthlyConsumption', CONSUM
 const loadStock = () => loadArrayWithFallback('currentStock', STOCK_PATH);
 const loadExpiration = () => loadArrayWithFallback('expirationData', EXPIRATION_PATH);
 const loadStoreSelections = () => loadArrayWithFallback(STORE_SELECTION_KEY, STORE_SELECTION_PATH);
+
+function loadDismissedPairStore() {
+  return new Promise(resolve => {
+    chrome.storage.local.get(DISMISSED_PAIRS_KEY, data => {
+      const raw = data[DISMISSED_PAIRS_KEY];
+      if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+        resolve(raw);
+      } else {
+        resolve({});
+      }
+    });
+  });
+}
+
+function persistDismissedPairs() {
+  const payload = {};
+  state.dismissedPairs.forEach(key => {
+    payload[key] = true;
+  });
+  return new Promise(resolve => {
+    chrome.storage.local.set({ [DISMISSED_PAIRS_KEY]: payload }, () => resolve());
+  });
+}
+
+const pairKeyFromCanonicals = (a, b) => {
+  if (!a || !b) return null;
+  const [first, second] = [a, b].map(value => value || '').sort();
+  return `${first}__${second}`;
+};
 
 function loadMealsForType({ key, path }) {
   return new Promise(async resolve => {
@@ -185,11 +216,16 @@ function enrichItems(items, finalProducts, ingredientMap) {
     });
 }
 
-function buildDuplicateBatches(items) {
+function buildDuplicateBatches(items, dismissedPairs = new Set()) {
   if (!items.length) return [];
   const parent = items.map((_, idx) => idx);
   const pairMeta = new Map();
   let batchCounter = 0;
+
+  const isPairDismissed = (a, b) => {
+    const key = pairKeyFromCanonicals(items[a]?.canonical, items[b]?.canonical);
+    return key ? dismissedPairs.has(key) : false;
+  };
 
   const find = idx => {
     if (parent[idx] !== idx) {
@@ -219,14 +255,14 @@ function buildDuplicateBatches(items) {
   };
 
   const noteReason = (a, b, reason) => {
-    if (a === b) return;
+    if (a === b || isPairDismissed(a, b)) return;
     const meta = ensurePairMeta(a, b);
     if (reason) meta.reasons.add(reason);
     union(a, b);
   };
 
   const recordSimilarity = (a, b, score) => {
-    if (a === b) return;
+    if (a === b || isPairDismissed(a, b)) return;
     const meta = ensurePairMeta(a, b);
     meta.similarity = Math.max(meta.similarity ?? 0, score);
     meta.reasons.add(`Name similarity ${(score * 100).toFixed(0)}%`);
@@ -262,13 +298,15 @@ function buildDuplicateBatches(items) {
     if (list.length <= 1) return;
     list.forEach((a, idx) => {
       for (let j = idx + 1; j < list.length; j++) {
-        noteReason(a, list[j], `Share FDC ID ${fdcId}`);
+        const other = list[j];
+        noteReason(a, other, `Share FDC ID ${fdcId}`);
       }
     });
   });
 
   for (let i = 0; i < items.length; i++) {
     for (let j = i + 1; j < items.length; j++) {
+      if (isPairDismissed(i, j)) continue;
       const score = computeNameSimilarity(items[i].name, items[j].name);
       if (score >= SIMILARITY_THRESHOLD) {
         recordSimilarity(i, j, score);
@@ -555,6 +593,50 @@ function renderBatch(batch) {
 
   table.appendChild(tbody);
   batchContainer.appendChild(table);
+
+  const dismissWrapper = document.createElement('div');
+  dismissWrapper.className = 'batch-actions';
+  const dismissBtn = document.createElement('button');
+  dismissBtn.type = 'button';
+  dismissBtn.textContent = 'Don’t flag these again';
+  dismissBtn.addEventListener('click', () => handleDismissBatch(batch));
+  dismissWrapper.appendChild(dismissBtn);
+  batchContainer.appendChild(dismissWrapper);
+}
+
+async function handleDismissBatch(batch) {
+  if (!batch?.candidates?.length) return;
+  const canonicals = Array.from(
+    new Set(batch.candidates.map(candidate => candidate.canonical).filter(Boolean))
+  );
+  if (canonicals.length < 2) {
+    setStatus('Not enough unique items to dismiss this batch.');
+    return;
+  }
+  const confirmMessage =
+    canonicals.length === 2
+      ? `Stop flagging “${batch.candidates[0].name}” with “${batch.candidates[1].name}”?`
+      : 'Stop flagging all combinations in this batch as potential duplicates?';
+  const proceed = window.confirm(confirmMessage);
+  if (!proceed) return;
+  let added = 0;
+  for (let i = 0; i < canonicals.length; i++) {
+    for (let j = i + 1; j < canonicals.length; j++) {
+      const key = pairKeyFromCanonicals(canonicals[i], canonicals[j]);
+      if (!key) continue;
+      if (!state.dismissedPairs.has(key)) {
+        state.dismissedPairs.add(key);
+        added += 1;
+      }
+    }
+  }
+  if (!added) {
+    setStatus('These items were already dismissed.');
+    return;
+  }
+  await persistDismissedPairs();
+  setStatus('This batch will no longer be flagged as similar.');
+  await rescanInventory();
 }
 
 function updateDecision(batchId, originalIndex, value) {
@@ -615,12 +697,17 @@ async function rescanInventory() {
   nextBatchBtn.disabled = true;
 
   try {
-    const needs = await loadNeeds();
-    const ingredientMap = await getIngredientMap();
+    const [needs, ingredientMap, dismissedStore] = await Promise.all([
+      loadNeeds(),
+      getIngredientMap(),
+      loadDismissedPairStore()
+    ]);
     const itemNames = needs.map(item => item?.name).filter(Boolean);
     const finalProducts = await loadFinalProducts(itemNames);
     state.items = enrichItems(needs, finalProducts, ingredientMap);
-    state.batches = buildDuplicateBatches(state.items);
+    const dismissedPairs = new Set(Object.keys(dismissedStore || {}));
+    state.dismissedPairs = dismissedPairs;
+    state.batches = buildDuplicateBatches(state.items, dismissedPairs);
     state.currentIndex = state.batches.length ? 0 : -1;
     refreshFilteredOrder();
     updateApplyButtonState();
