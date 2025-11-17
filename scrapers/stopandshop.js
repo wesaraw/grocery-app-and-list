@@ -1,6 +1,10 @@
 import { getImageSrc } from "../utils/imageUtils.js";
 import { parsePriceNumber } from "../utils/priceUtils.js";
 import { roundQuantity } from "../utils/quantityFormat.js";
+import {
+  getStopAndShopProductName,
+  sanitizeStopAndShopText
+} from "../utils/stopAndShopProductName.js";
 export function scrapeStopAndShop() {
   const UNIT_FACTORS = {
     oz: 1,
@@ -77,48 +81,7 @@ export function scrapeStopAndShop() {
     'unit'
   ]);
 
-  function sanitize(str) {
-    return str
-      ?.replace(/<[^>]*>/g, ' ')
-      .replace(/&nbsp;|&#160;/gi, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-  }
-
-  function getProductName(tile) {
-    if (!tile) return null;
-    const selectors = [
-      '.product-grid-cell_name-text',
-      '.product-grid-cell_name',
-      '.product-grid-cell_title',
-      '.product-tile_detail-name',
-      '.product-grid-cell_price-container > .sr-only'
-    ];
-    for (const selector of selectors) {
-      const text = sanitize(tile.querySelector(selector)?.textContent);
-      if (text && !/^(sale|original) price$/i.test(text)) {
-        return text;
-      }
-    }
-    const linkWithLabel =
-      tile.querySelector('a[data-opens-modal="true"][aria-label]') ||
-      tile.querySelector('a[href*="/product/"][aria-label]');
-    const ariaLabel = sanitize(linkWithLabel?.getAttribute('aria-label'));
-    if (ariaLabel) {
-      return ariaLabel;
-    }
-    const titleAttr = sanitize(tile.querySelector('a[href*="/product/"][title]')?.getAttribute('title'));
-    if (titleAttr) {
-      return titleAttr;
-    }
-    const imgAlt = sanitize(
-      tile.querySelector('.product-grid-cell_main-image[alt], img[alt]')?.getAttribute('alt')
-    );
-    if (imgAlt) {
-      return imgAlt;
-    }
-    return null;
-  }
+  const sanitize = sanitizeStopAndShopText;
 
   const UNIT_PHRASE_REPLACEMENTS = {
     'dry pint': 'pt',
@@ -168,7 +131,7 @@ export function scrapeStopAndShop() {
   const products = [];
   const tiles = document.querySelectorAll('li.tile.product-cell.product-grid-cell');
   tiles.forEach(tile => {
-    const name = getProductName(tile);
+    const name = getStopAndShopProductName(tile);
 
     const priceText = tile.querySelector('.product-grid-cell_main-price')?.textContent?.trim();
 

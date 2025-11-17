@@ -48,6 +48,17 @@ import(chrome.runtime.getURL("utils/quantityFormat.js"))
   })
   .catch(() => {});
 
+let getStopAndShopProductName = () => null;
+const stopAndShopHelperReady = import(
+  chrome.runtime.getURL("utils/stopAndShopProductName.js")
+)
+  .then(mod => {
+    if (mod && typeof mod.getStopAndShopProductName === "function") {
+      getStopAndShopProductName = mod.getStopAndShopProductName;
+    }
+  })
+  .catch(() => {});
+
 function clampQuantity(value) {
   return value == null ? value : roundQuantity(value);
 }
@@ -223,7 +234,7 @@ function scrapeStopAndShop() {
   console.log(`🧱 Found ${tiles.length} product tiles`);
   tiles.forEach((tile, index) => {
     console.log(`🔍 Tile ${index + 1} innerHTML:`, tile.innerHTML);
-    const name = tile.querySelector('.product-grid-cell_price-container > .sr-only')?.innerText?.trim();
+    const name = getStopAndShopProductName(tile);
 
     const priceText = tile.querySelector('.product-grid-cell_main-price')?.innerText?.trim();
 
@@ -1282,27 +1293,29 @@ function scrapeHannaford() {
 }
 
 function runScrape(attempt = 0) {
-  chrome.storage.local.get('currentItemInfo', info => {
-    const { item = '', store = 'Stop & Shop' } = info.currentItemInfo || {};
-    let data = [];
-    if (store === 'Stop & Shop') {
-      data = scrapeStopAndShop();
-    } else if (store === 'Walmart') {
-      data = scrapeWalmart();
-    } else if (store === 'Amazon') {
-      data = scrapeAmazon();
-    } else if (store === 'Shaws') {
-      data = scrapeShaws();
-    } else if (store === 'Roche Bros') {
-      data = scrapeRocheBros();
-    } else if (store === 'Hannaford') {
-      data = scrapeHannaford();
-    }
-    if (!data.length && attempt < 5) {
-      setTimeout(() => runScrape(attempt + 1), 1000);
-      return;
-    }
-    chrome.runtime.sendMessage({ type: 'scrapedData', item, store, products: data });
+  stopAndShopHelperReady.finally(() => {
+    chrome.storage.local.get('currentItemInfo', info => {
+      const { item = '', store = 'Stop & Shop' } = info.currentItemInfo || {};
+      let data = [];
+      if (store === 'Stop & Shop') {
+        data = scrapeStopAndShop();
+      } else if (store === 'Walmart') {
+        data = scrapeWalmart();
+      } else if (store === 'Amazon') {
+        data = scrapeAmazon();
+      } else if (store === 'Shaws') {
+        data = scrapeShaws();
+      } else if (store === 'Roche Bros') {
+        data = scrapeRocheBros();
+      } else if (store === 'Hannaford') {
+        data = scrapeHannaford();
+      }
+      if (!data.length && attempt < 5) {
+        setTimeout(() => runScrape(attempt + 1), 1000);
+        return;
+      }
+      chrome.runtime.sendMessage({ type: 'scrapedData', item, store, products: data });
+    });
   });
 }
 
