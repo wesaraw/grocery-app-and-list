@@ -345,10 +345,11 @@ function buildDensitySettings(info = {}) {
 }
 
 function resolveViaDensity(value, unit, densityInfo, record, ingredientTokens) {
-  if (!densityInfo || densityInfo.convert === false) return null;
+  if (!densityInfo) return null;
   if (!Number.isFinite(value) || value <= 0) return null;
   const normalizedUnit = typeof unit === 'string' ? unit.trim().toLowerCase() : '';
   if (!normalizedUnit) return null;
+  const allowVolumeToWeight = densityInfo.convert !== false;
   const densitySettings = buildDensitySettings(densityInfo);
   const normalizedResult = computeNormalizedQuantity(value, normalizedUnit, densitySettings);
   if (
@@ -379,17 +380,20 @@ function resolveViaDensity(value, unit, densityInfo, record, ingredientTokens) {
       viaMeasure.source || (densityInfo.__fallback ? 'density:fallback' : densityInfo.source || 'density');
     return { ...viaMeasure, source: derivedSource };
   }
-  const convertableUnit = MASS_UNIT_FACTORS[normalizedUnit] != null || VOLUME_UNITS.has(normalizedUnit) || densityInfo.normalized;
-  if (!convertableUnit) return null;
-  const ouncesViaDensity = convertWithDensity(value, normalizedUnit, 'oz', densitySettings);
-  if (Number.isFinite(ouncesViaDensity) && ouncesViaDensity > 0) {
-    const gramsFromOunces = gramsFromKnownMass(ouncesViaDensity, 'oz');
-    if (gramsFromOunces != null) {
-      const source = densityInfo.__fallback ? 'density:fallback' : densityInfo.source || 'density';
-      return { grams: gramsFromOunces, source, confidence: densityInfo.confidence || 'low', sizeTag: null };
+  const isMassUnit = MASS_UNIT_FACTORS[normalizedUnit] != null;
+  const isVolumeUnit = VOLUME_UNITS.has(normalizedUnit);
+  const convertableUnit = isMassUnit || isVolumeUnit || densityInfo.normalized;
+  if ((allowVolumeToWeight || isMassUnit) && convertableUnit) {
+    const ouncesViaDensity = convertWithDensity(value, normalizedUnit, 'oz', densitySettings);
+    if (Number.isFinite(ouncesViaDensity) && ouncesViaDensity > 0) {
+      const gramsFromOunces = gramsFromKnownMass(ouncesViaDensity, 'oz');
+      if (gramsFromOunces != null) {
+        const source = densityInfo.__fallback ? 'density:fallback' : densityInfo.source || 'density';
+        return { grams: gramsFromOunces, source, confidence: densityInfo.confidence || 'low', sizeTag: null };
+      }
     }
   }
-  if (MASS_UNIT_FACTORS[normalizedUnit] != null || VOLUME_UNITS.has(normalizedUnit)) {
+  if (isMassUnit || (allowVolumeToWeight && isVolumeUnit)) {
     const converted = convertQuantity(value, normalizedUnit, 'g');
     if (converted != null) {
       const source = densityInfo.__fallback ? 'density:fallback' : densityInfo.source || 'density';
@@ -488,9 +492,10 @@ export function resolveIngredientAmount(ingredient, record, amountText, options 
     }
     return globalMatch.resolution;
   }
-  const hasExplicitConvert =
-    options.densityInfo && Object.prototype.hasOwnProperty.call(options.densityInfo, 'convert');
-  let effectiveDensityInfo = options.densityInfo || null;
+  const baseDensityInfo = options.densityInfo || null;
+  const hasExplicitConvert = baseDensityInfo && Object.prototype.hasOwnProperty.call(baseDensityInfo, 'convert');
+  let effectiveDensityInfo = baseDensityInfo;
+  let fallbackDensityInfo = null;
   if (!effectiveDensityInfo && unitIsVolume) {
     effectiveDensityInfo = { convert: true, ratio: 1, __fallback: true, __skipFdcPortions: true };
   } else if (effectiveDensityInfo && !hasExplicitConvert && unitIsVolume) {
@@ -507,14 +512,35 @@ export function resolveIngredientAmount(ingredient, record, amountText, options 
     }
     merged.__skipFdcPortions = true;
     effectiveDensityInfo = merged;
+  } else if (effectiveDensityInfo && effectiveDensityInfo.convert === false && unitIsVolume) {
+    const existingRatio =
+      effectiveDensityInfo.ratio != null
+        ? effectiveDensityInfo.ratio
+        : effectiveDensityInfo.custom_density_ratio;
+    const fallbackRatio = existingRatio != null ? existingRatio : 1;
+    const baseCopy = { ...effectiveDensityInfo, __skipFdcPortions: true };
+    effectiveDensityInfo = baseCopy;
+    fallbackDensityInfo = {
+      ...baseCopy,
+      convert: true,
+      ratio: fallbackRatio,
+      __fallback: true,
+      __skipFdcPortions: true
+    };
   }
-  const densityMatch = resolveViaDensity(
-    value,
-    effectiveUnit,
-    effectiveDensityInfo,
-    record,
-    ingredientTokens
-  );
+  let densityMatch = null;
+  if (effectiveDensityInfo) {
+    densityMatch = resolveViaDensity(
+      value,
+      effectiveUnit,
+      effectiveDensityInfo,
+      record,
+      ingredientTokens
+    );
+  }
+  if (!densityMatch && fallbackDensityInfo) {
+    densityMatch = resolveViaDensity(value, effectiveUnit, fallbackDensityInfo, record, ingredientTokens);
+  }
   if (densityMatch) {
     return densityMatch;
   }

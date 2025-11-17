@@ -4,6 +4,7 @@ import fs from 'fs';
 
 import { resolveIngredientAmount } from '../utils/unitResolver.js';
 import { initUomTable } from '../utils/uomConverter.js';
+import { parseQuantity } from '../utils/calendarUtils.js';
 
 if (!global.chrome) {
   global.chrome = { runtime: { getURL: p => pathToFileURL(process.cwd() + '/' + p).href } };
@@ -46,8 +47,8 @@ assert.equal(calibratedResult.confidence, 'medium');
 const disabledResult = resolveIngredientAmount(ingredient, record, '1 cup', {
   densityInfo: { convert: false }
 });
-assert.equal(disabledResult.grams, null);
-assert.equal(disabledResult.reason, 'conversion-failed');
+assert.ok(disabledResult.grams && Math.abs(disabledResult.grams - 240) < 1, 'should fall back to default density');
+assert.equal(disabledResult.source, 'density:fallback');
 
 const recordWithFdcGrams = {
   measures: [
@@ -71,10 +72,10 @@ const densityDisabledVolume = resolveIngredientAmount(ingredient, recordWithFdcG
   densityInfo: { convert: false }
 });
 assert.ok(
-  densityDisabledVolume.grams && Math.abs(densityDisabledVolume.grams - 160) < 1,
-  'should fall back to FDC portion when density is unavailable'
+  densityDisabledVolume.grams && Math.abs(densityDisabledVolume.grams - 240) < 1,
+  'should attempt density fallback before using FDC portion'
 );
-assert.equal(densityDisabledVolume.source, 'fdc:portion');
+assert.equal(densityDisabledVolume.source, 'density:fallback');
 
 const countIngredient = { name: 'Counted Ingredient', amount: '1 each' };
 const countRecord = {
@@ -91,5 +92,36 @@ const countRecord = {
 const countResult = resolveIngredientAmount(countIngredient, countRecord, '1 each');
 assert.ok(countResult.grams && Math.abs(countResult.grams - 45) < 1, 'should still use FDC portion for count units');
 assert.equal(countResult.source, 'fdc:portion');
+
+const saltIngredient = { name: 'Salted Ingredient', amount: '1 tsp' };
+const saltResult = resolveIngredientAmount(saltIngredient, { measures: [] }, '1 tsp', {
+  densityInfo: { convert: false, ratio: 1.2 }
+});
+assert.ok(saltResult.grams && Math.abs(saltResult.grams - 6) < 0.2, 'convert:false entries should honor ratio during fallback');
+assert.equal(saltResult.source, 'density:fallback');
+
+const oilIngredient = { name: 'Oil Ingredient', amount: '2 fl oz' };
+const oilResult = resolveIngredientAmount(oilIngredient, { measures: [] }, '2 fl oz', {
+  densityInfo: { convert: false, ratio: 0.8 }
+});
+assert.ok(
+  oilResult.grams && Math.abs(oilResult.grams - 47.3) < 0.5,
+  'convert:false entries should convert fluid ounces via fallback'
+);
+assert.equal(oilResult.source, 'density:fallback');
+
+const flOzQuantity = parseQuantity('8 fl oz');
+assert.equal(flOzQuantity.unit, 'floz', 'should normalize fl oz into floz unit token');
+
+const fluidOunceQuantity = parseQuantity('0.5 fluid ounces');
+assert.equal(fluidOunceQuantity.unit, 'floz', 'should normalize fluid ounces into floz unit token');
+
+const brothIngredient = { name: 'Test Broth', amount: '8 fl oz' };
+const brothResult = resolveIngredientAmount(brothIngredient, { measures: [] }, '8 fl oz');
+assert.ok(
+  brothResult.grams && Math.abs(brothResult.grams - 236.588) < 0.5,
+  'should convert fl oz inputs via density fallback'
+);
+assert.equal(brothResult.source, 'density:fallback');
 
 console.log('unitResolverTest passed');

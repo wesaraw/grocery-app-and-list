@@ -1,5 +1,5 @@
 import { canonicalName } from './nameUtils.js';
-import { getMealPortionCount } from './calendarUtils.js';
+import { getMealPortionCount, parseQuantity } from './calendarUtils.js';
 import { computeQuantityFromPerGram, NUTRIENT_DEFINITIONS } from './fdcNutrientMap.js';
 import { resolveIngredientAmount } from './unitResolver.js';
 
@@ -273,10 +273,15 @@ export function calculateMealNutritionTotals(meal, context = {}) {
   const { perRecipe, perServing } = baseTotals();
   const missingIngredients = [];
   const ingredients = Array.isArray(meal.ingredients) ? meal.ingredients : [];
+  const portionCount = getMealPortionCount(meal) || 1;
+  const safePortions = portionCount > 0 ? portionCount : 1;
   let totalRecipeWeight = 0;
   const resolvedIngredients = {};
 
   ingredients.forEach(ingredient => {
+    const parsedAmount = parseQuantity(ingredient?.amount);
+    const normalizedUnit = typeof parsedAmount?.unit === 'string' ? parsedAmount.unit.toLowerCase() : '';
+    const isCountUnit = !normalizedUnit || normalizedUnit === 'ea' || normalizedUnit === 'each';
     const { grams, record, reason, metadata } = computeIngredientResolution(
       ingredient,
       ingredientMap,
@@ -288,11 +293,14 @@ export function calculateMealNutritionTotals(meal, context = {}) {
       }
     );
     const name = ingredient?.name || '';
-    if (grams != null && grams > 0) {
-      totalRecipeWeight += grams;
+    const shouldScaleFdcPortion =
+      metadata?.source === 'fdc:portion' && isCountUnit && grams != null && grams > 0;
+    const scaledGrams = shouldScaleFdcPortion ? grams * safePortions : grams;
+    if (scaledGrams != null && scaledGrams > 0) {
+      totalRecipeWeight += scaledGrams;
       if (metadata) {
         resolvedIngredients[name] = {
-          grams: roundValue(grams),
+          grams: roundValue(scaledGrams),
           source: metadata.source || null,
           confidence: metadata.confidence || null,
           sizeTag: metadata.sizeTag || null
@@ -307,7 +315,7 @@ export function calculateMealNutritionTotals(meal, context = {}) {
       missingIngredients.push({ name, reason: reason || 'conversion-failed' });
       return;
     }
-    const contribution = computeQuantityFromPerGram(record.perGramVector, grams);
+    const contribution = computeQuantityFromPerGram(record.perGramVector, scaledGrams);
     Object.entries(contribution).forEach(([key, value]) => {
       if (!Number.isFinite(value)) return;
       if (perRecipe[key] === undefined) return;
@@ -319,8 +327,6 @@ export function calculateMealNutritionTotals(meal, context = {}) {
     perRecipe[key] = roundValue(perRecipe[key]);
   });
 
-  const portionCount = getMealPortionCount(meal) || 1;
-  const safePortions = portionCount > 0 ? portionCount : 1;
   NUTRIENT_KEYS.forEach(key => {
     perServing[key] = roundValue(perRecipe[key] / safePortions);
   });

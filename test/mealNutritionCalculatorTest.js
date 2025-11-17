@@ -150,6 +150,13 @@ const ingredientMap = {
     perGramVector: {},
     measures: []
   },
+  'sea salt': {
+    perGramVector: {
+      sodium: 387
+    },
+    measures: []
+  },
+  'butternut squash': legacyRecord,
   'mystery herb': {
     perGramVector: {
       energy: 0.2
@@ -160,7 +167,8 @@ const ingredientMap = {
 
 const densityMap = {
   'vegetable broth': { convert: true, ratio: 1 },
-  water: { convert: false, ratio: 1 }
+  water: { convert: false, ratio: 1 },
+  'sea salt': { convert: false, ratio: 1.2 }
 };
 
 const persistedMeasures = [];
@@ -174,8 +182,10 @@ const meal = {
     { name: 'Tortilla', amount: '3 each' },
     { name: 'Custom Bun', amount: '2 each' },
     { name: 'Red Bell Pepper', amount: '0.5 each' },
+    { name: 'Butternut Squash', amount: '1 each' },
     { name: 'Vegetable Broth', amount: '1 cup' },
     { name: 'Water', amount: '100 g' },
+    { name: 'Sea Salt', amount: '1 tsp' },
     { name: 'Mystery Herb', amount: '1 each' }
   ]
 };
@@ -257,11 +267,23 @@ if (!brothMeta || brothMeta.source !== 'density') {
   throw new Error('Density resolution missing for vegetable broth');
 }
 
+const saltMeta = resolved['Sea Salt'];
+if (!saltMeta || saltMeta.source !== 'density:fallback') {
+  throw new Error('Sea salt should resolve via density fallback');
+}
+assertClose(saltMeta.grams, 5.9534, 'Sea salt grams mismatch');
+
 const herbMeta = resolved['Mystery Herb'];
 if (!herbMeta || herbMeta.source !== 'user') {
   throw new Error('User-supplied resolution missing for mystery herb');
 }
 assertClose(herbMeta.grams, 10, 'Mystery herb grams mismatch');
+
+const squashMeta = resolved['Butternut Squash'];
+if (!squashMeta || squashMeta.source !== 'fdc:portion') {
+  throw new Error('Butternut squash should resolve via FDC portion');
+}
+assertClose(squashMeta.grams, 480, 'Butternut squash grams should scale with portions');
 
 if (!Array.isArray(totals.missingIngredients) || totals.missingIngredients.length !== 1) {
   throw new Error('Expected exactly one missing ingredient');
@@ -393,3 +415,61 @@ const formattedThiamine = formatDisplayValue(
 if (formattedThiamine !== '0.06 mg') {
   throw new Error(`Vitamin B1 formatting mismatch: expected 0.06 mg got ${formattedThiamine}`);
 }
+
+const flOzMeal = {
+  name: 'Fluid Ounce Conversion Meal',
+  totalPortions: 4,
+  ingredients: [{ name: 'Vegetable Broth', amount: '8 fl oz' }]
+};
+
+const flOzChanged = updateMealNutritionTotals(flOzMeal, {
+  ingredientMap,
+  densityMap,
+  globalProduceMeasures: globalDefaults,
+  nutritionTargets: nutritionTargetLookup
+});
+
+if (!flOzChanged) {
+  throw new Error('Expected fl oz meal to compute nutrition totals');
+}
+
+const flOzResolved = flOzMeal.nutritionTotals?.resolvedIngredients?.['Vegetable Broth'];
+if (!flOzResolved || flOzResolved.source !== 'density') {
+  throw new Error('Fluid ounce broth should resolve via density conversion');
+}
+if (Math.abs(flOzResolved.grams - 236.6) > 1) {
+  throw new Error(`Fluid ounce broth grams mismatch: got ${flOzResolved.grams}`);
+}
+
+if (Array.isArray(flOzMeal.nutritionTotals?.missingIngredients) && flOzMeal.nutritionTotals.missingIngredients.length) {
+  throw new Error('Fluid ounce broth should not be flagged as missing');
+}
+
+const fdcPortionMeal = {
+  name: 'FDC Portion Scaling Meal',
+  totalPortions: 4,
+  ingredients: [{ name: 'Butternut Squash', amount: '1 each' }]
+};
+
+const fdcPortionChanged = updateMealNutritionTotals(fdcPortionMeal, {
+  ingredientMap,
+  densityMap,
+  globalProduceMeasures: globalDefaults,
+  nutritionTargets: nutritionTargetLookup
+});
+
+if (!fdcPortionChanged) {
+  throw new Error('Expected FDC portion meal to compute nutrition totals');
+}
+
+const squashOnlyTotals = fdcPortionMeal.nutritionTotals;
+const squashOnlyResolved = squashOnlyTotals?.resolvedIngredients?.['Butternut Squash'];
+if (!squashOnlyResolved || squashOnlyResolved.source !== 'fdc:portion') {
+  throw new Error('FDC portion meal should resolve squash via FDC portion');
+}
+assertClose(squashOnlyResolved.grams, 480, 'FDC portion meal grams should scale by portion count');
+
+assertClose(squashOnlyTotals.totalRecipeWeight, 480, 'Squash-only total weight mismatch');
+assertClose(squashOnlyTotals.totalServingWeight, 120, 'Squash-only per-serving weight mismatch');
+assertClose(squashOnlyTotals.perRecipe.energy, 240, 'Squash-only per-recipe energy mismatch');
+assertClose(squashOnlyTotals.perServing.energy, 60, 'Squash-only per-serving energy mismatch');
