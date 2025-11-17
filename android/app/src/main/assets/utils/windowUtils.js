@@ -5,7 +5,8 @@ const WINDOW_SIZE_OVERRIDES = {
   'backup.html': { width: 420, height: 420 },
   'uomChange.html': { width: 400 },
   'mealNutritionInfo.html': { width: 520, height: 640 },
-  'nutritionTargets.html': { width: 520, height: 640 }
+  'nutritionTargets.html': { width: 520, height: 640 },
+  'mergeItems.html': { width: 720, height: 640 }
 };
 
 function resolveWindowSize(path, width, height) {

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Merge Similar Items</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: Arial, sans-serif;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      font-size: 14px;
+      background: #f7f7f7;
+    }
+    header {
+      margin-bottom: 12px;
+    }
+    #merge-controls {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+      align-items: center;
+    }
+    #merge-controls input[type='text'] {
+      min-width: 220px;
+    }
+    #status {
+      margin-bottom: 12px;
+    }
+    #batch-container {
+      border: 1px solid #d0d0d0;
+      border-radius: 6px;
+      padding: 12px;
+      min-height: 200px;
+      background: #fff;
+    }
+    .placeholder {
+      color: #666;
+      font-style: italic;
+    }
+    .reason-box {
+      border-left: 4px solid #1976d2;
+      padding-left: 8px;
+      margin-bottom: 12px;
+    }
+    .reason-box h3 {
+      margin: 0 0 4px;
+      font-size: 14px;
+      color: #1976d2;
+    }
+    .reason-box ul {
+      margin: 0;
+      padding-left: 16px;
+    }
+    .batch-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .batch-table th,
+    .batch-table td {
+      border: 1px solid #e0e0e0;
+      padding: 8px;
+      vertical-align: top;
+    }
+    .batch-table th {
+      background: #fafafa;
+      text-align: left;
+      font-weight: 600;
+    }
+    .item-name {
+      font-weight: 600;
+      font-size: 15px;
+    }
+    .item-category {
+      color: #555;
+      font-size: 13px;
+    }
+    .item-unit,
+    .item-store,
+    .item-similarity {
+      font-size: 12px;
+      color: #444;
+    }
+    .fdc-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .fdc-id {
+      font-weight: 600;
+    }
+    .confidence-badge {
+      align-self: flex-start;
+      background: #e8f0fe;
+      color: #1a73e8;
+      border-radius: 12px;
+      padding: 2px 8px;
+      font-size: 12px;
+    }
+    .diagnostics {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .diag-badge {
+      background: #fff3cd;
+      color: #8a6d3b;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+    .decision-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .decision-option {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+    }
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+    .modal.hidden {
+      display: none;
+    }
+    .modal-content {
+      background: #fff;
+      color: #111;
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 520px;
+      width: 100%;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    }
+    .modal-content h2 {
+      margin-top: 0;
+    }
+    .deletion-list {
+      max-height: 300px;
+      overflow-y: auto;
+      margin: 12px 0;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+    }
+    .deletion-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .deletion-row:last-child {
+      border-bottom: none;
+    }
+    .option-group {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+    #batch-navigation {
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Merge Similar Items</h1>
+    <p>
+      Scan the inventory for duplicate items, review suggested batches, and choose which
+      entries should be merged before committing the changes.
+    </p>
+  </header>
+  <section id="merge-controls">
+    <label>
+      Search:
+      <input type="text" id="searchBox" placeholder="Filter items" />
+    </label>
+    <button id="rescan">Rescan Inventory</button>
+    <button id="apply" disabled>Apply Decisions</button>
+    <button id="undo" disabled>Undo Last Merge</button>
+  </section>
+  <section id="status" class="placeholder" aria-live="polite">Initializing merge review…</section>
+  <section id="batch-container" aria-live="polite">
+    <p class="placeholder">No batches loaded yet.</p>
+  </section>
+  <section id="batch-navigation">
+    <button id="prevBatch" disabled>Previous Batch</button>
+    <span id="batchPosition" class="placeholder">0 / 0</span>
+    <button id="nextBatch" disabled>Next Batch</button>
+  </section>
+  <div
+    id="deletionModal"
+    class="modal hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="deletionModalTitle"
+  >
+    <div class="modal-content">
+      <h2 id="deletionModalTitle">Remove merged items?</h2>
+      <p>Select which merged items should be removed from the inventory timeline.</p>
+      <div id="deletionList" class="deletion-list"></div>
+      <div class="modal-actions">
+        <button id="cancelDeletion" type="button">Cancel</button>
+        <button id="confirmDeletion" type="button">Confirm Deletions</button>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="mergeItems.js"></script>
+</body>
+</html>

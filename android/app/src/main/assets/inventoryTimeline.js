@@ -612,6 +612,12 @@ async function init() {
   document.getElementById('editNames').addEventListener('click', () => {
     openOrFocusWindow('renameItem.html');
   });
+  const mergeItemsBtn = document.getElementById('mergeItems');
+  if (mergeItemsBtn) {
+    mergeItemsBtn.addEventListener('click', () => {
+      openOrFocusWindow('mergeItems.html');
+    });
+  }
   document.getElementById('editExpirations').addEventListener('click', () => {
     openOrFocusWindow('expiration.html');
   });
