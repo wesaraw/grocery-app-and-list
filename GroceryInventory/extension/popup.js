@@ -713,7 +713,6 @@ async function init() {
   );
   const normalizedPurchaseInfo = normalizeEntriesByName(purchaseInfo);
   const purchaseMap = mapByResolvedName(normalizedPurchaseInfo);
-  const stockMap = mapByResolvedName(stock);
   const itemsContainer = document.getElementById('items');
 
   renderItemsWithCategoryHeaders(sortedNeeds, itemsContainer, item => {
@@ -734,11 +733,7 @@ async function init() {
     finalImg.width = 50;
     finalImg.height = 50;
     finalImg.style.display = 'none';
-    const currentQty = lookupByNameOrId(stockMap, item.name)?.amount || 0;
-    const weeklyNeed = item.total_needed_year ? item.total_needed_year / 52 : 0;
-    const showByStock = currentQty < weeklyNeed;
-    const showByNeed = passesNeedFilter(needAmt);
-    const hiddenByFilter = !(showByStock && showByNeed);
+    const hiddenByFilter = !passesNeedFilter(needAmt);
     setFilterHidden(li, hiddenByFilter);
     const rec = { li, btn, span: finalSpan, img: finalImg, needAmt, product: null, weightMap: null };
     finalMap.set(item.name, rec);
@@ -837,9 +832,7 @@ async function refreshNeeds(stock = stockData, consumed = consumedYearData) {
   );
   const normalizedPurchaseInfo = normalizeEntriesByName(purchaseInfo);
   const purchaseMap = mapByResolvedName(normalizedPurchaseInfo);
-  const stockMap = mapByResolvedName(stock);
   const text = filterText.trim().toLowerCase();
-  const searchActive = text.length > 0;
   needsData.forEach(item => {
     const rec = finalMap.get(item.name);
     if (rec && rec.btn) {
@@ -851,13 +844,8 @@ async function refreshNeeds(stock = stockData, consumed = consumedYearData) {
           ? needText(item.name, needAmt, rec.product, rec.weightMap)
           : '';
       rec.btn.textContent = item.name + amountText;
-      const qty = lookupByNameOrId(stockMap, item.name)?.amount || 0;
-      const weekly = item.total_needed_year ? item.total_needed_year / 52 : 0;
-      const passesStock = qty < weekly;
-      const passesZeroQty = passesNeedFilter(needAmt);
       const match = !text || item.name.toLowerCase().includes(text);
-      const baseVisible = passesStock && passesZeroQty;
-      const shouldShow = match && (searchActive ? passesZeroQty : baseVisible);
+      const shouldShow = match && passesNeedFilter(needAmt);
       const hiddenByFilter = !shouldShow;
       setFilterHidden(rec.li, hiddenByFilter);
     }
@@ -932,9 +920,7 @@ async function rerenderAll() {
   );
   const normalizedPurchaseInfo = normalizeEntriesByName(purchaseInfo);
   const purchaseMap = mapByResolvedName(normalizedPurchaseInfo);
-  const stockMap = mapByResolvedName(stock);
   const text = filterText.trim().toLowerCase();
-  const searchActive = text.length > 0;
   const itemsContainer = document.getElementById('items');
   itemsContainer.innerHTML = '';
   finalMap.clear();
@@ -956,13 +942,8 @@ async function rerenderAll() {
     finalImg.width = 50;
     finalImg.height = 50;
     finalImg.style.display = 'none';
-    const currentQty = lookupByNameOrId(stockMap, item.name)?.amount || 0;
-    const weeklyNeed = item.total_needed_year ? item.total_needed_year / 52 : 0;
-    const passesStock = currentQty < weeklyNeed;
-    const passesZeroQty = passesNeedFilter(needAmt);
     const match = !text || item.name.toLowerCase().includes(text);
-    const baseVisible = passesStock && passesZeroQty;
-    const shouldShow = match && (searchActive ? passesZeroQty : baseVisible);
+    const shouldShow = match && passesNeedFilter(needAmt);
     const hiddenByFilter = !shouldShow;
     setFilterHidden(li, hiddenByFilter);
     const rec = { li, btn, span: finalSpan, img: finalImg, needAmt, product: null, weightMap: null };
