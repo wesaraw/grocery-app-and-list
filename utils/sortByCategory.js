@@ -20,19 +20,29 @@ export function renderItemsWithCategoryHeaders(
   let header = null;
   let nodes = [];
 
+  const applyVisibility =
+    typeof options.applyVisibility === 'function'
+      ? options.applyVisibility
+      : node => {
+          const collapsed = node.dataset.collapsed === 'true';
+          node.style.display = collapsed ? 'none' : '';
+        };
+
   function finalizeHeader(cat, hdr, nodesForHeader) {
     if (!hdr) return;
     const hidden = headerState[cat] !== undefined ? headerState[cat] : true;
     hdr.dataset.hidden = hidden ? 'true' : 'false';
     nodesForHeader.forEach(n => {
-      n.style.display = hidden ? 'none' : '';
+      n.dataset.collapsed = hidden ? 'true' : 'false';
+      applyVisibility(n);
     });
     hdr.style.cursor = 'pointer';
     hdr.addEventListener('click', () => {
       const isHidden = hdr.dataset.hidden === 'true';
       hdr.dataset.hidden = isHidden ? 'false' : 'true';
       nodesForHeader.forEach(n => {
-        n.style.display = isHidden ? '' : 'none';
+        n.dataset.collapsed = isHidden ? 'false' : 'true';
+        applyVisibility(n);
       });
       headerState[cat] = !isHidden;
     });

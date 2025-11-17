@@ -188,6 +188,23 @@ let purchasesData = {};
 let calendarData = {};
 let mealsByCategoryData = {};
 let hideZeroItems = false;
+
+function passesNeedFilter(needAmt) {
+  return !hideZeroItems || (needAmt != null && needAmt > 0);
+}
+
+function applyRowVisibility(node) {
+  if (!node) return;
+  const collapsed = node.dataset.collapsed === 'true';
+  const filtered = node.dataset.filtered === 'true';
+  node.style.display = collapsed || filtered ? 'none' : 'list-item';
+}
+
+function setFilterHidden(node, hidden) {
+  if (!node) return;
+  node.dataset.filtered = hidden ? 'true' : 'false';
+  applyRowVisibility(node);
+}
 let filterText = '';
 const headerState = {};
 let weightPackMap = new Map();
@@ -720,9 +737,9 @@ async function init() {
     const currentQty = lookupByNameOrId(stockMap, item.name)?.amount || 0;
     const weeklyNeed = item.total_needed_year ? item.total_needed_year / 52 : 0;
     const showByStock = currentQty < weeklyNeed;
-    const showByNeed =
-      !hideZeroItems || (needAmt != null && needAmt > 0);
-    li.style.display = showByStock && showByNeed ? 'list-item' : 'none';
+    const showByNeed = passesNeedFilter(needAmt);
+    const hiddenByFilter = !(showByStock && showByNeed);
+    setFilterHidden(li, hiddenByFilter);
     const rec = { li, btn, span: finalSpan, img: finalImg, needAmt, product: null, weightMap: null };
     finalMap.set(item.name, rec);
     getFinal(item.name).then(async store => {
@@ -756,7 +773,7 @@ async function init() {
     li.appendChild(finalImg);
     // rec already stored in finalMap
     return li;
-  }, headerState);
+  }, headerState, { applyVisibility: applyRowVisibility });
 
   resolveInit();
 }
@@ -837,11 +854,12 @@ async function refreshNeeds(stock = stockData, consumed = consumedYearData) {
       const qty = lookupByNameOrId(stockMap, item.name)?.amount || 0;
       const weekly = item.total_needed_year ? item.total_needed_year / 52 : 0;
       const passesStock = qty < weekly;
-      const passesZeroQty = !hideZeroItems || qty > 0;
+      const passesZeroQty = passesNeedFilter(needAmt);
       const match = !text || item.name.toLowerCase().includes(text);
       const baseVisible = passesStock && passesZeroQty;
       const shouldShow = match && (searchActive ? passesZeroQty : baseVisible);
-      rec.li.style.display = shouldShow ? 'list-item' : 'none';
+      const hiddenByFilter = !shouldShow;
+      setFilterHidden(rec.li, hiddenByFilter);
     }
   });
 }
@@ -941,11 +959,12 @@ async function rerenderAll() {
     const currentQty = lookupByNameOrId(stockMap, item.name)?.amount || 0;
     const weeklyNeed = item.total_needed_year ? item.total_needed_year / 52 : 0;
     const passesStock = currentQty < weeklyNeed;
-    const passesZeroQty = !hideZeroItems || currentQty > 0;
+    const passesZeroQty = passesNeedFilter(needAmt);
     const match = !text || item.name.toLowerCase().includes(text);
     const baseVisible = passesStock && passesZeroQty;
     const shouldShow = match && (searchActive ? passesZeroQty : baseVisible);
-    li.style.display = shouldShow ? 'list-item' : 'none';
+    const hiddenByFilter = !shouldShow;
+    setFilterHidden(li, hiddenByFilter);
     const rec = { li, btn, span: finalSpan, img: finalImg, needAmt, product: null, weightMap: null };
     finalMap.set(item.name, rec);
     getFinal(item.name).then(async store => {
@@ -979,7 +998,7 @@ async function rerenderAll() {
     li.appendChild(finalImg);
     // rec already stored in finalMap
     return li;
-  }, headerState);
+  }, headerState, { applyVisibility: applyRowVisibility });
   window.scrollTo(0, scrollTop);
 }
 
