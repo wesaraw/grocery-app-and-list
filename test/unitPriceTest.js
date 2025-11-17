@@ -192,6 +192,34 @@ if (greeniesItem.packCount !== 30) {
   throw new Error(`Expected packCount 30 but got ${greeniesItem.packCount}`);
 }
 
+const newLayoutHtml = fs.readFileSync('test/samples/stopandshop-missing-sronly.html', 'utf8');
+const newLayoutDom = new JSDOM(newLayoutHtml);
+Object.defineProperty(newLayoutDom.window.HTMLElement.prototype, 'innerText', {
+  get() {
+    return this.textContent;
+  },
+  set(v) {
+    this.textContent = v;
+  }
+});
+global.document = newLayoutDom.window.document;
+global.window = newLayoutDom.window;
+const missingSrProducts = scrapeStopAndShop();
+const alfredoItem = missingSrProducts.find(p => /Classico/i.test(p.name));
+if (!alfredoItem) {
+  throw new Error('Failed to find Stop & Shop Classico sauce item');
+}
+if (alfredoItem.price !== '$2.50') {
+  throw new Error(`Expected price "$2.50" but got ${alfredoItem.price}`);
+}
+const flourItem = missingSrProducts.find(p => /Gold Medal/i.test(p.name));
+if (!flourItem) {
+  throw new Error('Failed to find Stop & Shop Gold Medal flour item');
+}
+if (flourItem.size !== '5 lb') {
+  throw new Error(`Expected size string "5 lb" but got ${flourItem.size}`);
+}
+
 // Walmart fl. oz parsing
 const snippetHtml = `
 <div data-testid="list-view">

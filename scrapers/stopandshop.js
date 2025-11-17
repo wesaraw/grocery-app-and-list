@@ -85,6 +85,41 @@ export function scrapeStopAndShop() {
       .trim();
   }
 
+  function getProductName(tile) {
+    if (!tile) return null;
+    const selectors = [
+      '.product-grid-cell_name-text',
+      '.product-grid-cell_name',
+      '.product-grid-cell_title',
+      '.product-tile_detail-name',
+      '.product-grid-cell_price-container > .sr-only'
+    ];
+    for (const selector of selectors) {
+      const text = sanitize(tile.querySelector(selector)?.textContent);
+      if (text && !/^(sale|original) price$/i.test(text)) {
+        return text;
+      }
+    }
+    const linkWithLabel =
+      tile.querySelector('a[data-opens-modal="true"][aria-label]') ||
+      tile.querySelector('a[href*="/product/"][aria-label]');
+    const ariaLabel = sanitize(linkWithLabel?.getAttribute('aria-label'));
+    if (ariaLabel) {
+      return ariaLabel;
+    }
+    const titleAttr = sanitize(tile.querySelector('a[href*="/product/"][title]')?.getAttribute('title'));
+    if (titleAttr) {
+      return titleAttr;
+    }
+    const imgAlt = sanitize(
+      tile.querySelector('.product-grid-cell_main-image[alt], img[alt]')?.getAttribute('alt')
+    );
+    if (imgAlt) {
+      return imgAlt;
+    }
+    return null;
+  }
+
   const UNIT_PHRASE_REPLACEMENTS = {
     'dry pint': 'pt',
     'dry pints': 'pt',
@@ -133,7 +168,7 @@ export function scrapeStopAndShop() {
   const products = [];
   const tiles = document.querySelectorAll('li.tile.product-cell.product-grid-cell');
   tiles.forEach(tile => {
-    const name = tile.querySelector('.product-grid-cell_price-container > .sr-only')?.textContent?.trim();
+    const name = getProductName(tile);
 
     const priceText = tile.querySelector('.product-grid-cell_main-price')?.textContent?.trim();
 
