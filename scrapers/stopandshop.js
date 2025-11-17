@@ -3,6 +3,7 @@ import { parsePriceNumber } from "../utils/priceUtils.js";
 import { roundQuantity } from "../utils/quantityFormat.js";
 import {
   getStopAndShopProductName,
+  getStopAndShopPriceText,
   sanitizeStopAndShopText
 } from "../utils/stopAndShopProductName.js";
 export function scrapeStopAndShop() {
@@ -133,7 +134,7 @@ export function scrapeStopAndShop() {
   tiles.forEach(tile => {
     const name = getStopAndShopProductName(tile);
 
-    const priceText = tile.querySelector('.product-grid-cell_main-price')?.textContent?.trim();
+    const priceText = getStopAndShopPriceText(tile);
 
     const unitSize = tile.querySelector('.product-grid-cell_size')?.textContent?.trim();
 

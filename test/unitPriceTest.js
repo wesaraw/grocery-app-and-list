@@ -219,6 +219,16 @@ if (!flourItem) {
 if (flourItem.size !== '5 lb') {
   throw new Error(`Expected size string "5 lb" but got ${flourItem.size}`);
 }
+const raguItem = missingSrProducts.find(p => /RAGU Classic Alfredo/i.test(p.name));
+if (!raguItem) {
+  throw new Error('Failed to find Stop & Shop RAGU Alfredo item');
+}
+if (raguItem.price !== '$4.49') {
+  throw new Error(`Expected price "$4.49" but got ${raguItem.price}`);
+}
+if (Math.abs(raguItem.priceNumber - 4.49) > 0.001) {
+  throw new Error(`Expected priceNumber 4.49 but got ${raguItem.priceNumber}`);
+}
 
 // Walmart fl. oz parsing
 const snippetHtml = `

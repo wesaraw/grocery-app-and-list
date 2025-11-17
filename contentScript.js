@@ -49,12 +49,16 @@ import(chrome.runtime.getURL("utils/quantityFormat.js"))
   .catch(() => {});
 
 let getStopAndShopProductName = () => null;
+let getStopAndShopPriceText = () => '';
 const stopAndShopHelperReady = import(
   chrome.runtime.getURL("utils/stopAndShopProductName.js")
 )
   .then(mod => {
     if (mod && typeof mod.getStopAndShopProductName === "function") {
       getStopAndShopProductName = mod.getStopAndShopProductName;
+    }
+    if (mod && typeof mod.getStopAndShopPriceText === "function") {
+      getStopAndShopPriceText = mod.getStopAndShopPriceText;
     }
   })
   .catch(() => {});
@@ -236,7 +240,7 @@ function scrapeStopAndShop() {
     console.log(`🔍 Tile ${index + 1} innerHTML:`, tile.innerHTML);
     const name = getStopAndShopProductName(tile);
 
-    const priceText = tile.querySelector('.product-grid-cell_main-price')?.innerText?.trim();
+    const priceText = getStopAndShopPriceText(tile);
 
     const unitSize = tile.querySelector('.product-grid-cell_size')?.innerText?.trim();
 
