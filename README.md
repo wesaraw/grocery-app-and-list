@@ -99,6 +99,35 @@ node scripts/repairPackCountWeights.js "grocery_backup (100).txt" # add more fil
 The script rewrites each file only when it finds entries to repair and prints a
 summary of the affected products.
 
+### Removing legacy store selections
+
+Store links (Stop & Shop, Walmart, etc.) are now generated on the fly from
+`utils/storeCatalog.js`, so they no longer need to be stored with each item. The
+popup automatically deletes the obsolete `storeSelections` key from Chrome
+storage and backups omit it as well. If you have older backup files you can
+shrink them in place with:
+
+```bash
+node scripts/removeStoreSelections.js "grocery_backup (100).txt"
+```
+
+Run the script for each file you want to trim. It rewrites the file only when it
+finds the legacy key.
+
+### Cleaning up scraped product data
+
+Scraped store catalogs are temporary: the extension now keeps only the 20 most
+recent results for each item/store pair, strips unused fields, and expires the
+cache after 14 days. Backups automatically drop every `scraped_*` key so the
+exports stay lean. Older backup files can be rewritten the same way with:
+
+```bash
+node scripts/trimScrapedData.js "grocery_backup (100).txt"
+```
+
+Run the command for each backup you want to shrink. The script only rewrites the
+file when it finds at least one `scraped_*` entry.
+
 ### Weeks per Month
 
 Several calculations convert monthly amounts to weekly values. The extension uses `4.33` weeks per month (stored in `utils/constants.js` as `WEEKS_PER_MONTH`) as a simple average.

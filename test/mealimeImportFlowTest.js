@@ -28,7 +28,6 @@ const storage = {
   consumedThisYear: [
     { name: 'pkgsbaby arugula', amount: 0, unit: 'oz' }
   ],
-  storeSelections: [],
   purchases: {},
   densityRatios: {},
   itemSeasons: {},

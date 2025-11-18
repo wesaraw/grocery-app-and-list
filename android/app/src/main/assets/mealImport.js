@@ -14,14 +14,15 @@ import { createInventoryLookup } from './utils/inventoryLookup.js';
 import { loadGlobalProduceMeasures } from './utils/unitResolver.js';
 import { NUTRIENT_DEFINITIONS } from './utils/fdcNutrientMap.js';
 import { loadNutritionTargetLookup } from './utils/nutritionTargets.js';
+import { ensureIngredientRecordForItem } from './utils/fdcClient.js';
+import { getPendingMatch, setPendingMatch } from './utils/nutritionMatching.js';
+import { canonicalName } from './utils/nameUtils.js';
 
 // Paths for inventory data used when adding new items
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
-const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
-const STORE_SELECTION_KEY = 'storeSelections';
 
 const DEFAULT_ITEM = {
   yearly: 0,
@@ -35,6 +36,7 @@ let ingredientMapCache = {};
 let densityMapCache = {};
 let globalProduceMeasuresCache = {};
 let nutritionTargetLookupCache = {};
+let ensureIngredientRecordForItemHandler = ensureIngredientRecordForItem;
 
 function sanitizePortionCount(value) {
   const num = typeof value === 'string' ? Number(value) : value;
@@ -55,8 +57,6 @@ const loadNeeds = () => loadArray('yearlyNeeds', YEARLY_NEEDS_PATH);
 const loadConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
 const loadStock = () => loadArray('currentStock', STOCK_PATH);
 const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
-const loadStoreSelections = () => loadArray(STORE_SELECTION_KEY, STORE_SELECTION_PATH);
-
 
 function loadConsumed() {
   return new Promise(async resolve => {
@@ -83,21 +83,6 @@ function getCurrentWeek() {
   return Math.ceil(((today - start) / 86400000 + start.getDay() + 1) / 7);
 }
 
-const STORE_LINKS = {
-  'Stop & Shop': name =>
-    `https://stopandshop.com/product-search/${name.replace(/ /g, '%20')}?searchRef=&semanticSearch=false`,
-  Walmart: name =>
-    `https://www.walmart.com/search?q=${encodeURIComponent(name.replace(/ /g, '+'))}&facet=fulfillment_method_in_store%3AIn-store%7C%7Cexclude_oos%3AShow+available+items+only`,
-  Amazon: name =>
-    `https://www.amazon.com/s?k=${name.split(/\s+/).map(encodeURIComponent).join('+')}`,
-  Shaws: name =>
-    `https://www.shaws.com/shop/search-results.html?q=${name.replace(/ /g, '%20')}`,
-  'Roche Bros': name =>
-    `https://onlineshopping.rochebros.com/search?searchTerms=${name.replace(/ /g, '%20')}`,
-  Hannaford: name =>
-    `https://www.hannaford.com/search/product?form_state=searchForm&keyword=${name.replace(/ /g, '+')}&ieDummyTextField=&productTypeId=P`
-};
-
 async function ensureItemExists(name, unit, inventoryContext) {
   if (!name || !inventoryContext) return;
   const {
@@ -106,7 +91,6 @@ async function ensureItemExists(name, unit, inventoryContext) {
     stock = [],
     expiration = [],
     consumed = [],
-    storeSelections = [],
     purchases = {},
     densityMap = {},
     itemSeasons = {},
@@ -133,18 +117,6 @@ async function ensureItemExists(name, unit, inventoryContext) {
   const shelf = DEFAULT_ITEM.shelf / WEEKS_PER_MONTH;
   expiration.push(withId({ name, shelf_life_months: shelf }));
   consumed.push(withId({ name, amount: 0, unit: normalizedUnit }));
-  const storeRecords = Object.entries(STORE_LINKS).map(([storeName, builder]) =>
-    withId({
-      name,
-      store: storeName,
-      price: null,
-      convertedQty: null,
-      pricePerUnit: null,
-      link: builder(name),
-      image: null
-    })
-  );
-  storeSelections.push(...storeRecords);
   densityMap[name] = { convert: false, ratio: 1 };
   if (!purchases[name]) purchases[name] = [];
   purchases[name].push({ purchase_week: getCurrentWeek(), quantity_purchased: 0, date_added: new Date().toISOString() });
@@ -157,11 +129,153 @@ async function ensureItemExists(name, unit, inventoryContext) {
     save('currentStock', stock),
     save('expirationData', expiration),
     save('consumedThisYear', consumed),
-    save(STORE_SELECTION_KEY, storeSelections),
     savePurchases(purchases),
     saveDensityMap(densityMap),
     saveItemSeasons(itemSeasons)
   ]);
+}
+
+function resolveIngredientUnit(ingredient) {
+  if (!ingredient || typeof ingredient !== 'object') return 'g';
+  const sizeUnit = typeof ingredient.sizeUnit === 'string' ? ingredient.sizeUnit.trim() : '';
+  const unit = typeof ingredient.unit === 'string' ? ingredient.unit.trim() : '';
+  const containerUnit = typeof ingredient.containerUnit === 'string' ? ingredient.containerUnit.trim() : '';
+  const containerQuantityExists = typeof ingredient.containerQuantity === 'number' && Number.isFinite(ingredient.containerQuantity);
+  const unitIsEach = unit.toLowerCase() === 'each';
+
+  if (containerUnit && (unitIsEach || !unit || (ingredient.sizeUsedAsMeasurement && containerQuantityExists))) {
+    return containerUnit;
+  }
+
+  if (sizeUnit) {
+    return sizeUnit;
+  }
+
+  if (unit) {
+    return unit;
+  }
+
+  if (containerUnit) {
+    return containerUnit;
+  }
+
+  return 'g';
+}
+
+function resolveServingSizeText(ingredient) {
+  if (!ingredient || typeof ingredient !== 'object') return '';
+  if (typeof ingredient.serving_size === 'string' && ingredient.serving_size.trim().length > 0) {
+    return ingredient.serving_size.trim();
+  }
+  if (typeof ingredient.amount === 'string' && ingredient.amount.trim().length > 0) {
+    return ingredient.amount.trim();
+  }
+  const containerQuantityIsNumber = typeof ingredient.containerQuantity === 'number' && Number.isFinite(ingredient.containerQuantity);
+  const containerUnitText = typeof ingredient.containerUnit === 'string' ? ingredient.containerUnit.trim() : '';
+  if (containerQuantityIsNumber && containerUnitText) {
+    const quantityText = `${ingredient.containerQuantity}`;
+    return `${quantityText} ${containerUnitText}`.trim();
+  }
+  if (typeof ingredient.quantity === 'number' && Number.isFinite(ingredient.quantity)) {
+    const quantityText = `${ingredient.quantity}`;
+    const unitText = typeof ingredient.unit === 'string' && ingredient.unit.trim().length > 0
+      ? ingredient.unit.trim()
+      : '';
+    return `${quantityText} ${unitText}`.trim();
+  }
+  if (typeof ingredient.sizeAmount === 'number' && Number.isFinite(ingredient.sizeAmount)) {
+    const quantityText = `${ingredient.sizeAmount}`;
+    const unitText = typeof ingredient.sizeUnit === 'string' && ingredient.sizeUnit.trim().length > 0
+      ? ingredient.sizeUnit.trim()
+      : '';
+    return `${quantityText} ${unitText}`.trim();
+  }
+  return '';
+}
+
+function appendNutritionWarning(warnings, message) {
+  if (!Array.isArray(warnings) || !message) return;
+  warnings.push(message);
+}
+
+async function handleNutritionSyncResult(result, ingredient, warnings, unitForDefault) {
+  if (!result || !ingredient) return;
+  switch (result.status) {
+    case 'needs-confirmation': {
+      const existingPending = await getPendingMatch(ingredient.name);
+      if (!existingPending) {
+        await setPendingMatch(ingredient.name, {
+          candidates: result.candidates || [],
+          unitDefault: unitForDefault,
+          source: 'meal-import'
+        });
+      }
+      appendNutritionWarning(
+        warnings,
+        `Nutrition data for "${ingredient.name}" needs review. Open the nutrition matcher to confirm the best option.`
+      );
+      break;
+    }
+    case 'missing-api-key':
+      appendNutritionWarning(
+        warnings,
+        `Nutrition data for "${ingredient.name}" could not sync because an FDC API key is not configured.`
+      );
+      break;
+    case 'no-results':
+      appendNutritionWarning(
+        warnings,
+        `Nutrition data for "${ingredient.name}" needs review because no matches were found automatically.`
+      );
+      break;
+    case 'error':
+      appendNutritionWarning(
+        warnings,
+        `Nutrition sync failed for "${ingredient.name}". Try syncing it from the nutrition screen.`
+      );
+      break;
+    default:
+      break;
+  }
+}
+
+async function syncNutritionForNewItem(ingredient, context = {}) {
+  if (!ingredient || typeof ingredient !== 'object' || !ingredient.name) {
+    return;
+  }
+  const normalized = canonicalName(ingredient.name) || ingredient.name.toLowerCase();
+  let tracker = context.attemptedNames instanceof Set ? context.attemptedNames : null;
+  if (!tracker) {
+    tracker = new Set();
+    context.attemptedNames = tracker;
+  }
+  if (tracker) {
+    if (tracker.has(normalized)) {
+      return;
+    }
+    tracker.add(normalized);
+  }
+  const unitForDefault = resolveIngredientUnit(ingredient) || 'g';
+  const servingSize = resolveServingSizeText(ingredient);
+  try {
+    const result = await ensureIngredientRecordForItemHandler(
+      {
+        name: ingredient.name,
+        home_unit: unitForDefault,
+        unit: unitForDefault,
+        unit_default: unitForDefault,
+        serving_size: servingSize || undefined
+      },
+      { unitDefault: unitForDefault }
+    );
+    await handleNutritionSyncResult(result, ingredient, context.warnings, unitForDefault);
+  } catch (error) {
+    console.error('Meal import nutrition sync failed', error);
+    appendNutritionWarning(
+      context.warnings,
+      `Nutrition sync failed for "${ingredient.name}". Try syncing it from the nutrition screen.`
+    );
+  }
 }
 
 function loadMeals(category) {
@@ -326,6 +440,7 @@ async function addMeal(meal, userCount) {
     meal.importWarnings = [];
   }
   let inventoryLookup = null;
+  const attemptedNutritionSync = new Set();
   const ensureLookupLoaded = async () => {
     if (!inventoryLookup) {
       inventoryLookup = await createInventoryLookup({
@@ -334,7 +449,6 @@ async function addMeal(meal, userCount) {
         loadStock,
         loadExpiration,
         loadConsumed,
-        loadStoreSelections,
         loadPurchases,
         loadDensityMap,
         loadItemSeasons
@@ -354,6 +468,10 @@ async function addMeal(meal, userCount) {
       : `Ingredient "${ing.name}" was added to the inventory timeline.`;
     meal.importWarnings.push(warning);
     await ensureItemExists(ing.name, ing.unit, lookup);
+    await syncNutritionForNewItemHandler(ing, {
+      warnings: meal.importWarnings,
+      attemptedNames: attemptedNutritionSync
+    });
   }
   const totalPortions = sanitizePortionCount(meal.totalPortions);
   let usersArr = meal.users || [];
@@ -406,18 +524,47 @@ async function addMeal(meal, userCount) {
 }
 
 let addMealHandler = addMeal;
+let syncNutritionForNewItemHandler = syncNutritionForNewItem;
 
 export function __setMealImportTestHooks(overrides = {}) {
-  if (overrides && typeof overrides.addMeal === 'function') {
-    const { addMeal: interceptor, skipOriginal = false } = overrides;
+  const {
+    addMeal: addMealOverride,
+    syncNutritionForNewItem: syncNutritionOverride,
+    ensureIngredientRecordForItem: ensureIngredientOverride,
+    skipOriginal = false,
+    skipOriginalNutritionSync = false,
+    skipOriginalEnsureIngredientRecordForItem = false
+  } = overrides || {};
+  if (typeof addMealOverride === 'function') {
     addMealHandler = async (meal, userCount) => {
-      await interceptor(meal, userCount);
+      await addMealOverride(meal, userCount);
       if (!skipOriginal) {
         await addMeal(meal, userCount);
       }
     };
   } else {
     addMealHandler = addMeal;
+  }
+  if (typeof syncNutritionOverride === 'function') {
+    syncNutritionForNewItemHandler = async (...args) => {
+      await syncNutritionOverride(...args);
+      if (!skipOriginalNutritionSync) {
+        await syncNutritionForNewItem(...args);
+      }
+    };
+  } else {
+    syncNutritionForNewItemHandler = syncNutritionForNewItem;
+  }
+  if (typeof ensureIngredientOverride === 'function') {
+    ensureIngredientRecordForItemHandler = async (...args) => {
+      const overrideResult = await ensureIngredientOverride(...args);
+      if (!skipOriginalEnsureIngredientRecordForItem) {
+        return ensureIngredientRecordForItem(...args);
+      }
+      return overrideResult;
+    };
+  } else {
+    ensureIngredientRecordForItemHandler = ensureIngredientRecordForItem;
   }
 }
 
@@ -477,8 +624,11 @@ export async function importMealFromMealime(recipeData = {}) {
   await initializeMealCategories();
   await initUomTable();
   const users = await loadUsers();
+  const selectedCategory = recipeData.category && MEAL_TYPES[recipeData.category]
+    ? recipeData.category
+    : 'lunchDinner';
   const normalizedMeal = {
-    category: recipeData.category || 'lunchDinner',
+    category: selectedCategory,
     name: recipeData.name || 'Mealime Recipe',
     recipeBook: recipeData.recipeBook || 'Mealime',
     instructions: typeof recipeData.instructions === 'string' ? recipeData.instructions : '',
@@ -514,6 +664,7 @@ export async function importMealFromMealime(recipeData = {}) {
     cookTime: normalizedMeal.cookTime,
     warnings: normalizedMeal.importWarnings.slice(),
     sourceUrl: normalizedMeal.sourceUrl,
+    category: normalizedMeal.category,
   };
 }
 
@@ -556,3 +707,9 @@ export async function importMealsFromFiles(fileList, progressCallbacks = {}) {
   const xmlText = await readFileAsText(xmlFile);
   return importMealsFromText(xmlText, images, progressCallbacks);
 }
+
+export const __mealImportInternals = {
+  resolveIngredientUnit,
+  resolveServingSizeText,
+  syncNutritionForNewItem
+};

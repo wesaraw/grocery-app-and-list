@@ -12,8 +12,6 @@ const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_fla
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
-const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
-const STORE_SELECTION_KEY = 'storeSelections';
 const SIMILARITY_THRESHOLD = 0.82;
 const DISMISSED_PAIRS_KEY = 'dismissedDuplicatePairs';
 const PENDING_DELETIONS_KEY = 'pendingItemDeletions';
@@ -21,26 +19,6 @@ const STATUS = {
   LEAVE: 'leave',
   MERGE: 'merge',
   BEST: 'best'
-};
-
-const STORE_LINKS = {
-  'Stop & Shop': name =>
-    `https://stopandshop.com/product-search/${name.replace(/ /g, '%20')}?searchRef=&semanticSearch=false`,
-  Walmart: name =>
-    `https://www.walmart.com/search?q=${encodeURIComponent(
-      name.replace(/ /g, '+')
-    )}&facet=fulfillment_method_in_store%3AIn-store%7C%7Cexclude_oos%3AShow+available+items+only`,
-  Amazon: name =>
-    `https://www.amazon.com/s?k=${name
-      .split(/\s+/)
-      .map(encodeURIComponent)
-      .join('+')}`,
-  Shaws: name =>
-    `https://www.shaws.com/shop/search-results.html?q=${name.replace(/ /g, '%20')}`,
-  'Roche Bros': name =>
-    `https://onlineshopping.rochebros.com/search?searchTerms=${name.replace(/ /g, '%20')}`,
-  Hannaford: name =>
-    `https://www.hannaford.com/search/product?form_state=searchForm&keyword=${name.replace(/ /g, '+')}&ieDummyTextField=&productTypeId=P`
 };
 
 const state = {
@@ -121,8 +99,6 @@ async function loadArrayWithFallback(key, path) {
 const loadConsumption = () => loadArrayWithFallback('monthlyConsumption', CONSUMPTION_PATH);
 const loadStock = () => loadArrayWithFallback('currentStock', STOCK_PATH);
 const loadExpiration = () => loadArrayWithFallback('expirationData', EXPIRATION_PATH);
-const loadStoreSelections = () => loadArrayWithFallback(STORE_SELECTION_KEY, STORE_SELECTION_PATH);
-
 function loadDismissedPairStore() {
   return new Promise(resolve => {
     chrome.storage.local.get(DISMISSED_PAIRS_KEY, data => {
@@ -830,57 +806,6 @@ function mergeArrayRecords(arr, operation, options = {}) {
   });
 }
 
-function selectionScore(entry) {
-  const interestingFields = ['price', 'convertedQty', 'pricePerUnit', 'link', 'image'];
-  return interestingFields.reduce((score, field) => score + (entry?.[field] ? 1 : 0), 0);
-}
-
-function mergeSelectionDetails(target, source) {
-  Object.keys(source || {}).forEach(key => {
-    if (key === 'name' || key === 'store') return;
-    if (target[key] == null || target[key] === '') {
-      target[key] = source[key];
-    }
-  });
-}
-
-function updateSelectionLink(selection) {
-  if (selection?.store && STORE_LINKS[selection.store]) {
-    selection.link = STORE_LINKS[selection.store](selection.name);
-  }
-}
-
-function mergeStoreSelections(selections, operation) {
-  if (!Array.isArray(selections) || !selections.length) return;
-  const { bestName, bestCanonical, mergeCanonicals } = operation;
-  const canonicals = new Set([bestCanonical, ...(mergeCanonicals || [])]);
-  const grouped = new Map();
-  selections.forEach(entry => {
-    if (!entry?.name) return;
-    if (!canonicals.has(canonicalName(entry.name))) return;
-    entry.name = bestName;
-    updateSelectionLink(entry);
-    const key = entry.store || '';
-    if (!grouped.has(key)) grouped.set(key, []);
-    grouped.get(key).push(entry);
-  });
-  const toRemove = new Set();
-  grouped.forEach(list => {
-    if (list.length <= 1) return;
-    list.sort((a, b) => selectionScore(b) - selectionScore(a));
-    const keeper = list[0];
-    for (let i = 1; i < list.length; i++) {
-      mergeSelectionDetails(keeper, list[i]);
-      toRemove.add(list[i]);
-    }
-  });
-  for (let i = selections.length - 1; i >= 0; i--) {
-    if (toRemove.has(selections[i])) {
-      selections.splice(i, 1);
-    }
-  }
-}
-
 function mergeArrayValues(target, source) {
   const base = Array.isArray(target) ? [...target] : [];
   if (Array.isArray(source)) {
@@ -955,13 +880,12 @@ async function loadMergeContext() {
   await initializeMealCategories();
   const mealEntries = Object.entries(MEAL_TYPES);
   const mealLists = await Promise.all(mealEntries.map(([, info]) => loadMealsForType(info)));
-  const [needs, consumption, stock, expiration, consumed, selections, purchases, overrides, history, itemSeasons] = await Promise.all([
+  const [needs, consumption, stock, expiration, consumed, purchases, overrides, history, itemSeasons] = await Promise.all([
     loadNeeds(),
     loadConsumption(),
     loadStock(),
     loadExpiration(),
     loadConsumed(),
-    loadStoreSelections(),
     loadPurchases(),
     loadOverrides(),
     loadHistory(),
@@ -977,7 +901,6 @@ async function loadMergeContext() {
     stock,
     expiration,
     consumed,
-    selections,
     purchases,
     overrides,
     history,
@@ -998,7 +921,6 @@ function cloneContext(context) {
     stock: cloneData(context.stock),
     expiration: cloneData(context.expiration),
     consumed: cloneData(context.consumed),
-    selections: cloneData(context.selections),
     purchases: cloneData(context.purchases),
     overrides: cloneData(context.overrides),
     history: cloneData(context.history),
@@ -1017,7 +939,6 @@ function applyOperationToContext(context, operation) {
   mergeArrayRecords(context.stock, operation, { sumFields: ['amount'] });
   mergeArrayRecords(context.expiration, operation);
   mergeArrayRecords(context.consumed, operation, { sumFields: ['amount'] });
-  mergeStoreSelections(context.selections, operation);
   mergeMapEntries(context.purchases, operation, mergeArrayValues);
   mergeMapEntries(context.overrides, operation, mergeObjectValues);
   mergeMapEntries(context.history, operation, mergeArrayValues);
@@ -1032,7 +953,6 @@ async function saveContext(context) {
     saveValue('currentStock', context.stock),
     saveValue('expirationData', context.expiration),
     saveValue('consumedThisYear', context.consumed),
-    saveValue(STORE_SELECTION_KEY, context.selections),
     savePurchases(context.purchases),
     saveOverrides(context.overrides),
     saveHistory(context.history),
