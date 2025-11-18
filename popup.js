@@ -18,10 +18,9 @@ import {
 } from './utils/itemStorage.js';
 import { resolveNextPrepWindow } from './utils/calendarUtils.js';
 import { formatQuantity, roundQuantity } from './utils/quantityFormat.js';
+import { getStoreNamesForItem } from './utils/storeCatalog.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
-const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
-const STORE_SELECTION_KEY = 'storeSelections';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
@@ -37,7 +36,6 @@ async function loadArray(key, path) {
 const loadNeeds = () => loadArray('yearlyNeeds', YEARLY_NEEDS_PATH);
 const loadMonthlyConsumption = () => loadArray('monthlyConsumption', CONSUMPTION_PATH);
 const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
-const loadStoreSelections = () => loadArray(STORE_SELECTION_KEY, STORE_SELECTION_PATH);
 
 async function loadStock() {
   return new Promise(async resolve => {
@@ -132,7 +130,6 @@ async function loadMealsByCategory() {
 async function getData() {
   const [
     needs,
-    selections,
     consumption,
     stock,
     expiration,
@@ -146,7 +143,6 @@ async function getData() {
     cookingDays
   ] = await Promise.all([
     loadNeeds(),
-    loadStoreSelections(),
     loadMonthlyConsumption(),
     loadStock(),
     loadExpiration(),
@@ -161,7 +157,6 @@ async function getData() {
   ]);
   return {
     needs,
-    selections,
     consumption,
     stock,
     expiration,
@@ -211,7 +206,6 @@ let weightPackMap = new Map();
 let densityMap = {};
 let mealMonthMap = new Map();
 let mealPlanMonthMap = new Map();
-let selectionsData = [];
 let cookingDaysData = {};
 let itemNameToIdMap = {};
 let itemIdToNameMap = {};
@@ -313,10 +307,18 @@ function storageKey(type, item, store) {
   return `${type}_${encodeURIComponent(item)}_${encodeURIComponent(store)}`;
 }
 
+function extractScrapedProducts(entry) {
+  if (Array.isArray(entry)) return entry;
+  if (entry && typeof entry === 'object' && Array.isArray(entry.products)) {
+    return entry.products;
+  }
+  return [];
+}
+
 function loadScraped(item, store) {
   return new Promise(resolve => {
     const key = storageKey('scraped', item, store);
-    chrome.storage.local.get([key], data => resolve(data[key] || []));
+    chrome.storage.local.get([key], data => resolve(extractScrapedProducts(data[key])));
   });
 }
 
@@ -580,6 +582,10 @@ function monthlyCost(itemName, product, map = weightPackMap) {
   return unitPrice * (base + planned);
 }
 
+function storeNamesForItem(itemName) {
+  return getStoreNamesForItem(itemName) || [];
+}
+
 function homeUnitLabel(itemName) {
   const item = findNeedItem(itemName);
   if (!item || !item.home_unit) return null;
@@ -637,9 +643,9 @@ function updateFinalInfo(itemName, span, img, store, product, map = weightPackMa
 
 async function init() {
   await initUomTable();
+  chrome.storage.local.remove('storeSelections');
   const {
     needs,
-    selections,
     consumption,
     stock,
     expiration,
@@ -663,7 +669,6 @@ async function init() {
   const normalizedNeeds = normalizeEntriesByName(needs);
   needsData = normalizedNeeds;
   densityMap = density;
-  selectionsData = normalizeEntriesByName(selections);
   const sortedNeeds = sortItemsByCategory(normalizedNeeds);
   const consMap = mapByResolvedName(consumption, (c, key) =>
     key === c.name ? c : { ...c, name: key }
@@ -739,9 +744,7 @@ async function init() {
     finalMap.set(item.name, rec);
     getFinal(item.name).then(async store => {
       const product = await getFinalProduct(item.name);
-      const stores = selectionsData
-        .filter(s => s.name === item.name)
-        .map(s => s.store);
+      const stores = storeNamesForItem(item.name);
       const weightMap = await buildWeightPackMap(item.name, stores);
       if (product) {
         const pInfo = getPackInfo(product, weightMap, item.name);
@@ -786,9 +789,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     if (rec) {
       const { span, img, btn } = rec;
       const prod = message.product;
-      const stores = selectionsData
-        .filter(s => s.name === message.item)
-        .map(s => s.store);
+      const stores = storeNamesForItem(message.item);
       const weightMap = await buildWeightPackMap(message.item, stores);
       if (prod) {
         const info = getPackInfo(prod, weightMap, message.item);
@@ -856,7 +857,6 @@ async function rerenderAll() {
   const scrollTop = window.scrollY;
   const {
     needs,
-    selections,
     consumption,
     stock,
     expiration,
@@ -870,7 +870,6 @@ async function rerenderAll() {
   } = await getData();
   const normalizedNeeds = normalizeEntriesByName(needs);
   needsData = normalizedNeeds;
-  selectionsData = normalizeEntriesByName(selections);
   const sortedNeeds = sortItemsByCategory(normalizedNeeds);
   const consMap = mapByResolvedName(consumption, (c, key) =>
     key === c.name ? c : { ...c, name: key }
@@ -950,9 +949,7 @@ async function rerenderAll() {
     finalMap.set(item.name, rec);
     getFinal(item.name).then(async store => {
       const product = await getFinalProduct(item.name);
-      const stores = selectionsData
-        .filter(s => s.name === item.name)
-        .map(s => s.store);
+      const stores = storeNamesForItem(item.name);
       const weightMap = await buildWeightPackMap(item.name, stores);
       if (product) {
         const pInfo = getPackInfo(product, weightMap, item.name);
@@ -1008,9 +1005,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
             getFinalProduct(item)
           ]).then(async ([store, product]) => {
             const { span, img, btn } = rec;
-            const stores = selectionsData
-              .filter(s => s.name === item)
-              .map(s => s.store);
+            const stores = storeNamesForItem(item);
             const weightMap = await buildWeightPackMap(item, stores);
             rec.product = product;
             rec.weightMap = weightMap;

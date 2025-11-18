@@ -457,10 +457,18 @@ function applyCoupon(prod, coupons, week, store) {
   return copy;
 }
 
+function extractScrapedProducts(entry) {
+  if (Array.isArray(entry)) return entry;
+  if (entry && typeof entry === 'object' && Array.isArray(entry.products)) {
+    return entry.products;
+  }
+  return [];
+}
+
 function loadProducts(item, store) {
   return new Promise(resolve => {
     const key = storageKey('scraped', item, store);
-    chrome.storage.local.get([key], data => resolve(data[key] || []));
+    chrome.storage.local.get([key], data => resolve(extractScrapedProducts(data[key])));
   });
 }
 

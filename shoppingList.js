@@ -3,6 +3,7 @@ import { getItemName } from './utils/itemStorage.js';
 import { getPriceUnitInfo } from './utils/priceUtils.js';
 import { formatQuantity } from './utils/quantityFormat.js';
 import { formatDateLabel } from './utils/dateLabel.js';
+import { getStoreLink } from './utils/storeCatalog.js';
 
 function storageGet(keys) {
   return new Promise(resolve => {
@@ -110,11 +111,6 @@ function getCurrentWeek() {
 
 const PLACEHOLDER_IMG =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='50' height='50'><rect width='100%' height='100%' fill='%23ccc'/></svg>";
-
-const STORE_LINKS = {
-  'Roche Bros': name =>
-    `https://onlineshopping.rochebros.com/search?searchTerms=${name.replace(/ /g, '%20')}`
-};
 
 const state = {
   viewMode: 'full',
@@ -328,7 +324,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         li.appendChild(span);
 
         const storeKey = (item.store || '').toLowerCase().replace(/\./g, '').trim();
+        const rocheLink = getStoreLink('Roche Bros', item.item);
         if (
+          rocheLink &&
           (storeKey.startsWith('roche bros') || storeKey.startsWith('roche brothers')) &&
           item.product?.addToCartId
         ) {
@@ -338,7 +336,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             chrome.runtime.sendMessage(
               {
                 type: 'openStoreTab',
-                url: STORE_LINKS['Roche Bros'](item.item),
+                url: rocheLink,
                 item: item.item,
                 store: 'Roche Bros'
               },
@@ -354,13 +352,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             );
           });
           li.appendChild(btn);
-        } else if (item.product && item.product.link) {
-          const btn = document.createElement('button');
-          btn.textContent = 'View';
-          btn.addEventListener('click', () => {
-            chrome.windows.create({ url: item.product.link, type: 'popup', width: 800, height: 800 });
-          });
-          li.appendChild(btn);
+        } else {
+          const storeLink = getStoreLink(storeName, item.item);
+          if (storeLink) {
+            const btn = document.createElement('button');
+            btn.textContent = 'Open Store';
+            btn.addEventListener('click', () => {
+              chrome.runtime.sendMessage({
+                type: 'openStoreTab',
+                url: storeLink,
+                item: item.item,
+                store: storeName
+              });
+            });
+            li.appendChild(btn);
+          }
         }
 
         list.appendChild(li);

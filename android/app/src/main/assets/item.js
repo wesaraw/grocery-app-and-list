@@ -5,9 +5,7 @@ import { openOrFocusWindow } from './utils/windowUtils.js';
 import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
 import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
 import { formatQuantity, roundQuantity } from './utils/quantityFormat.js';
-
-const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
-const STORE_SELECTION_KEY = 'storeSelections';
+import { getStoreEntriesForItem } from './utils/storeCatalog.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -30,13 +28,6 @@ function setStorage(obj) {
   return new Promise(resolve => {
     chrome.storage.local.set(obj, () => resolve());
   });
-}
-
-async function loadStoreSelections() {
-  const arr = await loadItemArray(STORE_SELECTION_KEY);
-  if (arr.length > 0) return arr;
-  const fromJson = await loadJSON(STORE_SELECTION_PATH);
-  return await convertArrayToNames(fromJson);
 }
 
 async function loadArray(key, path) {
@@ -276,8 +267,15 @@ function monthlyCost(itemName, product, map = weightPackMap) {
 }
 
 async function getStoreEntries(itemName) {
-  const all = await loadStoreSelections();
-  return all.filter(e => e.name === itemName);
+  return getStoreEntriesForItem(itemName);
+}
+
+function extractScrapedProducts(entry) {
+  if (Array.isArray(entry)) return entry;
+  if (entry && typeof entry === 'object' && Array.isArray(entry.products)) {
+    return entry.products;
+  }
+  return [];
 }
 
 async function loadSelected(item, store) {
@@ -289,7 +287,7 @@ async function loadSelected(item, store) {
 async function loadScraped(item, store) {
   const k = key('scraped', item, store);
   const data = await getStorage([k]);
-  return data[k] || [];
+  return extractScrapedProducts(data[k]);
 }
 
 async function buildWeightPackMap(item, stores) {

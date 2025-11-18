@@ -6,14 +6,14 @@ import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
 import { loadPurchases } from './utils/purchaseStorage.js';
 import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
+import { getStoreNamesForItem } from './utils/storeCatalog.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
 const CONSUMED_PATH = 'consumedThisYear';
-const STORE_SELECTION_PATH = 'Required for grocery app/store_selection_stopandshop.json';
-const STORE_SELECTION_KEY = 'storeSelections';
+
 
 async function loadArray(key, path) {
   const arr = await loadItemArray(key);
@@ -56,13 +56,6 @@ const loadMealPlanMonth = () => loadStoredArray('mealPlanMonthly');
 
 function key(type, item, store) {
   return `${type}_${encodeURIComponent(item)}_${encodeURIComponent(store)}`;
-}
-
-async function loadStoreSelections() {
-  const arr = await loadItemArray(STORE_SELECTION_KEY);
-  if (arr.length > 0) return arr;
-  const fromJson = await loadJSON(STORE_SELECTION_PATH);
-  return await convertArrayToNames(fromJson);
 }
 
 function loadSelected(item, store) {
@@ -112,7 +105,7 @@ async function loadMealsByCategory() {
 }
 
 async function getData() {
-  const [needs, consumption, stock, expiration, consumed, purchases, mealYear, mealMonth, calendar, meals, dMap, selections] =
+  const [needs, consumption, stock, expiration, consumed, purchases, mealYear, mealMonth, calendar, meals, dMap] =
     await Promise.all([
       loadNeeds(),
       loadMonthlyConsumption(),
@@ -124,8 +117,7 @@ async function getData() {
       loadMealPlanMonth(),
       loadCalendar(),
       loadMealsByCategory(),
-      loadDensityMap(),
-      loadStoreSelections()
+      loadDensityMap()
     ]);
   return {
     needs,
@@ -138,8 +130,7 @@ async function getData() {
     mealMonth,
     calendar,
     mealsByCategory: meals,
-    density: dMap,
-    selections
+    density: dMap
   };
 }
 
@@ -301,7 +292,7 @@ function monthlyCost(itemName, product) {
 
 async function renderTotals() {
   await initUomTable();
-  const { needs, consumption, stock, expiration, consumed, purchases, mealYear, mealMonth, calendar, mealsByCategory, density, selections } = await getData();
+  const { needs, consumption, stock, expiration, consumed, purchases, mealYear, mealMonth, calendar, mealsByCategory, density } = await getData();
   needsData = needs;
   densityMap = density;
   calendarData = calendar;
@@ -335,7 +326,7 @@ async function renderTotals() {
   const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
   const totals = {};
   for (const item of needs) {
-    const stores = selections.filter(s => s.name === item.name).map(s => s.store);
+    const stores = getStoreNamesForItem(item.name);
     for (const store of stores) {
       const product = await loadSelected(item.name, store);
       if (!product) continue;
