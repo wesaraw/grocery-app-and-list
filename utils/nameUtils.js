@@ -5,6 +5,21 @@ export function canonicalName(name) {
     .replace(/\s+/g, ' ');
 }
 
+export function titleCaseName(name) {
+  if (!name) return '';
+  return name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(word => {
+      if (!word) return '';
+      const first = word.charAt(0).toUpperCase();
+      const rest = word.slice(1).toLowerCase();
+      return `${first}${rest}`;
+    })
+    .join(' ');
+}
+
 const NAME_SYNONYMS = {
   'paper towels': ['tissue', 'bounty'],
   'bounty paper towels': ['tissue', 'bounty']

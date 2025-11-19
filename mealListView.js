@@ -9,7 +9,7 @@ import { loadJSON } from './utils/dataLoader.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 import { loadUsers, loadUserPortionMultipliers } from './utils/userData.js';
-import { canonicalName } from './utils/nameUtils.js';
+import { canonicalName, titleCaseName } from './utils/nameUtils.js';
 import { parseQuantity } from './utils/calendarUtils.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
 import {
@@ -2260,12 +2260,17 @@ function createRows(meal, arr) {
     updateRowSpans();
 
     async function commit() {
-      const nameVal = mealInput ? mealInput.value.trim() : '';
+      const rawNameVal = mealInput ? mealInput.value.trim() : '';
+      const formattedMealName = titleCaseName(rawNameVal);
+      const nameVal = formattedMealName || rawNameVal;
       const bookVal = bookInput ? bookInput.value.trim() : '';
       const catVal = categorySelect ? categorySelect.value : type;
       let changed = false;
       if (nameVal) {
         meal.name = nameVal;
+        if (mealInput && formattedMealName) {
+          mealInput.value = formattedMealName;
+        }
         changed = true;
       }
       if (bookInput && bookVal !== meal.recipeBook) {
@@ -2297,7 +2302,12 @@ function createRows(meal, arr) {
       }
       const newIngs = [];
       rowsInfo.forEach(r => {
-        const n = r.nameInput.value.trim();
+        const rawName = r.nameInput.value.trim();
+        const formattedName = titleCaseName(rawName);
+        const n = formattedName || rawName;
+        if (formattedName) {
+          r.nameInput.value = formattedName;
+        }
         const q = r.qtyInput.value.trim();
         const u = r.select.value;
         if (!n && !q) return;

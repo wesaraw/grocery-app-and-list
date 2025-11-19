@@ -10,6 +10,7 @@ import {
   loadArray as loadItemArray,
   convertArrayToNames
 } from './utils/itemStorage.js';
+import { titleCaseName } from './utils/nameUtils.js';
 
 import { ensureIngredientRecordForItem } from './utils/fdcClient.js';
 import { getPendingMatch, setPendingMatch, setActivePendingMatchEntry } from './utils/nutritionMatching.js';
@@ -181,7 +182,9 @@ async function commit() {
   const stockEl = document.getElementById('stock');
   const categoryEl = document.getElementById('category');
 
-  const name = nameEl.value.trim();
+  const formattedName = titleCaseName(nameEl.value);
+  nameEl.value = formattedName;
+  const name = formattedName;
   const stockVal = stockEl.value.trim();
   const category = categoryEl.value.trim();
 

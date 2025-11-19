@@ -1,6 +1,6 @@
 import { loadJSON } from './utils/dataLoader.js';
 import { sortItemsByCategory, renderItemsWithCategoryHeaders } from './utils/sortByCategory.js';
-import { canonicalName } from './utils/nameUtils.js';
+import { canonicalName, titleCaseName } from './utils/nameUtils.js';
 import { calculateAndSaveMealNeeds } from './utils/mealNeedsCalculator.js';
 import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { loadItemSeasons, saveItemSeasons } from './utils/seasonData.js';
@@ -16,6 +16,7 @@ let filterText = '';
 const headerState = {};
 let allItems = [];
 let container;
+let renderList = () => {};
 
 async function loadArray(key, path) {
   const arr = await loadItemArray(key);
@@ -225,25 +226,131 @@ function createRow(name) {
   return div;
 }
 
+function buildRenameQueue() {
+  const normalizedOwners = new Map();
+  allItems.forEach(item => {
+    const normalized = titleCaseName(item.name);
+    const canon = canonicalName(item.name);
+    if (!normalized || !canon) return;
+    const key = normalized.toLowerCase();
+    if (!normalizedOwners.has(key)) {
+      normalizedOwners.set(key, canon);
+    }
+  });
+
+  const buckets = new Map();
+  allItems.forEach(item => {
+    const normalized = titleCaseName(item.name);
+    const canon = canonicalName(item.name);
+    if (!normalized || !canon) return;
+    if (normalized === item.name) return;
+
+    const normalizedKey = normalized.toLowerCase();
+    const owner = normalizedOwners.get(normalizedKey);
+    if (owner && owner !== canon) {
+      return;
+    }
+
+    if (!buckets.has(canon)) {
+      buckets.set(canon, { oldName: item.name, newName: normalized });
+    }
+  });
+
+  return Array.from(buckets.values());
+}
+
+async function refreshItems() {
+  const needs = await loadNeeds();
+  allItems = sortItemsByCategory(needs);
+  renderList();
+}
+
+async function fixMealIngredientCasing() {
+  await initializeMealCategories();
+  const mealEntries = Object.entries(MEAL_TYPES);
+  let updatedIngredients = 0;
+
+  for (const [, info] of mealEntries) {
+    const meals = await loadMealsForType(info);
+    let changed = false;
+
+    meals.forEach(meal => {
+      (meal.ingredients || []).forEach(ing => {
+        const normalized = titleCaseName(ing.name);
+        if (!normalized || normalized === ing.name) return;
+        ing.name = normalized;
+        changed = true;
+        updatedIngredients += 1;
+      });
+    });
+
+    if (changed) {
+      await save(info.key, meals);
+    }
+  }
+
+  return updatedIngredients;
+}
+
+async function runBulkCasingFix(button) {
+  if (!button || button.disabled) return;
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = 'Fixing casing...';
+
+  try {
+    const renameQueue = buildRenameQueue();
+    let renamedCount = 0;
+
+    for (let i = 0; i < renameQueue.length; i += 1) {
+      const job = renameQueue[i];
+      button.textContent = `Fixing casing (${i + 1}/${renameQueue.length})`;
+      await renameItem(job.oldName, job.newName);
+      renamedCount += 1;
+    }
+
+    button.textContent = 'Updating meals...';
+    const ingredientUpdates = await fixMealIngredientCasing();
+
+    button.textContent = 'Recalculating needs...';
+    await calculateAndSaveMealNeeds();
+
+    await refreshItems();
+
+    alert(`Fixed casing for ${renamedCount} item groups and ${ingredientUpdates} meal ingredients.`);
+  } catch (err) {
+    console.error('Failed to fix casing', err);
+    alert('Failed to fix casing. Check the console for details.');
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+
 async function init() {
   container = document.getElementById('items');
   const needs = await loadNeeds();
   allItems = sortItemsByCategory(needs);
 
-  function render() {
+  renderList = function render() {
     container.innerHTML = '';
     const arr = filterText
       ? allItems.filter(it => it.name.toLowerCase().includes(filterText))
       : allItems;
     renderItemsWithCategoryHeaders(arr, container, it => createRow(it.name), headerState);
-  }
+  };
 
-  render();
+  renderList();
 
   document.getElementById('searchBox').addEventListener('input', () => {
     filterText = document.getElementById('searchBox').value.trim().toLowerCase();
-    render();
+    renderList();
   });
+
+  const fixButton = document.getElementById('fixCasingButton');
+  if (fixButton) {
+    fixButton.addEventListener('click', () => runBulkCasingFix(fixButton));
+  }
 }
 
 document.addEventListener('DOMContentLoaded', init);

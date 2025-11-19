@@ -16,7 +16,7 @@ import { NUTRIENT_DEFINITIONS } from './utils/fdcNutrientMap.js';
 import { loadNutritionTargetLookup } from './utils/nutritionTargets.js';
 import { ensureIngredientRecordForItem } from './utils/fdcClient.js';
 import { getPendingMatch, setPendingMatch } from './utils/nutritionMatching.js';
-import { canonicalName } from './utils/nameUtils.js';
+import { canonicalName, titleCaseName } from './utils/nameUtils.js';
 
 // Paths for inventory data used when adding new items
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -397,7 +397,8 @@ export function parseMealsFromXml(text) {
     const meal = {};
     const rawCategory = mEl.querySelector('category')?.textContent.trim();
     meal.category = resolveCategoryId(rawCategory);
-    meal.name = mEl.querySelector('name')?.textContent.trim() || '';
+    const rawMealName = mEl.querySelector('name')?.textContent || '';
+    meal.name = titleCaseName(rawMealName) || rawMealName.trim() || '';
     meal.recipeBook = mEl.querySelector('recipeBook')?.textContent.trim() || '';
     meal.image = mEl.querySelector('image')?.textContent.trim() || null;
     const userStr = mEl.querySelector('users')?.textContent.trim() || '';
@@ -409,7 +410,7 @@ export function parseMealsFromXml(text) {
     meal.totalPortions = sanitizePortionCount(readPortionFromElement(mEl));
     meal.ingredients = [];
     mEl.querySelectorAll('ingredients > item').forEach(iEl => {
-      const name = iEl.querySelector('name')?.textContent.trim();
+      const name = titleCaseName(iEl.querySelector('name')?.textContent);
       const amt = iEl.querySelector('amount')?.textContent.trim();
       const unit = iEl.querySelector('unit')?.textContent.trim();
       if (name && amt && unit) {
@@ -431,11 +432,21 @@ export function parseMealsFromXml(text) {
 
 async function addMeal(meal, userCount) {
   const normalizedIngredients = Array.isArray(meal.ingredients)
-    ? meal.ingredients.map(ing => ({
-        ...ing,
-        prepAhead: !!ing?.prepAhead
-      }))
+    ? meal.ingredients.map(ing => {
+        const normalizedName = titleCaseName(ing?.name);
+        return {
+          ...ing,
+          name: normalizedName || (typeof ing?.name === 'string' ? ing.name.trim() : ''),
+          prepAhead: !!ing?.prepAhead
+        };
+      })
     : [];
+  const normalizedMealName = titleCaseName(meal.name);
+  if (normalizedMealName) {
+    meal.name = normalizedMealName;
+  } else if (typeof meal.name === 'string') {
+    meal.name = meal.name.trim();
+  }
   if (!Array.isArray(meal.importWarnings)) {
     meal.importWarnings = [];
   }
@@ -627,9 +638,11 @@ export async function importMealFromMealime(recipeData = {}) {
   const selectedCategory = recipeData.category && MEAL_TYPES[recipeData.category]
     ? recipeData.category
     : 'lunchDinner';
+  const rawMealimeName = typeof recipeData.name === 'string' ? recipeData.name : '';
+  const normalizedMealimeName = titleCaseName(rawMealimeName) || rawMealimeName.trim();
   const normalizedMeal = {
     category: selectedCategory,
-    name: recipeData.name || 'Mealime Recipe',
+    name: normalizedMealimeName || 'Mealime Recipe',
     recipeBook: recipeData.recipeBook || 'Mealime',
     instructions: typeof recipeData.instructions === 'string' ? recipeData.instructions : '',
     cookTime: typeof recipeData.cookTime === 'string'
@@ -647,7 +660,12 @@ export async function importMealFromMealime(recipeData = {}) {
       ? recipeData.importWarnings.slice()
       : [],
     ingredients: Array.isArray(recipeData.ingredients)
-      ? recipeData.ingredients.map(ingredient => ({ ...ingredient }))
+      ? recipeData.ingredients.map(ingredient => ({
+          ...ingredient,
+          name:
+            titleCaseName(ingredient?.name) ||
+            (typeof ingredient?.name === 'string' ? ingredient.name.trim() : '')
+        }))
       : [],
     users: Array.isArray(recipeData.users) ? recipeData.users.slice() : [],
     prepared: !!recipeData.prepared,
