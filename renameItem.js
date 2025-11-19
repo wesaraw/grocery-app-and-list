@@ -83,26 +83,63 @@ function saveHistory(history) {
   });
 }
 
-function renameFinalKeys(oldName, newName) {
+function bulkRenameFinalKeys(renameQueue) {
   return new Promise(resolve => {
-    const oldFinal = `final_${encodeURIComponent(oldName)}`;
-    const oldProd = `final_product_${encodeURIComponent(oldName)}`;
-    chrome.storage.local.get([oldFinal, oldProd], data => {
+    if (!renameQueue.length) {
+      resolve();
+      return;
+    }
+
+    const keysToFetch = [];
+    renameQueue.forEach(({ oldName }) => {
+      keysToFetch.push(`final_${encodeURIComponent(oldName)}`);
+      keysToFetch.push(`final_product_${encodeURIComponent(oldName)}`);
+    });
+
+    chrome.storage.local.get(keysToFetch, data => {
       const setObj = {};
-      if (data[oldFinal] !== undefined) {
-        setObj[`final_${encodeURIComponent(newName)}`] = data[oldFinal];
-      }
-      if (data[oldProd] !== undefined) {
-        setObj[`final_product_${encodeURIComponent(newName)}`] = data[oldProd];
-      }
-      chrome.storage.local.set(setObj, () => {
-        chrome.storage.local.remove([oldFinal, oldProd], resolve);
+      const keysToRemove = new Set();
+
+      renameQueue.forEach(({ oldName, newName }) => {
+        const oldFinal = `final_${encodeURIComponent(oldName)}`;
+        const oldProd = `final_product_${encodeURIComponent(oldName)}`;
+        const newFinal = `final_${encodeURIComponent(newName)}`;
+        const newProd = `final_product_${encodeURIComponent(newName)}`;
+
+        if (data[oldFinal] !== undefined) {
+          setObj[newFinal] = data[oldFinal];
+          keysToRemove.add(oldFinal);
+        }
+        if (data[oldProd] !== undefined) {
+          setObj[newProd] = data[oldProd];
+          keysToRemove.add(oldProd);
+        }
       });
+
+      const doRemove = () => {
+        if (keysToRemove.size === 0) {
+          resolve();
+          return;
+        }
+        chrome.storage.local.remove(Array.from(keysToRemove), resolve);
+      };
+
+      if (Object.keys(setObj).length === 0) {
+        doRemove();
+        return;
+      }
+
+      chrome.storage.local.set(setObj, doRemove);
     });
   });
 }
 
-async function renameItem(oldName, newName) {
+async function bulkRenameItems(renameQueue, progressCallback = () => {}) {
+  const jobs = renameQueue.filter(job => job && job.oldName && job.newName && job.oldName !== job.newName);
+  if (!jobs.length) {
+    return { renamedCount: 0 };
+  }
+
   await initializeMealCategories();
 
   const mealEntries = Object.entries(MEAL_TYPES);
@@ -127,36 +164,71 @@ async function renameItem(oldName, newName) {
     mealsByType[type] = mealLists[idx];
   });
 
-  const canonOld = canonicalName(oldName);
+  const renameByCanon = new Map();
+  const normalizedOwners = new Map();
+
+  jobs.forEach((job, index) => {
+    const canonOld = canonicalName(job.oldName);
+    const normalizedTarget = job.newName.toLowerCase();
+    if (!canonOld || !normalizedTarget) {
+      return;
+    }
+
+    const existingTargetOwner = normalizedOwners.get(normalizedTarget);
+    if (existingTargetOwner && existingTargetOwner !== canonOld) {
+      throw new Error(`Cannot rename "${job.oldName}" to "${job.newName}" because another canonical item already maps to that casing.`);
+    }
+    normalizedOwners.set(normalizedTarget, canonOld);
+
+    const existing = renameByCanon.get(canonOld);
+    if (existing && existing !== job.newName) {
+      throw new Error(`Conflicting rename instructions for ${job.oldName}.`);
+    }
+    renameByCanon.set(canonOld, job.newName);
+
+    progressCallback(index + 1, jobs.length);
+  });
+
+  if (!renameByCanon.size) {
+    return { renamedCount: 0 };
+  }
 
   const renameInArray = arr => {
     arr.forEach(it => {
-      if (canonicalName(it.name) === canonOld) {
-        it.name = newName;
+      const replacement = renameByCanon.get(canonicalName(it.name));
+      if (replacement) {
+        it.name = replacement;
       }
     });
   };
 
   [needs, consumption, stock, expiration, consumed].forEach(renameInArray);
+
   const renameKeys = obj => {
+    const updates = [];
     Object.keys(obj).forEach(k => {
-      if (canonicalName(k) === canonOld) {
-        obj[newName] = obj[k];
-        delete obj[k];
+      const replacement = renameByCanon.get(canonicalName(k));
+      if (replacement && replacement !== k) {
+        updates.push({ oldKey: k, newKey: replacement });
       }
     });
+    updates.forEach(({ oldKey, newKey }) => {
+      obj[newKey] = obj[oldKey];
+      delete obj[oldKey];
+    });
   };
+
   renameKeys(purchases);
   renameKeys(overrides);
   renameKeys(history);
   renameKeys(itemSeasons);
 
-  // rename ingredient references across all meals
   Object.values(mealsByType).forEach(meals => {
     meals.forEach(meal => {
       (meal.ingredients || []).forEach(ing => {
-        if (canonicalName(ing.name) === canonOld) {
-          ing.name = newName;
+        const replacement = renameByCanon.get(canonicalName(ing.name));
+        if (replacement) {
+          ing.name = replacement;
         }
       });
     });
@@ -175,11 +247,17 @@ async function renameItem(oldName, newName) {
     ...mealEntries.map(([type, info]) => save(info.key, mealsByType[type]))
   ]);
 
-  await renameFinalKeys(oldName, newName);
+  await bulkRenameFinalKeys(jobs);
 
   try {
     chrome.runtime.sendMessage({ type: 'inventory-updated' });
   } catch (_) {}
+
+  return { renamedCount: renameByCanon.size };
+}
+
+async function renameItem(oldName, newName) {
+  await bulkRenameItems([{ oldName, newName }]);
 }
 
 function createRow(name) {
@@ -300,13 +378,37 @@ async function runBulkCasingFix(button) {
 
   try {
     const renameQueue = buildRenameQueue();
-    let renamedCount = 0;
+    if (!renameQueue.length) {
+      alert('All items are already using the preferred casing.');
+      return;
+    }
 
-    for (let i = 0; i < renameQueue.length; i += 1) {
-      const job = renameQueue[i];
-      button.textContent = `Fixing casing (${i + 1}/${renameQueue.length})`;
-      await renameItem(job.oldName, job.newName);
-      renamedCount += 1;
+    const normalizedTargets = new Map();
+    let conflict = null;
+    renameQueue.forEach(job => {
+      const normalizedKey = job.newName.toLowerCase();
+      const canon = canonicalName(job.oldName);
+      if (!normalizedKey || !canon || conflict) return;
+      const owner = normalizedTargets.get(normalizedKey);
+      if (owner && owner !== canon) {
+        conflict = job;
+      }
+      normalizedTargets.set(normalizedKey, canon);
+    });
+
+    if (conflict) {
+      alert(`Cannot fix casing because another item already claims ${conflict.newName}.`);
+      return;
+    }
+
+    let renamedCount = 0;
+    button.textContent = `Fixing casing (0/${renameQueue.length})`;
+    const result = await bulkRenameItems(renameQueue, (completed, total) => {
+      button.textContent = `Fixing casing (${completed}/${total})`;
+      renamedCount = completed;
+    });
+    if (result && result.renamedCount !== undefined) {
+      renamedCount = result.renamedCount;
     }
 
     button.textContent = 'Updating meals...';
