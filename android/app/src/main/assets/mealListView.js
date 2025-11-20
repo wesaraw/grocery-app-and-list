@@ -761,6 +761,34 @@ function weightBasedEachCount(item, product, info, mult) {
   return Number.isFinite(count) && count > 0 ? count : null;
 }
 
+function packageWeightInGrams(product, info, mult) {
+  if (!product) return null;
+  if (product.convertedQty != null) {
+    return convertWithDensity(product.convertedQty * mult, 'oz', 'g', {
+      convert_volume_to_weight: info.convert,
+      custom_density_ratio: info.ratio
+    });
+  }
+  if (product.sizeQty != null && product.sizeUnit) {
+    return convertWithDensity(product.sizeQty * mult, product.sizeUnit, 'g', {
+      convert_volume_to_weight: info.convert,
+      custom_density_ratio: info.ratio
+    });
+  }
+  return null;
+}
+
+function requiredPackageMultiplier(item, product, info, needEachQty, mult) {
+  if (!(needEachQty > 0)) return null;
+  const gramsPerEach = item?.averageEachWeight?.gramsPerEach;
+  if (!(gramsPerEach > 0)) return null;
+  const packageGrams = packageWeightInGrams(product, info, mult);
+  if (!(packageGrams > 0)) return null;
+  const neededGrams = needEachQty * gramsPerEach;
+  const multiplier = neededGrams / packageGrams;
+  return Number.isFinite(multiplier) && multiplier > 0 ? multiplier : null;
+}
+
 function pricePerHomeUnit(itemName, product) {
   const item = needsMap.get(canonicalName(itemName));
   if (!item || !product || product.priceNumber == null) return null;
@@ -852,6 +880,15 @@ async function ingredientCost(name, amountStr) {
     const flozQty = convert(qty, fromUnit, 'fl oz');
     if (!isNaN(flozQty)) {
       return ppu * flozQty;
+    }
+  }
+  if (pricePerUnit == null) return null;
+  if (item.home_unit && item.home_unit.toLowerCase() === 'each') {
+    const info = densityMap[name] || {};
+    const pack = prod.packCount && prod.packCount > 1 ? prod.packCount : 1;
+    const packageMultiplier = requiredPackageMultiplier(item, prod, info, qty, pack);
+    if (packageMultiplier != null && prod.priceNumber != null) {
+      return prod.priceNumber * packageMultiplier;
     }
   }
   return pricePerUnit * qty;

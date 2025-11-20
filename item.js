@@ -198,6 +198,34 @@ function getPackInfo(product, map = weightPackMap, itemName = null) {
     return Number.isFinite(count) && count > 0 ? count : null;
   }
 
+  function packageWeightInGrams(product, info, mult) {
+    if (!product) return null;
+    if (product.convertedQty != null) {
+      return convertWithDensity(product.convertedQty * mult, 'oz', 'g', {
+        convert_volume_to_weight: info.convert,
+        custom_density_ratio: info.ratio
+      });
+    }
+    if (product.sizeQty != null && product.sizeUnit) {
+      return convertWithDensity(product.sizeQty * mult, product.sizeUnit, 'g', {
+        convert_volume_to_weight: info.convert,
+        custom_density_ratio: info.ratio
+      });
+    }
+    return null;
+  }
+
+  function requiredPackageMultiplier(item, product, info, needEachQty, mult) {
+    if (!(needEachQty > 0)) return null;
+    const gramsPerEach = item?.averageEachWeight?.gramsPerEach;
+    if (!(gramsPerEach > 0)) return null;
+    const packageGrams = packageWeightInGrams(product, info, mult);
+    if (!(packageGrams > 0)) return null;
+    const neededGrams = needEachQty * gramsPerEach;
+    const multiplier = neededGrams / packageGrams;
+    return Number.isFinite(multiplier) && multiplier > 0 ? multiplier : null;
+  }
+
   function extractSheetCount(itemName, product) {
   const sqft = sheetSqFtFor(itemName);
   const { pricePerUnit: ppu, unitType: ut } = getPriceUnitInfo(product);

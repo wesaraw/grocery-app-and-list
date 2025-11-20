@@ -465,6 +465,34 @@ function getPackInfo(product, map = weightPackMap, itemName = null) {
     return Number.isFinite(count) && count > 0 ? count : null;
   }
 
+  function packageWeightInGrams(product, info, mult) {
+    if (!product) return null;
+    if (product.convertedQty != null) {
+      return convertWithDensity(product.convertedQty * mult, 'oz', 'g', {
+        convert_volume_to_weight: info.convert,
+        custom_density_ratio: info.ratio
+      });
+    }
+    if (product.sizeQty != null && product.sizeUnit) {
+      return convertWithDensity(product.sizeQty * mult, product.sizeUnit, 'g', {
+        convert_volume_to_weight: info.convert,
+        custom_density_ratio: info.ratio
+      });
+    }
+    return null;
+  }
+
+  function requiredPackageMultiplier(item, product, info, needEachQty, mult) {
+    if (!(needEachQty > 0)) return null;
+    const gramsPerEach = item?.averageEachWeight?.gramsPerEach;
+    if (!(gramsPerEach > 0)) return null;
+    const packageGrams = packageWeightInGrams(product, info, mult);
+    if (!(packageGrams > 0)) return null;
+    const neededGrams = needEachQty * gramsPerEach;
+    const multiplier = neededGrams / packageGrams;
+    return Number.isFinite(multiplier) && multiplier > 0 ? multiplier : null;
+  }
+
   function packsForNeed(itemName, needAmt, product, map = weightPackMap) {
     if (!product || needAmt == null || isNaN(needAmt)) return null;
     const item = findNeedItem(itemName);
@@ -494,6 +522,12 @@ function getPackInfo(product, map = weightPackMap, itemName = null) {
         item.home_unit,
         { convert_volume_to_weight: info.convert, custom_density_ratio: info.ratio }
       );
+    }
+  } else {
+    const mult = weightPerPack ? 1 : pack;
+    const multiplier = requiredPackageMultiplier(item, product, info, needAmt, mult);
+    if (multiplier != null) {
+      return Math.ceil(multiplier);
     }
   }
   if (qtyPerPack == null || qtyPerPack <= 0) return null;

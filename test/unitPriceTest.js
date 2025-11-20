@@ -65,6 +65,28 @@ function weightBasedEachCount(item, product, mult) {
   return Number.isFinite(count) && count > 0 ? count : null;
 }
 
+function packageWeightInGrams(product, mult) {
+  if (!product) return null;
+  if (product.convertedQty != null) {
+    return convert(product.convertedQty * mult, 'oz', 'g');
+  }
+  if (product.sizeQty != null && product.sizeUnit) {
+    return convert(product.sizeQty * mult, product.sizeUnit, 'g');
+  }
+  return null;
+}
+
+function requiredPackageMultiplier(item, product, needEachQty, mult) {
+  if (!(needEachQty > 0)) return null;
+  const gramsPerEach = item?.averageEachWeight?.gramsPerEach;
+  if (!(gramsPerEach > 0)) return null;
+  const packageGrams = packageWeightInGrams(product, mult);
+  if (!(packageGrams > 0)) return null;
+  const neededGrams = needEachQty * gramsPerEach;
+  const multiplier = neededGrams / packageGrams;
+  return Number.isFinite(multiplier) && multiplier > 0 ? multiplier : null;
+}
+
 function extractSheetCount(itemName, product) {
   const sqft = sheetSqFtFor(itemName);
   const fields = [product?.name, product?.size, product?.unit];
@@ -487,6 +509,20 @@ const porkCount = convert(porkProduct.sizeQty, porkProduct.sizeUnit, 'g') / 110;
 const expectedPorkPrice = porkProduct.priceNumber / porkCount;
 if (porkEachPrice == null || Math.abs(porkEachPrice - expectedPorkPrice) > 0.0001) {
   throw new Error(`Expected pork chop price ${expectedPorkPrice.toFixed(4)} but got ${porkEachPrice}`);
+}
+
+needsData.push({ name: 'Parsnip', home_unit: 'each', averageEachWeight: { gramsPerEach: 133 } });
+const parsnipProduct = { priceNumber: 2.5, convertedQty: 16, sizeUnit: 'oz' };
+const parsnipEachPrice = pricePerHomeUnit('Parsnip', parsnipProduct);
+const parsnipMultiplier = requiredPackageMultiplier(needsData.find(n => n.name === 'Parsnip'), parsnipProduct, 4, 1);
+if (!(parsnipMultiplier > 1.1 && parsnipMultiplier < 1.2)) {
+  throw new Error(`Expected parsnip package multiplier ~1.17 but got ${parsnipMultiplier}`);
+}
+if (
+  parsnipEachPrice == null ||
+  Math.abs(parsnipEachPrice * 4 - parsnipProduct.priceNumber * parsnipMultiplier) > 0.01
+) {
+  throw new Error('Parsnip price scaling should match derived package multiplier');
 }
 
 function extractSize(text) {
