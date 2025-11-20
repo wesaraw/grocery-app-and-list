@@ -2,6 +2,7 @@ import { canonicalName } from './nameUtils.js';
 import { getMealPortionCount } from './calendarUtils.js';
 import { computeQuantityFromPerGram, NUTRIENT_DEFINITIONS } from './fdcNutrientMap.js';
 import { resolveIngredientAmount } from './unitResolver.js';
+import { convertWithDensity } from './unitNormalize.js';
 
 const MEAL_NUTRITION_VERSION = 3;
 const ROUNDING_PRECISION = 1e6;
@@ -12,6 +13,11 @@ const NUTRIENT_KEYS = NUTRIENT_DEFINITIONS.map(def => def.key);
 const NUTRIENT_DEFINITION_MAP = new Map(
   NUTRIENT_DEFINITIONS.map(def => [def.key, def])
 );
+
+function safeNumber(value) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+}
 
 function roundValue(value) {
   if (!Number.isFinite(value)) return 0;
@@ -63,6 +69,47 @@ function computeIngredientResolution(ingredient, ingredientMap, densityMap, reso
     return { grams: null, record, reason: resolution?.reason || 'conversion-failed' };
   }
   return { grams: resolution.grams, record, reason: null, metadata: resolution };
+}
+
+function packageWeightInGrams(record, densityInfo, mult = 1) {
+  if (!record || typeof record !== 'object') return null;
+  const metadata = record.metadata || {};
+  const convertedQty = safeNumber(metadata.convertedQty || metadata.converted_qty);
+  if (convertedQty != null) {
+    return convertWithDensity(convertedQty * mult, 'oz', 'g', {
+      convert_volume_to_weight: densityInfo?.convert,
+      custom_density_ratio: densityInfo?.ratio
+    });
+  }
+  const sizeQty = safeNumber(
+    metadata.sizeQty || metadata.sizeQuantity || metadata.netWeightQty || metadata.netWeightQuantity
+  );
+  const sizeUnit = metadata.sizeUnit || metadata.size_unit || metadata.netWeightUnit || metadata.net_weight_unit;
+  if (sizeQty != null && sizeUnit) {
+    return convertWithDensity(sizeQty * mult, sizeUnit, 'g', {
+      convert_volume_to_weight: densityInfo?.convert,
+      custom_density_ratio: densityInfo?.ratio
+    });
+  }
+  return null;
+}
+
+function computeEachPackageDetails(ingredient, record, parsedAmount, densityInfo) {
+  const gramsPerEach = ingredient?.averageEachWeight?.gramsPerEach;
+  if (!(gramsPerEach > 0)) return null;
+  const quantity = safeNumber(parsedAmount?.value);
+  if (!(quantity > 0)) return null;
+  const normalizedUnit = typeof parsedAmount?.unit === 'string' ? parsedAmount.unit.toLowerCase() : '';
+  if (normalizedUnit && normalizedUnit !== 'ea' && normalizedUnit !== 'each') return null;
+
+  const neededGrams = quantity * gramsPerEach;
+  const packageGrams = packageWeightInGrams(record, densityInfo);
+  const multiplier = packageGrams && neededGrams ? neededGrams / packageGrams : null;
+  return {
+    neededGrams: Number.isFinite(neededGrams) && neededGrams > 0 ? neededGrams : null,
+    packageGrams: Number.isFinite(packageGrams) && packageGrams > 0 ? packageGrams : null,
+    multiplier: Number.isFinite(multiplier) && multiplier > 0 ? multiplier : null
+  };
 }
 
 function baseTotals() {
@@ -273,10 +320,16 @@ export function calculateMealNutritionTotals(meal, context = {}) {
   const { perRecipe, perServing } = baseTotals();
   const missingIngredients = [];
   const ingredients = Array.isArray(meal.ingredients) ? meal.ingredients : [];
+  const portionCount = getMealPortionCount(meal) || 1;
+  const safePortions = portionCount > 0 ? portionCount : 1;
   let totalRecipeWeight = 0;
   const resolvedIngredients = {};
 
   ingredients.forEach(ingredient => {
+    const parsedAmount = parseQuantity(ingredient?.amount);
+    const normalizedUnit = typeof parsedAmount?.unit === 'string' ? parsedAmount.unit.toLowerCase() : '';
+    const isCountUnit = !normalizedUnit || normalizedUnit === 'ea' || normalizedUnit === 'each';
+    const name = ingredient?.name || '';
     const { grams, record, reason, metadata } = computeIngredientResolution(
       ingredient,
       ingredientMap,
@@ -287,12 +340,23 @@ export function calculateMealNutritionTotals(meal, context = {}) {
         persistResolvedMeasure
       }
     );
-    const name = ingredient?.name || '';
-    if (grams != null && grams > 0) {
-      totalRecipeWeight += grams;
+    const densityInfo = lookupDensityInfo(name, densityMap) || {};
+    const eachPackageDetails = computeEachPackageDetails(ingredient, record, parsedAmount, densityInfo);
+    const shouldScaleFdcPortion =
+      metadata?.source === 'fdc:portion' && isCountUnit && grams != null && grams > 0;
+    const scaledGrams = shouldScaleFdcPortion ? grams * safePortions : grams;
+    const gramsFromPackageMultiplier =
+      eachPackageDetails?.packageGrams && eachPackageDetails?.multiplier
+        ? eachPackageDetails.packageGrams * eachPackageDetails.multiplier
+        : null;
+    const gramsFromEachWeight = eachPackageDetails?.neededGrams;
+    const effectiveGrams =
+      gramsFromPackageMultiplier ?? scaledGrams ?? gramsFromEachWeight ?? grams;
+    if (effectiveGrams != null && effectiveGrams > 0) {
+      totalRecipeWeight += effectiveGrams;
       if (metadata) {
         resolvedIngredients[name] = {
-          grams: roundValue(grams),
+          grams: roundValue(effectiveGrams),
           source: metadata.source || null,
           confidence: metadata.confidence || null,
           sizeTag: metadata.sizeTag || null
@@ -303,11 +367,11 @@ export function calculateMealNutritionTotals(meal, context = {}) {
       missingIngredients.push({ name, reason: record ? 'missing-nutrient-data' : 'missing-ingredient-record' });
       return;
     }
-    if (grams == null || grams <= 0) {
+    if (effectiveGrams == null || effectiveGrams <= 0) {
       missingIngredients.push({ name, reason: reason || 'conversion-failed' });
       return;
     }
-    const contribution = computeQuantityFromPerGram(record.perGramVector, grams);
+    const contribution = computeQuantityFromPerGram(record.perGramVector, effectiveGrams);
     Object.entries(contribution).forEach(([key, value]) => {
       if (!Number.isFinite(value)) return;
       if (perRecipe[key] === undefined) return;
@@ -319,8 +383,6 @@ export function calculateMealNutritionTotals(meal, context = {}) {
     perRecipe[key] = roundValue(perRecipe[key]);
   });
 
-  const portionCount = getMealPortionCount(meal) || 1;
-  const safePortions = portionCount > 0 ? portionCount : 1;
   NUTRIENT_KEYS.forEach(key => {
     perServing[key] = roundValue(perRecipe[key] / safePortions);
   });

@@ -473,3 +473,41 @@ assertClose(squashOnlyTotals.totalRecipeWeight, 480, 'Squash-only total weight m
 assertClose(squashOnlyTotals.totalServingWeight, 120, 'Squash-only per-serving weight mismatch');
 assertClose(squashOnlyTotals.perRecipe.energy, 240, 'Squash-only per-recipe energy mismatch');
 assertClose(squashOnlyTotals.perServing.energy, 60, 'Squash-only per-serving energy mismatch');
+
+const parsnipRecord = normalizeIngredientRecord({
+  name: 'Parsnip',
+  perGramVector: { energy: 1 },
+  measures: [],
+  metadata: { sizeQty: 1, sizeUnit: 'lb' }
+});
+
+const parsnipIngredientMap = { ...ingredientMap, parsnip: parsnipRecord };
+
+const parsnipMeal = {
+  name: 'Parsnip Fractional Bag Meal',
+  totalPortions: 1,
+  ingredients: [
+    { name: 'Parsnip', amount: '4 each', averageEachWeight: { gramsPerEach: 133 } }
+  ]
+};
+
+const parsnipChanged = updateMealNutritionTotals(parsnipMeal, {
+  ingredientMap: parsnipIngredientMap,
+  densityMap,
+  globalProduceMeasures: globalDefaults,
+  nutritionTargets: nutritionTargetLookup
+});
+
+if (!parsnipChanged) {
+  throw new Error('Expected parsnip meal to compute nutrition totals');
+}
+
+const parsnipTotals = parsnipMeal.nutritionTotals;
+const expectedParsnipGrams = 133 * 4;
+assertClose(parsnipTotals.totalRecipeWeight, expectedParsnipGrams, 'Parsnip total weight should scale by each weight');
+assertClose(parsnipTotals.perRecipe.energy, expectedParsnipGrams, 'Parsnip energy should reflect fractional package multiplier');
+assertClose(
+  parsnipTotals.perServing.energy,
+  expectedParsnipGrams,
+  'Parsnip per-serving energy should reflect fractional package multiplier'
+);
