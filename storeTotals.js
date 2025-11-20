@@ -6,6 +6,9 @@ import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
 import { getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
 import { loadPurchases } from './utils/purchaseStorage.js';
 import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
+import { roundQuantity } from './utils/quantityFormat.js';
+import { getIngredientMap, updateIngredient } from './utils/ingredientStorage.js';
+import { canonicalName } from './utils/nameUtils.js';
 import { getStoreNamesForItem } from './utils/storeCatalog.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -13,6 +16,28 @@ const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.jso
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
 const CONSUMED_PATH = 'consumedThisYear';
+
+const COUNT_EXCLUSION_TOKENS = new Set([
+  'g',
+  'gram',
+  'grams',
+  'kg',
+  'lb',
+  'oz',
+  'fl oz',
+  'floz',
+  'cup',
+  'cups',
+  'tbsp',
+  'tsp',
+  'ml',
+  'l',
+  'liter',
+  'liters',
+  'pint',
+  'quart',
+  'gallon'
+]);
 
 
 async function loadArray(key, path) {
@@ -31,6 +56,99 @@ async function loadStock() {
   if (arr.length > 0) return arr;
   const stock = await loadJSON(STOCK_PATH);
   return await convertArrayToNames(stock);
+}
+
+async function loadIngredientMap() {
+  try {
+    ingredientMap = (await getIngredientMap()) || {};
+  } catch (_err) {
+    ingredientMap = {};
+  }
+  return ingredientMap;
+}
+
+function portionDescriptorText(portion = {}) {
+  const unit = (portion.measureUnit || '').toLowerCase();
+  const modifier = (portion.modifier || portion.portionDescription || '').toLowerCase();
+  return `${unit} ${modifier}`.trim();
+}
+
+function isCountLikePortion(portion = {}) {
+  const descriptor = portionDescriptorText(portion);
+  if (!descriptor) return true;
+  return !Array.from(COUNT_EXCLUSION_TOKENS).some(token => descriptor.includes(token));
+}
+
+function deriveEachWeightFromPortions(record) {
+  if (!record) return null;
+  const portions = Array.isArray(record.portions) ? record.portions : [];
+  for (const portion of portions) {
+    const grams = Number(portion?.gramWeight);
+    const amount = Number(portion?.amount) || 1;
+    if (!(grams > 0) || !(amount > 0)) continue;
+    if (!isCountLikePortion(portion)) continue;
+    const perEach = roundQuantity(grams / amount);
+    if (perEach > 0) {
+      return {
+        gramsPerEach: perEach,
+        source: 'fdc:portion',
+        confidence: 'medium',
+        sizeTag: portion?.sizeTag || null
+      };
+    }
+  }
+  const measures = Array.isArray(record.measures) ? record.measures : [];
+  for (const measure of measures) {
+    if (measure?.source !== 'fdc:portion') continue;
+    const grams = Number(measure?.grams);
+    const qty = Number(measure?.qty) || 1;
+    if (!(grams > 0) || !(qty > 0)) continue;
+    const descriptor = `${measure.unit || ''} ${measure.label || ''}`.toLowerCase();
+    if (descriptor && Array.from(COUNT_EXCLUSION_TOKENS).some(token => descriptor.includes(token))) {
+      continue;
+    }
+    const perEach = roundQuantity(grams / qty);
+    if (perEach > 0) {
+      return {
+        gramsPerEach: perEach,
+        source: 'fdc:portion',
+        confidence: measure?.confidence || 'medium',
+        sizeTag: measure?.sizeTag || null
+      };
+    }
+  }
+  return null;
+}
+
+async function cacheAverageEachWeight(name, record, averageEachWeight) {
+  if (!name || !record || !averageEachWeight?.gramsPerEach) return;
+  const normalized = canonicalName(name);
+  ingredientMap[normalized] = { ...record, averageEachWeight };
+  try {
+    await updateIngredient(name, { averageEachWeight });
+  } catch (_err) {
+    // Best-effort cache; ignore persistence errors
+  }
+}
+
+async function hydrateNeedsWithAverageEachWeight(needs = []) {
+  const updates = [];
+  needs.forEach(item => {
+    if (!item || item?.averageEachWeight?.gramsPerEach > 0) return;
+    const normalized = canonicalName(item.name || '');
+    const record = ingredientMap[normalized] || ingredientMap[item.name];
+    const derived = deriveEachWeightFromPortions(record);
+    if (derived?.gramsPerEach > 0) {
+      item.averageEachWeight = derived;
+      if (!record?.averageEachWeight?.gramsPerEach) {
+        updates.push(cacheAverageEachWeight(item.name, record, derived));
+      }
+    }
+  });
+  if (updates.length) {
+    await Promise.allSettled(updates);
+  }
+  return needs;
 }
 
 function getCurrentWeek() {
@@ -105,7 +223,7 @@ async function loadMealsByCategory() {
 }
 
 async function getData() {
-  const [needs, consumption, stock, expiration, consumed, purchases, mealYear, mealMonth, calendar, meals, dMap] =
+  const [needs, consumption, stock, expiration, consumed, purchases, mealYear, mealMonth, calendar, meals, dMap, ingredients] =
     await Promise.all([
       loadNeeds(),
       loadMonthlyConsumption(),
@@ -117,7 +235,8 @@ async function getData() {
       loadMealPlanMonth(),
       loadCalendar(),
       loadMealsByCategory(),
-      loadDensityMap()
+      loadDensityMap(),
+      loadIngredientMap()
     ]);
   return {
     needs,
@@ -130,7 +249,8 @@ async function getData() {
     mealMonth,
     calendar,
     mealsByCategory: meals,
-    density: dMap
+    density: dMap,
+    ingredientMap: ingredients
   };
 }
 
@@ -140,6 +260,7 @@ let consumptionMap = new Map();
 let densityMap = {};
 let mealPlanMonthMap = new Map();
 let calendarData = {};
+let ingredientMap = {};
 
 function baseGetPackInfo(product) {
   if (product && product.packCount && product.packCount > 1) {
@@ -200,13 +321,31 @@ function baseGetPackInfo(product) {
   return { count: 1, weightPerPack: false };
 }
 
-  function getPackInfo(product) {
-    return baseGetPackInfo(product);
-  }
+function getPackInfo(product) {
+  return baseGetPackInfo(product);
+}
 
-  function weightBasedEachCount(item, product, info, mult) {
-    const gramsPerEach = item?.averageEachWeight?.gramsPerEach;
-    if (!(gramsPerEach > 0)) return null;
+function gramsPerEachForItem(itemName, item) {
+  const direct = item?.averageEachWeight?.gramsPerEach;
+  if (direct > 0) return direct;
+  const normalized = canonicalName(itemName || item?.name || '');
+  const record = ingredientMap[normalized] || ingredientMap[itemName];
+  const derived = deriveEachWeightFromPortions(record);
+  if (derived?.gramsPerEach > 0) {
+    if (item && typeof item === 'object') {
+      item.averageEachWeight = derived;
+    }
+    if (record && !record.averageEachWeight?.gramsPerEach) {
+      cacheAverageEachWeight(itemName || normalized, record, derived);
+    }
+    return derived.gramsPerEach;
+  }
+  return null;
+}
+
+function weightBasedEachCount(item, product, info, mult) {
+  const gramsPerEach = gramsPerEachForItem(item?.name, item);
+  if (!(gramsPerEach > 0)) return null;
 
     let grams = null;
     if (product.convertedQty != null) {
@@ -319,8 +458,23 @@ function monthlyCost(itemName, product) {
 
 async function renderTotals() {
   await initUomTable();
-  const { needs, consumption, stock, expiration, consumed, purchases, mealYear, mealMonth, calendar, mealsByCategory, density } = await getData();
-  needsData = needs;
+  const {
+    needs,
+    consumption,
+    stock,
+    expiration,
+    consumed,
+    purchases,
+    mealYear,
+    mealMonth,
+    calendar,
+    mealsByCategory,
+    density,
+    ingredientMap: ingredientRecords
+  } = await getData();
+  ingredientMap = ingredientRecords || {};
+  const hydratedNeeds = await hydrateNeedsWithAverageEachWeight(needs);
+  needsData = hydratedNeeds;
   densityMap = density;
   calendarData = calendar;
   const consMap = new Map(consumption.map(c => [c.name, c]));
@@ -337,7 +491,7 @@ async function renderTotals() {
 
   const week = getCurrentWeek();
   const purchaseInfo = await calculatePurchaseNeeds(
-    needs,
+    hydratedNeeds,
     Array.from(consMap.values()),
     stock,
     expiration,
@@ -352,7 +506,7 @@ async function renderTotals() {
   );
   const purchaseMap = new Map(purchaseInfo.map(p => [p.name, p]));
   const totals = {};
-  for (const item of needs) {
+  for (const item of hydratedNeeds) {
     const stores = getStoreNamesForItem(item.name);
     for (const store of stores) {
       const product = await loadSelected(item.name, store);

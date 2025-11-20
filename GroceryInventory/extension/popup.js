@@ -18,25 +18,39 @@ import {
 } from './utils/itemStorage.js';
 import { resolveNextPrepWindow } from './utils/calendarUtils.js';
 import { formatQuantity, roundQuantity } from './utils/quantityFormat.js';
-
-const STORE_LIST = [
-  'Stop & Shop',
-  'Walmart',
-  'Amazon',
-  'Shaws',
-  'Roche Bros',
-  'Hannaford'
-];
-
-function getStoreNamesForItem() {
-  return STORE_LIST.slice();
-}
+import { getIngredientMap, updateIngredient } from './utils/ingredientStorage.js';
+import { canonicalName } from './utils/nameUtils.js';
+import { getStoreNamesForItem } from './utils/storeCatalog.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
 const CONSUMED_PATH = 'consumedThisYear';
+
+const COUNT_EXCLUSION_TOKENS = new Set([
+  'g',
+  'gram',
+  'grams',
+  'kg',
+  'lb',
+  'oz',
+  'fl oz',
+  'floz',
+  'cup',
+  'cups',
+  'tbsp',
+  'tsp',
+  'ml',
+  'l',
+  'liter',
+  'liters',
+  'pint',
+  'quart',
+  'gallon'
+]);
+
+let ingredientMap = {};
 
 async function loadArray(key, path) {
   const arr = await loadItemArray(key);
@@ -60,6 +74,99 @@ async function loadStock() {
       }
     });
   });
+}
+
+async function loadIngredientMap() {
+  try {
+    ingredientMap = (await getIngredientMap()) || {};
+  } catch (_err) {
+    ingredientMap = {};
+  }
+  return ingredientMap;
+}
+
+function portionDescriptorText(portion = {}) {
+  const unit = (portion.measureUnit || '').toLowerCase();
+  const modifier = (portion.modifier || portion.portionDescription || '').toLowerCase();
+  return `${unit} ${modifier}`.trim();
+}
+
+function isCountLikePortion(portion = {}) {
+  const descriptor = portionDescriptorText(portion);
+  if (!descriptor) return true;
+  return !Array.from(COUNT_EXCLUSION_TOKENS).some(token => descriptor.includes(token));
+}
+
+function deriveEachWeightFromPortions(record) {
+  if (!record) return null;
+  const portions = Array.isArray(record.portions) ? record.portions : [];
+  for (const portion of portions) {
+    const grams = Number(portion?.gramWeight);
+    const amount = Number(portion?.amount) || 1;
+    if (!(grams > 0) || !(amount > 0)) continue;
+    if (!isCountLikePortion(portion)) continue;
+    const perEach = roundQuantity(grams / amount);
+    if (perEach > 0) {
+      return {
+        gramsPerEach: perEach,
+        source: 'fdc:portion',
+        confidence: 'medium',
+        sizeTag: portion?.sizeTag || null
+      };
+    }
+  }
+  const measures = Array.isArray(record.measures) ? record.measures : [];
+  for (const measure of measures) {
+    if (measure?.source !== 'fdc:portion') continue;
+    const grams = Number(measure?.grams);
+    const qty = Number(measure?.qty) || 1;
+    if (!(grams > 0) || !(qty > 0)) continue;
+    const descriptor = `${measure.unit || ''} ${measure.label || ''}`.toLowerCase();
+    if (descriptor && Array.from(COUNT_EXCLUSION_TOKENS).some(token => descriptor.includes(token))) {
+      continue;
+    }
+    const perEach = roundQuantity(grams / qty);
+    if (perEach > 0) {
+      return {
+        gramsPerEach: perEach,
+        source: 'fdc:portion',
+        confidence: measure?.confidence || 'medium',
+        sizeTag: measure?.sizeTag || null
+      };
+    }
+  }
+  return null;
+}
+
+async function cacheAverageEachWeight(name, record, averageEachWeight) {
+  if (!name || !record || !averageEachWeight?.gramsPerEach) return;
+  const normalized = canonicalName(name);
+  ingredientMap[normalized] = { ...record, averageEachWeight };
+  try {
+    await updateIngredient(name, { averageEachWeight });
+  } catch (_err) {
+    // Best-effort cache; ignore persistence errors
+  }
+}
+
+async function hydrateNeedsWithAverageEachWeight(needs = []) {
+  const updates = [];
+  needs.forEach(item => {
+    if (!item || item?.averageEachWeight?.gramsPerEach > 0) return;
+    const normalized = canonicalName(item.name || '');
+    const record = ingredientMap[normalized] || ingredientMap[item.name];
+    const derived = deriveEachWeightFromPortions(record);
+    if (derived?.gramsPerEach > 0) {
+      item.averageEachWeight = derived;
+      if (!record?.averageEachWeight?.gramsPerEach) {
+        updates.push(cacheAverageEachWeight(item.name, record, derived));
+      }
+    }
+  });
+  if (updates.length) {
+    await Promise.allSettled(updates);
+  }
+  return needs;
 }
 
 function getTodayIsoDate() {
@@ -152,7 +259,8 @@ async function getData() {
     calendar,
     meals,
     dMap,
-    cookingDays
+    cookingDays,
+    ingredients
   ] = await Promise.all([
     loadNeeds(),
     loadMonthlyConsumption(),
@@ -165,7 +273,8 @@ async function getData() {
     loadCalendar(),
     loadMealsByCategory(),
     loadDensityMap(),
-    loadCookingDays()
+    loadCookingDays(),
+    loadIngredientMap()
   ]);
   return {
     needs,
@@ -179,7 +288,8 @@ async function getData() {
     calendar,
     mealsByCategory: meals,
     density: dMap,
-    cookingDays
+    cookingDays,
+    ingredientMap: ingredients
   };
 }
 
@@ -439,9 +549,27 @@ function getPackInfo(product, map = weightPackMap, itemName = null) {
     return getPackInfo(product, map, itemName).count;
   }
 
-  function weightBasedEachCount(item, product, info, mult) {
-    const gramsPerEach = item?.averageEachWeight?.gramsPerEach;
-    if (!(gramsPerEach > 0)) return null;
+function gramsPerEachForItem(itemName, item) {
+  const direct = item?.averageEachWeight?.gramsPerEach;
+  if (direct > 0) return direct;
+  const normalized = canonicalName(itemName || item?.name || '');
+  const record = ingredientMap[normalized] || ingredientMap[itemName];
+  const derived = deriveEachWeightFromPortions(record);
+  if (derived?.gramsPerEach > 0) {
+    if (item && typeof item === 'object') {
+      item.averageEachWeight = derived;
+    }
+    if (record && !record.averageEachWeight?.gramsPerEach) {
+      cacheAverageEachWeight(itemName || normalized, record, derived);
+    }
+    return derived.gramsPerEach;
+  }
+  return null;
+}
+
+function weightBasedEachCount(item, product, info, mult) {
+  const gramsPerEach = gramsPerEachForItem(item?.name, item);
+  if (!(gramsPerEach > 0)) return null;
 
     let grams = null;
     if (product.convertedQty != null) {
@@ -461,37 +589,37 @@ function getPackInfo(product, map = weightPackMap, itemName = null) {
     }
 
     if (!(grams > 0)) return null;
-    const count = grams / gramsPerEach;
-    return Number.isFinite(count) && count > 0 ? count : null;
-  }
+  const count = grams / gramsPerEach;
+  return Number.isFinite(count) && count > 0 ? count : null;
+}
 
-  function packageWeightInGrams(product, info, mult) {
-    if (!product) return null;
-    if (product.convertedQty != null) {
-      return convertWithDensity(product.convertedQty * mult, 'oz', 'g', {
-        convert_volume_to_weight: info.convert,
-        custom_density_ratio: info.ratio
-      });
-    }
-    if (product.sizeQty != null && product.sizeUnit) {
-      return convertWithDensity(product.sizeQty * mult, product.sizeUnit, 'g', {
-        convert_volume_to_weight: info.convert,
-        custom_density_ratio: info.ratio
-      });
-    }
-    return null;
+function packageWeightInGrams(product, info, mult) {
+  if (!product) return null;
+  if (product.convertedQty != null) {
+    return convertWithDensity(product.convertedQty * mult, 'oz', 'g', {
+      convert_volume_to_weight: info.convert,
+      custom_density_ratio: info.ratio
+    });
   }
+  if (product.sizeQty != null && product.sizeUnit) {
+    return convertWithDensity(product.sizeQty * mult, product.sizeUnit, 'g', {
+      convert_volume_to_weight: info.convert,
+      custom_density_ratio: info.ratio
+    });
+  }
+  return null;
+}
 
-  function requiredPackageMultiplier(item, product, info, needEachQty, mult) {
-    if (!(needEachQty > 0)) return null;
-    const gramsPerEach = item?.averageEachWeight?.gramsPerEach;
-    if (!(gramsPerEach > 0)) return null;
-    const packageGrams = packageWeightInGrams(product, info, mult);
-    if (!(packageGrams > 0)) return null;
-    const neededGrams = needEachQty * gramsPerEach;
-    const multiplier = neededGrams / packageGrams;
-    return Number.isFinite(multiplier) && multiplier > 0 ? multiplier : null;
-  }
+function requiredPackageMultiplier(item, product, info, needEachQty, mult) {
+  if (!(needEachQty > 0)) return null;
+  const gramsPerEach = gramsPerEachForItem(item?.name, item);
+  if (!(gramsPerEach > 0)) return null;
+  const packageGrams = packageWeightInGrams(product, info, mult);
+  if (!(packageGrams > 0)) return null;
+  const neededGrams = needEachQty * gramsPerEach;
+  const multiplier = neededGrams / packageGrams;
+  return Number.isFinite(multiplier) && multiplier > 0 ? multiplier : null;
+}
 
   function packsForNeed(itemName, needAmt, product, map = weightPackMap) {
     if (!product || needAmt == null || isNaN(needAmt)) return null;
@@ -729,8 +857,10 @@ async function init() {
     calendar,
     mealsByCategory,
     density,
-    cookingDays
+    cookingDays,
+    ingredientMap: ingredientRecords
   } = await getData();
+  ingredientMap = ingredientRecords || {};
   const nameMap = await getItemNameMap();
   itemNameToIdMap = nameMap || {};
   itemIdToNameMap = {};
@@ -739,7 +869,7 @@ async function init() {
       itemIdToNameMap[String(id)] = name;
     }
   });
-  const normalizedNeeds = normalizeEntriesByName(needs);
+  const normalizedNeeds = await hydrateNeedsWithAverageEachWeight(normalizeEntriesByName(needs));
   needsData = normalizedNeeds;
   densityMap = density;
   const sortedNeeds = sortItemsByCategory(normalizedNeeds);
