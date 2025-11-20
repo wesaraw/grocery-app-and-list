@@ -200,12 +200,38 @@ function baseGetPackInfo(product) {
   return { count: 1, weightPerPack: false };
 }
 
-function getPackInfo(product) {
-  return baseGetPackInfo(product);
-}
+  function getPackInfo(product) {
+    return baseGetPackInfo(product);
+  }
 
-function extractSheetCount(itemName, product) {
-  const sqft = sheetSqFtFor(itemName);
+  function weightBasedEachCount(item, product, info, mult) {
+    const gramsPerEach = item?.averageEachWeight?.gramsPerEach;
+    if (!(gramsPerEach > 0)) return null;
+
+    let grams = null;
+    if (product.convertedQty != null) {
+      grams = convertWithDensity(
+        product.convertedQty * mult,
+        'oz',
+        'g',
+        { convert_volume_to_weight: info.convert, custom_density_ratio: info.ratio }
+      );
+    } else if (product.sizeQty != null && product.sizeUnit) {
+      grams = convertWithDensity(
+        product.sizeQty * mult,
+        product.sizeUnit,
+        'g',
+        { convert_volume_to_weight: info.convert, custom_density_ratio: info.ratio }
+      );
+    }
+
+    if (!(grams > 0)) return null;
+    const count = grams / gramsPerEach;
+    return Number.isFinite(count) && count > 0 ? count : null;
+  }
+
+  function extractSheetCount(itemName, product) {
+    const sqft = sheetSqFtFor(itemName);
   const { pricePerUnit: ppu, unitType: ut } = getPriceUnitInfo(product);
   if (ppu != null && ut && /^(?:sf|sqft)$/.test(ut) && product.priceNumber != null) {
     const totalSqFt = product.priceNumber / ppu;
@@ -229,8 +255,8 @@ function pricePerHomeUnit(itemName, product) {
   const { count: pack, weightPerPack } = getPackInfo(product);
   const mult = weightPerPack ? 1 : pack;
   const unit = item.home_unit ? item.home_unit.toLowerCase() : 'each';
-  if (unit === 'sheets') {
-    const sheetSqFt = sheetSqFtFor(itemName);
+    if (unit === 'sheets') {
+      const sheetSqFt = sheetSqFtFor(itemName);
     const { pricePerUnit: ppu, unitType: ut } = getPriceUnitInfo(product);
     if (ppu != null && ut) {
       if (/^(?:sf|sqft)$/.test(ut)) {
@@ -241,13 +267,14 @@ function pricePerHomeUnit(itemName, product) {
       }
     }
     const totalSheets = extractSheetCount(itemName, product);
-    if (totalSheets && product.priceNumber != null) {
-      return product.priceNumber / (totalSheets * mult);
+      if (totalSheets && product.priceNumber != null) {
+        return product.priceNumber / (totalSheets * mult);
+      }
     }
-  }
-  if (unit === 'each') {
-    return product.priceNumber != null ? product.priceNumber / pack : null;
-  }
+    if (unit === 'each') {
+      const eachCount = weightBasedEachCount(item, product, info, mult) || pack;
+      return product.priceNumber != null ? product.priceNumber / eachCount : null;
+    }
   let { pricePerUnit: pricePerOz, unitType } = getPriceUnitInfo(product);
   if (pricePerOz == null && product.priceNumber != null) {
     let ozQty = null;

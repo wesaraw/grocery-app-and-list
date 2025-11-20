@@ -13,10 +13,12 @@ import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemSto
 import { createInventoryLookup } from './utils/inventoryLookup.js';
 import { loadGlobalProduceMeasures } from './utils/unitResolver.js';
 import { NUTRIENT_DEFINITIONS } from './utils/fdcNutrientMap.js';
+import { parseQuantity } from './utils/calendarUtils.js';
 import { loadNutritionTargetLookup } from './utils/nutritionTargets.js';
 import { ensureIngredientRecordForItem } from './utils/fdcClient.js';
 import { getPendingMatch, setPendingMatch } from './utils/nutritionMatching.js';
 import { canonicalName } from './utils/nameUtils.js';
+import { resolveIngredientAmount } from './utils/unitResolver.js';
 
 // Paths for inventory data used when adding new items
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
@@ -191,6 +193,92 @@ function resolveServingSizeText(ingredient) {
     return `${quantityText} ${unitText}`.trim();
   }
   return '';
+}
+
+function roundValue(value) {
+  if (!Number.isFinite(value)) return null;
+  const rounded = Math.round(value * 1e6) / 1e6;
+  return Math.abs(rounded) < 1e-6 ? 0 : rounded;
+}
+
+function lookupIngredientRecord(name, ingredientMap = {}) {
+  if (!name) return null;
+  const normalized = canonicalName(name);
+  return ingredientMap[normalized] || ingredientMap[name] || null;
+}
+
+function lookupDensityInfo(name, densityMap = {}) {
+  if (!name) return null;
+  if (densityMap[name]) return densityMap[name];
+  const normalized = canonicalName(name);
+  if (densityMap[normalized]) return densityMap[normalized];
+  return null;
+}
+
+function ingredientHasExplicitSize(ingredient) {
+  if (!ingredient || typeof ingredient !== 'object') return false;
+  const hasSizeUnit = typeof ingredient.sizeUnit === 'string' && ingredient.sizeUnit.trim().length > 0;
+  const hasContainerUnit = typeof ingredient.containerUnit === 'string' && ingredient.containerUnit.trim().length > 0;
+  const hasSizeAmount = Number.isFinite(ingredient.sizeAmount);
+  const hasContainerQty = Number.isFinite(ingredient.containerQuantity);
+  return hasSizeUnit || hasContainerUnit || hasSizeAmount || hasContainerQty;
+}
+
+function deriveAverageEachWeight(ingredient, context = {}, options = {}) {
+  if (!ingredient || typeof ingredient !== 'object' || !ingredient.name) return null;
+  const parsed = parseQuantity(ingredient.amount || ingredient.serving_size || '');
+  const normalizedUnit = typeof parsed?.unit === 'string' ? parsed.unit.toLowerCase() : '';
+  const isEachUnit = !normalizedUnit || normalizedUnit === 'ea' || normalizedUnit === 'each';
+  if (!isEachUnit) return null;
+  if (ingredientHasExplicitSize(ingredient)) return null;
+
+  const record = lookupIngredientRecord(ingredient.name, context.ingredientMap);
+  if (!record) return null;
+  const densityInfo = lookupDensityInfo(ingredient.name, context.densityMap);
+  const resolver = typeof options.resolveIngredientAmount === 'function'
+    ? options.resolveIngredientAmount
+    : resolveIngredientAmount;
+
+  let capturedMeasure = null;
+  const resolution = resolver(
+    { ...ingredient, amount: '1 each', unit: 'each', serving_size: '1 each' },
+    record,
+    null,
+    {
+      densityInfo,
+      globalDefaults: context.globalProduceMeasures,
+      persistResolvedMeasure: payload => {
+        if (payload?.measure) capturedMeasure = payload.measure;
+      }
+    }
+  );
+
+  const grams = resolution?.grams;
+  if (!(grams > 0)) return null;
+
+  const perEach = capturedMeasure && capturedMeasure.qty
+    ? capturedMeasure.grams / capturedMeasure.qty
+    : grams;
+
+  const gramsPerEach = perEach > 0 ? roundValue(perEach) : null;
+  if (!(gramsPerEach > 0)) return null;
+
+  return {
+    gramsPerEach,
+    source: capturedMeasure?.source || resolution?.source || null,
+    confidence: capturedMeasure?.confidence || resolution?.confidence || null,
+    sizeTag: capturedMeasure?.sizeTag || resolution?.sizeTag || null
+  };
+}
+
+function applyAverageEachWeights(ingredients, context = {}) {
+  if (!Array.isArray(ingredients)) return;
+  ingredients.forEach(ingredient => {
+    const eachWeight = deriveAverageEachWeight(ingredient, context);
+    if (eachWeight) {
+      ingredient.averageEachWeight = eachWeight;
+    }
+  });
 }
 
 function appendNutritionWarning(warnings, message) {
@@ -490,6 +578,11 @@ async function addMeal(meal, userCount) {
   ingredientMapCache = latestIngredients || {};
   globalProduceMeasuresCache = defaults || {};
   nutritionTargetLookupCache = targets || {};
+  applyAverageEachWeights(normalizedIngredients, {
+    ingredientMap: ingredientMapCache,
+    densityMap: densityMapCache,
+    globalProduceMeasures: globalProduceMeasuresCache
+  });
   const arr = await loadMeals(meal.category);
   const newMeal = {
     name: meal.name,
@@ -711,5 +804,6 @@ export async function importMealsFromFiles(fileList, progressCallbacks = {}) {
 export const __mealImportInternals = {
   resolveIngredientUnit,
   resolveServingSizeText,
-  syncNutritionForNewItem
+  syncNutritionForNewItem,
+  deriveAverageEachWeight
 };

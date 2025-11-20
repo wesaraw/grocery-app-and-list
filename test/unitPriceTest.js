@@ -49,9 +49,45 @@ if (convert(1, 'doz', 'ea') !== 12) {
 // Test pricePerHomeUnit with sheets
 let needsData = [{ name: 'Bounty Paper Towels', home_unit: 'sheets' }];
 
+function weightBasedEachCount(item, product, mult) {
+  const gramsPerEach = item?.averageEachWeight?.gramsPerEach;
+  if (!(gramsPerEach > 0)) return null;
+
+  let grams = null;
+  if (product.convertedQty != null) {
+    grams = convert(product.convertedQty * mult, 'oz', 'g');
+  } else if (product.sizeQty != null && product.sizeUnit) {
+    grams = convert(product.sizeQty * mult, product.sizeUnit, 'g');
+  }
+
+  if (!(grams > 0)) return null;
+  const count = grams / gramsPerEach;
+  return Number.isFinite(count) && count > 0 ? count : null;
+}
+
+function extractSheetCount(itemName, product) {
+  const sqft = sheetSqFtFor(itemName);
+  const fields = [product?.name, product?.size, product?.unit];
+  for (const f of fields) {
+    if (!f) continue;
+    const m = f.match(/(\d[\d,]*)\s*sheets?/i);
+    if (m) return parseInt(m[1].replace(/,/g, ''), 10);
+    const sq = f.match(/(\d[\d,]*)\s*(?:sq\.?\s*ft|sqft|sf)/i);
+    if (sq) return Math.round(parseInt(sq[1].replace(/,/g, ''), 10) / sqft);
+  }
+  const { pricePerUnit: ppu, unitType: ut } = getPriceUnitInfo(product);
+  if (ppu != null && ut && /^(?:sf|sqft)$/.test(ut) && product.priceNumber != null) {
+    const totalSqFt = product.priceNumber / ppu;
+    return Math.round(totalSqFt / sqft);
+  }
+  return null;
+}
+
 function pricePerHomeUnit(itemName, product) {
   const item = needsData.find(n => n.name === itemName);
   if (!item || !product) return null;
+  const { count: pack, weightPerPack } = baseGetPackInfo(product);
+  const mult = weightPerPack ? 1 : pack;
   const unit = item.home_unit ? item.home_unit.toLowerCase() : 'each';
   if (unit === 'sheets') {
     const sheetSqFt = sheetSqFtFor(itemName);
@@ -64,11 +100,15 @@ function pricePerHomeUnit(itemName, product) {
         return ppu;
       }
     }
+    const totalSheets = extractSheetCount(itemName, product);
+    if (totalSheets && product.priceNumber != null) {
+      return product.priceNumber / (totalSheets * mult);
+    }
   }
   if (unit === 'each') {
-    const { count } = baseGetPackInfo(product);
-    if (product.priceNumber != null && count) {
-      return product.priceNumber / count;
+    const eachCount = weightBasedEachCount(item, product, mult) || pack;
+    if (product.priceNumber != null && eachCount) {
+      return product.priceNumber / eachCount;
     }
   }
   return null;
@@ -438,6 +478,15 @@ const perHalfEgg = pricePerHomeUnit('Egg', halfDozenProduct);
 const expectedHalfPerEgg = halfDozenProduct.priceNumber / 6;
 if (perHalfEgg == null || Math.abs(perHalfEgg - expectedHalfPerEgg) > 0.0001) {
   throw new Error(`Expected per-egg price ${expectedHalfPerEgg.toFixed(4)} but got ${perHalfEgg}`);
+}
+
+needsData.push({ name: 'Pork Chops', home_unit: 'each', averageEachWeight: { gramsPerEach: 110 } });
+const porkProduct = { name: 'Boneless Pork Chops', sizeQty: 24, sizeUnit: 'oz', priceNumber: 12 };
+const porkEachPrice = pricePerHomeUnit('Pork Chops', porkProduct);
+const porkCount = convert(porkProduct.sizeQty, porkProduct.sizeUnit, 'g') / 110;
+const expectedPorkPrice = porkProduct.priceNumber / porkCount;
+if (porkEachPrice == null || Math.abs(porkEachPrice - expectedPorkPrice) > 0.0001) {
+  throw new Error(`Expected pork chop price ${expectedPorkPrice.toFixed(4)} but got ${porkEachPrice}`);
 }
 
 function extractSize(text) {

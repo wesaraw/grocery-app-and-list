@@ -739,6 +739,28 @@ async function correctMealIdErrors() {
   return { mealsUpdated, mapUpdates };
 }
 
+function weightBasedEachCount(item, product, info, mult) {
+  const gramsPerEach = item?.averageEachWeight?.gramsPerEach;
+  if (!(gramsPerEach > 0)) return null;
+
+  let grams = null;
+  if (product.convertedQty != null) {
+    grams = convertWithDensity(product.convertedQty * mult, 'oz', 'g', {
+      convert_volume_to_weight: info.convert,
+      custom_density_ratio: info.ratio
+    });
+  } else if (product.sizeQty != null && product.sizeUnit) {
+    grams = convertWithDensity(product.sizeQty * mult, product.sizeUnit, 'g', {
+      convert_volume_to_weight: info.convert,
+      custom_density_ratio: info.ratio
+    });
+  }
+
+  if (!(grams > 0)) return null;
+  const count = grams / gramsPerEach;
+  return Number.isFinite(count) && count > 0 ? count : null;
+}
+
 function pricePerHomeUnit(itemName, product) {
   const item = needsMap.get(canonicalName(itemName));
   if (!item || !product || product.priceNumber == null) return null;
@@ -764,7 +786,8 @@ function pricePerHomeUnit(itemName, product) {
     }
   }
   if (unit === 'each') {
-    return product.priceNumber / pack;
+    const eachCount = weightBasedEachCount(item, product, info, pack) || pack;
+    return product.priceNumber / eachCount;
   }
   let { pricePerUnit: pricePerOz, unitType } = getPriceUnitInfo(product);
   if (pricePerOz == null) {
