@@ -4,12 +4,14 @@ import { initUomTable, convert } from './utils/uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 import { MEAL_TYPES, initializeMealCategories, loadCookingDays } from './utils/mealData.js';
+import { loadGlobalProduceMeasures } from './utils/unitResolver.js';
 import {
   sortItemsByCategory,
   renderItemsWithCategoryHeaders
 } from './utils/sortByCategory.js';
 import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from "./utils/priceUtils.js";
 import { loadPurchases } from './utils/purchaseStorage.js';
+import { getIngredientMap, updateIngredient } from './utils/ingredientStorage.js';
 import {
   loadArray as loadItemArray,
   convertArrayToNames,
@@ -19,6 +21,7 @@ import {
 import { resolveNextPrepWindow } from './utils/calendarUtils.js';
 import { formatQuantity, roundQuantity } from './utils/quantityFormat.js';
 import { getStoreNamesForItem } from './utils/storeCatalog.js';
+import { hydrateAverageEachWeights } from './utils/eachWeight.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -140,7 +143,9 @@ async function getData() {
     calendar,
     meals,
     dMap,
-    cookingDays
+    cookingDays,
+    ingredientMap,
+    globalProduceMeasures
   ] = await Promise.all([
     loadNeeds(),
     loadMonthlyConsumption(),
@@ -153,7 +158,9 @@ async function getData() {
     loadCalendar(),
     loadMealsByCategory(),
     loadDensityMap(),
-    loadCookingDays()
+    loadCookingDays(),
+    getIngredientMap(),
+    loadGlobalProduceMeasures()
   ]);
   return {
     needs,
@@ -167,7 +174,9 @@ async function getData() {
     calendar,
     mealsByCategory: meals,
     density: dMap,
-    cookingDays
+    cookingDays,
+    ingredientMap,
+    globalProduceMeasures
   };
 }
 
@@ -183,6 +192,8 @@ let purchasesData = {};
 let calendarData = {};
 let mealsByCategoryData = {};
 let hideZeroItems = false;
+let ingredientMapData = {};
+let globalProduceMeasuresData = {};
 
 function passesNeedFilter(needAmt) {
   return !hideZeroItems || (needAmt != null && needAmt > 0);
@@ -717,7 +728,9 @@ async function init() {
     calendar,
     mealsByCategory,
     density,
-    cookingDays
+    cookingDays,
+    ingredientMap,
+    globalProduceMeasures
   } = await getData();
   const nameMap = await getItemNameMap();
   itemNameToIdMap = nameMap || {};
@@ -730,6 +743,13 @@ async function init() {
   const normalizedNeeds = normalizeEntriesByName(needs);
   needsData = normalizedNeeds;
   densityMap = density;
+  ingredientMapData = ingredientMap || {};
+  globalProduceMeasuresData = globalProduceMeasures || {};
+  await hydrateAverageEachWeights(needsData, {
+    ingredientMap: ingredientMapData,
+    densityMap,
+    globalProduceMeasures: globalProduceMeasuresData
+  }, { updateIngredient });
   const sortedNeeds = sortItemsByCategory(normalizedNeeds);
   const consMap = mapByResolvedName(consumption, (c, key) =>
     key === c.name ? c : { ...c, name: key }

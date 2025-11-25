@@ -3,10 +3,13 @@ import { calculatePurchaseNeeds } from './utils/purchaseCalculator.js';
 import { initUomTable } from './utils/uomConverter.js';
 import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
 import { MEAL_TYPES, initializeMealCategories } from './utils/mealData.js';
+import { loadGlobalProduceMeasures } from './utils/unitResolver.js';
 import { getPriceUnitInfo, sheetSqFtFor } from './utils/priceUtils.js';
 import { loadPurchases } from './utils/purchaseStorage.js';
+import { getIngredientMap, updateIngredient } from './utils/ingredientStorage.js';
 import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
 import { getStoreNamesForItem } from './utils/storeCatalog.js';
+import { hydrateAverageEachWeights } from './utils/eachWeight.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -105,20 +108,35 @@ async function loadMealsByCategory() {
 }
 
 async function getData() {
-  const [needs, consumption, stock, expiration, consumed, purchases, mealYear, mealMonth, calendar, meals, dMap] =
-    await Promise.all([
-      loadNeeds(),
-      loadMonthlyConsumption(),
-      loadStock(),
-      loadExpiration(),
-      loadConsumed(),
-      loadPurchases(),
-      loadStoredArray('mealPlanYearly'),
-      loadMealPlanMonth(),
-      loadCalendar(),
-      loadMealsByCategory(),
-      loadDensityMap()
-    ]);
+  const [
+    needs,
+    consumption,
+    stock,
+    expiration,
+    consumed,
+    purchases,
+    mealYear,
+    mealMonth,
+    calendar,
+    meals,
+    dMap,
+    ingredientMap,
+    globalProduceMeasures
+  ] = await Promise.all([
+    loadNeeds(),
+    loadMonthlyConsumption(),
+    loadStock(),
+    loadExpiration(),
+    loadConsumed(),
+    loadPurchases(),
+    loadStoredArray('mealPlanYearly'),
+    loadMealPlanMonth(),
+    loadCalendar(),
+    loadMealsByCategory(),
+    loadDensityMap(),
+    getIngredientMap(),
+    loadGlobalProduceMeasures()
+  ]);
   return {
     needs,
     consumption,
@@ -130,7 +148,9 @@ async function getData() {
     mealMonth,
     calendar,
     mealsByCategory: meals,
-    density: dMap
+    density: dMap,
+    ingredientMap,
+    globalProduceMeasures
   };
 }
 
@@ -140,6 +160,8 @@ let consumptionMap = new Map();
 let densityMap = {};
 let mealPlanMonthMap = new Map();
 let calendarData = {};
+let ingredientMapData = {};
+let globalProduceMeasuresData = {};
 
 function baseGetPackInfo(product) {
   if (product && product.packCount && product.packCount > 1) {
@@ -319,9 +341,30 @@ function monthlyCost(itemName, product) {
 
 async function renderTotals() {
   await initUomTable();
-  const { needs, consumption, stock, expiration, consumed, purchases, mealYear, mealMonth, calendar, mealsByCategory, density } = await getData();
+  const {
+    needs,
+    consumption,
+    stock,
+    expiration,
+    consumed,
+    purchases,
+    mealYear,
+    mealMonth,
+    calendar,
+    mealsByCategory,
+    density,
+    ingredientMap,
+    globalProduceMeasures
+  } = await getData();
   needsData = needs;
   densityMap = density;
+  ingredientMapData = ingredientMap || {};
+  globalProduceMeasuresData = globalProduceMeasures || {};
+  await hydrateAverageEachWeights(needsData, {
+    ingredientMap: ingredientMapData,
+    densityMap,
+    globalProduceMeasures: globalProduceMeasuresData
+  }, { updateIngredient });
   calendarData = calendar;
   const consMap = new Map(consumption.map(c => [c.name, c]));
   const hasCalendar = calendar && Object.keys(calendar).length > 0;
