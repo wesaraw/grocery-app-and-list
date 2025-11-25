@@ -336,7 +336,9 @@ assertClose(energyScore.percentComplete, roundedEnergyPercent, 'Energy score per
 const expectedEnergyPoints =
   expectedEnergyPercent <= 0
     ? 0
-    : Math.max(1, Math.min(10, Math.ceil(expectedEnergyPercent / 10)));
+    : expectedEnergyPercent >= 100
+      ? 10
+      : Math.max(1, Math.floor(expectedEnergyPercent / 10));
 if (energyScore.points !== expectedEnergyPoints) {
   throw new Error('Energy score points mismatch');
 }
@@ -380,7 +382,9 @@ if (sodiumScore.importanceDirection !== 'minimize') {
 const expectedSodiumPoints =
   expectedSodiumPercent <= 0
     ? 0
-    : Math.max(1, Math.min(10, Math.ceil(expectedSodiumPercent / 10)));
+    : expectedSodiumPercent >= 100
+      ? 10
+      : Math.max(1, Math.floor(expectedSodiumPercent / 10));
 if (sodiumScore.points !== expectedSodiumPoints) {
   throw new Error('Sodium score points mismatch');
 }

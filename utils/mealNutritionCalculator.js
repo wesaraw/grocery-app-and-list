@@ -217,7 +217,8 @@ function clampRatio(value) {
 
 function computeScorePoints(percentComplete) {
   if (!Number.isFinite(percentComplete) || percentComplete <= 0) return 0;
-  return Math.max(1, Math.min(10, Math.ceil(percentComplete / 10)));
+  if (percentComplete >= 100) return 10;
+  return Math.max(1, Math.floor(percentComplete / 10));
 }
 
 function buildNutrientScores(perServing, nutritionTargets = {}) {
