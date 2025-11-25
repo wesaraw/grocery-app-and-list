@@ -1313,6 +1313,88 @@ async function correctMealIdErrors() {
   return { mealsUpdated, mapUpdates };
 }
 
+function pickPerEachGrams(itemName) {
+  if (!itemName) return null;
+  const normalized = canonicalName(itemName);
+  if (!normalized) return null;
+  const record = ingredientMap[normalized];
+  const preferredSize = (record?.defaultEachSize || '').toLowerCase();
+
+  const checkMeasures = (measures = [], defaultSize = '') => {
+    let best = null;
+    const preferred = (defaultSize || '').toLowerCase();
+    measures.forEach(measure => {
+      if (!measure) return;
+      const grams = Number(measure.grams);
+      const qty = Number(measure.qty || measure.amount || 1) || 1;
+      if (!(grams > 0) || !(qty > 0)) return;
+      const unit = (measure.unit || '').trim().toLowerCase();
+      const sizeTag = (measure.sizeTag || '').trim().toLowerCase();
+      const label = (measure.label || '').trim().toLowerCase();
+      const perEach = grams / qty;
+      const isEachUnit = unit === 'each' || unit === 'ea';
+      const matchesDefault = preferred && sizeTag === preferred;
+      const mentionsEach = label.includes('each');
+      const priority = (matchesDefault ? 4 : 0) + (isEachUnit ? 2 : 0) + (mentionsEach ? 1 : 0);
+      if (!best || priority > best.priority) {
+        best = { perEach, priority };
+      }
+    });
+    return best?.perEach || null;
+  };
+
+  const perEachFromRecord = checkMeasures(record?.measures, preferredSize);
+  if (perEachFromRecord) return perEachFromRecord;
+
+  const globalRecord = globalProduceMeasures[normalized];
+  if (globalRecord) {
+    const perEachFromGlobal = checkMeasures(globalRecord.measures, globalRecord.defaultEachSize);
+    if (perEachFromGlobal) return perEachFromGlobal;
+  }
+  return null;
+}
+
+function getTotalWeightOz(product, itemName) {
+  const info = densityMap[itemName] || {};
+  const pack = product.packCount && product.packCount > 1 ? product.packCount : 1;
+  const baseQty =
+    product.convertedQty != null
+      ? product.convertedQty
+      : product.sizeQty != null && product.sizeUnit
+        ? convertWithDensity(product.sizeQty, product.sizeUnit, 'oz', {
+            convert_volume_to_weight: info.convert,
+            custom_density_ratio: info.ratio
+          })
+        : null;
+  if (Number.isFinite(baseQty) && baseQty > 0) {
+    return baseQty * pack;
+  }
+  const { pricePerUnit: ppu, unitType } = getPriceUnitInfo(product);
+  if (ppu != null && unitType && product.priceNumber != null) {
+    const conv = unitType === 'oz'
+      ? 1
+      : convertWithDensity(1, unitType, 'oz', {
+          convert_volume_to_weight: info.convert,
+          custom_density_ratio: info.ratio
+        });
+    const perOz = conv && conv > 0 ? ppu / conv : null;
+    if (Number.isFinite(perOz) && perOz > 0) {
+      return product.priceNumber / perOz;
+    }
+  }
+  return null;
+}
+
+function deriveEachCount(itemName, product) {
+  const perEachGrams = pickPerEachGrams(itemName);
+  if (!(perEachGrams > 0)) return null;
+  const perEachOz = convert(perEachGrams, 'g', 'oz');
+  if (!(perEachOz > 0)) return null;
+  const totalWeightOz = getTotalWeightOz(product, itemName);
+  if (!(totalWeightOz > 0)) return null;
+  return totalWeightOz / perEachOz;
+}
+
 function pricePerHomeUnit(itemName, product) {
   const item = needsMap.get(canonicalName(itemName));
   if (!item || !product || product.priceNumber == null) return null;
@@ -1338,7 +1420,10 @@ function pricePerHomeUnit(itemName, product) {
     }
   }
   if (unit === 'each') {
-    return product.priceNumber / pack;
+    const derivedCount = deriveEachCount(itemName, product);
+    const count = derivedCount && derivedCount > 0 ? derivedCount : pack;
+    if (!(count > 0)) return null;
+    return product.priceNumber / count;
   }
   let { pricePerUnit: pricePerOz, unitType } = getPriceUnitInfo(product);
   if (pricePerOz == null) {

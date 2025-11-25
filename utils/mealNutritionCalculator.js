@@ -115,6 +115,7 @@ function compareTotals(previous, next) {
     if ((prevMeta.source || '') !== (nextMeta.source || '')) return false;
     if ((prevMeta.confidence || '') !== (nextMeta.confidence || '')) return false;
     if ((prevMeta.sizeTag || '') !== (nextMeta.sizeTag || '')) return false;
+    if (!numbersEqual(prevMeta.perEachGrams ?? 0, nextMeta.perEachGrams ?? 0)) return false;
   }
   if (!compareScoreMaps(previous.nutrientScores, next.nutrientScores)) {
     return false;
@@ -303,7 +304,8 @@ export function calculateMealNutritionTotals(meal, context = {}) {
           grams: roundValue(scaledGrams),
           source: metadata.source || null,
           confidence: metadata.confidence || null,
-          sizeTag: metadata.sizeTag || null
+          sizeTag: metadata.sizeTag || null,
+          perEachGrams: metadata.perEachGrams || null
         };
       }
     }

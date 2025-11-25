@@ -226,7 +226,8 @@ function resolveViaMeasures(value, unit, measures, ingredientTokens, predicate) 
           grams: roundValue(grams),
           source: normalizedMeasure.source,
           confidence: normalizedMeasure.confidence || null,
-          sizeTag: normalizedMeasure.sizeTag || null
+          sizeTag: normalizedMeasure.sizeTag || null,
+          measure: normalizedMeasure
         };
       }
       continue;
@@ -257,7 +258,8 @@ function resolveViaMeasures(value, unit, measures, ingredientTokens, predicate) 
       grams: roundValue(grams),
       source: normalizedMeasure.source,
       confidence: normalizedMeasure.confidence || null,
-      sizeTag: normalizedMeasure.sizeTag || null
+      sizeTag: normalizedMeasure.sizeTag || null,
+      measure: normalizedMeasure
     };
   }
   if (fallback && (normalizedUnit === 'ea' || normalizedUnit === 'each')) {
@@ -266,7 +268,8 @@ function resolveViaMeasures(value, unit, measures, ingredientTokens, predicate) 
       grams: roundValue(grams),
       source: fallback.source,
       confidence: fallback.confidence || null,
-      sizeTag: fallback.sizeTag || null
+      sizeTag: fallback.sizeTag || null,
+      measure: fallback
     };
   }
   return null;
@@ -448,6 +451,7 @@ export function resolveIngredientAmount(ingredient, record, amountText, options 
   const rawUnit = typeof unit === 'string' ? unit.trim() : '';
   const normalizedUnit = rawUnit ? rawUnit.toLowerCase() : '';
   const effectiveUnit = normalizedUnit || rawUnit || '';
+  const isCountUnit = !normalizedUnit || normalizedUnit === 'ea' || normalizedUnit === 'each';
   const unitIsVolume = normalizedUnit && VOLUME_UNITS.has(normalizedUnit);
   const mass = gramsFromKnownMass(value, normalizedUnit || (rawUnit ? rawUnit.toLowerCase() : rawUnit));
   if (mass != null) {
@@ -464,7 +468,29 @@ export function resolveIngredientAmount(ingredient, record, amountText, options 
       measure => measure.source === 'fdc:portion'
     );
     if (fdcMatch) {
-      return fdcMatch;
+      const result = { ...fdcMatch };
+      const perEachGrams =
+        isCountUnit && fdcMatch.measure && fdcMatch.measure.grams > 0
+          ? fdcMatch.measure.grams / (fdcMatch.measure.qty || 1)
+          : null;
+      if (perEachGrams != null && perEachGrams > 0) {
+        result.perEachGrams = roundValue(perEachGrams);
+        if (options.persistResolvedMeasure && !ingredient?.sizeTag) {
+          options.persistResolvedMeasure({
+            ingredient,
+            measure: {
+              label: fdcMatch.measure.label || 'portion',
+              unit: 'each',
+              qty: 1,
+              grams: roundValue(perEachGrams),
+              source: fdcMatch.measure.source || fdcMatch.source || 'fdc:portion',
+              confidence: fdcMatch.measure.confidence || fdcMatch.confidence || null,
+              sizeTag: fdcMatch.measure.sizeTag || null
+            }
+          });
+        }
+      }
+      return result;
     }
   }
   const packMatch = resolveViaPackageMath(value, effectiveUnit, record);
