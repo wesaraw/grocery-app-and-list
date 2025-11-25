@@ -322,7 +322,20 @@ function loadScraped(item, store) {
   });
 }
 
+function parsePackCount(value) {
+  const num = Number(value);
+  return Number.isFinite(num) && num > 0 ? num : null;
+}
+
 function baseGetPackInfo(product) {
+  const metadata = product?.metadata || {};
+  const metadataPack =
+    parsePackCount(metadata.packCount || metadata.pack_count || metadata.casePackCount) || null;
+  if (metadataPack) {
+    const source = metadata.packCountSource || metadata.pack_count_source || null;
+    const weightPerPack = source === 'average-each-weight' || metadata.packCountWeightPerPack === true;
+    return { count: metadataPack, weightPerPack };
+  }
   if (product && product.packCount && product.packCount > 1) {
     return { count: product.packCount, weightPerPack: false };
   }

@@ -272,11 +272,10 @@ function resolveViaMeasures(value, unit, measures, ingredientTokens, predicate) 
   return null;
 }
 
-function resolveViaPackageMath(value, unit, record) {
+function resolveViaPackageMath(value, unit, record, ingredient) {
   if (!record || typeof record !== 'object') return null;
   const metadata = record.metadata || {};
-  const packCount = toNumber(metadata.packCount || metadata.pack_count || metadata.casePackCount);
-  if (!(packCount > 0)) return null;
+  let packCount = toNumber(metadata.packCount || metadata.pack_count || metadata.casePackCount);
   const sizeQty =
     toNumber(metadata.sizeQty || metadata.sizeQuantity || metadata.netWeightQty || metadata.netWeightQuantity) ||
     toNumber(metadata.size_quantity);
@@ -288,12 +287,27 @@ function resolveViaPackageMath(value, unit, record) {
   if (!unitIsEach) return null;
   const gramsPerPack = convertQuantity(sizeQty, sizeUnit, 'g');
   if (!(gramsPerPack > 0)) return null;
+  if (!(packCount > 0)) {
+    const averageEachWeight = metadata.averageEachWeight?.gramsPerEach || ingredient?.metadata?.averageEachWeight?.gramsPerEach;
+    if (Number.isFinite(averageEachWeight) && averageEachWeight > 0) {
+      const derivedPackCount = gramsPerPack / averageEachWeight;
+      const roundedPackCount = roundValue(derivedPackCount);
+      packCount = roundedPackCount;
+      metadata.packCount = roundedPackCount;
+      metadata.packCountSource = metadata.packCountSource || 'average-each-weight';
+      if (!record.metadata) {
+        record.metadata = metadata;
+      }
+    }
+  }
+  if (!(packCount > 0)) return null;
   const gramsPerEach = gramsPerPack / packCount;
   if (!(gramsPerEach > 0)) return null;
+  const resolutionSource = metadata.packCountSource === 'average-each-weight' ? 'average-each-weight' : 'label';
   return {
     resolution: {
       grams: roundValue(value * gramsPerEach),
-      source: 'label',
+      source: resolutionSource,
       confidence: 'high',
       sizeTag: null
     },
@@ -302,7 +316,7 @@ function resolveViaPackageMath(value, unit, record) {
       unit: 'each',
       qty: 1,
       grams: roundValue(gramsPerEach),
-      source: 'label',
+      source: resolutionSource,
       confidence: 'high',
       sizeTag: null
     }
@@ -463,7 +477,7 @@ export function resolveIngredientAmount(ingredient, record, amountText, options 
       return fdcMatch;
     }
   }
-  const packMatch = resolveViaPackageMath(value, effectiveUnit, record);
+  const packMatch = resolveViaPackageMath(value, effectiveUnit, record, ingredient);
   if (packMatch) {
     if (options.persistResolvedMeasure) {
       options.persistResolvedMeasure({ ingredient, measure: packMatch.measure });

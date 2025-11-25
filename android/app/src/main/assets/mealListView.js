@@ -739,11 +739,32 @@ async function correctMealIdErrors() {
   return { mealsUpdated, mapUpdates };
 }
 
+function parsePackCount(value) {
+  const num = Number(value);
+  return Number.isFinite(num) && num > 0 ? num : null;
+}
+
+function getPackInfo(product) {
+  const metadata = product?.metadata || {};
+  const metadataPack =
+    parsePackCount(metadata.packCount || metadata.pack_count || metadata.casePackCount) || null;
+  if (metadataPack) {
+    const source = metadata.packCountSource || metadata.pack_count_source || null;
+    const weightPerPack = source === 'average-each-weight' || metadata.packCountWeightPerPack === true;
+    return { count: metadataPack, weightPerPack };
+  }
+  if (product && product.packCount && product.packCount > 1) {
+    return { count: product.packCount, weightPerPack: false };
+  }
+  return { count: 1, weightPerPack: false };
+}
+
 function pricePerHomeUnit(itemName, product) {
   const item = needsMap.get(canonicalName(itemName));
   if (!item || !product || product.priceNumber == null) return null;
   const info = densityMap[itemName] || {};
-  const pack = product.packCount && product.packCount > 1 ? product.packCount : 1;
+  const { count: pack, weightPerPack } = getPackInfo(product);
+  const mult = weightPerPack ? 1 : pack;
   const unit = item.home_unit ? item.home_unit.toLowerCase() : 'each';
   if (unit === 'sheets') {
     const sheetSqFt = sheetSqFtFor(itemName);
@@ -760,7 +781,7 @@ function pricePerHomeUnit(itemName, product) {
       ? product.sizeQty
       : null;
     if (totalSheets && product.priceNumber != null) {
-      return product.priceNumber / (totalSheets * pack);
+      return product.priceNumber / (totalSheets * mult);
     }
   }
   if (unit === 'each') {
@@ -770,10 +791,10 @@ function pricePerHomeUnit(itemName, product) {
   if (pricePerOz == null) {
     let ozQty = null;
     if (product.convertedQty != null) {
-      ozQty = product.convertedQty * pack;
+      ozQty = product.convertedQty * mult;
     } else if (product.sizeQty != null && product.sizeUnit) {
       ozQty = convertWithDensity(
-        product.sizeQty * pack,
+        product.sizeQty * mult,
         product.sizeUnit,
         'oz',
         { convert_volume_to_weight: info.convert, custom_density_ratio: info.ratio }
