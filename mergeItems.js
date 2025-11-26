@@ -751,6 +751,7 @@ function addItemToCurrentMerge(itemIndex) {
       reasons: ['Manually added from search']
     };
     state.batches.push(batch);
+    state.currentIndex = state.batches.length - 1;
   }
 
   removeCandidateFromOtherBatches(itemIndex, batch.id);
@@ -776,7 +777,7 @@ function addItemToCurrentMerge(itemIndex) {
   state.currentIndex = filteredIdx >= 0 ? filteredIdx : state.filteredOrder.length ? 0 : -1;
   updateApplyButtonState();
   updateNavigationControls();
-  renderBatch(getCurrentBatch());
+  renderBatch(batch);
 }
 
 async function handleDismissBatch(batch) {
