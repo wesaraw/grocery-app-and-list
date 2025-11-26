@@ -754,9 +754,8 @@ function addItemToCurrentMerge(itemIndex) {
     state.currentIndex = state.batches.length - 1;
   }
 
-  removeCandidateFromOtherBatches(itemIndex, batch.id);
-
   if (batch.candidates.some(c => c.originalIndex === itemIndex)) {
+    removeCandidateFromOtherBatches(itemIndex, batch.id);
     setStatus(`“${item.name}” is already in the current batch.`);
   } else {
     const candidate = createCandidateFromItem(item, batch);
@@ -768,6 +767,7 @@ function addItemToCurrentMerge(itemIndex) {
     if (!batch.reasons.includes('Manually added from search')) {
       batch.reasons.unshift('Manually added from search');
     }
+    removeCandidateFromOtherBatches(itemIndex, batch.id);
     setStatus(`Added “${item.name}” to the current batch. Add more items to decide on this merge.`);
   }
 
