@@ -14,6 +14,14 @@ import { normalizeCalendarEntry } from './utils/calendarUtils.js';
 import { NUTRIENT_DEFINITIONS } from './utils/fdcNutrientMap.js';
 import { loadNutritionTargetLookup } from './utils/nutritionTargets.js';
 
+function sanitizePortionCount(value) {
+  const num = typeof value === 'string' ? Number(value) : value;
+  if (!Number.isFinite(num) || num <= 0) {
+    return 1;
+  }
+  return num;
+}
+
 function loadCalendar() {
   return new Promise(resolve => {
     try {
@@ -360,6 +368,14 @@ async function loadAllMeals() {
   }
 }
 
+function getPerServingCost(meal) {
+  if (!meal) return null;
+  const total = Number(meal.totalCost);
+  if (!Number.isFinite(total)) return null;
+  const portions = sanitizePortionCount(meal.totalPortions);
+  return total / portions;
+}
+
 function buildSlotOrder(mealsPerDay) {
   const base = [
     'drinks',
@@ -543,7 +559,8 @@ function render() {
       if (entry) {
         const meal = mealMap[entry.mealId];
         const name = meal ? meal.name || entry.mealId : entry.mealId;
-        const cost = meal && meal.totalCost != null ? ` - $${meal.totalCost.toFixed(2)}` : '';
+        const perServingCost = meal ? getPerServingCost(meal) : null;
+        const cost = perServingCost != null ? ` - $${perServingCost.toFixed(2)}` : '';
         const nameDiv = document.createElement('div');
         nameDiv.className = 'meal-label';
         let label = name + cost;

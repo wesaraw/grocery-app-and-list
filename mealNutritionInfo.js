@@ -274,6 +274,9 @@ function renderMeta(meal, totals, source) {
   rows.push(`<div><strong>Total Portions:</strong> ${formatPortionCount(portions)}</div>`);
   rows.push(`<div><strong>Serving Weight:</strong> ${formatWeight(totals.totalServingWeight)}</div>`);
   rows.push(`<div><strong>Recipe Weight:</strong> ${formatWeight(totals.totalRecipeWeight)}</div>`);
+  rows.push(
+    '<div class="meta-secondary">Nutrition values below are per serving: the total recipe nutrition is divided by the total portion count (e.g., a 4-portion meal shows one quarter of the recipe per serving).</div>'
+  );
 
   const updatedLabel = totals.updatedAt
     ? formatDate(totals.updatedAt)

@@ -173,6 +173,17 @@ function formatPortionCount(value) {
   return formatted === '' ? String(sanitized) : formatted;
 }
 
+function formatMealCostDisplay(totalCost, totalPortions) {
+  if (!Number.isFinite(totalCost)) return null;
+  const total = Number(totalCost);
+  const portions = sanitizePortionCount(totalPortions);
+  const perServing = total / portions;
+  return {
+    perServing,
+    total
+  };
+}
+
 function formatWeightValue(value) {
   const num = Number(value);
   if (!Number.isFinite(num) || num <= 0) {
@@ -1835,9 +1846,18 @@ function createRows(meal, arr) {
   });
 
   Promise.all(costPromises).then(async () => {
-    if (firstTotalTd && mealCost.total > 0) {
+    if (firstTotalTd && Number.isFinite(mealCost.total)) {
       const total = parseFloat(mealCost.total.toFixed(2));
-      firstTotalTd.textContent = `$${total.toFixed(2)}`;
+      const costDisplay = formatMealCostDisplay(total, meal.totalPortions);
+      firstTotalTd.textContent = '';
+      if (costDisplay) {
+        const perServingLine = document.createElement('div');
+        perServingLine.textContent = `$${costDisplay.perServing.toFixed(2)} per serving`;
+        const totalLine = document.createElement('div');
+        totalLine.textContent = `$${costDisplay.total.toFixed(2)} total`;
+        firstTotalTd.appendChild(perServingLine);
+        firstTotalTd.appendChild(totalLine);
+      }
       if (meal.totalCost !== total) {
         meal.totalCost = total;
         await saveMeals(arr);
