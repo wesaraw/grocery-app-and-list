@@ -1503,6 +1503,7 @@ function createRows(meal, arr) {
 
   const mealCost = { total: 0 };
   const costPromises = [];
+  let firstPerServingTd = null;
   let firstTotalTd = null;
 
   function buildInstructionsButton() {
@@ -1803,8 +1804,14 @@ function createRows(meal, arr) {
     ingCells.push({ ingTd, amtTd, prepTd: prepItemTd, tr });
 
     const costTd = document.createElement('td');
+    let perServingTd;
     let totalTd;
     if (idx === 0) {
+      perServingTd = document.createElement('td');
+      if (ingredients.length > 1) perServingTd.rowSpan = ingredients.length;
+      spanCells.push(perServingTd);
+      firstPerServingTd = perServingTd;
+
       totalTd = document.createElement('td');
       if (ingredients.length > 1) totalTd.rowSpan = ingredients.length;
       spanCells.push(totalTd);
@@ -1828,6 +1835,7 @@ function createRows(meal, arr) {
     tr.appendChild(prepItemTd);
     tr.appendChild(amtTd);
     tr.appendChild(costTd);
+    if (perServingTd) tr.appendChild(perServingTd);
     if (totalTd) tr.appendChild(totalTd);
     tr.appendChild(actionTd);
     rows.push(tr);
@@ -1846,18 +1854,24 @@ function createRows(meal, arr) {
   });
 
   Promise.all(costPromises).then(async () => {
-    if (firstTotalTd && Number.isFinite(mealCost.total)) {
+    if (Number.isFinite(mealCost.total)) {
       const total = parseFloat(mealCost.total.toFixed(2));
       const costDisplay = formatMealCostDisplay(total, meal.totalPortions);
-      firstTotalTd.textContent = '';
-      if (costDisplay) {
-        const perServingLine = document.createElement('div');
-        perServingLine.textContent = `$${costDisplay.perServing.toFixed(2)} per serving`;
-        const totalLine = document.createElement('div');
-        totalLine.textContent = `$${costDisplay.total.toFixed(2)} total`;
-        firstTotalTd.appendChild(perServingLine);
-        firstTotalTd.appendChild(totalLine);
+
+      if (firstPerServingTd) {
+        firstPerServingTd.textContent = '';
+        if (costDisplay) {
+          firstPerServingTd.textContent = `$${costDisplay.perServing.toFixed(2)}`;
+        }
       }
+
+      if (firstTotalTd) {
+        firstTotalTd.textContent = '';
+        if (costDisplay) {
+          firstTotalTd.textContent = `$${costDisplay.total.toFixed(2)}`;
+        }
+      }
+
       if (meal.totalCost !== total) {
         meal.totalCost = total;
         await saveMeals(arr);
@@ -2055,8 +2069,12 @@ function createRows(meal, arr) {
     const amtTd = document.createElement('td');
     ingCells.push({ ingTd, amtTd, prepTd: prepItemTd, tr });
     const costTd = document.createElement('td');
+    const perServingTd = document.createElement('td');
     const totalTd = document.createElement('td');
+    spanCells.push(perServingTd);
     spanCells.push(totalTd);
+    firstPerServingTd = perServingTd;
+    firstTotalTd = totalTd;
     const actionTd = document.createElement('td');
     tr.appendChild(useTd);
     tr.appendChild(imageTd);
@@ -2070,6 +2088,7 @@ function createRows(meal, arr) {
     tr.appendChild(prepItemTd);
     tr.appendChild(amtTd);
     tr.appendChild(costTd);
+    tr.appendChild(perServingTd);
     tr.appendChild(totalTd);
     tr.appendChild(actionTd);
     rows.push(tr);
