@@ -30,7 +30,7 @@ export function renderItemsWithCategoryHeaders(
 
   function finalizeHeader(cat, hdr, nodesForHeader) {
     if (!hdr) return;
-    const hidden = headerState[cat] !== undefined ? headerState[cat] : true;
+    const hidden = headerState[cat] !== undefined ? headerState[cat] : false;
     hdr.dataset.hidden = hidden ? 'true' : 'false';
     nodesForHeader.forEach(n => {
       n.dataset.collapsed = hidden ? 'true' : 'false';
