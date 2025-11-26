@@ -27,6 +27,7 @@ const state = {
   filteredOrder: [],
   currentIndex: -1,
   searchTerm: '',
+  searchResults: [],
   isScanning: false,
   isApplying: false,
   lastSnapshot: null,
@@ -45,6 +46,8 @@ const applyBtn = document.getElementById('apply');
 const undoBtn = document.getElementById('undo');
 const rescanBtn = document.getElementById('rescan');
 const searchBox = document.getElementById('searchBox');
+const searchResultsContainer = document.getElementById('search-results');
+const searchResultsList = document.getElementById('searchResultsList');
 const deletionModal = document.getElementById('deletionModal');
 const deletionList = document.getElementById('deletionList');
 const confirmDeletionBtn = document.getElementById('confirmDeletion');
@@ -396,20 +399,144 @@ function attachDiagnostics(candidates) {
   });
 }
 
+function ensureSingleBest(batch) {
+  if (!batch?.candidates?.length) return;
+  let bestFound = false;
+  batch.candidates.forEach(candidate => {
+    if (candidate.decision === STATUS.BEST) {
+      if (bestFound) {
+        candidate.decision = STATUS.MERGE;
+      } else {
+        bestFound = true;
+      }
+    }
+  });
+  if (!bestFound) {
+    batch.candidates[0].decision = STATUS.BEST;
+  }
+}
+
+function cleanupEmptyBatches() {
+  const before = state.batches.length;
+  state.batches = state.batches.filter(batch => Array.isArray(batch?.candidates) && batch.candidates.length);
+  if (before !== state.batches.length) {
+    refreshFilteredOrder();
+  }
+}
+
+function removeCandidateFromOtherBatches(itemIndex, targetBatchId) {
+  state.batches.forEach(batch => {
+    if (batch.id === targetBatchId) return;
+    const before = batch.candidates.length;
+    batch.candidates = batch.candidates.filter(c => c.originalIndex !== itemIndex);
+    if (before !== batch.candidates.length) {
+      ensureSingleBest(batch);
+      attachDiagnostics(batch.candidates);
+    }
+  });
+  cleanupEmptyBatches();
+}
+
+function createCandidateFromItem(item, batch) {
+  if (!item) return null;
+  return {
+    ...item,
+    originalIndex: item.index ?? item.originalIndex ?? state.items.indexOf(item),
+    decision: batch?.candidates?.length ? STATUS.MERGE : STATUS.BEST,
+    diagnostics: [],
+    closestMatch: null
+  };
+}
+
 function refreshFilteredOrder() {
-  const tokens = state.searchTerm
+  state.filteredOrder = state.batches.map((_, idx) => idx);
+  if (!state.filteredOrder.length) {
+    state.currentIndex = -1;
+    return;
+  }
+  state.currentIndex = Math.max(0, Math.min(state.currentIndex, state.filteredOrder.length - 1));
+}
+
+function searchInventory(term) {
+  const tokens = term
     .toLowerCase()
     .split(/\s+/)
     .filter(Boolean);
-  state.filteredOrder = state.batches
-    .map((batch, idx) => ({ batch, idx }))
-    .filter(({ batch }) => {
-      if (!tokens.length) return true;
-      const haystack = batch.candidates.map(c => c.name.toLowerCase()).join(' ');
-      return tokens.every(token => haystack.includes(token));
-    })
-    .map(entry => entry.idx);
-  state.currentIndex = state.filteredOrder.length ? Math.max(0, Math.min(state.currentIndex, state.filteredOrder.length - 1)) : -1;
+  if (!tokens.length) return [];
+  return state.items.filter(item =>
+    tokens.every(token =>
+      [item.name, item.category, item.home_unit]
+        .map(value => (value || '').toLowerCase())
+        .some(field => field.includes(token))
+    )
+  );
+}
+
+function renderSearchResults() {
+  if (!searchResultsContainer || !searchResultsList) return;
+  searchResultsList.innerHTML = '';
+  if (!state.searchTerm) {
+    searchResultsContainer.classList.add('hidden');
+    return;
+  }
+
+  searchResultsContainer.classList.remove('hidden');
+  if (!state.searchResults.length) {
+    const empty = document.createElement('p');
+    empty.className = 'placeholder';
+    empty.textContent = 'No inventory items match your search.';
+    searchResultsList.appendChild(empty);
+    return;
+  }
+
+  state.searchResults.forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'search-card';
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'item-name';
+    nameEl.textContent = item.name;
+    card.appendChild(nameEl);
+
+    if (item.category) {
+      const catEl = document.createElement('div');
+      catEl.className = 'item-category';
+      catEl.textContent = item.category;
+      card.appendChild(catEl);
+    }
+
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.textContent = 'Add to current merge';
+    addBtn.addEventListener('click', () => addItemToCurrentMerge(item.index));
+    card.appendChild(addBtn);
+
+    searchResultsList.appendChild(card);
+  });
+}
+
+function updateSearchResults(options = {}) {
+  const { silent = false } = options;
+  if (!state.searchTerm) {
+    state.searchResults = [];
+    renderSearchResults();
+    return;
+  }
+  state.searchResults = searchInventory(state.searchTerm);
+  renderSearchResults();
+  if (!silent) {
+    setStatus(
+      `Found ${state.searchResults.length} item${state.searchResults.length === 1 ? '' : 's'} matching “${state.searchTerm}”.`
+    );
+  }
+}
+
+function announceBatchSummary() {
+  if (!state.batches.length) return;
+  const totalItems = state.batches.reduce((sum, batch) => sum + batch.candidates.length, 0);
+  setStatus(
+    `Found ${state.batches.length} batch${state.batches.length === 1 ? '' : 'es'} covering ${totalItems} item${totalItems === 1 ? '' : 's'}.`
+  );
 }
 
 function getCurrentBatch() {
@@ -609,6 +736,49 @@ function renderBatch(batch) {
   batchContainer.appendChild(dismissWrapper);
 }
 
+function addItemToCurrentMerge(itemIndex) {
+  const item = state.items[itemIndex];
+  if (!item) {
+    setStatus('Unable to add item from search; it was not found in the inventory list.');
+    return;
+  }
+
+  let batch = getCurrentBatch();
+  if (!batch) {
+    batch = {
+      id: `manual-batch-${Date.now()}`,
+      candidates: [],
+      reasons: ['Manually added from search']
+    };
+    state.batches.push(batch);
+  }
+
+  removeCandidateFromOtherBatches(itemIndex, batch.id);
+
+  if (batch.candidates.some(c => c.originalIndex === itemIndex)) {
+    setStatus(`“${item.name}” is already in the current batch.`);
+  } else {
+    const candidate = createCandidateFromItem(item, batch);
+    if (!candidate) return;
+    batch.candidates.push(candidate);
+    attachDiagnostics(batch.candidates);
+    ensureSingleBest(batch);
+    if (!Array.isArray(batch.reasons)) batch.reasons = [];
+    if (!batch.reasons.includes('Manually added from search')) {
+      batch.reasons.unshift('Manually added from search');
+    }
+    setStatus(`Added “${item.name}” to the current batch. Add more items to decide on this merge.`);
+  }
+
+  refreshFilteredOrder();
+  const batchIdx = state.batches.indexOf(batch);
+  const filteredIdx = state.filteredOrder.indexOf(batchIdx);
+  state.currentIndex = filteredIdx >= 0 ? filteredIdx : state.filteredOrder.length ? 0 : -1;
+  updateApplyButtonState();
+  updateNavigationControls();
+  renderBatch(getCurrentBatch());
+}
+
 async function handleDismissBatch(batch) {
   if (!batch?.candidates?.length) return;
   const canonicals = Array.from(
@@ -725,6 +895,11 @@ async function rescanInventory() {
       setStatus('No potential duplicates were detected.');
       renderEmptyState('No potential duplicates were detected.');
     }
+    if (state.searchTerm) {
+      updateSearchResults({ silent: true });
+    } else {
+      renderSearchResults();
+    }
   } catch (error) {
     console.error('Failed to scan inventory', error);
     setStatus('Unable to scan inventory. Please try again.');
@@ -738,14 +913,12 @@ async function rescanInventory() {
 
 function handleSearchInput(event) {
   state.searchTerm = (event?.target?.value || '').trim();
-  refreshFilteredOrder();
-  updateNavigationControls();
-  renderBatch(getCurrentBatch());
   if (state.searchTerm) {
-    setStatus(`Showing ${state.filteredOrder.length} batch${state.filteredOrder.length === 1 ? '' : 'es'} that match “${state.searchTerm}”.`);
-  } else if (state.batches.length) {
-    const totalItems = state.batches.reduce((sum, batch) => sum + batch.candidates.length, 0);
-    setStatus(`Found ${state.batches.length} batch${state.batches.length === 1 ? '' : 'es'} covering ${totalItems} item${totalItems === 1 ? '' : 's'}.`);
+    updateSearchResults();
+  } else {
+    state.searchResults = [];
+    renderSearchResults();
+    announceBatchSummary();
   }
 }
 
