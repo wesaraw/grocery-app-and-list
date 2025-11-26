@@ -142,6 +142,15 @@ export async function calculatePurchaseNeeds(
     }
   };
 
+  const stockUnitMap = new Map();
+  stock.forEach(entry => {
+    const key = canonicalKey(entry.name);
+    if (!key) return;
+    if (entry.unit) {
+      stockUnitMap.set(key, entry.unit);
+    }
+  });
+
   const consMap = new Map();
   consumption.forEach(item => {
     const key = canonicalKey(item.name);
@@ -169,7 +178,7 @@ export async function calculatePurchaseNeeds(
     });
   }
 
-  const mergedNeeds = Array.from(needsByCanonical.values()).map(item => ({
+  let mergedNeeds = Array.from(needsByCanonical.values()).map(item => ({
     ...item,
     total_needed_year:
       (item.base_total_needed_year || 0) + (mealMap.get(item.canonical) || 0)
@@ -221,9 +230,14 @@ export async function calculatePurchaseNeeds(
     cappedEndWeek != null ? Math.max(week, cappedEndWeek + 1) : MAX_WEEKS;
 
   const canonicalCalendarNeeds = new Map();
+  const calendarDisplayNameMap = new Map();
   calendarNeeds.forEach((arr, name) => {
     const key = canonicalKey(name);
     if (!key) return;
+    const displayName = normalizedName(name) || name;
+    if (!calendarDisplayNameMap.has(key)) {
+      calendarDisplayNameMap.set(key, displayName);
+    }
     const existing = canonicalCalendarNeeds.get(key);
     if (existing) {
       (Array.isArray(arr) ? arr : []).forEach((value, idx) => {
@@ -235,6 +249,27 @@ export async function calculatePurchaseNeeds(
       canonicalCalendarNeeds.set(key, Array.isArray(arr) ? arr.slice() : []);
     }
   });
+
+  calendarDisplayNameMap.forEach((displayName, key) => {
+    if (needsByCanonical.has(key)) return;
+    const homeUnit = needsUnitMap.get(key) || stockUnitMap.get(key) || 'each';
+    needsByCanonical.set(key, {
+      name: displayName,
+      canonical: key,
+      home_unit: homeUnit,
+      base_total_needed_year: 0,
+      total_needed_year: 0
+    });
+    if (!needsUnitMap.has(key) && homeUnit != null) {
+      needsUnitMap.set(key, homeUnit);
+    }
+  });
+
+  mergedNeeds = Array.from(needsByCanonical.values()).map(item => ({
+    ...item,
+    total_needed_year:
+      (item.base_total_needed_year || 0) + (mealMap.get(item.canonical) || 0)
+  }));
 
   const weeklyNeedMap = new Map();
   mergedNeeds.forEach(item => {

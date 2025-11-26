@@ -295,6 +295,39 @@ function normalizeEntriesByName(list) {
   });
 }
 
+function mergeNeedsWithPurchases(needsList = [], purchaseList = []) {
+  const combined = [];
+  const seen = new Set();
+
+  needsList.forEach(item => {
+    const key = resolvedNameKey(item?.name);
+    if (key) seen.add(key);
+    combined.push(item);
+  });
+
+  purchaseList.forEach(purchase => {
+    const key = resolvedNameKey(purchase?.name);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+
+    const ing =
+      ingredientMapData[key] ||
+      ingredientMapData[resolveItemName(key)] ||
+      ingredientMapData[purchase?.name] || {};
+    const category =
+      ing.category || ing.food_category || ing.categoryName || 'Other';
+    const homeUnit = purchase?.home_unit || ing.home_unit || ing.unit || 'each';
+
+    combined.push({
+      name: purchase?.name,
+      home_unit: homeUnit,
+      category
+    });
+  });
+
+  return combined;
+}
+
 let resolveInit;
 const initReady = new Promise(resolve => {
   resolveInit = resolve;
@@ -741,16 +774,14 @@ async function init() {
     }
   });
   const normalizedNeeds = normalizeEntriesByName(needs);
-  needsData = normalizedNeeds;
   densityMap = density;
   ingredientMapData = ingredientMap || {};
   globalProduceMeasuresData = globalProduceMeasures || {};
-  await hydrateAverageEachWeights(needsData, {
+  await hydrateAverageEachWeights(normalizedNeeds, {
     ingredientMap: ingredientMapData,
     densityMap,
     globalProduceMeasures: globalProduceMeasuresData
   }, { updateIngredient });
-  const sortedNeeds = sortItemsByCategory(normalizedNeeds);
   const consMap = mapByResolvedName(consumption, (c, key) =>
     key === c.name ? c : { ...c, name: key }
   );
@@ -798,6 +829,9 @@ async function init() {
     isoDate
   );
   const normalizedPurchaseInfo = normalizeEntriesByName(purchaseInfo);
+  const displayNeeds = mergeNeedsWithPurchases(normalizedNeeds, normalizedPurchaseInfo);
+  needsData = displayNeeds;
+  const sortedNeeds = sortItemsByCategory(displayNeeds);
   const purchaseMap = mapByResolvedName(normalizedPurchaseInfo);
   const itemsContainer = document.getElementById('items');
 
@@ -947,11 +981,20 @@ async function rerenderAll() {
     mealMonth,
     calendar,
     mealsByCategory,
-    cookingDays
+    cookingDays,
+    density,
+    ingredientMap,
+    globalProduceMeasures
   } = await getData();
   const normalizedNeeds = normalizeEntriesByName(needs);
-  needsData = normalizedNeeds;
-  const sortedNeeds = sortItemsByCategory(normalizedNeeds);
+  densityMap = density || densityMap || {};
+  ingredientMapData = ingredientMap || ingredientMapData || {};
+  globalProduceMeasuresData = globalProduceMeasures || globalProduceMeasuresData || {};
+  await hydrateAverageEachWeights(normalizedNeeds, {
+    ingredientMap: ingredientMapData,
+    densityMap,
+    globalProduceMeasures: globalProduceMeasuresData
+  }, { updateIngredient });
   const consMap = mapByResolvedName(consumption, (c, key) =>
     key === c.name ? c : { ...c, name: key }
   );
@@ -999,6 +1042,9 @@ async function rerenderAll() {
     isoDate
   );
   const normalizedPurchaseInfo = normalizeEntriesByName(purchaseInfo);
+  const displayNeeds = mergeNeedsWithPurchases(normalizedNeeds, normalizedPurchaseInfo);
+  needsData = displayNeeds;
+  const sortedNeeds = sortItemsByCategory(displayNeeds);
   const purchaseMap = mapByResolvedName(normalizedPurchaseInfo);
   const text = filterText.trim().toLowerCase();
   const itemsContainer = document.getElementById('items');
