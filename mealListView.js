@@ -580,6 +580,40 @@ function sameMultiplier(a, b) {
   return Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) < 1e-9;
 }
 
+function cloneIngredient(ingredient) {
+  if (!ingredient || typeof ingredient !== 'object') return {};
+  return { ...ingredient };
+}
+
+function cloneIngredients(list) {
+  return Array.isArray(list) ? list.map(cloneIngredient) : [];
+}
+
+function scaleAmountText(text, factor) {
+  if (!text || typeof text !== 'string' || !Number.isFinite(factor)) return text;
+  const parsed = parseQuantity(text);
+  if (!Number.isFinite(parsed?.value) || parsed.value === 0) return text;
+  const scaled = parsed.value * factor;
+  const formatted = formatQuantity(scaled);
+  const match = text.trim().match(/^([\d.]+(?:\/\d+)?)(\s*)(.*)$/);
+  if (match) {
+    const remainder = match[3] || '';
+    const spacer = remainder ? ' ' : '';
+    return `${formatted}${spacer}${remainder}`.trim();
+  }
+  const unit = parsed.unit && parsed.unit !== 'ea' ? ` ${parsed.unit}` : '';
+  return `${formatted}${unit}`.trim();
+}
+
+function scaleIngredients(list, factor) {
+  return cloneIngredients(list).map(ing => {
+    const next = { ...ing };
+    if (next.amount) next.amount = scaleAmountText(next.amount, factor);
+    if (next.serving_size) next.serving_size = scaleAmountText(next.serving_size, factor);
+    return next;
+  });
+}
+
 function loadFinalProduct(item) {
   return new Promise(resolve => {
     const key = `final_product_${encodeURIComponent(item)}`;
@@ -1490,6 +1524,11 @@ function createRows(meal, arr) {
   let weightTd;
   let portionTd;
   let editBtn;
+  let portionModeBtn;
+  let portionControls;
+  let increaseBtn;
+  let decreaseBtn;
+  let savePortionBtn;
   if (!Array.isArray(meal.users)) {
     const def = meal.people === undefined ? (meal.active === false ? 0 : 1) : meal.people;
     meal.users = userNames.map((_, i) => i < def);
@@ -1505,6 +1544,7 @@ function createRows(meal, arr) {
   const costPromises = [];
   let firstPerServingTd = null;
   let firstTotalTd = null;
+  let exitPortionMode = () => {};
 
   function buildInstructionsButton() {
     const button = document.createElement('button');
@@ -1565,6 +1605,87 @@ function createRows(meal, arr) {
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
       chrome.runtime.sendMessage({ type: 'inventory-updated' });
     }
+  }
+
+  function setupPortionalChangeControls(
+    portionModeBtn,
+    portionControls,
+    increaseBtn,
+    decreaseBtn,
+    savePortionBtn
+  ) {
+    let portionModeActive = false;
+    let pendingPortionState = null;
+
+    function applyPortionDisplay(ingredientsList, portionCount) {
+      const list = Array.isArray(ingredientsList) ? ingredientsList : [];
+      ingCells.forEach((cell, idx) => {
+        const ing = list[idx];
+        if (cell.amtTd) {
+          cell.amtTd.textContent = formatIngredientAmount(ing);
+        }
+      });
+      if (portionTd) {
+        const count = portionCount ?? meal.totalPortions;
+        portionTd.textContent = formatPortionCount(count);
+      }
+    }
+
+    function exitPortionMode(applyChanges = false) {
+      if (!portionModeActive) return;
+      portionModeActive = false;
+      pendingPortionState = null;
+      portionModeBtn.classList.remove('editing');
+      portionControls.style.display = 'none';
+      if (!applyChanges) {
+        applyPortionDisplay(meal.ingredients, meal.totalPortions);
+      }
+    }
+
+    function enterPortionMode() {
+      if (portionModeActive) return;
+      hideEdit();
+      portionModeActive = true;
+      pendingPortionState = {
+        portionCount: sanitizePortionCount(meal.totalPortions),
+        ingredients: cloneIngredients(meal.ingredients)
+      };
+      portionModeBtn.classList.add('editing');
+      portionControls.style.display = 'block';
+      applyPortionDisplay(pendingPortionState.ingredients, pendingPortionState.portionCount);
+    }
+
+    function adjustPortions(delta) {
+      if (!portionModeActive || !pendingPortionState) return;
+      const current = sanitizePortionCount(pendingPortionState.portionCount);
+      const next = Math.max(1, current + delta);
+      if (next === current) return;
+      const factor = next / current;
+      pendingPortionState.portionCount = next;
+      pendingPortionState.ingredients = scaleIngredients(
+        pendingPortionState.ingredients,
+        factor
+      );
+      applyPortionDisplay(pendingPortionState.ingredients, pendingPortionState.portionCount);
+    }
+
+    portionModeBtn.addEventListener('click', () => {
+      if (portionModeActive) exitPortionMode();
+      else enterPortionMode();
+    });
+
+    increaseBtn.addEventListener('click', () => adjustPortions(1));
+    decreaseBtn.addEventListener('click', () => adjustPortions(-1));
+    savePortionBtn.addEventListener('click', async () => {
+      if (!portionModeActive || !pendingPortionState) return;
+      meal.ingredients = cloneIngredients(pendingPortionState.ingredients);
+      meal.totalPortions = pendingPortionState.portionCount;
+      await persistMealChange();
+      exitPortionMode(true);
+      loadAndRender();
+    });
+
+    return exitPortionMode;
   }
 
   ingredients.forEach((ing, idx) => {
@@ -1744,6 +1865,22 @@ function createRows(meal, arr) {
 
       editBtn = document.createElement('button');
       editBtn.textContent = 'Edit';
+      portionModeBtn = document.createElement('button');
+      portionModeBtn.textContent = 'Portional Change';
+      portionControls = document.createElement('div');
+      portionControls.style.display = 'none';
+      portionControls.style.marginTop = '4px';
+      increaseBtn = document.createElement('button');
+      increaseBtn.textContent = 'Increase';
+      decreaseBtn = document.createElement('button');
+      decreaseBtn.textContent = 'Decrease';
+      savePortionBtn = document.createElement('button');
+      savePortionBtn.textContent = 'Save';
+      portionControls.appendChild(increaseBtn);
+      portionControls.appendChild(document.createTextNode(' '));
+      portionControls.appendChild(decreaseBtn);
+      portionControls.appendChild(document.createTextNode(' '));
+      portionControls.appendChild(savePortionBtn);
       const delBtn = document.createElement('button');
       delBtn.textContent = 'Delete';
       delBtn.style.display = deleteMode ? '' : 'none';
@@ -1756,16 +1893,21 @@ function createRows(meal, arr) {
         loadAndRender();
       });
 
-      nameTd.appendChild(document.createElement('br'));
-      nameTd.appendChild(editBtn);
-      nameTd.appendChild(document.createTextNode(' '));
+      const actionRow = document.createElement('div');
+      actionRow.appendChild(editBtn);
+      actionRow.appendChild(document.createTextNode(' '));
+      actionRow.appendChild(portionModeBtn);
+      actionRow.appendChild(document.createTextNode(' '));
       const instructionsBtn = buildInstructionsButton();
-      nameTd.appendChild(instructionsBtn);
-      nameTd.appendChild(document.createTextNode(' '));
+      actionRow.appendChild(instructionsBtn);
+      actionRow.appendChild(document.createTextNode(' '));
       const nutritionBtn = buildNutritionButton();
-      nameTd.appendChild(nutritionBtn);
-      nameTd.appendChild(document.createTextNode(' '));
-      nameTd.appendChild(delBtn);
+      actionRow.appendChild(nutritionBtn);
+      actionRow.appendChild(document.createTextNode(' '));
+      actionRow.appendChild(delBtn);
+      nameTd.appendChild(document.createElement('br'));
+      nameTd.appendChild(actionRow);
+      nameTd.appendChild(portionControls);
 
       const summaryNode = buildNutritionSummary(meal);
       if (summaryNode) {
@@ -1978,6 +2120,22 @@ function createRows(meal, arr) {
     spanCells.push(nameTd);
     editBtn = document.createElement('button');
     editBtn.textContent = 'Edit';
+    portionModeBtn = document.createElement('button');
+    portionModeBtn.textContent = 'Portional Change';
+    portionControls = document.createElement('div');
+    portionControls.style.display = 'none';
+    portionControls.style.marginTop = '4px';
+    increaseBtn = document.createElement('button');
+    increaseBtn.textContent = 'Increase';
+    decreaseBtn = document.createElement('button');
+    decreaseBtn.textContent = 'Decrease';
+    savePortionBtn = document.createElement('button');
+    savePortionBtn.textContent = 'Save';
+    portionControls.appendChild(increaseBtn);
+    portionControls.appendChild(document.createTextNode(' '));
+    portionControls.appendChild(decreaseBtn);
+    portionControls.appendChild(document.createTextNode(' '));
+    portionControls.appendChild(savePortionBtn);
     const delBtn = document.createElement('button');
     delBtn.textContent = 'Delete';
     delBtn.style.display = deleteMode ? '' : 'none';
@@ -1989,13 +2147,18 @@ function createRows(meal, arr) {
       await calculateAndSaveMealNeeds();
       loadAndRender();
     });
-    nameTd.appendChild(document.createElement('br'));
-    nameTd.appendChild(editBtn);
-    nameTd.appendChild(document.createTextNode(' '));
+    const actionRow = document.createElement('div');
+    actionRow.appendChild(editBtn);
+    actionRow.appendChild(document.createTextNode(' '));
+    actionRow.appendChild(portionModeBtn);
+    actionRow.appendChild(document.createTextNode(' '));
     const instructionsBtn = buildInstructionsButton();
-    nameTd.appendChild(instructionsBtn);
-    nameTd.appendChild(document.createTextNode(' '));
-    nameTd.appendChild(delBtn);
+    actionRow.appendChild(instructionsBtn);
+    actionRow.appendChild(document.createTextNode(' '));
+    actionRow.appendChild(delBtn);
+    nameTd.appendChild(document.createElement('br'));
+    nameTd.appendChild(actionRow);
+    nameTd.appendChild(portionControls);
 
     const prepTd = document.createElement('td');
     const prepChk = document.createElement('input');
@@ -2094,7 +2257,16 @@ function createRows(meal, arr) {
     rows.push(tr);
   }
 
+  exitPortionMode = setupPortionalChangeControls(
+    portionModeBtn,
+    portionControls,
+    increaseBtn,
+    decreaseBtn,
+    savePortionBtn
+  );
+
   editBtn.addEventListener('click', () => {
+    exitPortionMode();
     if (editBtn.classList.contains('editing')) {
       hideEdit();
     } else {
