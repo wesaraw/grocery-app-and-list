@@ -1853,58 +1853,90 @@ export function generateWhatToEatCalendar(
         }
 
         function assignLeftoverFromPool(slotIndex, forcedEntry) {
-          const pool = prevLeftovers[user]?.[cat]?.[slotIndex];
-          if (Array.isArray(pool) && pool.length) {
-            let matchIndex = -1;
-            if (forcedEntry && forcedEntry.leftoverSource) {
-              matchIndex = pool.findIndex(item => {
-                if (!item || !item.entry) return false;
-                return (
-                  item.entry.mealId === forcedEntry.mealId &&
-                  item.date === forcedEntry.leftoverSource.date &&
-                  item.categoryId === forcedEntry.leftoverSource.categoryId &&
-                  item.slotIndex === forcedEntry.leftoverSource.slot
-                );
-              });
-            }
-            const sourceInfo =
-              matchIndex >= 0 ? pool.splice(matchIndex, 1)[0] : pool.shift();
-            if (sourceInfo && sourceInfo.entry) {
-              if (write) {
-                sourceInfo.entry.leftoverTargets = Array.isArray(
-                  sourceInfo.entry.leftoverTargets
-                )
-                  ? sourceInfo.entry.leftoverTargets
-                  : [];
-                sourceInfo.entry.leftoverTargets.push({
-                  date: dateStr,
-                  categoryId: cat,
-                  slot: slotIndex
-                });
-                updateStoredEntry(
-                  sourceInfo.user,
-                  sourceInfo.date,
-                  sourceInfo.categoryId,
-                  sourceInfo.slotIndex,
-                  sourceInfo.entry
-                );
-              }
-              slotResults[slotIndex] = createLeftoverEntry(
-                sourceInfo.entry.mealId,
-                {
-                  date: sourceInfo.date,
-                  categoryId: sourceInfo.categoryId,
-                  slot: sourceInfo.slotIndex
+          const categoryPools = prevLeftovers[user]?.[cat];
+          const sourceMatcher =
+            forcedEntry && forcedEntry.leftoverSource
+              ? item => {
+                  if (!item || !item.entry) return false;
+                  return (
+                    item.entry.mealId === forcedEntry.mealId &&
+                    item.date === forcedEntry.leftoverSource.date &&
+                    item.categoryId === forcedEntry.leftoverSource.categoryId &&
+                    item.slotIndex === forcedEntry.leftoverSource.slot
+                  );
                 }
-              );
-              updateRecencyForEntry(slotResults[slotIndex]);
-              recordMealNutritionForEntry(
-                slotResults[slotIndex],
-                null,
-                sourceInfo.entry.mealId
-              );
-              return true;
+              : null;
+
+          function consumeFromPool(poolKey, matcher) {
+            const pool = categoryPools?.[poolKey];
+            if (!Array.isArray(pool) || !pool.length) return null;
+            const idx = matcher ? pool.findIndex(matcher) : -1;
+            const sourceInfo = idx >= 0 ? pool.splice(idx, 1)[0] : pool.shift();
+            return sourceInfo && sourceInfo.entry ? sourceInfo : null;
+          }
+
+          let sourceInfo = consumeFromPool(slotIndex, sourceMatcher);
+
+          if (!sourceInfo && sourceMatcher) {
+            const otherKeys = Object.keys(categoryPools || {}).filter(
+              key => Number(key) !== slotIndex
+            );
+            for (const key of otherKeys) {
+              sourceInfo = consumeFromPool(key, sourceMatcher);
+              if (sourceInfo) break;
             }
+          }
+
+          if (!sourceInfo) {
+            const slotKeys = Object.keys(categoryPools || {})
+              .map(key => Number(key))
+              .sort((a, b) => a - b);
+            for (const key of slotKeys) {
+              if (key === slotIndex) continue;
+              sourceInfo = consumeFromPool(key, null);
+              if (sourceInfo) break;
+            }
+          }
+
+          if (!sourceInfo && categoryPools) {
+            sourceInfo = consumeFromPool(slotIndex, null);
+          }
+
+          if (sourceInfo) {
+            if (write) {
+              sourceInfo.entry.leftoverTargets = Array.isArray(
+                sourceInfo.entry.leftoverTargets
+              )
+                ? sourceInfo.entry.leftoverTargets
+                : [];
+              sourceInfo.entry.leftoverTargets.push({
+                date: dateStr,
+                categoryId: cat,
+                slot: slotIndex
+              });
+              updateStoredEntry(
+                sourceInfo.user,
+                sourceInfo.date,
+                sourceInfo.categoryId,
+                sourceInfo.slotIndex,
+                sourceInfo.entry
+              );
+            }
+            slotResults[slotIndex] = createLeftoverEntry(
+              sourceInfo.entry.mealId,
+              {
+                date: sourceInfo.date,
+                categoryId: sourceInfo.categoryId,
+                slot: sourceInfo.slotIndex
+              }
+            );
+            updateRecencyForEntry(slotResults[slotIndex]);
+            recordMealNutritionForEntry(
+              slotResults[slotIndex],
+              null,
+              sourceInfo.entry.mealId
+            );
+            return true;
           }
           if (forcedEntry) {
             slotResults[slotIndex] = createLeftoverEntry(
