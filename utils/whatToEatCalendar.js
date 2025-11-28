@@ -905,7 +905,8 @@ export function generateWhatToEatCalendar(
   function normalizeDayPreference(value) {
     const normalizedSlots = [];
     const normalizedPrep = [];
-    function pushSlot(slot, prep) {
+    const normalizedLeftover = [];
+    function pushSlot(slot, prep, leftover) {
       const seen = new Set();
       const arr = [];
       if (Array.isArray(slot)) {
@@ -930,6 +931,19 @@ export function generateWhatToEatCalendar(
       } else {
         normalizedPrep.push([]);
       }
+      if (Array.isArray(leftover)) {
+        const leftoverSeen = new Set();
+        const leftoverArr = [];
+        leftover.forEach(day => {
+          if (typeof day === 'string' && !leftoverSeen.has(day)) {
+            leftoverSeen.add(day);
+            leftoverArr.push(day);
+          }
+        });
+        normalizedLeftover.push(leftoverArr);
+      } else {
+        normalizedLeftover.push([]);
+      }
     }
 
     if (value && typeof value === 'object') {
@@ -940,7 +954,12 @@ export function generateWhatToEatCalendar(
             : Array.isArray(value.prepDays)
             ? value.prepDays
             : [];
-          pushSlot(slot, prep);
+          const leftover = Array.isArray(value.leftoverSlots?.[idx])
+            ? value.leftoverSlots[idx]
+            : Array.isArray(value.leftoverDays)
+            ? value.leftoverDays
+            : [];
+          pushSlot(slot, prep, leftover);
         });
       } else if (Array.isArray(value.slotDays)) {
         value.slotDays.forEach((slot, idx) => {
@@ -949,12 +968,17 @@ export function generateWhatToEatCalendar(
             : Array.isArray(value.prepDays)
             ? value.prepDays
             : [];
-          pushSlot(slot, prep);
+          const leftover = Array.isArray(value.leftoverSlots?.[idx])
+            ? value.leftoverSlots[idx]
+            : Array.isArray(value.leftoverDays)
+            ? value.leftoverDays
+            : [];
+          pushSlot(slot, prep, leftover);
         });
       }
     }
     if (!normalizedSlots.length && Array.isArray(value)) {
-      pushSlot(value, []);
+      pushSlot(value, [], []);
     }
     let unionCandidates = Array.isArray(value?.days) ? value.days.slice() : [];
     if (!unionCandidates.length && normalizedSlots.length) {
@@ -984,14 +1008,22 @@ export function generateWhatToEatCalendar(
       const prepSource = normalizedPrep[idx] || [];
       return prepSource.filter(day => slotSet.has(day));
     });
+    const leftoverSlots = normalizedSlots.map((slot, idx) => {
+      const slotSet = slotSets[idx];
+      const leftoverSource = normalizedLeftover[idx] || [];
+      return leftoverSource.filter(day => slotSet.has(day));
+    });
     const prepSlotSets = prepSlots.map(prep => new Set(prep));
+    const leftoverSlotSets = leftoverSlots.map(leftover => new Set(leftover));
     return {
       days: normalizedDays,
       daySet,
       slots: normalizedSlots,
       slotSets,
       prepSlots,
-      prepSlotSets
+      prepSlotSets,
+      leftoverSlots,
+      leftoverSlotSets
     };
   }
 
@@ -1759,6 +1791,7 @@ export function generateWhatToEatCalendar(
         const iterationSlots = Math.max(numSlots, highestOverrideIndex + 1, 0);
         const slotSets = prefEntry?.slotSets || [];
         const prepSlotSets = prefEntry?.prepSlotSets || [];
+        const leftoverSlotSets = prefEntry?.leftoverSlotSets || [];
         const descriptors = [];
         for (let s = 0; s < iterationSlots; s++) {
           const overrideCategory = slotOverridesForCat[s];
@@ -1785,13 +1818,19 @@ export function generateWhatToEatCalendar(
               ? prepSlotSets[s].has(dayName)
               : false
             : false;
+          const prefersLeftover = baseSlotActive
+            ? leftoverSlotSets[s]
+              ? leftoverSlotSets[s].has(dayName)
+              : false
+            : false;
           descriptors.push({
             slotIndex: s,
             overrideCategory,
             normalizedOverrideSlot,
             overrideSlotKey,
             baseSlotActive,
-            needsPrep
+            needsPrep,
+            prefersLeftover
           });
         }
         if (!descriptors.length) {
@@ -1985,6 +2024,14 @@ export function generateWhatToEatCalendar(
 
         descriptors.forEach(descriptor => {
           const forcedEntry = forcedForUser ? forcedForUser[cat]?.[descriptor.slotIndex] : null;
+          const preferLeftover =
+            descriptor.prefersLeftover && (!forcedEntry || forcedEntry.type !== 'cook');
+          const forcedLeftover = forcedEntry && forcedEntry.type === 'leftover' ? forcedEntry : null;
+          if (preferLeftover || forcedLeftover) {
+            if (assignLeftoverFromPool(descriptor.slotIndex, forcedLeftover)) {
+              return;
+            }
+          }
           if (descriptor.needsPrep) {
             pendingPrep.push({ descriptor, forcedEntry });
             return;

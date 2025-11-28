@@ -30,12 +30,17 @@ function normalizeDayList(list) {
 }
 
 function extractSlotSource(value) {
-  const result = { slots: [], prepSlots: [] };
+  const result = { slots: [], prepSlots: [], leftoverSlots: [] };
   if (value && typeof value === 'object') {
     if (Array.isArray(value.slots)) {
       result.slots = value.slots.map(slot => (Array.isArray(slot) ? slot.slice() : []));
       if (Array.isArray(value.prepSlots)) {
         result.prepSlots = value.prepSlots.map(prep => (Array.isArray(prep) ? prep.slice() : []));
+      }
+      if (Array.isArray(value.leftoverSlots)) {
+        result.leftoverSlots = value.leftoverSlots.map(leftover =>
+          Array.isArray(leftover) ? leftover.slice() : []
+        );
       } else if (Array.isArray(value.prepDays)) {
         const prepDays = value.prepDays.slice();
         result.prepSlots = result.slots.map(() => prepDays.slice());
@@ -46,6 +51,11 @@ function extractSlotSource(value) {
       result.slots = value.slotDays.map(slot => (Array.isArray(slot) ? slot.slice() : []));
       if (Array.isArray(value.prepSlots)) {
         result.prepSlots = value.prepSlots.map(prep => (Array.isArray(prep) ? prep.slice() : []));
+      }
+      if (Array.isArray(value.leftoverSlots)) {
+        result.leftoverSlots = value.leftoverSlots.map(leftover =>
+          Array.isArray(leftover) ? leftover.slice() : []
+        );
       } else if (Array.isArray(value.prepDays)) {
         const prepDays = value.prepDays.slice();
         result.prepSlots = result.slots.map(() => prepDays.slice());
@@ -62,6 +72,9 @@ function extractSlotSource(value) {
     if (Array.isArray(value.prepDays)) {
       result.prepSlots = [value.prepDays.slice()];
     }
+    if (Array.isArray(value.leftoverDays)) {
+      result.leftoverSlots = [value.leftoverDays.slice()];
+    }
     return result;
   }
   const count = clampDayCount(value);
@@ -77,12 +90,16 @@ function normalizeSlotEntry(value) {
     return {
       slots: [],
       prepSlots: [],
+      leftoverSlots: [],
       union: [],
       prepUnion: [],
+      leftoverUnion: [],
       slotSets: [],
       prepSlotSets: [],
+      leftoverSlotSets: [],
       unionSet: new Set(),
       prepUnionSet: new Set(),
+      leftoverUnionSet: new Set(),
       rawLength: 0
     };
   }
@@ -94,7 +111,16 @@ function normalizeSlotEntry(value) {
     const normalizedPrep = normalizeDayList(rawPrep);
     return normalizedPrep.filter(day => slotSet.has(day));
   });
+  const leftoverSlots = slots.map((slot, idx) => {
+    const slotSet = slotSets[idx];
+    const rawLeftover = Array.isArray(source.leftoverSlots[idx])
+      ? source.leftoverSlots[idx]
+      : [];
+    const normalizedLeftover = normalizeDayList(rawLeftover);
+    return normalizedLeftover.filter(day => slotSet.has(day));
+  });
   const prepSlotSets = prepSlots.map(prep => new Set(prep));
+  const leftoverSlotSets = leftoverSlots.map(leftover => new Set(leftover));
   const unionSet = new Set();
   slots.forEach(slot => {
     slot.forEach(day => unionSet.add(day));
@@ -108,16 +134,29 @@ function normalizeSlotEntry(value) {
       }
     });
   });
+  const leftoverUnionSet = new Set();
+  leftoverSlots.forEach(leftover => {
+    leftover.forEach(day => {
+      if (unionSet.has(day)) {
+        leftoverUnionSet.add(day);
+      }
+    });
+  });
   const prepUnion = normalizeDayList(Array.from(prepUnionSet));
+  const leftoverUnion = normalizeDayList(Array.from(leftoverUnionSet));
   return {
     slots,
     prepSlots,
+    leftoverSlots,
     union,
     prepUnion,
+    leftoverUnion,
     slotSets,
     prepSlotSets,
+    leftoverSlotSets,
     unionSet,
     prepUnionSet,
+    leftoverUnionSet,
     rawLength: source.slots.length
   };
 }
@@ -126,7 +165,9 @@ function buildDecoratedValue(entry) {
   const decorated = entry.union.slice();
   decorated.slots = entry.slots.map(slot => slot.slice());
   decorated.prepSlots = entry.prepSlots.map(prep => prep.slice());
+  decorated.leftoverSlots = entry.leftoverSlots.map(leftover => leftover.slice());
   decorated.prepDays = entry.prepUnion.slice();
+  decorated.leftoverDays = entry.leftoverUnion.slice();
   return decorated;
 }
 
@@ -168,6 +209,25 @@ function isCanonicalValue(value, entry) {
       }
     }
   }
+  const storedLeftoverSlots = Array.isArray(value.leftoverSlots) ? value.leftoverSlots : null;
+  if (!storedLeftoverSlots) {
+    return entry.leftoverSlots.every(leftover => leftover.length === 0);
+  }
+  if (storedLeftoverSlots.length !== entry.leftoverSlots.length) {
+    return false;
+  }
+  for (let i = 0; i < entry.leftoverSlots.length; i += 1) {
+    const storedLeftover = Array.isArray(storedLeftoverSlots[i]) ? storedLeftoverSlots[i] : [];
+    const normalizedLeftover = entry.leftoverSlots[i];
+    if (storedLeftover.length !== normalizedLeftover.length) {
+      return false;
+    }
+    for (let j = 0; j < normalizedLeftover.length; j += 1) {
+      if (storedLeftover[j] !== normalizedLeftover[j]) {
+        return false;
+      }
+    }
+  }
   return true;
 }
 
@@ -186,7 +246,8 @@ function normalizeRecord(record) {
     }
     canonical[category] = {
       slots: normalized.slots.map(slot => slot.slice()),
-      prepSlots: normalized.prepSlots.map(prep => prep.slice())
+      prepSlots: normalized.prepSlots.map(prep => prep.slice()),
+      leftoverSlots: normalized.leftoverSlots.map(leftover => leftover.slice())
     };
     decorated[category] = buildDecoratedValue(normalized);
     if (!isCanonicalValue(value, normalized)) {
@@ -211,7 +272,8 @@ function normalizeForSave(record) {
     if (!normalized.rawLength) return;
     canonical[category] = {
       slots: normalized.slots.map(slot => slot.slice()),
-      prepSlots: normalized.prepSlots.map(prep => prep.slice())
+      prepSlots: normalized.prepSlots.map(prep => prep.slice()),
+      leftoverSlots: normalized.leftoverSlots.map(leftover => leftover.slice())
     };
   });
   return canonical;

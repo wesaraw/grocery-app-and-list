@@ -111,10 +111,20 @@ function normalizeSlotSelection(selection) {
       prepSource = Array.isArray(first) ? first : [];
     }
     const prep = normalizeDayList(prepSource).filter(day => daySet.has(day));
-    return { days, prep };
+    let leftoverSource = [];
+    if (Array.isArray(selection.leftover)) {
+      leftoverSource = selection.leftover;
+    } else if (Array.isArray(selection.leftoverDays)) {
+      leftoverSource = selection.leftoverDays;
+    } else if (Array.isArray(selection.leftoverSlots)) {
+      const first = selection.leftoverSlots[0];
+      leftoverSource = Array.isArray(first) ? first : [];
+    }
+    const leftover = normalizeDayList(leftoverSource).filter(day => daySet.has(day));
+    return { days, prep, leftover };
   }
   const days = normalizeDayList(Array.isArray(selection) ? selection : []);
-  return { days, prep: [] };
+  return { days, prep: [], leftover: [] };
 }
 
 function arraysEqual(a, b) {
@@ -128,10 +138,12 @@ function arraysEqual(a, b) {
 function buildDecoratedSlotValue(slotLists, slotCount) {
   const normalizedSlots = [];
   const normalizedPrepSlots = [];
+  const normalizedLeftoverSlots = [];
   for (let i = 0; i < slotCount; i += 1) {
     const selection = normalizeSlotSelection(slotLists[i]);
     normalizedSlots.push(selection.days);
     normalizedPrepSlots.push(selection.prep);
+    normalizedLeftoverSlots.push(selection.leftover);
   }
   const unionSet = new Set();
   normalizedSlots.forEach(slot => {
@@ -145,13 +157,23 @@ function buildDecoratedSlotValue(slotLists, slotCount) {
     });
   });
   const unionPrep = normalizeDayList(Array.from(unionPrepSet));
+  const unionLeftoverSet = new Set();
+  normalizedLeftoverSlots.forEach(leftover => {
+    leftover.forEach(day => {
+      if (unionSet.has(day)) unionLeftoverSet.add(day);
+    });
+  });
+  const unionLeftover = normalizeDayList(Array.from(unionLeftoverSet));
   union.slots = normalizedSlots.map(slot => slot.slice());
   union.prepSlots = normalizedPrepSlots.map(prep => prep.slice());
   union.prepDays = unionPrep.slice();
+  union.leftoverSlots = normalizedLeftoverSlots.map(list => list.slice());
+  union.leftoverDays = unionLeftover.slice();
   return {
     decorated: union,
     slots: normalizedSlots,
-    prepSlots: normalizedPrepSlots
+    prepSlots: normalizedPrepSlots,
+    leftoverSlots: normalizedLeftoverSlots
   };
 }
 
@@ -161,19 +183,23 @@ function readSlotLists(value) {
   }
   if (Array.isArray(value.slots)) {
     const prepSlots = Array.isArray(value.prepSlots) ? value.prepSlots : [];
+    const leftoverSlots = Array.isArray(value.leftoverSlots) ? value.leftoverSlots : [];
     return value.slots.map((slot, idx) =>
       normalizeSlotSelection({
         days: Array.isArray(slot) ? slot.slice() : [],
-        prep: Array.isArray(prepSlots[idx]) ? prepSlots[idx].slice() : []
+        prep: Array.isArray(prepSlots[idx]) ? prepSlots[idx].slice() : [],
+        leftover: Array.isArray(leftoverSlots[idx]) ? leftoverSlots[idx].slice() : []
       })
     );
   }
   if (Array.isArray(value.slotDays)) {
     const prepSlots = Array.isArray(value.prepSlots) ? value.prepSlots : [];
+    const leftoverSlots = Array.isArray(value.leftoverSlots) ? value.leftoverSlots : [];
     return value.slotDays.map((slot, idx) =>
       normalizeSlotSelection({
         days: Array.isArray(slot) ? slot.slice() : [],
-        prep: Array.isArray(prepSlots[idx]) ? prepSlots[idx].slice() : []
+        prep: Array.isArray(prepSlots[idx]) ? prepSlots[idx].slice() : [],
+        leftover: Array.isArray(leftoverSlots[idx]) ? leftoverSlots[idx].slice() : []
       })
     );
   }
@@ -184,7 +210,8 @@ function readSlotLists(value) {
     return [
       normalizeSlotSelection({
         days: value.days.slice(),
-        prep: Array.isArray(value.prepDays) ? value.prepDays.slice() : []
+        prep: Array.isArray(value.prepDays) ? value.prepDays.slice() : [],
+        leftover: Array.isArray(value.leftoverDays) ? value.leftoverDays.slice() : []
       })
     ];
   }
@@ -507,8 +534,19 @@ function createSlotController(initialDays, onSave) {
     prepWrapper.appendChild(document.createTextNode('Prep'));
     lbl.appendChild(prepWrapper);
 
+    const leftoverWrapper = document.createElement('span');
+    leftoverWrapper.className = 'slot-day-leftover';
+    const leftoverChk = document.createElement('input');
+    leftoverChk.type = 'checkbox';
+    leftoverChk.className = 'slot-day-leftover-checkbox';
+    leftoverChk.disabled = true;
+    leftoverChk.setAttribute('aria-label', 'Prefer leftover');
+    leftoverWrapper.appendChild(leftoverChk);
+    leftoverWrapper.appendChild(document.createTextNode('Leftovers'));
+    lbl.appendChild(leftoverWrapper);
+
     checkboxContainer.appendChild(lbl);
-    checkboxes.push({ chk, prepChk, day });
+    checkboxes.push({ chk, prepChk, leftoverChk, day });
   });
 
   const saveBtn = document.createElement('button');
@@ -524,14 +562,18 @@ function createSlotController(initialDays, onSave) {
   function syncCheckboxes(selection) {
     const daySet = new Set(selection.days);
     const prepSet = new Set(selection.prep);
-    checkboxes.forEach(({ chk, prepChk, day }) => {
+    const leftoverSet = new Set(selection.leftover || []);
+    checkboxes.forEach(({ chk, prepChk, leftoverChk, day }) => {
       const checked = daySet.has(day);
       chk.checked = checked;
       prepChk.disabled = !checked;
+      leftoverChk.disabled = !checked;
       if (!checked) {
         prepChk.checked = false;
+        leftoverChk.checked = false;
       } else {
         prepChk.checked = prepSet.has(day);
+        leftoverChk.checked = leftoverSet.has(day);
       }
     });
   }
@@ -539,37 +581,53 @@ function createSlotController(initialDays, onSave) {
   function getSelectedDays() {
     const selected = [];
     const prepSelected = [];
-    checkboxes.forEach(({ chk, prepChk, day }) => {
+    const leftoverSelected = [];
+    checkboxes.forEach(({ chk, prepChk, leftoverChk, day }) => {
       if (chk.checked) {
         selected.push(day);
         if (prepChk.checked) {
           prepSelected.push(day);
         }
+        if (leftoverChk.checked) {
+          leftoverSelected.push(day);
+        }
       }
     });
-    return normalizeSlotSelection({ days: selected, prep: prepSelected });
+    return normalizeSlotSelection({
+      days: selected,
+      prep: prepSelected,
+      leftover: leftoverSelected
+    });
   }
 
   function updateDirtyState() {
     const current = getSelectedDays();
-    if (arraysEqual(current.days, savedSelection.days) && arraysEqual(current.prep, savedSelection.prep)) {
+    if (
+      arraysEqual(current.days, savedSelection.days) &&
+      arraysEqual(current.prep, savedSelection.prep) &&
+      arraysEqual(current.leftover || [], savedSelection.leftover || [])
+    ) {
       saveBtn.classList.add('hidden');
     } else {
       saveBtn.classList.remove('hidden');
     }
   }
 
-  checkboxes.forEach(({ chk, prepChk }) => {
+  checkboxes.forEach(({ chk, prepChk, leftoverChk }) => {
     chk.addEventListener('change', () => {
       if (!chk.checked) {
         prepChk.checked = false;
         prepChk.disabled = true;
+        leftoverChk.checked = false;
+        leftoverChk.disabled = true;
       } else {
         prepChk.disabled = false;
+        leftoverChk.disabled = false;
       }
       updateDirtyState();
     });
     prepChk.addEventListener('change', updateDirtyState);
+    leftoverChk.addEventListener('change', updateDirtyState);
   });
 
   saveBtn.addEventListener('click', async () => {
@@ -652,7 +710,7 @@ async function showMeals(userIndex) {
       const selections = [];
       for (let i = 0; i < slotCount; i += 1) {
         const ctrl = slotControllers[i];
-        selections.push(ctrl ? ctrl.getSelectedDays() : { days: [], prep: [] });
+        selections.push(ctrl ? ctrl.getSelectedDays() : { days: [], prep: [], leftover: [] });
       }
       return selections;
     }
@@ -663,7 +721,10 @@ async function showMeals(userIndex) {
       controller.setSaving(true);
       try {
         const selections = collectSelections();
-        const { decorated, slots, prepSlots } = buildDecoratedSlotValue(selections, slotCount);
+        const { decorated, slots, prepSlots, leftoverSlots } = buildDecoratedSlotValue(
+          selections,
+          slotCount
+        );
         if (!userDays[userIndex]) userDays[userIndex] = {};
         userDays[userIndex][group.label] = decorated;
         await saveUserCategoryDays(userDays);
@@ -672,7 +733,8 @@ async function showMeals(userIndex) {
           if (ctrl) {
             ctrl.syncSavedDays({
               days: slots[idx] || [],
-              prep: prepSlots[idx] || []
+              prep: prepSlots[idx] || [],
+              leftover: leftoverSlots[idx] || []
             });
           }
         });
@@ -691,7 +753,10 @@ async function showMeals(userIndex) {
       header.textContent = formatSlotHeaderLabel(descriptor, group.label, i, slotCount);
       mealList.appendChild(header);
 
-      const controller = createSlotController(storedSlots[i] || { days: [], prep: [] }, () => handleSave(i));
+      const controller = createSlotController(
+        storedSlots[i] || { days: [], prep: [], leftover: [] },
+        () => handleSave(i)
+      );
       slotControllers[i] = controller;
       mealList.appendChild(controller.section);
 

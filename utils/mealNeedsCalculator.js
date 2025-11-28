@@ -146,11 +146,17 @@ export async function calculateAndSaveMealNeeds(options = {}) {
   function normalizeCategoryPreference(value) {
     let rawSlots = [];
     let rawPrepSlots = [];
+    let rawLeftoverSlots = [];
     if (value && typeof value === 'object') {
       if (Array.isArray(value.slots)) {
         rawSlots = value.slots.map(slot => (Array.isArray(slot) ? slot.slice() : []));
         if (Array.isArray(value.prepSlots)) {
           rawPrepSlots = value.prepSlots.map(prep => (Array.isArray(prep) ? prep.slice() : []));
+        }
+        if (Array.isArray(value.leftoverSlots)) {
+          rawLeftoverSlots = value.leftoverSlots.map(leftover =>
+            Array.isArray(leftover) ? leftover.slice() : []
+          );
         } else if (Array.isArray(value.prepDays)) {
           const prepDays = value.prepDays.slice();
           rawPrepSlots = rawSlots.map(() => prepDays.slice());
@@ -159,6 +165,11 @@ export async function calculateAndSaveMealNeeds(options = {}) {
         rawSlots = value.slotDays.map(slot => (Array.isArray(slot) ? slot.slice() : []));
         if (Array.isArray(value.prepSlots)) {
           rawPrepSlots = value.prepSlots.map(prep => (Array.isArray(prep) ? prep.slice() : []));
+        }
+        if (Array.isArray(value.leftoverSlots)) {
+          rawLeftoverSlots = value.leftoverSlots.map(leftover =>
+            Array.isArray(leftover) ? leftover.slice() : []
+          );
         } else if (Array.isArray(value.prepDays)) {
           const prepDays = value.prepDays.slice();
           rawPrepSlots = rawSlots.map(() => prepDays.slice());
@@ -172,6 +183,9 @@ export async function calculateAndSaveMealNeeds(options = {}) {
         rawSlots = [value.days.slice()];
         if (Array.isArray(value.prepDays)) {
           rawPrepSlots = [value.prepDays.slice()];
+        }
+        if (Array.isArray(value.leftoverDays)) {
+          rawLeftoverSlots = [value.leftoverDays.slice()];
         }
       } else {
         const numeric = Number(value);
@@ -191,7 +205,14 @@ export async function calculateAndSaveMealNeeds(options = {}) {
       const normalizedPrep = sortDays(Array.isArray(rawPrep) ? rawPrep : []);
       return normalizedPrep.filter(day => slotSet.has(day));
     });
+    const leftoverSlots = slots.map((slot, idx) => {
+      const slotSet = slotSets[idx];
+      const rawLeftover = Array.isArray(rawLeftoverSlots[idx]) ? rawLeftoverSlots[idx] : [];
+      const normalizedLeftover = sortDays(Array.isArray(rawLeftover) ? rawLeftover : []);
+      return normalizedLeftover.filter(day => slotSet.has(day));
+    });
     const prepSlotSets = prepSlots.map(prep => new Set(prep));
+    const leftoverSlotSets = leftoverSlots.map(leftover => new Set(leftover));
     const unionSet = new Set();
     slots.forEach(slot => {
       slot.forEach(day => unionSet.add(day));
@@ -205,8 +226,30 @@ export async function calculateAndSaveMealNeeds(options = {}) {
         }
       });
     });
+    const leftoverUnionSet = new Set();
+    leftoverSlots.forEach(leftover => {
+      leftover.forEach(day => {
+        if (unionSet.has(day)) {
+          leftoverUnionSet.add(day);
+        }
+      });
+    });
     const prepUnion = sortDays(Array.from(prepUnionSet));
-    return { slots, slotSets, union, unionSet, prepSlots, prepSlotSets, prepUnion, prepUnionSet };
+    const leftoverUnion = sortDays(Array.from(leftoverUnionSet));
+    return {
+      slots,
+      slotSets,
+      union,
+      unionSet,
+      prepSlots,
+      prepSlotSets,
+      prepUnion,
+      prepUnionSet,
+      leftoverSlots,
+      leftoverSlotSets,
+      leftoverUnion,
+      leftoverUnionSet
+    };
   }
 
   const perDayCache = {};
@@ -375,8 +418,17 @@ export async function calculateAndSaveMealNeeds(options = {}) {
       const slots = info?.slots ? info.slots.map(slot => slot.slice()) : [];
       const prepSlots = info?.prepSlots ? info.prepSlots.map(prep => prep.slice()) : [];
       const prepDays = info?.prepUnion ? info.prepUnion.slice() : [];
-      if (days.length || slots.length || prepSlots.some(prep => prep.length)) {
-        prefs[cat] = { days, slots, prepSlots, prepDays };
+      const leftoverSlots = info?.leftoverSlots
+        ? info.leftoverSlots.map(leftover => leftover.slice())
+        : [];
+      const leftoverDays = info?.leftoverUnion ? info.leftoverUnion.slice() : [];
+      if (
+        days.length ||
+        slots.length ||
+        prepSlots.some(prep => prep.length) ||
+        leftoverSlots.some(leftover => leftover.length)
+      ) {
+        prefs[cat] = { days, slots, prepSlots, prepDays, leftoverSlots, leftoverDays };
       }
     });
     eatingDaysByUser[user] = prefs;
