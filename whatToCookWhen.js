@@ -717,6 +717,9 @@ function buildMealBlockFromEntries(normalized, ingredientEntries, options = {}) 
   if (entries.length) {
     const list = document.createElement('ul');
     list.className = 'ingredient-list';
+    if (options?.variant === 'print') {
+      list.classList.add('ingredient-list--print');
+    }
     entries.forEach(entry => {
       list.appendChild(
         createIngredientListItem(
@@ -843,91 +846,55 @@ function renderPrintPages(data, mealMap) {
 
   const pageHeight = getPrintPageHeight(container);
   const tolerance = 1;
-  const MAX_PER_ROW = 2;
 
   function createPage() {
     const page = document.createElement('section');
     page.className = 'print-page';
-    const columns = document.createElement('div');
-    columns.className = 'print-columns';
-    page.appendChild(columns);
-    return { page, columns };
+    const stack = document.createElement('div');
+    stack.className = 'print-stack';
+    page.appendChild(stack);
+    return { page, stack };
   }
 
   let currentPage = null;
-  let currentRow = null;
-  let rowCount = 0;
 
   function startNewPage() {
     currentPage = createPage();
     container.appendChild(currentPage.page);
-    currentRow = null;
-    rowCount = 0;
   }
 
-  function ensureRow() {
+  function ensurePage() {
     if (!currentPage) {
       startNewPage();
     }
-    if (!currentRow) {
-      currentRow = document.createElement('div');
-      currentRow.className = 'print-row';
-      currentPage.columns.appendChild(currentRow);
-      rowCount = 0;
-    } else {
-      rowCount = currentRow.children.length;
-    }
   }
 
-  function clearEmptyStructures(pageRef, rowRef) {
-    if (rowRef && !rowRef.children.length) {
-      rowRef.remove();
-      if (currentRow === rowRef) {
-        currentRow = null;
-        rowCount = 0;
-      }
-    } else if (rowRef === currentRow) {
-      rowCount = rowRef ? rowRef.children.length : 0;
-    }
-
-    if (pageRef && !pageRef.columns.children.length) {
+  function clearEmptyPage(pageRef) {
+    if (pageRef && !pageRef.stack.children.length) {
       pageRef.page.remove();
       if (currentPage === pageRef) {
         currentPage = null;
-        currentRow = null;
-        rowCount = 0;
       }
     }
   }
 
   function tryPlaceCard(card, allowNewPage = true, skipCheck = false) {
     if (!card) return true;
-    ensureRow();
+    ensurePage();
     const targetPage = currentPage;
-    const targetRow = currentRow;
-    targetRow.appendChild(card);
-    let rowChildren = targetRow.children.length;
+    targetPage.stack.appendChild(card);
 
     if (!skipCheck && pageHeight && pageHeight > 0) {
       const height = targetPage.page.getBoundingClientRect().height;
       if (height > pageHeight + tolerance) {
-        targetRow.removeChild(card);
-        rowChildren = targetRow.children.length;
-        clearEmptyStructures(targetPage, targetRow);
+        targetPage.stack.removeChild(card);
+        clearEmptyPage(targetPage);
         if (allowNewPage) {
           startNewPage();
           return tryPlaceCard(card, false, skipCheck);
         }
         return false;
       }
-    }
-
-    if (currentRow === targetRow) {
-      rowCount = rowChildren;
-    }
-    if (currentRow && currentRow.children.length >= MAX_PER_ROW) {
-      currentRow = null;
-      rowCount = 0;
     }
     return true;
   }
@@ -975,9 +942,9 @@ function renderPrintPages(data, mealMap) {
           partInfo: { index: fragments.length, count: fragments.length + 1 }
         });
         const card = createPrintCard(entry.dateLabel, entry.sectionLabel, block);
-        measurement.columns.appendChild(card);
+        measurement.stack.appendChild(card);
         const height = measurement.page.getBoundingClientRect().height;
-        measurement.columns.removeChild(card);
+        measurement.stack.removeChild(card);
         if (height <= pageHeight + tolerance) {
           bestCount = mid;
           low = mid + 1;

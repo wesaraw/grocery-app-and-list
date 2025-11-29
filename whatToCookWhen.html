@@ -143,13 +143,15 @@
       display: flex;
       flex-direction: column;
       gap: 6px;
+      break-inside: avoid;
+      page-break-inside: avoid;
     }
 
     .ingredient-header {
       display: flex;
-      justify-content: space-between;
       align-items: baseline;
-      gap: 12px;
+      gap: 6px;
+      row-gap: 4px;
       flex-wrap: wrap;
     }
 
@@ -162,7 +164,6 @@
       font-weight: 500;
       color: #0f172a;
       font-variant-numeric: tabular-nums;
-      text-align: right;
     }
 
     .user-breakdown {
@@ -176,10 +177,13 @@
 
     .user-breakdown-item {
       display: flex;
-      justify-content: space-between;
-      gap: 10px;
+      align-items: baseline;
+      justify-content: flex-start;
+      gap: 6px;
+      row-gap: 2px;
       font-size: 0.85rem;
       color: #334155;
+      flex-wrap: wrap;
     }
 
     .user-name {
@@ -205,15 +209,9 @@
       width: 100%;
     }
 
-    .print-columns {
+    .print-stack {
       display: flex;
       flex-direction: column;
-      gap: 16px;
-      width: 100%;
-    }
-
-    .print-row {
-      display: flex;
       gap: 16px;
       width: 100%;
     }
@@ -225,7 +223,7 @@
       padding: 12px 14px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 12px;
       break-inside: avoid-page;
       page-break-inside: avoid;
       width: 100%;
@@ -247,14 +245,32 @@
     }
 
     .print-card-section {
-      font-weight: 500;
-      color: #1f2937;
+      font-weight: 600;
+      color: #1e3a8a;
+      background: #e0e7ff;
+      border: 1px solid #cbd5f5;
+      border-radius: 999px;
+      padding: 3px 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      font-size: 0.78rem;
     }
 
     .print-card-body {
       display: flex;
       flex-direction: column;
       gap: 10px;
+    }
+
+    .ingredient-list--print {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 8px 12px;
+    }
+
+    .ingredient-list--print .ingredient-entry {
+      height: 100%;
+      box-sizing: border-box;
     }
 
     @media print {
@@ -290,11 +306,7 @@
         page-break-after: auto;
       }
 
-      .print-columns {
-        gap: 18px;
-      }
-
-      .print-row {
+      .print-stack {
         gap: 18px;
       }
 
