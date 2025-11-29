@@ -395,6 +395,12 @@ function computeCapLimit(weeklyNeed, multiplier, treatWhole, minPurchasable) {
     }
   }
 
+  // Always allow at least the smallest purchasable size so we do not filter out
+  // the only viable options when the calculated cap is below market packaging.
+  if (Number.isFinite(minPurchasable) && minPurchasable > 0) {
+    base = base == null ? minPurchasable : Math.max(base, minPurchasable);
+  }
+
   if (treatWhole) {
     const minimum = Number.isFinite(minPurchasable) && minPurchasable > 0 ? minPurchasable : 1;
     if (base == null || base < minimum) {
@@ -575,9 +581,7 @@ async function init() {
   const itemRecord = findItemRecord(item);
   const weeklyNeed = weeklyNeedFor(item);
   const multiplier = resolveCapMultiplier(item, categoryCaps, itemCapMap);
-  const minUnits = itemRecord?.treat_as_whole_unit
-    ? minPurchasableUnits(item, adjusted)
-    : null;
+  const minUnits = minPurchasableUnits(item, adjusted);
   const capLimit = computeCapLimit(
     weeklyNeed,
     multiplier,
