@@ -9,7 +9,6 @@ import {
   loadCategoryCaps,
   loadItemCaps
 } from './utils/orderCapStorage.js';
-import { WEEKS_PER_MONTH } from './utils/constants.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -262,20 +261,14 @@ function findItemRecord(itemName) {
   return needsData.find(n => n.name === itemName);
 }
 
-function weeklyNeedFor(itemName) {
+function monthlyNeedFor(itemName) {
   const cons = consumptionMap.get(itemName);
-  if (cons && Number.isFinite(cons.monthly_consumption)) {
-    const weekly = cons.monthly_consumption / WEEKS_PER_MONTH;
-    if (Number.isFinite(weekly) && weekly > 0) {
-      return weekly;
-    }
+  if (cons && Number.isFinite(cons.monthly_consumption) && cons.monthly_consumption > 0) {
+    return cons.monthly_consumption;
   }
   const itemRecord = findItemRecord(itemName);
-  if (itemRecord && Number.isFinite(itemRecord.total_needed_year)) {
-    const yearly = itemRecord.total_needed_year / 52;
-    if (Number.isFinite(yearly) && yearly > 0) {
-      return yearly;
-    }
+  if (itemRecord && Number.isFinite(itemRecord.total_needed_year) && itemRecord.total_needed_year > 0) {
+    return itemRecord.total_needed_year / 12;
   }
   return null;
 }
@@ -385,11 +378,11 @@ function totalHomeUnits(itemName, product) {
   return null;
 }
 
-function computeCapLimit(weeklyNeed, multiplier, treatWhole, minPurchasable) {
+function computeCapLimit(baseNeed, multiplier, treatWhole, minPurchasable) {
   const capMultiplier = Number.isFinite(multiplier) && multiplier > 0 ? multiplier : DEFAULT_ORDER_CAP;
   let base = null;
-  if (Number.isFinite(weeklyNeed) && weeklyNeed > 0) {
-    const candidate = weeklyNeed * capMultiplier;
+  if (Number.isFinite(baseNeed) && baseNeed > 0) {
+    const candidate = baseNeed * capMultiplier;
     if (Number.isFinite(candidate) && candidate > 0) {
       base = candidate;
     }
@@ -579,11 +572,11 @@ async function init() {
   buildWeightPackMap(adjusted, item);
 
   const itemRecord = findItemRecord(item);
-  const weeklyNeed = weeklyNeedFor(item);
+  const monthlyNeed = monthlyNeedFor(item);
   const multiplier = resolveCapMultiplier(item, categoryCaps, itemCapMap);
   const minUnits = minPurchasableUnits(item, adjusted);
   const capLimit = computeCapLimit(
-    weeklyNeed,
+    monthlyNeed,
     multiplier,
     itemRecord?.treat_as_whole_unit,
     minUnits
