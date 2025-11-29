@@ -885,7 +885,7 @@ function renderPrintPages(data, mealMap) {
     targetPage.stack.appendChild(card);
 
     if (!skipCheck && pageHeight && pageHeight > 0) {
-      const height = targetPage.page.getBoundingClientRect().height;
+      const height = targetPage.stack.getBoundingClientRect().height;
       if (height > pageHeight + tolerance) {
         targetPage.stack.removeChild(card);
         clearEmptyPage(targetPage);
@@ -943,7 +943,7 @@ function renderPrintPages(data, mealMap) {
         });
         const card = createPrintCard(entry.dateLabel, entry.sectionLabel, block);
         measurement.stack.appendChild(card);
-        const height = measurement.page.getBoundingClientRect().height;
+        const height = measurement.stack.getBoundingClientRect().height;
         measurement.stack.removeChild(card);
         if (height <= pageHeight + tolerance) {
           bestCount = mid;
