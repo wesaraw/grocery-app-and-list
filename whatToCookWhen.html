@@ -202,7 +202,8 @@
 
     #printPages {
       display: none;
-      --print-page-height: 10.5in;
+      --print-page-height: 10in;
+      --print-page-width: 7.5in;
     }
 
     .print-page {
@@ -271,6 +272,11 @@
     .ingredient-list--print .ingredient-entry {
       height: 100%;
       box-sizing: border-box;
+    }
+
+    @page {
+      size: 8.5in 11in;
+      margin: 0.5in;
     }
 
     @media print {

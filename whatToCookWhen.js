@@ -812,12 +812,17 @@ function parseCssDimension(value) {
   return pixels || null;
 }
 
-function getPrintPageHeight(container) {
-  if (!container) return 0;
+function getPrintPageDimensions(container) {
+  if (!container) return { height: 0, width: 0 };
   const styles = getComputedStyle(container);
-  const raw = styles.getPropertyValue('--print-page-height');
-  const parsed = parseCssDimension(raw);
-  return parsed || 0;
+  const rawHeight = styles.getPropertyValue('--print-page-height');
+  const rawWidth = styles.getPropertyValue('--print-page-width');
+  const height = parseCssDimension(rawHeight) || 0;
+  const width = parseCssDimension(rawWidth) || 0;
+  return {
+    height: height || 0,
+    width: width || 0
+  };
 }
 
 function renderPrintPages(data, mealMap) {
@@ -842,14 +847,18 @@ function renderPrintPages(data, mealMap) {
   container.style.position = 'absolute';
   container.style.left = '-9999px';
   container.style.top = '0';
-  container.style.width = '100%';
+  const { height: pageHeightRaw, width: pageWidth } = getPrintPageDimensions(container);
+  const pageHeight = pageHeightRaw || window.innerHeight || 0;
+  container.style.width = pageWidth ? `${pageWidth}px` : '100%';
 
-  const pageHeight = getPrintPageHeight(container);
-  const tolerance = 1;
+  const tolerance = 6;
 
   function createPage() {
     const page = document.createElement('section');
     page.className = 'print-page';
+    if (pageWidth) {
+      page.style.width = `${pageWidth}px`;
+    }
     const stack = document.createElement('div');
     stack.className = 'print-stack';
     page.appendChild(stack);
