@@ -1,5 +1,5 @@
 import { convert } from './uomConverter.js';
-import { loadDensityMap, convertWithDensity } from './unitNormalize.js';
+import { loadDensityMap, convertWithDensity, computeNormalizedQuantity } from './unitNormalize.js';
 import { roundQuantity } from './quantityFormat.js';
 
 function normalizeMultiWordUnits(text) {
@@ -41,6 +41,11 @@ export function parseQuantity(str) {
   let unit = m[2] ? m[2].toLowerCase() : null;
   if (!unit) unit = 'ea';
   return { value, unit };
+}
+
+function stripPrepState(unit) {
+  if (!unit || typeof unit !== 'string') return unit;
+  return unit.replace(/\s+(cooked|dry)$/i, '').trim();
 }
 
 export function getMealPortionCount(meal) {
@@ -333,14 +338,32 @@ export function aggregateCalendar(
           (meal.ingredients || []).forEach(ing => {
             const { value, unit } = parseQuantity(ing.serving_size || ing.amount);
             if (!value) return;
+            const info = densityMap[ing.name] || {};
+            const densitySettings = {
+              convert_volume_to_weight: info.convert,
+              custom_density_ratio: info.ratio,
+              normalized: info.normalized,
+              prepState: info.prepState
+            };
             let qty = value;
-            const target = needsMap.get(ing.name);
-            if (unit && target && unit !== target) {
-              const info = densityMap[ing.name] || {};
-              qty = convertWithDensity(value, unit, target, {
-                convert_volume_to_weight: info.convert,
-                custom_density_ratio: info.ratio
-              });
+            let sourceUnit = unit;
+            const normalized = computeNormalizedQuantity(value, unit, densitySettings);
+            if (
+              normalized &&
+              normalized.quantity != null &&
+              Number.isFinite(normalized.quantity) &&
+              normalized.unit
+            ) {
+              qty = normalized.quantity;
+              sourceUnit = stripPrepState(normalized.unit);
+            }
+            const target = stripPrepState(needsMap.get(ing.name));
+            const baseUnit = stripPrepState(sourceUnit);
+            if (baseUnit && target && baseUnit !== target) {
+              const converted = convertWithDensity(qty, baseUnit, target, densitySettings);
+              if (Number.isFinite(converted)) {
+                qty = converted;
+              }
             }
             let arr = result.get(ing.name);
             if (!arr) {
