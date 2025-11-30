@@ -880,75 +880,47 @@ function renderPrintPages(data, mealMap) {
     return;
   }
 
-  const days = new Map();
+  const fragment = document.createDocumentFragment();
+  const stack = document.createElement('div');
+  stack.className = 'print-stack';
+
   data.forEach(day => {
     if (!day) return;
     const dateLabel = day.dayName ? `${day.date} (${day.dayName})` : day.date;
     if (!dateLabel) return;
-    if (!days.has(dateLabel)) {
-      days.set(dateLabel, []);
-    }
-    const target = days.get(dateLabel);
+
     if (Array.isArray(day.meals)) {
       day.meals.forEach(entry => {
         const normalized = normalizeMealEntry(entry, mealMap);
         if (!normalized) return;
-        target.push({
+        const card = buildPrintCard({
           dateLabel,
           sectionLabel: 'Cook Today',
           normalized,
           ingredientEntries: buildIngredientEntries(normalized.meal, normalized)
         });
+        if (card) stack.appendChild(card);
       });
     }
+
     if (Array.isArray(day.prepList)) {
       day.prepList.forEach(entry => {
         const normalized = normalizeMealEntry(entry, mealMap);
         if (!normalized) return;
-        target.push({
+        const card = buildPrintCard({
           dateLabel,
           sectionLabel: 'Prep Ahead',
           normalized,
           ingredientEntries: buildIngredientEntries(normalized.meal, normalized)
         });
+        if (card) stack.appendChild(card);
       });
     }
   });
 
-  if (!days.size) {
-    return;
-  }
+  if (!stack.childElementCount) return;
 
-  const fragment = document.createDocumentFragment();
-  days.forEach((entries, dateLabel) => {
-    if (!entries?.length) return;
-    const daySection = document.createElement('section');
-    daySection.className = 'print-day';
-
-    const header = document.createElement('div');
-    header.className = 'print-day-header';
-    header.textContent = dateLabel;
-    daySection.appendChild(header);
-
-    const grid = document.createElement('div');
-    grid.className = 'print-day-grid';
-
-    entries.forEach(entry => {
-      if (!entry) return;
-      if (!Array.isArray(entry.ingredientEntries)) {
-        entry.ingredientEntries = buildIngredientEntries(entry.normalized?.meal, entry.normalized);
-      }
-      const card = buildPrintCard(entry);
-      if (card) {
-        grid.appendChild(card);
-      }
-    });
-
-    if (!grid.childElementCount) return;
-    daySection.appendChild(grid);
-    fragment.appendChild(daySection);
-  });
-
+  fragment.appendChild(stack);
   container.appendChild(fragment);
 }
 
