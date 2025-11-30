@@ -767,62 +767,109 @@ function renderMealColumn(container, entries, mealMap) {
   });
 }
 
-function createPrintCard(dateLabel, sectionLabel, block) {
-  const card = document.createElement('div');
+function buildPrintCard(entry) {
+  const { normalized, ingredientEntries, sectionLabel, dateLabel } = entry || {};
+  if (!normalized) return null;
+
+  const card = document.createElement('article');
   card.className = 'print-card';
+
   const header = document.createElement('div');
   header.className = 'print-card-header';
+
+  const meta = document.createElement('div');
+  meta.className = 'print-meta';
   if (dateLabel) {
     const dateEl = document.createElement('div');
     dateEl.className = 'print-card-date';
     dateEl.textContent = dateLabel;
-    header.appendChild(dateEl);
+    meta.appendChild(dateEl);
   }
   if (sectionLabel) {
     const sectionEl = document.createElement('div');
     sectionEl.className = 'print-card-section';
+    if (sectionLabel.toLowerCase().includes('cook')) {
+      sectionEl.classList.add('print-card-section--cook');
+    } else {
+      sectionEl.classList.add('print-card-section--prep');
+    }
     sectionEl.textContent = sectionLabel;
-    header.appendChild(sectionEl);
+    meta.appendChild(sectionEl);
   }
+  header.appendChild(meta);
+
+  const portionText = formatPortions(normalized.totalMultiplier);
+  const targetText = normalized.targetLabels?.length
+    ? ` for ${normalized.targetLabels.join(', ')}`
+    : '';
+  const title = document.createElement('div');
+  title.className = 'print-card-title';
+  title.textContent = portionText
+    ? `${normalized.displayName} (${portionText})${targetText}`
+    : `${normalized.displayName}${targetText}`;
+  header.appendChild(title);
+
+  const subtitleParts = [];
+  if (Array.isArray(normalized.leftoverDates) && normalized.leftoverDates.length) {
+    subtitleParts.push(`Includes leftovers for ${normalized.leftoverDates.join(', ')}`);
+  }
+  if (normalized.meal?.prepared) {
+    subtitleParts.push('Prepared meal');
+  }
+  if (subtitleParts.length) {
+    const subtitle = document.createElement('div');
+    subtitle.className = 'print-card-subtitle';
+    subtitle.textContent = subtitleParts.join(' • ');
+    header.appendChild(subtitle);
+  }
+
   card.appendChild(header);
+
   const body = document.createElement('div');
   body.className = 'print-card-body';
-  if (block) {
-    body.appendChild(block);
+  const list = document.createElement('ul');
+  list.className = 'print-ingredient-grid';
+  const entries = Array.isArray(ingredientEntries) ? ingredientEntries : [];
+  if (entries.length) {
+    entries.forEach(item => {
+      list.appendChild(
+        createIngredientListItem(
+          item.ingredient,
+          item.amount,
+          item.portionCount,
+          item.users,
+          { variant: 'print' }
+        )
+      );
+    });
+  } else {
+    const empty = document.createElement('div');
+    empty.className = 'no-ingredients';
+    empty.textContent = 'No ingredient details available';
+    list.appendChild(empty);
   }
+  body.appendChild(list);
+
+  const footer = document.createElement('div');
+  footer.className = 'print-footer';
+  if (normalized.meal?.prepAhead) {
+    const tag = document.createElement('div');
+    tag.className = 'print-tag';
+    tag.textContent = 'Prep Ahead';
+    footer.appendChild(tag);
+  }
+  if (sectionLabel && !sectionLabel.toLowerCase().includes('cook')) {
+    const tag = document.createElement('div');
+    tag.className = 'print-tag';
+    tag.textContent = 'Prep Today';
+    footer.appendChild(tag);
+  }
+  if (footer.childElementCount) {
+    body.appendChild(footer);
+  }
+
   card.appendChild(body);
   return card;
-}
-
-function parseCssDimension(value) {
-  if (!value) return null;
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  if (trimmed.endsWith('px')) {
-    const parsed = parseFloat(trimmed);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  const probe = document.createElement('div');
-  probe.style.position = 'absolute';
-  probe.style.visibility = 'hidden';
-  probe.style.height = trimmed;
-  document.body.appendChild(probe);
-  const pixels = probe.getBoundingClientRect().height;
-  document.body.removeChild(probe);
-  return pixels || null;
-}
-
-function getPrintPageDimensions(container) {
-  if (!container) return { height: 0, width: 0 };
-  const styles = getComputedStyle(container);
-  const rawHeight = styles.getPropertyValue('--print-page-height');
-  const rawWidth = styles.getPropertyValue('--print-page-width');
-  const height = parseCssDimension(rawHeight) || 0;
-  const width = parseCssDimension(rawWidth) || 0;
-  return {
-    height: height || 0,
-    width: width || 0
-  };
 }
 
 function renderPrintPages(data, mealMap) {
@@ -831,160 +878,6 @@ function renderPrintPages(data, mealMap) {
   container.innerHTML = '';
   if (!Array.isArray(data) || !data.length) {
     return;
-  }
-
-  const originalStyles = {
-    display: container.style.display,
-    visibility: container.style.visibility,
-    position: container.style.position,
-    left: container.style.left,
-    top: container.style.top,
-    width: container.style.width
-  };
-
-  container.style.display = 'block';
-  container.style.visibility = 'hidden';
-  container.style.position = 'absolute';
-  container.style.left = '-9999px';
-  container.style.top = '0';
-  const { height: pageHeightRaw, width: pageWidth } = getPrintPageDimensions(container);
-  const pageHeight = pageHeightRaw || window.innerHeight || 0;
-  container.style.width = pageWidth ? `${pageWidth}px` : '100%';
-
-  const tolerance = 6;
-
-  function createPage() {
-    const page = document.createElement('section');
-    page.className = 'print-page';
-    if (pageWidth) {
-      page.style.width = `${pageWidth}px`;
-    }
-    const stack = document.createElement('div');
-    stack.className = 'print-stack';
-    page.appendChild(stack);
-    return { page, stack };
-  }
-
-  let currentPage = null;
-
-  function startNewPage() {
-    currentPage = createPage();
-    container.appendChild(currentPage.page);
-  }
-
-  function ensurePage() {
-    if (!currentPage) {
-      startNewPage();
-    }
-  }
-
-  function clearEmptyPage(pageRef) {
-    if (pageRef && !pageRef.stack.children.length) {
-      pageRef.page.remove();
-      if (currentPage === pageRef) {
-        currentPage = null;
-      }
-    }
-  }
-
-  function tryPlaceCard(card, allowNewPage = true, skipCheck = false) {
-    if (!card) return true;
-    ensurePage();
-    const targetPage = currentPage;
-    targetPage.stack.appendChild(card);
-
-    if (!skipCheck && pageHeight && pageHeight > 0) {
-      const height = targetPage.stack.getBoundingClientRect().height;
-      if (height > pageHeight + tolerance) {
-        targetPage.stack.removeChild(card);
-        clearEmptyPage(targetPage);
-        if (allowNewPage) {
-          startNewPage();
-          return tryPlaceCard(card, false, skipCheck);
-        }
-        return false;
-      }
-    }
-    return true;
-  }
-
-  function buildEntryCard(entry) {
-    const options = { variant: 'print' };
-    if (entry.partInfo && entry.partInfo.count > 1) {
-      options.partInfo = entry.partInfo;
-    }
-    const block = buildMealBlockFromEntries(entry.normalized, entry.ingredientEntries, options);
-    return createPrintCard(entry.dateLabel, entry.sectionLabel, block);
-  }
-
-  function placeEntry(entry) {
-    const card = buildEntryCard(entry);
-    const placed = tryPlaceCard(card, true);
-    if (!placed) {
-      card.remove();
-    }
-    return placed;
-  }
-
-  function splitEntry(entry) {
-    const ingredients = Array.isArray(entry.ingredientEntries)
-      ? entry.ingredientEntries
-      : [];
-    if (!pageHeight || ingredients.length <= 1) {
-      return null;
-    }
-
-    const measurement = createPage();
-    container.appendChild(measurement.page);
-
-    const fragments = [];
-    let cursor = 0;
-    while (cursor < ingredients.length) {
-      let low = 1;
-      let high = ingredients.length - cursor;
-      let bestCount = 0;
-      while (low <= high) {
-        const mid = Math.max(1, Math.floor((low + high) / 2));
-        const slice = ingredients.slice(cursor, cursor + mid);
-        const block = buildMealBlockFromEntries(entry.normalized, slice, {
-          variant: 'print',
-          partInfo: { index: fragments.length, count: fragments.length + 1 }
-        });
-        const card = createPrintCard(entry.dateLabel, entry.sectionLabel, block);
-        measurement.stack.appendChild(card);
-        const height = measurement.stack.getBoundingClientRect().height;
-        measurement.stack.removeChild(card);
-        if (height <= pageHeight + tolerance) {
-          bestCount = mid;
-          low = mid + 1;
-        } else {
-          high = mid - 1;
-        }
-      }
-      if (!bestCount) {
-        bestCount = 1;
-      }
-      const sliceEntries = ingredients.slice(cursor, cursor + bestCount);
-      fragments.push({
-        dateLabel: entry.dateLabel,
-        sectionLabel: entry.sectionLabel,
-        normalized: entry.normalized,
-        ingredientEntries: sliceEntries,
-        partInfo: { index: fragments.length, count: 0 }
-      });
-      cursor += bestCount;
-    }
-
-    measurement.page.remove();
-
-    if (fragments.length <= 1) {
-      return null;
-    }
-    fragments.forEach((fragment, idx) => {
-      fragment.partInfo.count = fragments.length;
-      fragment.partInfo.index = idx;
-    });
-    return fragments;
   }
 
   const queue = [];
@@ -1018,42 +911,22 @@ function renderPrintPages(data, mealMap) {
   });
 
   if (!queue.length) {
-    container.style.display = originalStyles.display;
-    container.style.visibility = originalStyles.visibility;
-    container.style.position = originalStyles.position;
-    container.style.left = originalStyles.left;
-    container.style.top = originalStyles.top;
-    container.style.width = originalStyles.width;
     return;
   }
 
-  for (let i = 0; i < queue.length; i += 1) {
-    const entry = queue[i];
-    if (!entry) continue;
+  const fragment = document.createDocumentFragment();
+  queue.forEach(entry => {
+    if (!entry) return;
     if (!Array.isArray(entry.ingredientEntries)) {
       entry.ingredientEntries = buildIngredientEntries(entry.normalized?.meal, entry.normalized);
     }
-    let placed = placeEntry(entry);
-    if (!placed && pageHeight > 0) {
-      const parts = splitEntry(entry);
-      if (parts && parts.length) {
-        queue.splice(i, 1, ...parts);
-        i -= 1;
-        continue;
-      }
+    const card = buildPrintCard(entry);
+    if (card) {
+      fragment.appendChild(card);
     }
-    if (!placed) {
-      const fallbackCard = buildEntryCard(entry);
-      tryPlaceCard(fallbackCard, true, true);
-    }
-  }
+  });
 
-  container.style.display = originalStyles.display;
-  container.style.visibility = originalStyles.visibility;
-  container.style.position = originalStyles.position;
-  container.style.left = originalStyles.left;
-  container.style.top = originalStyles.top;
-  container.style.width = originalStyles.width;
+  container.appendChild(fragment);
 }
 
 function clearPrintPages() {

@@ -202,76 +202,115 @@
 
     #printPages {
       display: none;
-      --print-page-height: 10in;
-      --print-page-width: 7.5in;
-    }
-
-    .print-page {
-      width: 100%;
-    }
-
-    .print-stack {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      width: 100%;
     }
 
     .print-card {
       background: #ffffff;
-      border: 1px solid #dbe4f1;
-      border-radius: 8px;
-      padding: 12px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 16px 18px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      break-inside: avoid-page;
+      gap: 14px;
       page-break-inside: avoid;
+      break-inside: avoid-page;
       width: 100%;
       box-sizing: border-box;
     }
 
+    .print-card + .print-card {
+      margin-top: 18px;
+    }
+
     .print-card-header {
       display: flex;
-      justify-content: space-between;
-      align-items: baseline;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .print-meta {
+      display: flex;
       flex-wrap: wrap;
+      align-items: center;
       gap: 8px 12px;
-      font-size: 0.9rem;
       color: #0f172a;
+      font-size: 0.95rem;
     }
 
     .print-card-date {
-      font-weight: 600;
+      font-weight: 700;
+      letter-spacing: 0.01em;
     }
 
     .print-card-section {
-      font-weight: 600;
-      color: #1e3a8a;
-      background: #e0e7ff;
-      border: 1px solid #cbd5f5;
-      border-radius: 999px;
-      padding: 3px 10px;
-      text-transform: uppercase;
+      font-weight: 700;
       letter-spacing: 0.02em;
-      font-size: 0.78rem;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+    }
+
+    .print-card-section--cook {
+      background: #ecfdf3;
+      color: #166534;
+      border-color: #bbf7d0;
+    }
+
+    .print-card-section--prep {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border-color: #bfdbfe;
+    }
+
+    .print-card-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #0b1324;
+    }
+
+    .print-card-subtitle {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 10px;
+      color: #475569;
+      font-size: 0.9rem;
     }
 
     .print-card-body {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 12px;
     }
 
-    .ingredient-list--print {
+    .print-ingredient-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 8px 12px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px 12px;
     }
 
-    .ingredient-list--print .ingredient-entry {
+    .print-ingredient-grid .ingredient-entry {
       height: 100%;
       box-sizing: border-box;
+    }
+
+    .print-footer {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      font-size: 0.9rem;
+      color: #475569;
+    }
+
+    .print-tag {
+      padding: 3px 10px;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      background: #f8fafc;
+      font-weight: 600;
+      color: #0f172a;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
     }
 
     @page {
@@ -296,29 +335,11 @@
 
       #printPages {
         display: block;
-        position: static;
-        width: 100%;
         margin: 0;
       }
 
-      .print-page {
-        padding: 0 0 24px;
-        break-after: page;
-        page-break-after: always;
-      }
-
-      .print-page:last-child {
-        break-after: auto;
-        page-break-after: auto;
-      }
-
-      .print-stack {
-        gap: 18px;
-      }
-
       .print-card {
-        background: #ffffff;
-        border-color: #cbd5e1;
+        page-break-after: always;
       }
 
       .meal-block {
