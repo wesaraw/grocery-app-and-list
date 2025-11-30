@@ -1149,8 +1149,8 @@ function renderPlanGrid(data, mealMap, variant = 'screen') {
 
     const content = document.createElement('div');
     content.className = 'day-content';
-    content.appendChild(renderDaySection('Cook Today', meals, mealMap, variant));
     content.appendChild(renderDaySection('Prep Ahead', prepList, mealMap, variant));
+    content.appendChild(renderDaySection('Cook Today', meals, mealMap, variant));
     card.appendChild(content);
 
     container.appendChild(card);
