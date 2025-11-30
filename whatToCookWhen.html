@@ -6,12 +6,12 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      max-width: 1080px;
+      max-width: 1100px;
       margin: 0 auto;
-      padding: 18px 28px 36px;
+      padding: 18px 24px 32px;
       box-sizing: border-box;
-      color: #111827;
-      background: #ffffff;
+      color: #0f172a;
+      background: #f9fafb;
     }
 
     h1 {
@@ -21,8 +21,9 @@
     .controls {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px 12px;
+      gap: 10px 14px;
       align-items: flex-end;
+      margin-bottom: 16px;
     }
 
     .controls label {
@@ -32,43 +33,104 @@
       gap: 4px;
     }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 16px;
-      table-layout: fixed;
+    .button-row {
+      display: flex;
+      gap: 10px;
     }
 
-    tbody tr {
+    button {
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+      background: #e2e8f0;
+      color: #0f172a;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #cbd5e1;
+    }
+
+    .page-description {
+      margin: 0 0 12px;
+      color: #475569;
+    }
+
+    .plan-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 14px;
+    }
+
+    .day-card {
+      background: #ffffff;
+      border: 1px solid #dbe4f1;
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
       page-break-inside: avoid;
     }
 
-    th,
-    td {
-      padding: 6px;
-      border-bottom: 1px solid #ccc;
-      vertical-align: top;
+    .day-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
     }
 
-    th:nth-child(1),
-    td:nth-child(1) {
-      width: 170px;
+    .day-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #0f172a;
     }
 
-    th {
-      text-align: left;
-      background-color: #f5f5f5;
+    .day-label {
+      padding: 4px 8px;
+      background: #eef2ff;
+      color: #312e81;
+      border: 1px solid #c7d2fe;
+      border-radius: 999px;
+      font-size: 0.85rem;
     }
 
-    .meal-cell {
-      padding: 8px 6px 12px;
-    }
-
-    .meal-column {
+    .day-content {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 14px;
-      align-items: stretch;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .meal-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .meal-section h3 {
+      margin: 0;
+      font-size: 0.95rem;
+      color: #1f2937;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .section-chip {
+      background: #ecfeff;
+      color: #0f172a;
+      border: 1px solid #bae6fd;
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-size: 0.8rem;
+    }
+
+    .meal-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
     }
 
     .meal-block {
@@ -191,116 +253,42 @@
       text-align: right;
     }
 
-    .no-ingredients {
-      font-size: 0.85rem;
-      color: #666;
-    }
-
-    #printPages {
-      display: none;
-      --print-page-height: 10.5in;
-    }
-
-    .print-page {
-      width: 100%;
-    }
-
-    .print-columns {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      width: 100%;
-    }
-
-    .print-row {
-      display: flex;
-      gap: 16px;
-      width: 100%;
-    }
-
-    .print-card {
-      background: #ffffff;
-      border: 1px solid #dbe4f1;
-      border-radius: 8px;
-      padding: 12px 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      break-inside: avoid-page;
-      page-break-inside: avoid;
-      width: 100%;
-      box-sizing: border-box;
-    }
-
-    .print-card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      flex-wrap: wrap;
-      gap: 8px 12px;
+    .no-ingredients,
+    .empty-group {
       font-size: 0.9rem;
-      color: #0f172a;
+      color: #64748b;
     }
 
-    .print-card-date {
-      font-weight: 600;
-    }
-
-    .print-card-section {
-      font-weight: 500;
-      color: #1f2937;
-    }
-
-    .print-card-body {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
+    @media (min-width: 720px) {
+      .day-content {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
     }
 
     @media print {
       body {
         max-width: none;
-        padding: 18px 24px;
+        padding: 12px 16px;
+        background: #ffffff;
       }
 
       .controls,
-      table {
+      #printBtn,
+      .button-row {
         display: none !important;
       }
 
-      #printBtn {
-        display: none !important;
+      .plan-grid {
+        grid-template-columns: 1fr;
       }
 
-      #printPages {
-        display: block;
-        position: static;
-        width: 100%;
-        margin: 0;
-      }
-
-      .print-page {
-        padding: 0 0 24px;
-        break-after: page;
-        page-break-after: always;
-      }
-
-      .print-page:last-child {
-        break-after: auto;
-        page-break-after: auto;
-      }
-
-      .print-columns {
-        gap: 18px;
-      }
-
-      .print-row {
-        gap: 18px;
-      }
-
-      .print-card {
-        background: #ffffff;
+      .day-card {
         border-color: #cbd5e1;
+        box-shadow: none;
+      }
+
+      .meal-instructions-btn {
+        display: none !important;
       }
 
       .meal-block {
@@ -316,6 +304,7 @@
 </head>
 <body>
   <h1>What To Cook</h1>
+  <p class="page-description">All of your cooking and prep for the chosen dates, grouped by day so the entire plan fits cleanly on a page.</p>
   <div class="controls">
     <label>Start
       <input type="date" id="startDate">
@@ -323,21 +312,13 @@
     <label>Days
       <input type="number" id="numDays" value="7" min="1" max="365">
     </label>
-    <button id="showBtn">Show</button>
-    <button id="printBtn">Print Plan</button>
-    <button id="eatViewBtn">What To Eat When</button>
+    <div class="button-row">
+      <button id="showBtn">Show</button>
+      <button id="printBtn">Print Plan</button>
+      <button id="eatViewBtn">What To Eat When</button>
+    </div>
   </div>
-  <table>
-    <thead>
-      <tr>
-        <th>Date</th>
-        <th>Cook Today</th>
-        <th>Prep Ahead</th>
-      </tr>
-    </thead>
-    <tbody id="cookBody"></tbody>
-  </table>
-  <div id="printPages" aria-hidden="true"></div>
+  <div id="planList" class="plan-grid" aria-live="polite"></div>
   <script type="module" src="whatToCookWhen.js"></script>
 </body>
 </html>

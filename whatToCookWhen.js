@@ -743,116 +743,31 @@ function buildMealBlockElement(normalized, options = {}) {
   return buildMealBlockFromEntries(normalized, ingredientEntries, options);
 }
 
-function renderMealColumn(container, entries, mealMap) {
-  container.innerHTML = '';
-  if (container?.classList) {
-    container.classList.add('meal-cell');
-  }
-  if (!entries?.length) {
-    return;
-  }
-  const column = document.createElement('div');
-  column.className = 'meal-column';
-  container.appendChild(column);
-  entries.forEach(entry => {
-    const normalized = normalizeMealEntry(entry, mealMap);
-    if (!normalized) return;
-    const block = buildMealBlockElement(normalized, { variant: 'screen' });
-    if (block) {
-      column.appendChild(block);
-    }
-  });
-}
-
-function createPrintCard(dateLabel, sectionLabel, block) {
-  const card = document.createElement('div');
-  card.className = 'print-card';
-  const header = document.createElement('div');
-  header.className = 'print-card-header';
-  if (dateLabel) {
-    const dateEl = document.createElement('div');
-    dateEl.className = 'print-card-date';
-    dateEl.textContent = dateLabel;
-    header.appendChild(dateEl);
-  }
-  if (sectionLabel) {
-    const sectionEl = document.createElement('div');
-    sectionEl.className = 'print-card-section';
-    sectionEl.textContent = sectionLabel;
-    header.appendChild(sectionEl);
-  }
-  card.appendChild(header);
-  const body = document.createElement('div');
-  body.className = 'print-card-body';
-  if (block) {
-    body.appendChild(block);
-  }
-  card.appendChild(body);
-  return card;
-}
-
-function parseCssDimension(value) {
-  if (!value) return null;
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  if (trimmed.endsWith('px')) {
-    const parsed = parseFloat(trimmed);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  const probe = document.createElement('div');
-  probe.style.position = 'absolute';
-  probe.style.visibility = 'hidden';
-  probe.style.height = trimmed;
-  document.body.appendChild(probe);
-  const pixels = probe.getBoundingClientRect().height;
-  document.body.removeChild(probe);
-  return pixels || null;
-}
-
-function getPrintPageHeight(container) {
-  if (!container) return 0;
-  const styles = getComputedStyle(container);
-  const raw = styles.getPropertyValue('--print-page-height');
-  const parsed = parseCssDimension(raw);
-  return parsed || 0;
-}
-
-function renderPrintPages(data, mealMap) {
-  const container = document.getElementById('printPages');
+function renderMealGroup(container, entries, mealMap, variant = 'screen') {
   if (!container) return;
   container.innerHTML = '';
-  if (!Array.isArray(data) || !data.length) {
-    return;
+  container.classList.add('meal-group');
+  const grid = document.createElement('div');
+  grid.className = 'meal-grid';
+  let hasContent = false;
+  (entries || []).forEach(entry => {
+    const normalized = normalizeMealEntry(entry, mealMap);
+    if (!normalized) return;
+    const block = buildMealBlockElement(normalized, { variant });
+    if (block) {
+      hasContent = true;
+      grid.appendChild(block);
+    }
+  });
+  if (hasContent) {
+    container.appendChild(grid);
+  } else {
+    const empty = document.createElement('div');
+    empty.className = 'empty-group';
+    empty.textContent = 'Nothing scheduled.';
+    container.appendChild(empty);
   }
-
-  const originalStyles = {
-    display: container.style.display,
-    visibility: container.style.visibility,
-    position: container.style.position,
-    left: container.style.left,
-    top: container.style.top,
-    width: container.style.width
-  };
-
-  container.style.display = 'block';
-  container.style.visibility = 'hidden';
-  container.style.position = 'absolute';
-  container.style.left = '-9999px';
-  container.style.top = '0';
-  container.style.width = '100%';
-
-  const pageHeight = getPrintPageHeight(container);
-  const tolerance = 1;
-  const MAX_PER_ROW = 2;
-
-  function createPage() {
-    const page = document.createElement('section');
-    page.className = 'print-page';
-    const columns = document.createElement('div');
-    columns.className = 'print-columns';
-    page.appendChild(columns);
-    return { page, columns };
-  }
+}
 
   let currentPage = null;
   let currentRow = null;
@@ -864,233 +779,6 @@ function renderPrintPages(data, mealMap) {
     currentRow = null;
     rowCount = 0;
   }
-
-  function ensureRow() {
-    if (!currentPage) {
-      startNewPage();
-    }
-    if (!currentRow) {
-      currentRow = document.createElement('div');
-      currentRow.className = 'print-row';
-      currentPage.columns.appendChild(currentRow);
-      rowCount = 0;
-    } else {
-      rowCount = currentRow.children.length;
-    }
-  }
-
-  function clearEmptyStructures(pageRef, rowRef) {
-    if (rowRef && !rowRef.children.length) {
-      rowRef.remove();
-      if (currentRow === rowRef) {
-        currentRow = null;
-        rowCount = 0;
-      }
-    } else if (rowRef === currentRow) {
-      rowCount = rowRef ? rowRef.children.length : 0;
-    }
-
-    if (pageRef && !pageRef.columns.children.length) {
-      pageRef.page.remove();
-      if (currentPage === pageRef) {
-        currentPage = null;
-        currentRow = null;
-        rowCount = 0;
-      }
-    }
-  }
-
-  function tryPlaceCard(card, allowNewPage = true, skipCheck = false) {
-    if (!card) return true;
-    ensureRow();
-    const targetPage = currentPage;
-    const targetRow = currentRow;
-    targetRow.appendChild(card);
-    let rowChildren = targetRow.children.length;
-
-    if (!skipCheck && pageHeight && pageHeight > 0) {
-      const height = targetPage.page.getBoundingClientRect().height;
-      if (height > pageHeight + tolerance) {
-        targetRow.removeChild(card);
-        rowChildren = targetRow.children.length;
-        clearEmptyStructures(targetPage, targetRow);
-        if (allowNewPage) {
-          startNewPage();
-          return tryPlaceCard(card, false, skipCheck);
-        }
-        return false;
-      }
-    }
-
-    if (currentRow === targetRow) {
-      rowCount = rowChildren;
-    }
-    if (currentRow && currentRow.children.length >= MAX_PER_ROW) {
-      currentRow = null;
-      rowCount = 0;
-    }
-    return true;
-  }
-
-  function buildEntryCard(entry) {
-    const options = { variant: 'print' };
-    if (entry.partInfo && entry.partInfo.count > 1) {
-      options.partInfo = entry.partInfo;
-    }
-    const block = buildMealBlockFromEntries(entry.normalized, entry.ingredientEntries, options);
-    return createPrintCard(entry.dateLabel, entry.sectionLabel, block);
-  }
-
-  function placeEntry(entry) {
-    const card = buildEntryCard(entry);
-    const placed = tryPlaceCard(card, true);
-    if (!placed) {
-      card.remove();
-    }
-    return placed;
-  }
-
-  function splitEntry(entry) {
-    const ingredients = Array.isArray(entry.ingredientEntries)
-      ? entry.ingredientEntries
-      : [];
-    if (!pageHeight || ingredients.length <= 1) {
-      return null;
-    }
-
-    const measurement = createPage();
-    container.appendChild(measurement.page);
-
-    const fragments = [];
-    let cursor = 0;
-    while (cursor < ingredients.length) {
-      let low = 1;
-      let high = ingredients.length - cursor;
-      let bestCount = 0;
-      while (low <= high) {
-        const mid = Math.max(1, Math.floor((low + high) / 2));
-        const slice = ingredients.slice(cursor, cursor + mid);
-        const block = buildMealBlockFromEntries(entry.normalized, slice, {
-          variant: 'print',
-          partInfo: { index: fragments.length, count: fragments.length + 1 }
-        });
-        const card = createPrintCard(entry.dateLabel, entry.sectionLabel, block);
-        measurement.columns.appendChild(card);
-        const height = measurement.page.getBoundingClientRect().height;
-        measurement.columns.removeChild(card);
-        if (height <= pageHeight + tolerance) {
-          bestCount = mid;
-          low = mid + 1;
-        } else {
-          high = mid - 1;
-        }
-      }
-      if (!bestCount) {
-        bestCount = 1;
-      }
-      const sliceEntries = ingredients.slice(cursor, cursor + bestCount);
-      fragments.push({
-        dateLabel: entry.dateLabel,
-        sectionLabel: entry.sectionLabel,
-        normalized: entry.normalized,
-        ingredientEntries: sliceEntries,
-        partInfo: { index: fragments.length, count: 0 }
-      });
-      cursor += bestCount;
-    }
-
-    measurement.page.remove();
-
-    if (fragments.length <= 1) {
-      return null;
-    }
-    fragments.forEach((fragment, idx) => {
-      fragment.partInfo.count = fragments.length;
-      fragment.partInfo.index = idx;
-    });
-    return fragments;
-  }
-
-  const queue = [];
-  data.forEach(day => {
-    if (!day) return;
-    const dateLabel = day.dayName ? `${day.date} (${day.dayName})` : day.date;
-    if (Array.isArray(day.meals)) {
-      day.meals.forEach(entry => {
-        const normalized = normalizeMealEntry(entry, mealMap);
-        if (!normalized) return;
-        queue.push({
-          dateLabel,
-          sectionLabel: 'Cook Today',
-          normalized,
-          ingredientEntries: buildIngredientEntries(normalized.meal, normalized)
-        });
-      });
-    }
-    if (Array.isArray(day.prepList)) {
-      day.prepList.forEach(entry => {
-        const normalized = normalizeMealEntry(entry, mealMap);
-        if (!normalized) return;
-        queue.push({
-          dateLabel,
-          sectionLabel: 'Prep Ahead',
-          normalized,
-          ingredientEntries: buildIngredientEntries(normalized.meal, normalized)
-        });
-      });
-    }
-  });
-
-  if (!queue.length) {
-    container.style.display = originalStyles.display;
-    container.style.visibility = originalStyles.visibility;
-    container.style.position = originalStyles.position;
-    container.style.left = originalStyles.left;
-    container.style.top = originalStyles.top;
-    container.style.width = originalStyles.width;
-    return;
-  }
-
-  for (let i = 0; i < queue.length; i += 1) {
-    const entry = queue[i];
-    if (!entry) continue;
-    if (!Array.isArray(entry.ingredientEntries)) {
-      entry.ingredientEntries = buildIngredientEntries(entry.normalized?.meal, entry.normalized);
-    }
-    let placed = placeEntry(entry);
-    if (!placed && pageHeight > 0) {
-      const parts = splitEntry(entry);
-      if (parts && parts.length) {
-        queue.splice(i, 1, ...parts);
-        i -= 1;
-        continue;
-      }
-    }
-    if (!placed) {
-      const fallbackCard = buildEntryCard(entry);
-      tryPlaceCard(fallbackCard, true, true);
-    }
-  }
-
-  container.style.display = originalStyles.display;
-  container.style.visibility = originalStyles.visibility;
-  container.style.position = originalStyles.position;
-  container.style.left = originalStyles.left;
-  container.style.top = originalStyles.top;
-  container.style.width = originalStyles.width;
-}
-
-function clearPrintPages() {
-  const container = document.getElementById('printPages');
-  if (!container) return;
-  container.innerHTML = '';
-  container.style.display = '';
-  container.style.visibility = '';
-  container.style.position = '';
-  container.style.left = '';
-  container.style.top = '';
-  container.style.width = '';
-}
 
 function normalizePrepDays(prepDays) {
   if (!Array.isArray(prepDays)) return [];
@@ -1419,21 +1107,53 @@ function buildData(calendar, userEntries, mealMap, start, days, prepDays) {
   }));
 }
 
-function renderRows(data, mealMap) {
-  const tbody = document.getElementById('cookBody');
-  tbody.innerHTML = '';
+function renderDaySection(title, entries, mealMap, variant = 'screen') {
+  const section = document.createElement('div');
+  section.className = 'meal-section';
+  const heading = document.createElement('h3');
+  heading.textContent = title;
+  const badge = document.createElement('span');
+  badge.className = 'section-chip';
+  badge.textContent = `${Array.isArray(entries) ? entries.length : 0} item${
+    Array.isArray(entries) && entries.length === 1 ? '' : 's'
+  }`;
+  heading.appendChild(badge);
+  section.appendChild(heading);
+  const body = document.createElement('div');
+  renderMealGroup(body, entries, mealMap, variant);
+  section.appendChild(body);
+  return section;
+}
+
+function renderPlanGrid(data, mealMap, variant = 'screen') {
+  const container = document.getElementById('planList');
+  if (!container) return;
+  container.innerHTML = '';
   data.forEach(({ date, dayName, meals, prepList }) => {
-    const row = document.createElement('tr');
-    const dtd = document.createElement('td');
-    dtd.textContent = dayName ? `${date} (${dayName})` : date;
-    row.appendChild(dtd);
-    const mealsTd = document.createElement('td');
-    renderMealColumn(mealsTd, meals, mealMap);
-    row.appendChild(mealsTd);
-    const prepTd = document.createElement('td');
-    renderMealColumn(prepTd, prepList, mealMap);
-    row.appendChild(prepTd);
-    tbody.appendChild(row);
+    const card = document.createElement('section');
+    card.className = 'day-card';
+
+    const header = document.createElement('div');
+    header.className = 'day-header';
+    const title = document.createElement('div');
+    title.className = 'day-title';
+    title.textContent = date;
+    header.appendChild(title);
+    if (dayName) {
+      const label = document.createElement('span');
+      label.className = 'day-label';
+      label.textContent = dayName;
+      header.appendChild(label);
+    }
+    card.appendChild(header);
+
+    const content = document.createElement('div');
+    content.className = 'day-content';
+    content.appendChild(renderDaySection('Cook Today', meals, mealMap, variant));
+    content.appendChild(renderDaySection('Prep Ahead', prepList, mealMap, variant));
+    card.appendChild(content);
+
+    container.appendChild(card);
   });
 }
 
@@ -1469,108 +1189,29 @@ async function init() {
   document.getElementById('startDate').value = start || new Date().toISOString().split('T')[0];
   document.getElementById('numDays').value = days;
 
-  let currentData = [];
-  let printPrepared = false;
-  const printContainer = document.getElementById('printPages');
   const printButton = document.getElementById('printBtn');
-
-  function preparePrint() {
-    if (!printContainer) return;
-    if (!currentData.length) {
-      clearPrintPages();
-      printPrepared = false;
-      return;
-    }
-    renderPrintPages(currentData, mealMap);
-    const container = document.getElementById('printPages');
-    printPrepared = !!container && container.childElementCount > 0;
-    return printPrepared;
-  }
-
-  function resetPrint() {
-    if (!printContainer) return;
-    clearPrintPages();
-    printPrepared = false;
-  }
-
-  function waitForNextFrame() {
-    return new Promise(resolve => {
-      const raf =
-        (typeof window !== 'undefined' && window.requestAnimationFrame) || null;
-      if (typeof raf === 'function') {
-        raf(() => resolve());
-      } else {
-        setTimeout(resolve, 0);
-      }
-    });
-  }
-
-  function notify(message) {
-    if (typeof window !== 'undefined' && typeof window.alert === 'function') {
-      window.alert(message);
-    } else if (typeof alert === 'function') {
-      alert(message);
-    }
-  }
 
   function update() {
     const startVal = document.getElementById('startDate').value;
     const daysVal = parseInt(document.getElementById('numDays').value, 10) || 7;
     const data = buildData(calendar, userEntries, mealMap, startVal, daysVal, prepDays);
-    currentData = data;
-    renderRows(data, mealMap);
-    if (printPrepared) {
-      preparePrint();
-    } else if (printContainer) {
-      clearPrintPages();
-    }
+    renderPlanGrid(data, mealMap);
   }
 
   document.getElementById('showBtn').addEventListener('click', update);
   document.getElementById('eatViewBtn').addEventListener('click', openEatView);
 
   if (printButton) {
-    printButton.addEventListener('click', async () => {
-      if (typeof window.print !== 'function') {
-        const message = 'Printing is not supported in this browser.';
-        console.warn(message);
-        notify(message);
-        return;
-      }
-
+    printButton.addEventListener('click', () => {
       update();
-      preparePrint();
-      await waitForNextFrame();
-
-      if (!printPrepared) {
-        const message = 'There is no printable content available yet.';
-        console.warn(message);
-        notify(message);
-        return;
+      if (typeof window.print === 'function') {
+        window.print();
       }
-
-      window.print();
     });
   }
 
-  if (printContainer) {
-    window.addEventListener('beforeprint', preparePrint);
-    window.addEventListener('afterprint', resetPrint);
-    if (window.matchMedia) {
-      const mediaQuery = window.matchMedia('print');
-      const mqListener = event => {
-        if (event.matches) {
-          preparePrint();
-        } else {
-          resetPrint();
-        }
-      };
-      if (typeof mediaQuery.addEventListener === 'function') {
-        mediaQuery.addEventListener('change', mqListener);
-      } else if (typeof mediaQuery.addListener === 'function') {
-        mediaQuery.addListener(mqListener);
-      }
-    }
+  if (typeof window !== 'undefined') {
+    window.addEventListener('beforeprint', update);
   }
 
   update();
