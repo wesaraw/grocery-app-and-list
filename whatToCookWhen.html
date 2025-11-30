@@ -283,6 +283,7 @@
       .day-card {
         border-color: #cbd5e1;
         box-shadow: none;
+        position: relative;
         break-inside: auto;
         page-break-inside: auto;
       }
@@ -291,6 +292,16 @@
       .meal-section h3 {
         break-after: avoid-page;
         page-break-after: avoid;
+      }
+
+      .day-header {
+        position: sticky;
+        top: 0;
+        padding: 10px 8px 8px 8px;
+        margin: -10px -8px 6px -8px;
+        background: #ffffff;
+        border-bottom: 1px solid #e2e8f0;
+        z-index: 5;
       }
 
       .meal-instructions-btn {
