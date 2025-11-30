@@ -286,6 +286,10 @@
         position: relative;
         break-inside: auto;
         page-break-inside: auto;
+        display: table;
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
       }
 
       .day-header,
@@ -295,13 +299,18 @@
       }
 
       .day-header {
-        position: sticky;
-        top: 0;
-        padding: 10px 8px 8px 8px;
-        margin: -10px -8px 6px -8px;
+        display: table-header-group;
+        position: static;
+        top: auto;
+        padding: 12px 12px 10px 12px;
+        margin: 0 0 6px 0;
         background: #ffffff;
         border-bottom: 1px solid #e2e8f0;
         z-index: 5;
+      }
+
+      .day-content {
+        display: table-row-group;
       }
 
       .meal-instructions-btn {
