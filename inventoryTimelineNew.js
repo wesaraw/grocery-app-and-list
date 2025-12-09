@@ -62,10 +62,15 @@ function renderItemCard(item, locationImage) {
   const card = document.createElement('article');
   const cardImage = locationImage || item.finalProduct?.image || null;
   card.className = 'item-card';
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'item-card__backdrop';
   if (cardImage) {
     card.classList.add('item-card--has-image');
     card.style.setProperty('--item-card-bg-image', `url("${cardImage}")`);
   }
+
+  card.appendChild(backdrop);
 
   const header = document.createElement('div');
   header.className = 'item-card__header';
