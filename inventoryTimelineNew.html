@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Inventory Timeline (Redesigned)</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="inventoryTimelineNew.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header__title">Inventory Timeline</div>
+    <div class="app-header__actions">
+      <div class="toggle-pill" role="group" aria-label="Inventory visibility">
+        <button id="filterInStock" type="button" class="pill-btn pill-btn--active">In Stock</button>
+        <button id="filterAll" type="button" class="pill-btn">All Tracked</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="section-card intro-card">
+      <div>
+        <h2 class="section-title">At-a-glance inventory</h2>
+        <p class="intro-copy">Review what is currently on hand by storage area. Expand a location to inspect each item, weekly consumption, and expiry runway.</p>
+      </div>
+      <div class="status-chip" id="statusWeek"></div>
+    </section>
+
+    <section id="categoryGrid" class="category-grid">
+      <div id="loadingState" class="empty-state">Loading timeline…</div>
+    </section>
+  </main>
+
+  <footer class="timeline-footer">
+    <div class="footer-actions">
+      <button type="button" class="icon-btn" id="footerSave" title="Save">
+        💾
+      </button>
+      <button type="button" class="icon-btn" id="footerSettings" title="Settings">
+        ⚙️
+      </button>
+    </div>
+    <div class="footer-hint">Use the gear to jump back to classic settings while keeping the legacy timeline running in the background.</div>
+  </footer>
+
+  <div id="settingsPanel" class="settings-panel" aria-hidden="true">
+    <div class="settings-panel__header">
+      <div>
+        <p class="eyebrow">Inventory timeline tools</p>
+        <h3 class="settings-panel__title">Settings &amp; maintenance</h3>
+      </div>
+      <button type="button" class="text-btn" id="closeSettings">Close</button>
+    </div>
+    <div class="settings-panel__content">
+      <div class="settings-group">
+        <h4>Inventory &amp; lists</h4>
+        <div class="settings-grid">
+          <button type="button" class="settings-btn" data-backend-action="commit">Commit to list</button>
+          <button type="button" class="settings-btn" data-backend-action="backupBtn">Backup</button>
+          <button type="button" class="settings-btn" data-backend-action="editInventory">Edit inventory</button>
+          <button type="button" class="settings-btn" data-backend-action="removeItem">Remove item</button>
+          <button type="button" class="settings-btn" data-backend-action="addItem">Add item</button>
+          <button type="button" class="settings-btn" data-backend-action="editCategory">Edit category</button>
+          <button type="button" class="settings-btn" data-backend-action="editNames">Edit item names</button>
+          <button type="button" class="settings-btn" data-backend-action="mergeItems">Merge similar items</button>
+        </div>
+      </div>
+      <div class="settings-group">
+        <h4>Consumption &amp; planning</h4>
+        <div class="settings-grid">
+          <button type="button" class="settings-btn" data-backend-action="editConsumption">Edit consumption</button>
+          <button type="button" class="settings-btn" data-backend-action="editPlan">Edit plan</button>
+          <button type="button" class="settings-btn" data-backend-action="editExpirations">Expirations</button>
+          <button type="button" class="settings-btn" data-backend-action="editSeasons">Seasons</button>
+          <button type="button" class="settings-btn" data-backend-action="uomChange">UOM change</button>
+          <button type="button" class="settings-btn" data-backend-action="densityRatios">Density ratios</button>
+          <button type="button" class="settings-btn" data-backend-action="mealMultiplier">Meal multiplier</button>
+          <button type="button" class="settings-btn" data-backend-action="cookingDays">Cooking days</button>
+          <button type="button" class="settings-btn" data-backend-action="mealPlanner">Meal planner</button>
+        </div>
+      </div>
+      <div class="settings-group">
+        <h4>Nutrition &amp; data</h4>
+        <div class="settings-grid">
+          <button type="button" class="settings-btn" data-backend-action="couponBtn">Coupons</button>
+          <button type="button" class="settings-btn" data-backend-action="apiKeysBtn">API keys</button>
+          <button type="button" class="settings-btn" data-backend-action="redoNutrition">Redo nutrition pairing</button>
+        </div>
+      </div>
+    </div>
+    <div class="settings-panel__footer">
+      <button type="button" class="link-btn" id="openClassicTimeline">Open classic timeline</button>
+      <span class="footer-hint">Legacy actions run against the hidden classic window to preserve backend behavior.</span>
+    </div>
+  </div>
+
+  <div id="settingsScrim" class="settings-scrim" aria-hidden="true"></div>
+
+  <iframe id="legacyTimelineBackend" class="legacy-backend" src="inventoryTimeline.html" title="Legacy inventory timeline backend" tabindex="-1"></iframe>
+
+  <script type="module" src="inventoryTimelineNew.js"></script>
+</body>
+</html>

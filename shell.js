@@ -1,13 +1,13 @@
 const tabs = [
   { id: 'price-checker', label: 'Price Checker', short: 'PC', src: 'popup.html' },
-  { id: 'inventory-timeline', label: 'Inventory Timeline', short: 'IT', src: 'inventoryTimeline.html' },
+  { id: 'inventory-timeline', label: 'Inventory Timeline', short: 'IT', src: 'inventoryTimelineNew.html' },
   { id: 'meal-planner', label: 'Meal Planner', short: 'MP', src: 'mealPlanner.html' },
   { id: 'calendar', label: 'Calendar', short: 'CA', src: 'whatToEatCalendar.html' },
   { id: 'pack-count-repair', label: 'Pack Count Repair', short: 'PR', src: 'packCountRepair.html' },
 ];
 
 const LAST_TAB_KEY = 'shell:lastActiveTab';
-const DEFAULT_TAB_ID = tabs[0]?.id ?? null;
+const DEFAULT_TAB_ID = 'inventory-timeline';
 
 const contentEl = document.getElementById('content');
 const tabBarEl = document.getElementById('tabBar');
@@ -103,7 +103,9 @@ async function initTabs() {
 
   if (tabs.length > 0) {
     const lastTab = await restoreLastTab();
-    const initialId = tabs.some((t) => t.id === lastTab) ? lastTab : DEFAULT_TAB_ID;
+    const fallbackId =
+      tabs.find((t) => t.id === DEFAULT_TAB_ID)?.id ?? tabs[0]?.id ?? null;
+    const initialId = tabs.some((t) => t.id === lastTab) ? lastTab : fallbackId;
     if (initialId) {
       activateTab(initialId);
     }
