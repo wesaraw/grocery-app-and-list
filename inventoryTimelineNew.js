@@ -57,10 +57,14 @@ function renderEmpty(message) {
   categoryGrid.appendChild(empty);
 }
 
-function renderItemCard(item, locationImage) {
+function resolveItemImage(item, fallbackImage) {
+  return item.finalProduct?.image || item.image || fallbackImage || null;
+}
+
+function renderItemCard(item, fallbackImage) {
   const snap = snapshotFor(item);
   const card = document.createElement('article');
-  const cardImage = locationImage || item.finalProduct?.image || null;
+  const cardImage = resolveItemImage(item, fallbackImage);
   card.className = 'item-card';
 
   const backdrop = document.createElement('div');
@@ -210,7 +214,10 @@ function renderCategoryCard(category, items) {
   body.id = bodyId;
   header.setAttribute('aria-controls', bodyId);
 
-  items.forEach(item => body.appendChild(renderItemCard(item, chosenImage)));
+  items.forEach((item) => {
+    const itemImage = resolveItemImage(item, chosenImage);
+    body.appendChild(renderItemCard(item, itemImage));
+  });
 
   header.addEventListener('click', () => {
     const isOpen = state.expanded.has(category);
