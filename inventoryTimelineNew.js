@@ -60,14 +60,12 @@ function renderEmpty(message) {
 function renderItemCard(item, locationImage) {
   const snap = snapshotFor(item);
   const card = document.createElement('article');
+  const cardImage = locationImage || item.finalProduct?.image || null;
   card.className = 'item-card';
-  if (locationImage) {
+  if (cardImage) {
     card.classList.add('item-card--has-image');
-    card.style.setProperty('--item-card-bg-image', `url("${locationImage}")`);
+    card.style.setProperty('--item-card-bg-image', `url("${cardImage}")`);
   }
-
-  const backdrop = document.createElement('div');
-  backdrop.className = 'item-card__backdrop';
 
   const header = document.createElement('div');
   header.className = 'item-card__header';
@@ -119,7 +117,7 @@ function renderItemCard(item, locationImage) {
   const expiration = createStatRow('Expiry runway', expirationLabel, expirationTone);
   stats.append(consumption, coverage, expiration);
 
-  card.append(backdrop, header, statusRow, stats);
+  card.append(header, statusRow, stats);
   return card;
 }
 
