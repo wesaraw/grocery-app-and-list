@@ -33,28 +33,39 @@ step‑by‑step.
 ## Using the add-on
 
 1. Click the **Grocery Price Checker** icon.
-2. A small window appears showing a list of grocery items. Each item may also show
-   how much you need to buy.
-3. Click the button for any item. Another small window opens listing the stores
+2. A single shell window opens with a tab bar at the bottom. Each tab is one of
+   the existing tools (Price Checker, Inventory Timeline, Meal Planner,
+   Calendar, Pack Count Repair, and more).
+3. Pick a tab to switch views without opening new windows. The shell remembers
+   your last tab and re-opens to it next time.
+4. Within the **Price Checker** tab, a small window appears showing a list of
+   grocery items. Each item may also show how much you need to buy.
+5. Click the button for any item. Another small window opens listing the stores
    where you can look for that item.
-4. Click a store’s button. A new tab opens with the store’s web site. Wait for the
-   page to load.
-5. When the page finishes loading, switch back to the small window. You will see a
-   list of products from that store. Click **Select** next to the product you want.
-6. After selecting items from the stores you like, choose the final store for
+6. Click a store’s button. A new tab opens with the store’s web site. Wait for
+   the page to load.
+7. When the page finishes loading, switch back to the shell window. You will see
+   a list of products from that store. Click **Select** next to the product you
+   want.
+8. After selecting items from the stores you like, choose the final store for
    the item. The add-on remembers your choice.
-7. Repeat these steps for each grocery item you wish to check.
-8. When you are ready to shop, click **Comit**. This opens a shopping list.
-   Press **Confirm Add** to update your pantry.
-9. Use **Edit Inventory** to change what you have on hand.
-10. Use **Edit Consumption** to record how much you used this year.
-11. Use **Edit Consumption Plan** to adjust monthly or yearly targets.
-12. Click **Add Item** if you want to track something new.
-13. Click **Remove Item** to delete an item you no longer want to track.
-14. Click **Coupons** to manage temporary discounts for each item.
+9. Repeat these steps for each grocery item you wish to check.
+10. When you are ready to shop, click **Comit**. This opens a shopping list.
+    Press **Confirm Add** to update your pantry.
+11. Use **Edit Inventory** to change what you have on hand.
+12. Use **Edit Consumption** to record how much you used this year.
+13. Use **Edit Consumption Plan** to adjust monthly or yearly targets.
+14. Click **Add Item** if you want to track something new.
+15. Click **Remove Item** to delete an item you no longer want to track.
+16. Click **Coupons** to manage temporary discounts for each item.
 
-That’s it! You can close the windows when you are done. The add-on keeps the
+That’s it! You can close the shell when you are done. The add-on keeps the
 information so you can refer to it later.
+
+> **Developer note:** The badge now opens `shell.html` by default. The legacy
+> launcher (`launcher.html`) that spawns separate windows remains in the
+> repository for debugging; it is accessible by loading the file directly but is
+> deprecated in favor of the tabbed shell experience.
 
 ## Saving your data
 

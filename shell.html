@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Grocery App Shell</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --accent: #1d72b8;
+      --accent-contrast: #ffffff;
+      --surface: #f6f7fb;
+      --border: #d9dce3;
+      --text: #1c2734;
+      --muted: #4b5563;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      color: var(--text);
+      background: var(--surface);
+      width: 100%;
+      height: 100%;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .shell {
+      width: 420px;
+      height: 640px;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #ffffff;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+      overflow: hidden;
+    }
+
+    .content {
+      flex: 1;
+      position: relative;
+      background: var(--surface);
+    }
+
+    .feature-frame {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #ffffff;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .feature-frame.hidden {
+      display: none;
+    }
+
+    .empty-state {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 14px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .tab-bar {
+      display: flex;
+      align-items: stretch;
+      justify-content: space-between;
+      border-top: 1px solid var(--border);
+      background: #ffffff;
+    }
+
+    .tab-button {
+      appearance: none;
+      border: none;
+      background: transparent;
+      flex: 1;
+      padding: 12px 8px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      transition: color 0.15s ease, background 0.15s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .tab-button:hover {
+      background: #f0f4f9;
+      color: var(--text);
+    }
+
+    .tab-button.active {
+      color: var(--accent);
+      background: #e8f2fc;
+      box-shadow: inset 0 2px 0 var(--accent);
+    }
+
+    .tab-label {
+      line-height: 1.2;
+    }
+
+    .tab-icon {
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      background: var(--accent);
+      color: var(--accent-contrast);
+      display: grid;
+      place-items: center;
+      font-size: 11px;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <main id="content" class="content">
+      <div class="empty-state" id="emptyState">
+        <div class="tab-icon">★</div>
+        <div>Select a feature from the tabs below.</div>
+      </div>
+    </main>
+    <nav id="tabBar" class="tab-bar" aria-label="Feature tabs"></nav>
+  </div>
+  <script src="shell.js"></script>
+</body>
+</html>

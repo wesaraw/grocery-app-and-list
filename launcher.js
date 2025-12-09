@@ -1,3 +1,5 @@
+// Legacy launcher retained for debugging: the extension badge now opens shell.html.
+// Load this file directly only when you need the original window-per-feature flow.
 import { openOrFocusWindow } from './utils/windowUtils.js';
 
 function openWindow(path) {

@@ -20,7 +20,7 @@
     "https://app.mealime.com/*"
   ],
   "action": {
-    "default_popup": "launcher.html"
+    "default_popup": "shell.html"
   },
   "background": {
     "service_worker": "background.js"
