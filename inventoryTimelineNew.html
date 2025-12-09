@@ -11,8 +11,9 @@
     <div class="app-header__title">Inventory Timeline</div>
     <div class="app-header__actions">
       <div class="toggle-pill" role="group" aria-label="Inventory visibility">
-        <button id="filterInStock" type="button" class="pill-btn pill-btn--active">In Stock</button>
-        <button id="filterAll" type="button" class="pill-btn">All Tracked</button>
+        <button id="filterInStock" type="button" class="pill-btn pill-btn--active" data-filter="in-stock">In Stock</button>
+        <button id="filterNeedsRestock" type="button" class="pill-btn" data-filter="needs-restock">Needs Restock</button>
+        <button id="filterAll" type="button" class="pill-btn" data-filter="all">All Tracked</button>
       </div>
     </div>
   </header>

@@ -8,12 +8,14 @@ const state = {
   currentWeek: Math.min(Math.max(getCurrentWeek(), 1), 52),
   expanded: new Set(),
   locationImages: new Map(),
+  hasLoaded: false,
 };
 
 const categoryGrid = document.getElementById('categoryGrid');
 const loadingState = document.getElementById('loadingState');
 const statusWeek = document.getElementById('statusWeek');
 const filterInStock = document.getElementById('filterInStock');
+const filterNeedsRestock = document.getElementById('filterNeedsRestock');
 const filterAll = document.getElementById('filterAll');
 const settingsPanel = document.getElementById('settingsPanel');
 const settingsScrim = document.getElementById('settingsScrim');
@@ -55,10 +57,17 @@ function renderEmpty(message) {
   categoryGrid.appendChild(empty);
 }
 
-function renderItemCard(item) {
+function renderItemCard(item, locationImage) {
   const snap = snapshotFor(item);
   const card = document.createElement('article');
   card.className = 'item-card';
+  if (locationImage) {
+    card.classList.add('item-card--has-image');
+    card.style.setProperty('--item-card-bg-image', `url("${locationImage}")`);
+  }
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'item-card__backdrop';
 
   const header = document.createElement('div');
   header.className = 'item-card__header';
@@ -110,7 +119,7 @@ function renderItemCard(item) {
   const expiration = createStatRow('Expiry runway', expirationLabel, expirationTone);
   stats.append(consumption, coverage, expiration);
 
-  card.append(header, statusRow, stats);
+  card.append(backdrop, header, statusRow, stats);
   return card;
 }
 
@@ -198,7 +207,7 @@ function renderCategoryCard(category, items) {
   body.id = bodyId;
   header.setAttribute('aria-controls', bodyId);
 
-  items.forEach(item => body.appendChild(renderItemCard(item)));
+  items.forEach(item => body.appendChild(renderItemCard(item, chosenImage)));
 
   header.addEventListener('click', () => {
     const isOpen = state.expanded.has(category);
@@ -216,6 +225,19 @@ function renderCategoryCard(category, items) {
   return card;
 }
 
+function matchesFilter(item) {
+  const snap = snapshotFor(item);
+  if (state.filter === 'in-stock') {
+    return snap.rawQty > 0;
+  }
+  if (state.filter === 'needs-restock') {
+    if (snap.coverageWeeks === null) return false;
+    const weeklyUse = snap.weeklyConsumption || 0;
+    return weeklyUse > snap.coverageWeeks;
+  }
+  return true;
+}
+
 function renderCategories() {
   if (!state.items.length) {
     renderEmpty('No inventory tracked yet.');
@@ -223,8 +245,7 @@ function renderCategories() {
   }
   const grouped = new Map();
   state.items.forEach(item => {
-    const snap = snapshotFor(item);
-    if (state.filter === 'in-stock' && snap.rawQty <= 0) return;
+    if (!matchesFilter(item)) return;
     const key = item.category || 'Other';
     if (!grouped.has(key)) grouped.set(key, []);
     grouped.get(key).push(item);
@@ -249,6 +270,7 @@ async function loadInventory() {
     const locationImageMap = await loadLocationImages();
     state.locationImages = locationImageMap;
     state.snapshots.clear();
+    state.hasLoaded = true;
     renderCategories();
   } catch (error) {
     console.error('Unable to load inventory timeline', error);
@@ -272,18 +294,25 @@ async function loadLocationImages() {
   }
 }
 
-function wireFilters() {
-  filterInStock?.addEventListener('click', () => {
-    state.filter = 'in-stock';
-    filterInStock.classList.add('pill-btn--active');
-    filterAll.classList.remove('pill-btn--active');
-    renderCategories();
+function setFilter(filter) {
+  state.filter = filter;
+  const buttons = [filterInStock, filterNeedsRestock, filterAll];
+  buttons.forEach((btn) => {
+    if (!btn) return;
+    const value = btn.getAttribute('data-filter');
+    btn.classList.toggle('pill-btn--active', value === filter);
   });
-  filterAll?.addEventListener('click', () => {
-    state.filter = 'all';
-    filterAll.classList.add('pill-btn--active');
-    filterInStock.classList.remove('pill-btn--active');
+  if (state.hasLoaded) {
     renderCategories();
+  }
+}
+
+function wireFilters() {
+  [filterInStock, filterNeedsRestock, filterAll].forEach((btn) => {
+    btn?.addEventListener('click', () => {
+      const value = btn.getAttribute('data-filter');
+      setFilter(value);
+    });
   });
 }
 
@@ -346,4 +375,5 @@ function wireSettingsPanel() {
 wireFilters();
 wireFooter();
 wireSettingsPanel();
+setFilter(state.filter);
 loadInventory();
