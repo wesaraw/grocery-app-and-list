@@ -20,7 +20,7 @@
     "https://app.mealime.com/*"
   ],
   "action": {
-    "default_popup": "shell.html"
+    "default_title": "Grocery Price Checker"
   },
   "background": {
     "service_worker": "background.js"

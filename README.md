@@ -33,7 +33,7 @@ step‑by‑step.
 ## Using the add-on
 
 1. Click the **Grocery Price Checker** icon.
-2. A single shell window opens with a tab bar at the bottom. Each tab is one of
+2. A standalone shell window opens (not the small badge popup) with a tab bar at the bottom. Each tab is one of
    the existing tools (Price Checker, Inventory Timeline, Meal Planner,
    Calendar, Pack Count Repair, and more).
 3. Pick a tab to switch views without opening new windows. The shell remembers
@@ -62,10 +62,11 @@ step‑by‑step.
 That’s it! You can close the shell when you are done. The add-on keeps the
 information so you can refer to it later.
 
-> **Developer note:** The badge now opens `shell.html` by default. The legacy
-> launcher (`launcher.html`) that spawns separate windows remains in the
-> repository for debugging; it is accessible by loading the file directly but is
-> deprecated in favor of the tabbed shell experience.
+> **Developer note:** The badge now opens `shell.html` in a standalone window via
+> `background.js` (no `default_popup`). The legacy launcher (`launcher.html`)
+> that spawns separate windows remains in the repository for debugging; it is
+> accessible by loading the file directly but is deprecated in favor of the
+> tabbed shell experience.
 
 ## Saving your data
 

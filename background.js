@@ -99,3 +99,46 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     chrome.storage.local.set({ [key]: payload });
   }
 });
+
+let shellWindowId = null;
+
+function createShellWindow() {
+  const url = chrome.runtime.getURL('shell.html');
+  chrome.windows.create({ url, type: 'popup', width: 1200, height: 800, focused: true }, windowInfo => {
+    if (chrome.runtime.lastError || !windowInfo) {
+      shellWindowId = null;
+      return;
+    }
+    shellWindowId = windowInfo.id;
+  });
+}
+
+function openOrFocusShellWindow() {
+  if (shellWindowId == null) {
+    createShellWindow();
+    return;
+  }
+
+  chrome.windows.get(shellWindowId, windowInfo => {
+    if (chrome.runtime.lastError || !windowInfo) {
+      shellWindowId = null;
+      createShellWindow();
+      return;
+    }
+    chrome.windows.update(shellWindowId, { focused: true });
+  });
+}
+
+if (chrome.action?.onClicked) {
+  chrome.action.onClicked.addListener(() => {
+    openOrFocusShellWindow();
+  });
+}
+
+if (chrome.windows?.onRemoved) {
+  chrome.windows.onRemoved.addListener(windowId => {
+    if (shellWindowId === windowId) {
+      shellWindowId = null;
+    }
+  });
+}
