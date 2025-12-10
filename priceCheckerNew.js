@@ -36,24 +36,53 @@ function createCategoryCard(category) {
   const header = fragment.querySelector('.category-card__header');
   const chevron = fragment.querySelector('.category-card__chevron');
   const children = fragment.querySelector('.category-card__children');
+  const icon = card.querySelector('.category-card__image');
+  const totalCount = category.itemCount ?? category.items.length;
+  const needCount = category.needCount ?? category.items.filter(item => item.needAmount > 0).length;
+
   card.querySelector('.category-card__title').textContent = category.name;
-  card.querySelector('.count').textContent = category.items.length;
-  const needCount = category.items.filter(item => item.needAmount > 0).length;
+  card.querySelector('.count').textContent = totalCount;
   card.querySelector('.need-count').textContent = needCount;
 
   let hasRenderedChildren = false;
+  let hasLoadedImages = false;
 
-  const renderChildren = () => {
+  const ensureImagesForItems = async items => {
+    if (hasLoadedImages) return items;
+    await Promise.all(
+      items.map(async item => {
+        if (item.productImage) return item;
+        if (finalSelectionCache.has(item.name)) {
+          item.productImage = finalSelectionCache.get(item.name);
+          return item;
+        }
+        const { product } = await fetchFinalSelection(item.name);
+        const image = product?.image;
+        if (image) {
+          item.productImage = image;
+          finalSelectionCache.set(item.name, image);
+        }
+        return item;
+      })
+    );
+    hasLoadedImages = true;
+    return items;
+  };
+
+  const renderChildren = async () => {
     if (hasRenderedChildren) return;
+    const hydratedItems = await ensureImagesForItems(category.items);
     children.classList.toggle('show-zero', showAllToggle.checked);
-    category.items.forEach(item => {
+    hydratedItems.forEach(item => {
       const node = createPurchaseCard(item);
       if (node) children.appendChild(node);
     });
+    const topImage = hydratedItems.find(item => item.productImage);
+    applyThumbnail(icon, topImage?.productImage, category.name, '🏷️');
     hasRenderedChildren = true;
   };
 
-  const setOpenState = (isOpen) => {
+  const setOpenState = async (isOpen) => {
     wrapper.classList.toggle('is-open', isOpen);
     wrapper.classList.toggle('is-collapsed', !isOpen);
     card.classList.toggle('is-open', isOpen);
@@ -62,7 +91,7 @@ function createCategoryCard(category) {
     chevron.textContent = isOpen ? '▾' : '▸';
 
     if (isOpen) {
-      renderChildren();
+      await renderChildren();
     }
   };
 
@@ -77,10 +106,6 @@ function createCategoryCard(category) {
       header.click();
     }
   });
-
-  const icon = card.querySelector('.category-card__image');
-  const topImage = category.items.find(item => item.productImage);
-  applyThumbnail(icon, topImage?.productImage, category.name, '🏷️');
 
   return fragment;
 }
@@ -138,26 +163,6 @@ function buildSearchHaystack(item) {
   return tokens.join(' ');
 }
 
-async function augmentWithFinalSelections(categories) {
-  for (const category of categories) {
-    await Promise.all(
-      category.items.map(async item => {
-        if (finalSelectionCache.has(item.name)) {
-          item.productImage = finalSelectionCache.get(item.name);
-          return;
-        }
-        const { product } = await fetchFinalSelection(item.name);
-        const image = product?.image;
-        if (image) {
-          finalSelectionCache.set(item.name, image);
-          item.productImage = image;
-        }
-      })
-    );
-  }
-  return categories;
-}
-
 function filterCategories({ includeZero, searchText }) {
   if (!cachedSnapshot) return [];
   const search = normalizeSearchText(searchText);
@@ -202,16 +207,20 @@ async function loadSnapshot() {
     includeZero: true,
     searchText: ''
   });
-  const categoriesWithFinals = await augmentWithFinalSelections(snapshot.categories);
   cachedSnapshot = {
     generatedAt: snapshot.generatedAt,
-    categories: categoriesWithFinals.map(category => ({
-      ...category,
-      items: category.items.map(item => ({
-        ...item,
-        searchHaystack: buildSearchHaystack(item)
-      }))
-    }))
+    categories: snapshot.categories.map(category => {
+      const needCount = category.items.filter(item => item.needAmount > 0).length;
+      return {
+        ...category,
+        itemCount: category.items.length,
+        needCount,
+        items: category.items.map(item => ({
+          ...item,
+          searchHaystack: buildSearchHaystack(item)
+        }))
+      };
+    })
   };
 
   renderFromCache();
