@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Price Checker (New)</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="page">
+  <header class="page-header">
+    <div class="page-header__title-block">
+      <p class="eyebrow">Price Checker</p>
+      <h1>Purchase Recommendations</h1>
+      <p class="body-text">Carded view powered by the existing price checker backend.</p>
+    </div>
+    <div class="page-header__actions">
+      <button id="openLegacy" class="btn btn-secondary">Open legacy view</button>
+    </div>
+  </header>
+
+  <section class="section-card">
+    <div class="action-row price-checker-toolbar">
+      <div class="search-field">
+        <label class="field-label" for="search">Search items</label>
+        <input id="search" type="search" placeholder="Search tracked items" />
+      </div>
+      <div class="price-checker-toolbar__toggle toggle-slider" role="group" aria-label="Tracked item filter">
+        <span class="toggle-slider__label">Needs attention</span>
+        <label class="toggle-slider__control" aria-label="Show all tracked items">
+          <input type="checkbox" id="showAllToggle">
+          <span class="toggle-slider__track" aria-hidden="true">
+            <span class="toggle-slider__thumb"></span>
+          </span>
+        </label>
+        <span class="toggle-slider__label">All tracked</span>
+      </div>
+    </div>
+    <div class="category-stack" id="categoryStack"></div>
+  </section>
+
+  <template id="categoryCardTemplate">
+    <div class="category-block is-open">
+      <div class="category-card price-checker collapsible" role="button" tabindex="0" aria-expanded="true">
+        <div class="category-card__icon image-thumb image-thumb--sm" aria-hidden="true">
+          <span class="image-thumb__fallback">🏷️</span>
+        </div>
+        <div class="category-card__meta">
+          <div class="category-card__title"></div>
+          <div class="category-card__counts">
+            <span class="category-card__badge"><span class="count"></span> items</span>
+            <span class="category-card__badge need-only"><span class="need-count"></span> need attention</span>
+          </div>
+        </div>
+        <div class="category-card__chevron">⌄</div>
+      </div>
+      <div class="category-card__children purchase-grid"></div>
+    </div>
+  </template>
+
+  <template id="purchaseCardTemplate">
+    <article class="purchase-card">
+      <div class="purchase-card__header">
+        <div class="purchase-card__image image-thumb image-thumb--lg" aria-hidden="true">
+          <span class="image-thumb__fallback">🛒</span>
+        </div>
+        <div class="purchase-card__meta">
+          <div class="purchase-card__title"></div>
+          <div class="purchase-card__subtitle"></div>
+        </div>
+        <div class="purchase-card__need"></div>
+      </div>
+      <div class="purchase-card__body">
+        <div class="purchase-card__price-lines">
+          <div class="purchase-card__price-line">
+            <span>Recommended</span>
+            <span class="recommended-amount"></span>
+          </div>
+          <div class="purchase-card__price-line">
+            <span>Preferred stores</span>
+            <span class="store-list"></span>
+          </div>
+        </div>
+      </div>
+      <div class="purchase-card__actions">
+        <button class="btn btn-primary view-item">View item</button>
+      </div>
+    </article>
+  </template>
+
+  <script type="module" src="priceCheckerNew.js"></script>
+</body>
+</html>
