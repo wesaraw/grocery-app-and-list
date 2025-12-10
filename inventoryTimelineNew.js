@@ -367,6 +367,20 @@ function triggerBackendAction(buttonId) {
   }
 }
 
+function openBackendWindow(path) {
+  if (!path) return;
+  const invoke = () => {
+    openOrFocusWindow(path);
+  };
+  if (backendFrame?.contentDocument?.readyState === 'complete') {
+    invoke();
+  } else if (backendFrame) {
+    backendFrame.addEventListener('load', invoke, { once: true });
+  } else {
+    invoke();
+  }
+}
+
 function wireSettingsPanel() {
   closeSettings?.addEventListener('click', closeSettingsPanel);
   settingsScrim?.addEventListener('click', closeSettingsPanel);
@@ -377,6 +391,11 @@ function wireSettingsPanel() {
   document.querySelectorAll('[data-backend-action]').forEach(btn => {
     const action = btn.getAttribute('data-backend-action');
     btn.addEventListener('click', () => triggerBackendAction(action));
+  });
+
+  document.querySelectorAll('[data-backend-window]').forEach(btn => {
+    const target = btn.getAttribute('data-backend-window');
+    btn.addEventListener('click', () => openBackendWindow(target));
   });
 }
 
