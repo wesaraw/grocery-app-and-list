@@ -2,6 +2,7 @@ import {
   fetchFinalSelection,
   loadPriceCheckerSnapshot
 } from './utils/priceCheckerData.js';
+import { applyImageThumb, resolveItemImage } from './utils/imageThumbnail.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
 
 const categoryStack = document.getElementById('categoryStack');
@@ -14,19 +15,12 @@ const openLegacy = document.getElementById('openLegacy');
 let cachedSnapshot = null;
 const finalSelectionCache = new Map();
 
-function applyThumbnail(container, imageUrl, label, fallbackIcon = '🛒') {
-  const fallback = container.querySelector('.image-thumb__fallback');
-  const displayLabel = label?.trim() || fallbackIcon;
-
-  if (imageUrl) {
-    container.style.backgroundImage = `url("${imageUrl}")`;
-    container.classList.add('has-image');
-    if (fallback) fallback.textContent = displayLabel.charAt(0).toUpperCase();
-  } else {
-    container.style.removeProperty('background-image');
-    container.classList.remove('has-image');
-    if (fallback) fallback.textContent = displayLabel.charAt(0).toUpperCase();
+function deriveCategoryThumbnail(items = [], fallback = null) {
+  for (const item of items) {
+    const image = resolveItemImage(item, fallback);
+    if (image) return image;
   }
+  return fallback;
 }
 
 function createCategoryCard(category) {
@@ -60,6 +54,7 @@ function createCategoryCard(category) {
         const image = product?.image;
         if (image) {
           item.productImage = image;
+          item.finalProduct = product;
           finalSelectionCache.set(item.name, image);
         }
         return item;
@@ -77,8 +72,8 @@ function createCategoryCard(category) {
       const node = createPurchaseCard(item);
       if (node) children.appendChild(node);
     });
-    const topImage = hydratedItems.find(item => item.productImage);
-    applyThumbnail(icon, topImage?.productImage, category.name, '🏷️');
+    const categoryImage = deriveCategoryThumbnail(hydratedItems);
+    applyImageThumb(icon, categoryImage, category.name, '🏷️');
     hasRenderedChildren = true;
   };
 
@@ -131,7 +126,7 @@ function createPurchaseCard(item) {
   amount.textContent = item.needLabel;
   stores.textContent = item.stores.length ? item.stores.join(', ') : 'Not set';
 
-  applyThumbnail(image, item.productImage, item.name, '🛒');
+  applyImageThumb(image, resolveItemImage(item), item.name, '🛒');
 
   const viewBtn = card.querySelector('.view-item');
   viewBtn.addEventListener('click', () => {

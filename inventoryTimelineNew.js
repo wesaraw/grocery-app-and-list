@@ -1,5 +1,6 @@
 import { getCurrentWeek, loadTimelineItems, simulateItem } from './inventoryTimelineData.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
+import { resolveItemImage } from './utils/imageThumbnail.js';
 
 const state = {
   items: [],
@@ -55,10 +56,6 @@ function renderEmpty(message) {
   empty.className = 'empty-state';
   empty.textContent = message;
   categoryGrid.appendChild(empty);
-}
-
-function resolveItemImage(item, fallbackImage) {
-  return item.finalProduct?.image || item.image || fallbackImage || null;
 }
 
 function renderItemCard(item, fallbackImage) {
