@@ -464,10 +464,11 @@ a:hover {
 }
 
 /* Category cards for Inventory & Price Checker */
-.category-stack {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-3);
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--spacing-4);
+  align-items: start;
 }
 
 .category-block {
@@ -479,12 +480,6 @@ a:hover {
 .category-card__children,
 .category-card__children.is-collapsed {
   display: none;
-}
-
-@media (min-width: 900px) {
-  .category-stack {
-    gap: var(--spacing-4);
-  }
 }
 
 .category-card {
