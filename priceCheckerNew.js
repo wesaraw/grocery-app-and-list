@@ -14,6 +14,7 @@ const openLegacy = document.getElementById('openLegacy');
 
 let cachedSnapshot = null;
 const finalSelectionCache = new Map();
+const categoryItemsCache = new Map();
 
 function deriveCategoryThumbnail(items = [], fallback = null) {
   for (const item of items) {
@@ -21,6 +22,27 @@ function deriveCategoryThumbnail(items = [], fallback = null) {
     if (image) return image;
   }
   return fallback;
+}
+
+async function fetchCategoryItems(categoryName) {
+  if (categoryItemsCache.has(categoryName)) {
+    return categoryItemsCache.get(categoryName);
+  }
+
+  const { categories } = await loadPriceCheckerSnapshot({
+    includeZero: true,
+    searchText: '',
+    includeItems: true,
+    categoryNames: [categoryName]
+  });
+
+  const category = categories.find(cat => cat.name === categoryName);
+  const items = (category?.items || []).map(item => ({
+    ...item,
+    searchHaystack: buildSearchHaystack(item)
+  }));
+  categoryItemsCache.set(categoryName, items);
+  return items;
 }
 
 function createCategoryCard(category) {
@@ -31,14 +53,14 @@ function createCategoryCard(category) {
   const chevron = fragment.querySelector('.category-card__chevron');
   const children = fragment.querySelector('.category-card__children');
   const icon = card.querySelector('.category-card__image');
-  const totalCount = category.itemCount ?? category.items.length;
-  const needCount = category.needCount ?? category.items.filter(item => item.needAmount > 0).length;
+  const totalCount = category.itemCount ?? 0;
+  const needCount = category.needCount ?? 0;
 
   card.querySelector('.category-card__title').textContent = category.name;
   card.querySelector('.count').textContent = totalCount;
   card.querySelector('.need-count').textContent = needCount;
 
-  let hasRenderedChildren = false;
+  let lastRenderKey = '';
   let hasLoadedImages = false;
 
   const ensureImagesForItems = async items => {
@@ -65,16 +87,34 @@ function createCategoryCard(category) {
   };
 
   const renderChildren = async () => {
-    if (hasRenderedChildren) return;
-    const hydratedItems = await ensureImagesForItems(category.items);
-    children.classList.toggle('show-zero', showAllToggle.checked);
+    const search = normalizeSearchText(searchInput.value);
+    const includeZero = showAllToggle.checked;
+    const renderKey = `${includeZero}|${search}`;
+    if (lastRenderKey === renderKey) return;
+
+    const baseItems = await fetchCategoryItems(category.name);
+    const filtered = baseItems.filter(item => {
+      if (!includeZero && !(item.needAmount > 0)) return false;
+      if (!search) return true;
+      return item.searchHaystack.includes(search);
+    });
+
+    children.textContent = '';
+    if (!filtered.length) {
+      children.innerHTML = '<p class="body-text muted">No matches in this category.</p>';
+      lastRenderKey = renderKey;
+      return;
+    }
+
+    const hydratedItems = await ensureImagesForItems(filtered);
+    children.classList.toggle('show-zero', includeZero);
     hydratedItems.forEach(item => {
       const node = createPurchaseCard(item);
       if (node) children.appendChild(node);
     });
     const categoryImage = deriveCategoryThumbnail(hydratedItems);
     applyImageThumb(icon, categoryImage, category.name, '🏷️');
-    hasRenderedChildren = true;
+    lastRenderKey = renderKey;
   };
 
   const setOpenState = async (isOpen) => {
@@ -161,17 +201,11 @@ function buildSearchHaystack(item) {
 function filterCategories({ includeZero, searchText }) {
   if (!cachedSnapshot) return [];
   const search = normalizeSearchText(searchText);
-  return cachedSnapshot.categories
-    .map(category => {
-      const filteredItems = category.items.filter(item => {
-        if (!includeZero && !(item.needAmount > 0)) return false;
-        if (!search) return true;
-        return item.searchHaystack.includes(search);
-      });
-      if (!filteredItems.length) return null;
-      return { ...category, items: filteredItems };
-    })
-    .filter(Boolean);
+  return cachedSnapshot.categories.filter(category => {
+    if (!includeZero && !(category.needCount > 0)) return false;
+    if (!search) return true;
+    return (category.searchHaystack || '').includes(search);
+  });
 }
 
 function renderFromCache() {
@@ -200,22 +234,17 @@ async function loadSnapshot() {
   categoryStack.innerHTML = '<p class="body-text">Loading recommendations…</p>';
   const snapshot = await loadPriceCheckerSnapshot({
     includeZero: true,
-    searchText: ''
+    searchText: '',
+    includeItems: false
   });
   cachedSnapshot = {
     generatedAt: snapshot.generatedAt,
-    categories: snapshot.categories.map(category => {
-      const needCount = category.items.filter(item => item.needAmount > 0).length;
-      return {
-        ...category,
-        itemCount: category.items.length,
-        needCount,
-        items: category.items.map(item => ({
-          ...item,
-          searchHaystack: buildSearchHaystack(item)
-        }))
-      };
-    })
+    categories: snapshot.categories.map(category => ({
+      name: category.name,
+      itemCount: category.itemCount || 0,
+      needCount: category.needCount || 0,
+      searchHaystack: category.searchHaystack || ''
+    }))
   };
 
   renderFromCache();

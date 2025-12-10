@@ -323,7 +323,12 @@ export async function fetchFinalSelection(itemName) {
   return { store, product };
 }
 
-export async function loadPriceCheckerSnapshot({ includeZero = false, searchText = '' } = {}) {
+export async function loadPriceCheckerSnapshot({
+  includeZero = false,
+  searchText = '',
+  includeItems = true,
+  categoryNames = null
+} = {}) {
   await initUomTable();
   const {
     needs,
@@ -401,17 +406,38 @@ export async function loadPriceCheckerSnapshot({ includeZero = false, searchText
   const search = searchText.trim().toLowerCase();
 
   const categories = [];
+  const allowedCategories = categoryNames ? new Set(categoryNames) : null;
   let current = null;
   sortedNeeds.forEach(item => {
     const category = item.category || 'Other';
+    const isAllowedCategory = !allowedCategories || allowedCategories.has(category);
     if (!current || current.name !== category) {
-      current = { name: category, items: [] };
+      current = { name: category, items: [], itemCount: 0, needCount: 0, searchTokens: new Set() };
       categories.push(current);
     }
     const needInfo = lookupByNameOrId(purchaseMap, item.name);
     const needAmt = needInfo ? Math.round(needInfo.toBuy) : null;
     const matchesSearch = !search || item.name.toLowerCase().includes(search);
+    current.itemCount += 1;
+    if (needAmt > 0) current.needCount += 1;
+
+    const storeTokens = getStoreNamesForItem(item.name) || [];
+    const tokens = [item.name, category, ...storeTokens]
+      .filter(Boolean)
+      .map(str =>
+        str
+          .toString()
+          .toLowerCase()
+          .replace(/[^a-z0-9\s]+/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+      )
+      .filter(Boolean);
+    tokens.forEach(token => current.searchTokens.add(token));
+
     if (!passesNeedFilter(needAmt, includeZero) || !matchesSearch) return;
+    if (!isAllowedCategory || !includeItems) return;
+
     const needLevel = buildNeedLevel(needAmt);
     current.items.push({
       name: item.name,
@@ -420,8 +446,15 @@ export async function loadPriceCheckerSnapshot({ includeZero = false, searchText
       needAmount: needAmt,
       needLevel,
       needLabel: buildNeedLabel(needAmt, item.home_unit),
-      stores: getStoreNamesForItem(item.name) || []
+      stores: storeTokens
     });
+  });
+  categories.forEach(category => {
+    category.searchHaystack = Array.from(category.searchTokens).join(' ');
+    delete category.searchTokens;
+    if (!includeItems || (allowedCategories && !allowedCategories.has(category.name))) {
+      delete category.items;
+    }
   });
 
   return { categories, generatedAt: new Date() };
