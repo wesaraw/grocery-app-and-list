@@ -16,6 +16,13 @@ import { canonicalName } from './utils/nameUtils.js';
 import { loadDensityMap, computeNormalizedQuantity } from './utils/unitNormalize.js';
 import { formatQuantity } from './utils/quantityFormat.js';
 
+const HERO_IMAGES = [
+  'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=60',
+  'https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=1200&q=60',
+  'https://images.unsplash.com/photo-1528715471579-d1bcf0ba5e83?auto=format&fit=crop&w=1200&q=60',
+  'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=60'
+];
+
 function loadCalendar() {
   return new Promise(resolve => {
     try {
@@ -307,6 +314,37 @@ function formatUnitLabel(text) {
 }
 
 let densityMap = {};
+
+function formatDisplayDate(dateStr) {
+  const date = parseLocalDate(dateStr);
+  if (!date) return dateStr || '';
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function formatDateRange(data) {
+  if (!Array.isArray(data) || !data.length) return '';
+  const start = parseLocalDate(data[0]?.date);
+  const end = parseLocalDate(data[data.length - 1]?.date);
+  if (!start || !end) return '';
+  const startLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const endLabel = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const yearLabel = start.getFullYear() === end.getFullYear() ? start.getFullYear() : `${
+    start.getFullYear()
+  }/${end.getFullYear()}`;
+  return `${startLabel} – ${endLabel}, ${yearLabel}`;
+}
+
+function setDateRangeLabel(data) {
+  const el = document.getElementById('dateRange');
+  if (!el) return;
+  el.textContent = formatDateRange(data);
+}
+
+function getHeroImage(index = 0) {
+  if (!HERO_IMAGES.length) return null;
+  const normalized = index % HERO_IMAGES.length;
+  return HERO_IMAGES[normalized];
+}
 
 function getDensitySettings(name) {
   if (!name) return null;
@@ -671,20 +709,27 @@ function createInstructionsButton(meal) {
 function buildMealBlockFromEntries(normalized, ingredientEntries, options = {}) {
   if (!normalized) return null;
   const entries = Array.isArray(ingredientEntries) ? ingredientEntries : [];
-  const block = document.createElement('div');
-  block.className = 'meal-block';
+  const block = document.createElement('article');
+  block.className = 'meal-entry';
   const header = document.createElement('div');
-  header.className = 'meal-block-header';
-  const title = document.createElement('div');
+  header.className = 'meal-heading';
+
+  const title = document.createElement('h4');
   title.className = 'meal-title';
+  title.textContent = normalized.displayName;
+  header.appendChild(title);
+
+  const meta = document.createElement('div');
+  meta.className = 'meal-meta';
   const portionText = formatPortions(normalized.totalMultiplier);
   const targetText = normalized.targetLabels.length
-    ? ` for ${normalized.targetLabels.join(', ')}`
+    ? `for ${normalized.targetLabels.join(', ')}`
     : '';
-  title.textContent = portionText
-    ? `${normalized.displayName} (${portionText})${targetText}`
-    : `${normalized.displayName}${targetText}`;
-  header.appendChild(title);
+  const segments = [portionText, targetText].filter(Boolean);
+  meta.textContent = segments.join(' · ');
+  if (meta.textContent) {
+    header.appendChild(meta);
+  }
 
   const showInstructionsButton = options?.variant !== 'print';
   const instructionsBtn = showInstructionsButton
@@ -747,8 +792,6 @@ function renderMealGroup(container, entries, mealMap, variant = 'screen') {
   if (!container) return;
   container.innerHTML = '';
   container.classList.add('meal-group');
-  const grid = document.createElement('div');
-  grid.className = 'meal-grid';
   let hasContent = false;
   (entries || []).forEach(entry => {
     const normalized = normalizeMealEntry(entry, mealMap);
@@ -756,12 +799,10 @@ function renderMealGroup(container, entries, mealMap, variant = 'screen') {
     const block = buildMealBlockElement(normalized, { variant });
     if (block) {
       hasContent = true;
-      grid.appendChild(block);
+      container.appendChild(block);
     }
   });
-  if (hasContent) {
-    container.appendChild(grid);
-  } else {
+  if (!hasContent) {
     const empty = document.createElement('div');
     empty.className = 'empty-group';
     empty.textContent = 'Nothing scheduled.';
@@ -1129,26 +1170,44 @@ function renderPlanGrid(data, mealMap, variant = 'screen') {
   const container = document.getElementById('planList');
   if (!container) return;
   container.innerHTML = '';
-  data.forEach(({ date, dayName, meals, prepList }) => {
+  setDateRangeLabel(data);
+  data.forEach(({ date, dayName, meals, prepList }, index) => {
     const card = document.createElement('section');
     card.className = 'day-card';
+
+    const heroUrl = getHeroImage(index);
+    if (heroUrl) {
+      const hero = document.createElement('img');
+      hero.className = 'day-hero';
+      hero.src = heroUrl;
+      hero.alt = '';
+      card.appendChild(hero);
+    }
+
+    const content = document.createElement('div');
+    content.className = 'day-content';
 
     const header = document.createElement('div');
     header.className = 'day-header';
     const title = document.createElement('div');
     title.className = 'day-title';
-    title.textContent = date;
+    title.textContent = dayName || 'Day';
+    if (date) {
+      const dateText = document.createElement('span');
+      dateText.className = 'date-text';
+      dateText.textContent = formatDisplayDate(date);
+      title.appendChild(dateText);
+    }
     header.appendChild(title);
+
     if (dayName) {
       const label = document.createElement('span');
       label.className = 'day-label';
       label.textContent = dayName;
       header.appendChild(label);
     }
-    card.appendChild(header);
 
-    const content = document.createElement('div');
-    content.className = 'day-content';
+    content.appendChild(header);
     content.appendChild(renderDaySection('Prep Ahead', prepList, mealMap, variant));
     content.appendChild(renderDaySection('Cook Today', meals, mealMap, variant));
     card.appendChild(content);

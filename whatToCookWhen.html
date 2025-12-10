@@ -1,21 +1,67 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <title>What To Cook</title>
+  <link rel="stylesheet" href="styles.css">
   <style>
+    :root {
+      --menu-bg: #fdf7f0;
+      --menu-ink: #2b251f;
+      --menu-heading: #3b2f2f;
+      --menu-accent: #b2563f;
+      --menu-divider: #a3b89c;
+      --menu-panel: rgba(255, 252, 246, 0.9);
+    }
+
     body {
-      font-family: Arial, sans-serif;
-      max-width: 1100px;
+      font-family: "Georgia", "Times New Roman", serif;
+      background: var(--menu-bg);
+      color: var(--menu-ink);
       margin: 0 auto;
-      padding: 18px 24px 32px;
-      box-sizing: border-box;
-      color: #0f172a;
-      background: #f9fafb;
+      padding: 18px 22px 28px;
+      max-width: 980px;
+      line-height: 1.4;
+    }
+
+    .wtc-shell {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    header.menu-header {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--menu-divider);
+    }
+
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 0.85rem;
+      color: var(--menu-accent);
+      font-weight: 700;
     }
 
     h1 {
-      margin: 0 0 10px;
+      margin: 0;
+      font-size: 1.8rem;
+      letter-spacing: 0.02em;
+      color: var(--menu-heading);
+    }
+
+    .date-range {
+      font-size: 0.95rem;
+      color: #5f5148;
+    }
+
+    .page-description {
+      margin: 0;
+      color: #6b6057;
+      font-size: 0.95rem;
     }
 
     .controls {
@@ -23,7 +69,10 @@
       flex-wrap: wrap;
       gap: 10px 14px;
       align-items: flex-end;
-      margin-bottom: 16px;
+      padding: 12px 14px;
+      border: 1px solid var(--menu-divider);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.6);
     }
 
     .controls label {
@@ -31,6 +80,7 @@
       flex-direction: column;
       font-size: 0.9rem;
       gap: 4px;
+      color: #4a3f37;
     }
 
     .button-row {
@@ -40,234 +90,255 @@
 
     button {
       border-radius: 6px;
-      border: 1px solid #cbd5e1;
-      background: #e2e8f0;
-      color: #0f172a;
+      border: 1px solid #d1c4b7;
+      background: #f3e8dc;
+      color: #3b2f2f;
       padding: 8px 12px;
       cursor: pointer;
     }
 
     button:hover {
-      background: #cbd5e1;
+      background: #e6d7c7;
     }
 
-    .page-description {
-      margin: 0 0 12px;
-      color: #475569;
+    .meal-instructions-btn {
+      font-size: 0.78rem;
+      padding: 4px 8px;
+      border-radius: 16px;
+      border: 1px solid rgba(178, 86, 63, 0.4);
+      background: rgba(178, 86, 63, 0.12);
+      color: var(--menu-accent);
+      transition: background 0.15s ease;
     }
 
-    .plan-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    .meal-instructions-btn:hover {
+      background: rgba(178, 86, 63, 0.2);
+    }
+
+    .meal-instructions-btn--empty {
+      font-style: italic;
+      opacity: 0.82;
+    }
+
+    .plan-flow {
+      display: flex;
+      flex-direction: column;
       gap: 14px;
     }
 
     .day-card {
-      background: #ffffff;
-      border: 1px solid #dbe4f1;
-      border-radius: 10px;
-      padding: 14px 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-      page-break-inside: avoid;
+      position: relative;
+      padding: 10px 12px;
+      border-top: 1px solid var(--menu-divider);
+      border-radius: 8px;
+      overflow: hidden;
+      background: linear-gradient(
+        180deg,
+        rgba(253, 247, 240, 0.96) 0%,
+        rgba(253, 247, 240, 0.9) 100%
+      );
+    }
+
+    .day-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(253, 247, 240, 0.95) 0%,
+        rgba(253, 247, 240, 0.82) 36%,
+        rgba(253, 247, 240, 0.75) 100%
+      );
+      z-index: 0;
+    }
+
+    .day-hero {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.06;
+      filter: grayscale(80%) blur(1px);
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .day-content {
+      position: relative;
+      z-index: 1;
+      background: var(--menu-panel);
+      border-radius: 6px;
+      padding: 8px 10px;
+      box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+      backdrop-filter: blur(2px);
     }
 
     .day-header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
       gap: 10px;
+      align-items: flex-end;
       flex-wrap: wrap;
+      margin-bottom: 6px;
     }
 
     .day-title {
       font-size: 1.1rem;
       font-weight: 700;
-      color: #0f172a;
+      color: var(--menu-heading);
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .day-title .date-text {
+      font-size: 0.95rem;
+      color: #5f5148;
     }
 
     .day-label {
       padding: 4px 8px;
-      background: #eef2ff;
-      color: #312e81;
-      border: 1px solid #c7d2fe;
+      background: rgba(178, 86, 63, 0.12);
+      color: var(--menu-accent);
+      border: 1px solid rgba(178, 86, 63, 0.28);
       border-radius: 999px;
-      font-size: 0.85rem;
-    }
-
-    .day-content {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
+      font-size: 0.8rem;
+      letter-spacing: 0.05em;
     }
 
     .meal-section {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px;
+      margin-top: 6px;
     }
 
     .meal-section h3 {
       margin: 0;
-      font-size: 0.95rem;
-      color: #1f2937;
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--menu-accent);
     }
 
     .section-chip {
-      background: #ecfeff;
-      color: #0f172a;
-      border: 1px solid #bae6fd;
-      border-radius: 8px;
-      padding: 4px 8px;
-      font-size: 0.8rem;
+      background: rgba(163, 184, 156, 0.2);
+      color: var(--menu-heading);
+      border: 1px solid rgba(163, 184, 156, 0.5);
+      border-radius: 6px;
+      padding: 2px 6px;
+      font-size: 0.75rem;
+      margin-left: 8px;
     }
 
-    .meal-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 12px;
-    }
-
-    .meal-block {
-      background: #f8fafc;
-      border: 1px solid #dbe4f1;
-      border-radius: 8px;
-      padding: 10px 12px;
+    .meal-group {
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      height: 100%;
-      break-inside: avoid;
-      page-break-inside: avoid;
+      gap: 6px;
     }
 
-    .meal-block-header {
+    .meal-entry {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.66);
+      border: 1px solid rgba(163, 184, 156, 0.4);
+    }
+
+    .meal-heading {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      gap: 8px;
+      gap: 6px;
+      align-items: baseline;
       flex-wrap: wrap;
     }
 
     .meal-title {
-      font-weight: 600;
-      margin-bottom: 2px;
-      color: #111827;
+      font-weight: 700;
+      margin: 0;
+      color: var(--menu-heading);
+      font-size: 1rem;
     }
 
-    .meal-instructions-btn {
-      font-size: 0.75rem;
-      padding: 4px 8px;
-      border-radius: 4px;
-      border: 1px solid #cbd5f5;
-      background: #e0e7ff;
-      color: #1e3a8a;
-      cursor: pointer;
-    }
-
-    .meal-instructions-btn:hover {
-      background: #c7d2fe;
-    }
-
-    .meal-instructions-btn--empty {
-      font-style: italic;
-      opacity: 0.85;
-    }
-
-    .leftover-detail {
+    .meal-meta {
       font-size: 0.85rem;
-      color: #4b5563;
-    }
-
-    .meal-part-label {
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: #1f2937;
+      color: #6b6057;
     }
 
     .ingredient-list {
-      margin: 4px 0 0;
-      padding: 0;
-      list-style: none;
+      margin: 0;
+      padding-left: 16px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 2px;
+      list-style: disc;
     }
 
     .ingredient-entry {
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
-      border-radius: 6px;
-      padding: 6px 8px;
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      break-inside: avoid;
-      page-break-inside: avoid;
+      gap: 2px;
+      padding: 2px 0;
+      border: 0;
+      background: transparent;
     }
 
     .ingredient-header {
       display: flex;
       justify-content: space-between;
+      gap: 8px;
       align-items: baseline;
-      gap: 12px;
-      flex-wrap: wrap;
     }
 
     .ingredient-name {
       font-weight: 600;
-      color: #1f2937;
+      color: var(--menu-heading);
     }
 
     .ingredient-amount {
-      font-weight: 500;
-      color: #0f172a;
+      font-weight: 600;
+      color: #3b2f2f;
       font-variant-numeric: tabular-nums;
-      text-align: right;
     }
 
     .user-breakdown {
       margin: 0;
-      padding: 0;
-      list-style: none;
+      padding-left: 14px;
+      list-style: square;
       display: flex;
-      flex-direction: column;
-      gap: 4px;
+      flex-wrap: wrap;
+      gap: 6px 12px;
+      color: #5f5148;
     }
 
     .user-breakdown-item {
       display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      font-size: 0.85rem;
-      color: #334155;
+      gap: 6px;
     }
 
     .user-name {
-      font-weight: 500;
-    }
-
-    .user-amount {
-      font-variant-numeric: tabular-nums;
-      text-align: right;
+      font-weight: 600;
     }
 
     .no-ingredients,
     .empty-group {
       font-size: 0.9rem;
-      color: #64748b;
+      color: #6b6057;
+    }
+
+    .leftover-detail {
+      font-size: 0.85rem;
+      color: #6b6057;
     }
 
     @media print {
       body {
+        padding: 10px 14px;
         max-width: none;
-        padding: 12px 16px;
-        background: #ffffff;
+        background: var(--menu-bg) !important;
       }
 
       .controls,
@@ -276,80 +347,65 @@
         display: none !important;
       }
 
-      .plan-grid {
-        grid-template-columns: 1fr;
+      header.menu-header {
+        border-bottom: 1px solid var(--menu-divider);
+        margin-bottom: 6px;
+      }
+
+      .plan-flow {
+        gap: 10px;
       }
 
       .day-card {
-        border-color: #cbd5e1;
-        box-shadow: none;
-        position: relative;
-        break-inside: auto;
-        page-break-inside: auto;
-        display: table;
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0;
-      }
-
-      .day-header,
-      .meal-section h3 {
-        break-after: avoid-page;
-        page-break-after: avoid;
-      }
-
-      .day-header {
-        display: table-header-group;
-        position: static;
-        top: auto;
-        padding: 12px 12px 10px 12px;
-        margin: 0 0 6px 0;
-        background: #ffffff;
-        border-bottom: 1px solid #e2e8f0;
-        z-index: 5;
+        padding: 8px 10px;
+        break-inside: avoid;
+        page-break-inside: avoid;
       }
 
       .day-content {
-        display: table-row-group;
+        padding: 6px 8px;
+        box-shadow: none;
+      }
+
+      .meal-entry {
+        padding: 4px 6px;
+      }
+
+      .ingredient-list {
+        padding-left: 14px;
       }
 
       .meal-instructions-btn {
         display: none !important;
       }
-
-      .meal-block {
-        background: #ffffff;
-        border-color: #cbd5e1;
-      }
-
-      .meal-section {
-        break-inside: auto;
-        page-break-inside: auto;
-      }
-
-      .ingredient-entry {
-        background: #ffffff;
-      }
     }
   </style>
 </head>
 <body>
-  <h1>What To Cook</h1>
-  <p class="page-description">All of your cooking and prep for the chosen dates, grouped by day so the entire plan fits cleanly on a page.</p>
-  <div class="controls">
-    <label>Start
-      <input type="date" id="startDate">
-    </label>
-    <label>Days
-      <input type="number" id="numDays" value="7" min="1" max="365">
-    </label>
-    <div class="button-row">
-      <button id="showBtn">Show</button>
-      <button id="printBtn">Print Plan</button>
-      <button id="eatViewBtn">What To Eat When</button>
+  <div class="wtc-shell">
+    <header class="menu-header">
+      <span class="eyebrow">Weekly Cooking Plan</span>
+      <h1>What To Cook</h1>
+      <p class="page-description">Print-friendly restaurant-style menu with food photography tucked behind each day’s plan.</p>
+      <div class="date-range" id="dateRange"></div>
+    </header>
+
+    <div class="controls">
+      <label>Start
+        <input type="date" id="startDate">
+      </label>
+      <label>Days
+        <input type="number" id="numDays" value="7" min="1" max="365">
+      </label>
+      <div class="button-row">
+        <button id="showBtn">Show</button>
+        <button id="printBtn">Print Plan</button>
+        <button id="eatViewBtn">What To Eat When</button>
+      </div>
     </div>
+
+    <div id="planList" class="plan-flow" aria-live="polite"></div>
   </div>
-  <div id="planList" class="plan-grid" aria-live="polite"></div>
   <script type="module" src="whatToCookWhen.js"></script>
 </body>
 </html>
