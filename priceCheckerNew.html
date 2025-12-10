@@ -33,18 +33,20 @@
   </section>
 
   <template id="categoryCardTemplate">
-    <div class="category-card price-checker collapsible" role="button" tabindex="0">
-      <div class="category-card__icon">🏷️</div>
-      <div class="category-card__meta">
-        <div class="category-card__title"></div>
-        <div class="category-card__counts">
-          <span class="category-card__badge"><span class="count"></span> items</span>
-          <span class="category-card__badge need-only"><span class="need-count"></span> need attention</span>
+    <div class="category-block is-open">
+      <div class="category-card price-checker collapsible" role="button" tabindex="0" aria-expanded="true">
+        <div class="category-card__icon">🏷️</div>
+        <div class="category-card__meta">
+          <div class="category-card__title"></div>
+          <div class="category-card__counts">
+            <span class="category-card__badge"><span class="count"></span> items</span>
+            <span class="category-card__badge need-only"><span class="need-count"></span> need attention</span>
+          </div>
         </div>
+        <div class="category-card__chevron">⌄</div>
       </div>
-      <div class="category-card__chevron">⌄</div>
+      <div class="category-card__children purchase-grid"></div>
     </div>
-    <div class="category-card__children purchase-grid"></div>
   </template>
 
   <template id="purchaseCardTemplate">

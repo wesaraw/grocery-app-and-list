@@ -13,16 +13,24 @@ const openLegacy = document.getElementById('openLegacy');
 
 function createCategoryCard(category) {
   const fragment = categoryTemplate.content.cloneNode(true);
+  const wrapper = fragment.querySelector('.category-block');
   const card = fragment.querySelector('.category-card');
   const children = fragment.querySelector('.category-card__children');
   card.querySelector('.category-card__title').textContent = category.name;
   card.querySelector('.count').textContent = category.items.length;
   const needCount = category.items.filter(item => item.needAmount > 0).length;
   card.querySelector('.need-count').textContent = needCount;
-  card.classList.add('is-open');
+  const setOpenState = (isOpen) => {
+    wrapper.classList.toggle('is-open', isOpen);
+    card.classList.toggle('is-open', isOpen);
+    children.classList.toggle('is-collapsed', !isOpen);
+    card.setAttribute('aria-expanded', String(isOpen));
+  };
+
+  setOpenState(true);
 
   card.addEventListener('click', () => {
-    card.classList.toggle('is-open');
+    setOpenState(!wrapper.classList.contains('is-open'));
   });
   card.addEventListener('keydown', event => {
     if (event.key === 'Enter' || event.key === ' ') {
