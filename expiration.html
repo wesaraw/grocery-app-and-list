@@ -3,21 +3,89 @@
 <head>
   <meta charset="utf-8">
   <title>Expiration Dates</title>
+  <link rel="stylesheet" href="styles.css">
   <style>
-    body { font-family: Arial, sans-serif; width: 300px; }
-    .item { margin-bottom: 10px; }
-    input[type="number"] { width: 60px; }
+    .expiration-page {
+      width: min(520px, 100%);
+    }
+
+    .expiration-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--spacing-3);
+      flex-wrap: wrap;
+    }
+
+    .expiration-search {
+      display: flex;
+      flex: 1;
+      gap: var(--spacing-2);
+      align-items: center;
+    }
+
+    .expiration-search label {
+      font-weight: 600;
+      color: var(--color-gray-700);
+      min-width: 72px;
+    }
+
+    .expiration-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-2);
+    }
+
+    .expiration-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--spacing-3);
+      padding: var(--spacing-2) var(--spacing-3);
+      border: 1px solid var(--color-gray-200);
+      border-radius: var(--radius-md);
+      background: var(--color-gray-50);
+    }
+
+    .expiration-item span {
+      flex: 1;
+      font-weight: 600;
+      color: var(--color-gray-800);
+    }
+
+    .expiration-item input {
+      width: 96px;
+    }
+
     .category-header {
-      border-top: 1px solid #ccc;
-      margin-top: 10px;
+      border-top: 1px solid var(--color-gray-200);
+      padding-top: var(--spacing-2);
+      margin-top: var(--spacing-2);
       cursor: pointer;
+      color: var(--color-gray-700);
     }
   </style>
 </head>
 <body>
-  <h1>Expiration Dates</h1>
-  <label>Search: <input id="searchBox" type="text" placeholder="Search"></label>
-  <div id="expirations"></div>
+  <div class="page expiration-page">
+    <div class="section-card">
+      <div class="section-title">
+        <span>Expiration Dates</span>
+        <div class="btn-group">
+          <button id="exportBtn" class="btn btn-secondary" type="button">Export XML</button>
+          <button id="importBtn" class="btn btn-primary" type="button">Import XML</button>
+        </div>
+      </div>
+      <div class="expiration-toolbar">
+        <div class="expiration-search">
+          <label for="searchBox">Search</label>
+          <input id="searchBox" class="search-field" type="text" placeholder="Search items">
+        </div>
+        <input id="importFile" type="file" accept=".xml" style="display: none;">
+      </div>
+      <div id="expirations" class="expiration-list"></div>
+    </div>
+  </div>
   <script type="module" src="expiration.js"></script>
 </body>
 </html>

@@ -4,7 +4,12 @@ import {
   renderItemsWithCategoryHeaders
 } from './utils/sortByCategory.js';
 import { WEEKS_PER_MONTH } from './utils/constants.js';
-import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
+import {
+  loadArray as loadItemArray,
+  convertArrayToNames,
+  saveArray as saveItemArray,
+  getItemName
+} from './utils/itemStorage.js';
 
 const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
@@ -25,9 +30,7 @@ const loadNeeds = () => loadArray('yearlyNeeds', NEEDS_PATH);
 const loadExpiration = () => loadArray('expirationData', EXPIRATION_PATH);
 
 function saveExpiration(arr) {
-  return new Promise(resolve => {
-    chrome.storage.local.set({ expirationData: arr }, () => resolve());
-  });
+  return saveItemArray('expirationData', arr);
 }
 
 function weeksFromMonths(months) {
@@ -40,7 +43,7 @@ function monthsFromWeeks(weeks) {
 
 function createRow(item, expMap, expArr) {
   const div = document.createElement('div');
-  div.className = 'item';
+  div.className = 'expiration-item';
   const span = document.createElement('span');
   const rec = expMap.get(item.name);
   const weeks = rec ? weeksFromMonths(rec.shelf_life_months) : 52;
@@ -74,6 +77,101 @@ function createRow(item, expMap, expArr) {
   return div;
 }
 
+function getWeeksForItem(name, expMap) {
+  const rec = expMap.get(name);
+  return rec ? weeksFromMonths(rec.shelf_life_months) : 52;
+}
+
+function buildExportXml(items, expMap) {
+  const xmlDoc = document.implementation.createDocument('', 'expirationList', null);
+  const root = xmlDoc.documentElement;
+  const serializer = new XMLSerializer();
+  const categoryNodes = new Map();
+
+  items.forEach(item => {
+    const cat = item.category || 'Other';
+    if (!categoryNodes.has(cat)) {
+      const catNode = xmlDoc.createElement('category');
+      catNode.setAttribute('name', cat);
+      categoryNodes.set(cat, catNode);
+      root.appendChild(catNode);
+    }
+    const itemNode = xmlDoc.createElement('item');
+    itemNode.setAttribute('name', item.name);
+    itemNode.setAttribute('weeks', getWeeksForItem(item.name, expMap).toFixed(1));
+    categoryNodes.get(cat).appendChild(itemNode);
+  });
+
+  return `<?xml version="1.0" encoding="UTF-8"?>\n${serializer.serializeToString(xmlDoc)}`;
+}
+
+function downloadXml(xmlText) {
+  const blob = new Blob([xmlText], { type: 'application/xml' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'expiration_times.xml';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function parseImportXml(text) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(text, 'application/xml');
+  if (doc.querySelector('parsererror')) {
+    throw new Error('Invalid XML');
+  }
+
+  const items = [];
+  const nodes = Array.from(doc.getElementsByTagName('item'));
+  for (const node of nodes) {
+    const rawName = (node.getAttribute('name') || '').trim();
+    const id = (node.getAttribute('id') || '').trim();
+    const weeks = parseFloat((node.getAttribute('weeks') || node.textContent || '').trim());
+    if (Number.isNaN(weeks)) continue;
+    let name = rawName;
+    if (!name && id) {
+      name = (await getItemName(id))?.trim();
+    }
+    if (!name) continue;
+    items.push({ name, weeks });
+  }
+
+  return items;
+}
+
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(file);
+  });
+}
+
+async function applyImportedExpirations(imported, expArr, expMap, needs) {
+  if (!Array.isArray(imported) || imported.length === 0) return 0;
+  const nameLookup = new Map(needs.map(n => [n.name.toLowerCase(), n.name]));
+  let applied = 0;
+
+  imported.forEach(entry => {
+    const normalizedName = nameLookup.get(entry.name.toLowerCase()) || entry.name;
+    if (!normalizedName || Number.isNaN(entry.weeks)) return;
+    let record = expMap.get(normalizedName);
+    if (!record) {
+      record = { name: normalizedName, shelf_life_months: monthsFromWeeks(entry.weeks) };
+      expArr.push(record);
+      expMap.set(normalizedName, record);
+    } else {
+      record.shelf_life_months = monthsFromWeeks(entry.weeks);
+    }
+    applied += 1;
+  });
+
+  await saveExpiration(expArr);
+  return applied;
+}
+
 async function init() {
   container = document.getElementById('expirations');
   const [needs, expiration] = await Promise.all([loadNeeds(), loadExpiration()]);
@@ -98,6 +196,29 @@ async function init() {
   document.getElementById('searchBox').addEventListener('input', () => {
     filterText = document.getElementById('searchBox').value.trim().toLowerCase();
     render();
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', () => {
+    const xml = buildExportXml(allNeeds, expMap);
+    downloadXml(xml);
+  });
+
+  const importInput = document.getElementById('importFile');
+  document.getElementById('importBtn').addEventListener('click', () => importInput.click());
+  importInput.addEventListener('change', async e => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await readFileAsText(file);
+      const imported = await parseImportXml(text);
+      const applied = await applyImportedExpirations(imported, expiration, expMap, allNeeds);
+      render();
+      alert(`Applied ${applied} expiration update${applied === 1 ? '' : 's'}.`);
+    } catch (err) {
+      alert('Unable to import XML file. Please verify the format and try again.');
+    } finally {
+      importInput.value = '';
+    }
   });
 }
 
