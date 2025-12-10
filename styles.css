@@ -474,13 +474,96 @@ a:hover {
 .category-block {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-3);
+  gap: 0;
 }
 
 .category-card__children,
 .category-card__children.is-collapsed {
   display: none;
 }
+
+.category-card.category-card--timeline {
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0;
+  padding: 0;
+  background: white;
+  box-shadow: var(--shadow-card);
+  flex-direction: column;
+}
+
+.category-card--timeline .category-card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-4);
+  background: var(--color-gray-50);
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.category-card--timeline .category-card__image {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--color-gray-200), var(--color-gray-100));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-gray-700);
+  font-weight: 700;
+  overflow: hidden;
+}
+
+.category-card--timeline .category-card__title {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--color-gray-900);
+}
+
+.category-card--timeline .category-card__title-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.category-card--timeline .category-card__meta {
+  display: flex;
+  gap: var(--spacing-2);
+  flex-wrap: wrap;
+  color: var(--color-gray-600);
+  font-size: var(--text-small);
+}
+
+.category-card--timeline .category-card__chevron {
+  font-size: 1.1rem;
+  color: var(--color-gray-500);
+}
+
+.category-card--timeline .category-card__children {
+  padding: 0 var(--spacing-4) var(--spacing-4);
+  margin-top: 0;
+  background: white;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: var(--text-small);
+  font-weight: 600;
+  background: var(--color-gray-100);
+  color: var(--color-gray-700);
+}
+
+.status-pill--warning { background: rgba(245, 158, 11, 0.14); color: var(--color-amber-500); }
+.status-pill--neutral { background: var(--color-gray-100); color: var(--color-gray-700); }
 
 .category-card {
   position: relative;
@@ -564,22 +647,6 @@ a:hover {
 .category-card.inventory .category-card__badge {
   background: rgba(34, 197, 94, 0.08);
   color: var(--color-green-500);
-}
-
-.category-card.price-checker .category-card__icon {
-  background: var(--color-blue-100);
-  color: var(--color-blue-600);
-}
-
-.category-card.price-checker .category-card__icon.has-image {
-  background: var(--color-gray-100);
-  color: var(--color-gray-700);
-  border-color: var(--color-gray-200);
-}
-
-.category-card.price-checker .category-card__badge {
-  background: rgba(37, 99, 235, 0.08);
-  color: var(--color-blue-600);
 }
 
 .category-card.collapsible {

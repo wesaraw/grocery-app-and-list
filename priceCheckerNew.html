@@ -39,22 +39,24 @@
   </section>
 
   <template id="categoryCardTemplate">
-    <div class="category-block is-collapsed">
-      <div class="category-card price-checker collapsible" role="button" tabindex="0" aria-expanded="false">
-        <div class="category-card__icon image-thumb image-thumb--sm" aria-hidden="true">
-          <span class="image-thumb__fallback">🏷️</span>
-        </div>
-        <div class="category-card__meta">
-          <div class="category-card__title"></div>
-          <div class="category-card__counts">
-            <span class="category-card__badge"><span class="count"></span> items</span>
-            <span class="category-card__badge need-only"><span class="need-count"></span> need attention</span>
+    <section class="category-block is-collapsed">
+      <article class="category-card category-card--timeline">
+        <button class="category-card__header" type="button" aria-expanded="false">
+          <div class="category-card__image image-thumb image-thumb--sm" aria-hidden="true">
+            <span class="image-thumb__fallback">🏷️</span>
           </div>
-        </div>
-        <div class="category-card__chevron">⌄</div>
-      </div>
-      <div class="category-card__children purchase-grid is-collapsed"></div>
-    </div>
+          <div class="category-card__title-group">
+            <h3 class="category-card__title"></h3>
+            <div class="category-card__meta chip-group">
+              <span class="status-pill status-pill--neutral"><span class="count"></span> items</span>
+              <span class="status-pill status-pill--warning need-only"><span class="need-count"></span> need attention</span>
+            </div>
+          </div>
+          <span class="category-card__chevron" aria-hidden="true">▸</span>
+        </button>
+        <div class="category-card__body category-card__children purchase-grid is-collapsed"></div>
+      </article>
+    </section>
   </template>
 
   <template id="purchaseCardTemplate">

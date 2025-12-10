@@ -33,6 +33,8 @@ function createCategoryCard(category) {
   const fragment = categoryTemplate.content.cloneNode(true);
   const wrapper = fragment.querySelector('.category-block');
   const card = fragment.querySelector('.category-card');
+  const header = fragment.querySelector('.category-card__header');
+  const chevron = fragment.querySelector('.category-card__chevron');
   const children = fragment.querySelector('.category-card__children');
   card.querySelector('.category-card__title').textContent = category.name;
   card.querySelector('.count').textContent = category.items.length;
@@ -56,7 +58,8 @@ function createCategoryCard(category) {
     wrapper.classList.toggle('is-collapsed', !isOpen);
     card.classList.toggle('is-open', isOpen);
     children.classList.toggle('is-collapsed', !isOpen);
-    card.setAttribute('aria-expanded', String(isOpen));
+    header.setAttribute('aria-expanded', String(isOpen));
+    chevron.textContent = isOpen ? '▾' : '▸';
 
     if (isOpen) {
       renderChildren();
@@ -65,17 +68,17 @@ function createCategoryCard(category) {
 
   setOpenState(false);
 
-  card.addEventListener('click', () => {
+  header.addEventListener('click', () => {
     setOpenState(!wrapper.classList.contains('is-open'));
   });
-  card.addEventListener('keydown', event => {
+  header.addEventListener('keydown', event => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      card.click();
+      header.click();
     }
   });
 
-  const icon = card.querySelector('.category-card__icon');
+  const icon = card.querySelector('.category-card__image');
   const topImage = category.items.find(item => item.productImage);
   applyThumbnail(icon, topImage?.productImage, category.name, '🏷️');
 
