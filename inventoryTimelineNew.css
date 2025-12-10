@@ -154,7 +154,7 @@
   position: absolute;
   inset: -14px;
   background: linear-gradient(145deg, var(--color-gray-50), var(--color-gray-100));
-  filter: blur(14px);
+  filter: blur(1.4px);
   opacity: 0.42;
   transform: scale(1.06);
   z-index: 0;
@@ -165,7 +165,7 @@
   background-size: cover;
   background-repeat: no-repeat;
   background-position: center;
-  filter: blur(12px) saturate(0.85) brightness(1.05);
+  filter: blur(1.2px) saturate(0.92) brightness(1.05);
   opacity: 0.6;
 }
 
