@@ -72,6 +72,7 @@ function renderItemCard(item, fallbackImage) {
   if (cardImage) {
     card.classList.add('item-card--has-image');
     card.style.setProperty('--item-card-bg-image', `url("${cardImage}")`);
+    backdrop.style.backgroundImage = `url("${cardImage}")`;
   }
 
   card.appendChild(backdrop);
