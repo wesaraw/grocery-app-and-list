@@ -55,7 +55,7 @@
             <p>Review and organize saved meals before scheduling.</p>
           </div>
           <div class="feature-card__actions">
-            <button type="button" class="btn btn-primary" data-backend-action="openLists">Open lists</button>
+            <button type="button" class="btn btn-primary" id="openListsPanel">Open lists</button>
           </div>
         </article>
 
@@ -84,6 +84,39 @@
     </section>
 
   </main>
+
+  <div id="mealListsPanel" class="slide-panel" aria-hidden="true">
+    <div class="slide-panel__header">
+      <div>
+        <p class="eyebrow">Meal lists</p>
+        <h3 class="slide-panel__title">Manage categories</h3>
+        <p class="body-text">Open existing lists or add new categories without leaving the planner.</p>
+      </div>
+      <button type="button" class="text-btn" id="closeMealListsPanel">Close</button>
+    </div>
+
+    <div class="slide-panel__content">
+      <div class="settings-group">
+        <h4>Meal list categories</h4>
+        <div class="settings-grid" id="mealListButtons"></div>
+      </div>
+
+      <div class="settings-group">
+        <h4>New category</h4>
+        <div class="inline-form">
+          <input type="text" id="mealListNewCategory" class="input" placeholder="Category name" aria-label="Category name">
+          <button type="button" class="btn btn-secondary" id="addMealListCategory">Add</button>
+        </div>
+        <p class="helper-text">Matches the classic meal list manager. Changes save immediately.</p>
+      </div>
+    </div>
+
+    <div class="slide-panel__footer">
+      <span class="footer-hint">Use the buttons above to open any category in a dedicated list window.</span>
+    </div>
+  </div>
+
+  <div id="mealListsScrim" class="slide-scrim" aria-hidden="true"></div>
 
   <iframe id="legacyMealPlannerBackend" class="legacy-backend" src="mealPlanner.html" title="Legacy meal planner backend" tabindex="-1"></iframe>
 

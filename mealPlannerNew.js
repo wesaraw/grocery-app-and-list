@@ -1,4 +1,6 @@
 import { openOrFocusWindow } from './utils/windowUtils.js';
+import { MEAL_TYPES, initializeMealCategories, addMealCategory } from './utils/mealData.js';
+import { loadJSON } from './utils/dataLoader.js';
 
 const backendFrame = document.getElementById('legacyMealPlannerBackend');
 const backendStatus = document.getElementById('backendStatus');
@@ -11,10 +13,18 @@ const mealimeSummaryCard = document.getElementById('mealimeSummaryCard');
 const mealimeSummaryTitle = document.getElementById('mealimeSummaryTitle');
 const mealimeSummaryMeta = document.getElementById('mealimeSummaryMeta');
 const mealimeSummaryWarnings = document.getElementById('mealimeSummaryWarnings');
+const mealListButtons = document.getElementById('mealListButtons');
+const mealListPanel = document.getElementById('mealListsPanel');
+const mealListScrim = document.getElementById('mealListsScrim');
+const mealListInput = document.getElementById('mealListNewCategory');
+const addMealListCategoryBtn = document.getElementById('addMealListCategory');
+const openListsPanelBtn = document.getElementById('openListsPanel');
+const closeListsPanelBtn = document.getElementById('closeMealListsPanel');
 
 let importProgressObserver;
 let mealimeStatusObserver;
 let mealimeSummaryObserver;
+let mealListStorageListenerRegistered = false;
 
 function setBackendStatus(text, tone = 'neutral') {
   if (!backendStatus) return;
@@ -113,6 +123,117 @@ function wireActions() {
   openLegacyButtons.forEach(btn => {
     btn.addEventListener('click', () => openOrFocusWindow('mealPlanner.html'));
   });
+}
+
+function openMealListsPanel() {
+  if (!mealListPanel || !mealListScrim) return;
+  mealListPanel.classList.add('slide-panel--open');
+  mealListPanel.setAttribute('aria-hidden', 'false');
+  mealListScrim.classList.add('slide-scrim--active');
+  mealListScrim.setAttribute('aria-hidden', 'false');
+}
+
+function closeMealListsPanel() {
+  if (!mealListPanel || !mealListScrim) return;
+  mealListPanel.classList.remove('slide-panel--open');
+  mealListPanel.setAttribute('aria-hidden', 'true');
+  mealListScrim.classList.remove('slide-scrim--active');
+  mealListScrim.setAttribute('aria-hidden', 'true');
+}
+
+function wireMealListPanel() {
+  openListsPanelBtn?.addEventListener('click', () => {
+    openMealListsPanel();
+  });
+
+  closeListsPanelBtn?.addEventListener('click', closeMealListsPanel);
+  mealListScrim?.addEventListener('click', closeMealListsPanel);
+}
+
+function loadMeals(type) {
+  const { key, path } = MEAL_TYPES[type];
+  return new Promise((resolve) => {
+    chrome.storage.local.get(key, async (data) => {
+      let arr = data[key];
+      if (!arr) arr = await loadJSON(path);
+      if (Array.isArray(arr)) {
+        arr.forEach((m) => {
+          if (m.prepared === undefined) m.prepared = false;
+          if (m.prepAhead === undefined) m.prepAhead = false;
+          if (m.leftoverOk === undefined) m.leftoverOk = false;
+          if (m.recipeBook === undefined) m.recipeBook = '';
+          if (typeof m.instructions !== 'string') {
+            m.instructions = '';
+          } else {
+            m.instructions = m.instructions.trim();
+          }
+          if (!Array.isArray(m.ingredients)) {
+            m.ingredients = [];
+          }
+          m.ingredients.forEach((ing) => {
+            if (!ing || typeof ing !== 'object') return;
+            if (ing.prepAhead === undefined) ing.prepAhead = false;
+          });
+        });
+      }
+      resolve(arr || []);
+    });
+  });
+}
+
+async function renderMealListButtons() {
+  if (!mealListButtons) return;
+  mealListButtons.innerHTML = '';
+
+  for (const type of Object.keys(MEAL_TYPES)) {
+    const meals = await loadMeals(type);
+    const active = meals.filter((m) => m.active !== false).length;
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'settings-btn';
+    btn.textContent = `${MEAL_TYPES[type].label} (${active})`;
+    btn.addEventListener('click', () => {
+      openOrFocusWindow(`mealListView.html?type=${encodeURIComponent(type)}`);
+    });
+
+    mealListButtons.appendChild(btn);
+  }
+}
+
+async function handleAddMealCategory() {
+  if (!mealListInput) return;
+  const value = mealListInput.value.trim();
+  if (!value) return;
+
+  await addMealCategory(value);
+  mealListInput.value = '';
+  await renderMealListButtons();
+}
+
+async function initMealListPanel() {
+  if (!mealListPanel) return;
+  await initializeMealCategories();
+  await renderMealListButtons();
+  wireMealListPanel();
+
+  addMealListCategoryBtn?.addEventListener('click', handleAddMealCategory);
+  mealListInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddMealCategory();
+    }
+  });
+
+  if (!mealListStorageListenerRegistered) {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area === 'local') {
+        const changed = Object.values(MEAL_TYPES).some((t) => changes[t.key]);
+        if (changed) renderMealListButtons();
+      }
+    });
+    mealListStorageListenerRegistered = true;
+  }
 }
 
 function updateImportStatusFromBackend() {
@@ -389,3 +510,4 @@ function wireImportModal() {
 wireBackendStatus();
 wireActions();
 wireImportModal();
+initMealListPanel();
