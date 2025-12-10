@@ -28,6 +28,13 @@ function loadCalendar() {
   });
 }
 
+function getViewVariant() {
+  const paramVariant = new URLSearchParams(window.location.search).get('variant');
+  if (paramVariant) return paramVariant;
+  const dataVariant = document.body?.dataset?.variant;
+  return dataVariant || 'screen';
+}
+
 export async function loadAllMeals() {
   const map = {};
   let visibility = {};
@@ -453,6 +460,20 @@ function createIngredientListItem(
   li.appendChild(header);
   const breakdown = buildUserBreakdownEntries(ingredient, users, portionCount);
   if (breakdown.length) {
+    if (options.variant === 'print') {
+      const compact = breakdown
+        .map(entry => {
+          const initial = entry.name ? entry.name.trim().charAt(0).toUpperCase() : '';
+          const label = initial || entry.name || '?';
+          return `${label}:${entry.amount}`;
+        })
+        .join(' / ');
+      const inline = document.createElement('div');
+      inline.className = 'user-breakdown-inline';
+      inline.textContent = compact ? `(${compact})` : '';
+      li.appendChild(inline);
+      return li;
+    }
     const list = document.createElement('ul');
     list.className = 'user-breakdown';
     breakdown.forEach(entry => {
@@ -749,6 +770,9 @@ function renderMealGroup(container, entries, mealMap, variant = 'screen') {
   container.classList.add('meal-group');
   const grid = document.createElement('div');
   grid.className = 'meal-grid';
+  if (variant === 'print') {
+    grid.classList.add('meal-grid--print');
+  }
   let hasContent = false;
   (entries || []).forEach(entry => {
     const normalized = normalizeMealEntry(entry, mealMap);
@@ -1129,9 +1153,15 @@ function renderPlanGrid(data, mealMap, variant = 'screen') {
   const container = document.getElementById('planList');
   if (!container) return;
   container.innerHTML = '';
+  if (variant === 'print') {
+    container.classList.add('print-mode');
+  }
   data.forEach(({ date, dayName, meals, prepList }) => {
     const card = document.createElement('section');
     card.className = 'day-card';
+    if (variant === 'print') {
+      card.classList.add('day-card--print');
+    }
 
     const header = document.createElement('div');
     header.className = 'day-header';
@@ -1142,6 +1172,9 @@ function renderPlanGrid(data, mealMap, variant = 'screen') {
     if (dayName) {
       const label = document.createElement('span');
       label.className = 'day-label';
+      if (variant === 'print') {
+        label.classList.add('day-label--print');
+      }
       label.textContent = dayName;
       header.appendChild(label);
     }
@@ -1155,6 +1188,87 @@ function renderPlanGrid(data, mealMap, variant = 'screen') {
 
     container.appendChild(card);
   });
+}
+
+function getHeroImage(meal) {
+  if (!meal) return null;
+  return (
+    meal.image ||
+    meal.imageUrl ||
+    meal.photo ||
+    meal.heroImage ||
+    meal.picture ||
+    null
+  );
+}
+
+function pickFallbackColor(seed = '') {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash << 5) - hash + seed.charCodeAt(i);
+    hash |= 0;
+  }
+  const hue = Math.abs(hash) % 360;
+  return `hsla(${hue}, 40%, 70%, 0.65)`;
+}
+
+function applyHeroBackgrounds(data, mealMap) {
+  const layer = document.getElementById('printBackgroundLayer');
+  if (!layer) return;
+  layer.innerHTML = '';
+  const pool = [];
+  data.forEach(day => {
+    [...(day.meals || []), ...(day.prepList || [])].forEach(entry => {
+      const normalized = normalizeMealEntry(entry, mealMap);
+      if (normalized?.meal) {
+        pool.push(normalized.meal);
+      }
+    });
+  });
+  if (!pool.length) return;
+  const shuffled = pool.slice().sort(() => Math.random() - 0.5);
+  const max = Math.min(5, shuffled.length);
+  for (let i = 0; i < max; i++) {
+    const meal = shuffled[i];
+    const hero = document.createElement('div');
+    hero.className = 'print-hero';
+    const source = getHeroImage(meal);
+    if (source) {
+      hero.style.backgroundImage = `url(${source})`;
+    } else {
+      hero.classList.add('fallback');
+      hero.style.backgroundImage = `linear-gradient(135deg, ${pickFallbackColor(
+        meal.displayName || meal.name || 'Meal'
+      )}, rgba(253, 247, 240, 0.2))`;
+    }
+    hero.dataset.label = meal.displayName || meal.name || '';
+    hero.style.left = `${8 + i * 18}%`;
+    hero.style.top = `${12 + i * 14}%`;
+    layer.appendChild(hero);
+  }
+}
+
+function formatDateRange(start, days) {
+  const startDate = parseLocalDate(start);
+  if (!startDate) return null;
+  const endDate = new Date(startDate);
+  const totalDays = Number.isFinite(days) ? days : 1;
+  endDate.setDate(endDate.getDate() + Math.max(totalDays - 1, 0));
+  const startText = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const endText = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return startText === endText ? startText : `${startText} – ${endText}`;
+}
+
+function syncPrintMeta(data, start, days) {
+  const rangeEl = document.getElementById('printDateRange');
+  const footerEl = document.getElementById('printFooterText');
+  const rangeText = formatDateRange(start, days) || 'Weekly cooking plan';
+  if (rangeEl) {
+    rangeEl.textContent = `Week of ${rangeText}`;
+  }
+  if (footerEl) {
+    footerEl.textContent = `Week of ${rangeText} • Grocery App`;
+  }
 }
 
 function openEatView() {
@@ -1185,6 +1299,8 @@ async function init() {
   densityMap = densities || {};
   const userEntries = buildUserEntries(users, multipliers, calendar);
   const prepDays = normalizePrepDays(cookingDays?.prepDay);
+  const viewVariant = getViewVariant();
+  const isPrintView = viewVariant === 'print';
   const { start, days } = getParams();
   document.getElementById('startDate').value = start || new Date().toISOString().split('T')[0];
   document.getElementById('numDays').value = days;
@@ -1195,7 +1311,11 @@ async function init() {
     const startVal = document.getElementById('startDate').value;
     const daysVal = parseInt(document.getElementById('numDays').value, 10) || 7;
     const data = buildData(calendar, userEntries, mealMap, startVal, daysVal, prepDays);
-    renderPlanGrid(data, mealMap);
+    renderPlanGrid(data, mealMap, viewVariant);
+    if (isPrintView) {
+      syncPrintMeta(data, startVal, daysVal);
+      applyHeroBackgrounds(data, mealMap);
+    }
   }
 
   document.getElementById('showBtn').addEventListener('click', update);
@@ -1207,12 +1327,28 @@ async function init() {
   }
 
   if (printButton) {
-    printButton.addEventListener('click', () => {
-      update();
-      if (typeof window.print === 'function') {
-        window.print();
-      }
-    });
+    if (isPrintView) {
+      printButton.addEventListener('click', () => {
+        update();
+        if (typeof window.print === 'function') {
+          window.print();
+        }
+      });
+    } else {
+      printButton.addEventListener('click', () => {
+        const startVal = document.getElementById('startDate').value;
+        const daysVal = document.getElementById('numDays').value;
+        const params = new URLSearchParams();
+        if (startVal) params.set('start', startVal);
+        if (daysVal) params.set('days', daysVal);
+        const url = 'whatToCookWhenPrint.html' + (params.toString() ? `?${params}` : '');
+        if (chrome.runtime?.getURL) {
+          openOrFocusWindow(url);
+        } else {
+          window.open(url, '_blank', 'noopener');
+        }
+      });
+    }
   }
 
   if (typeof window !== 'undefined') {
@@ -1220,6 +1356,14 @@ async function init() {
   }
 
   update();
+
+  if (isPrintView) {
+    setTimeout(() => {
+      if (typeof window.print === 'function') {
+        window.print();
+      }
+    }, 400);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', init);

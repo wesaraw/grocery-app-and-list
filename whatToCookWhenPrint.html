@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>What To Cook When • Print</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="whatToCookWhenPrint.css">
+</head>
+<body class="print-view" data-variant="print">
+  <div id="printBackgroundLayer" class="print-background-layer" aria-hidden="true"></div>
+  <div class="print-shell">
+    <header class="print-header">
+      <div>
+        <p class="eyebrow">Cookbook print</p>
+        <h1 class="print-title">What To Cook When</h1>
+        <p id="printDateRange" class="print-range helper-text">Weekly cooking plan</p>
+      </div>
+      <div class="print-actions">
+        <button type="button" id="printBtn" class="btn btn-secondary">Print</button>
+      </div>
+    </header>
+
+    <main class="print-main">
+      <div id="planList" class="plan-grid print-plan-grid" aria-live="polite"></div>
+    </main>
+
+    <footer class="print-footer">
+      <span id="printFooterText">Grocery App</span>
+    </footer>
+  </div>
+
+  <div class="visually-hidden" aria-hidden="true">
+    <label>Start
+      <input type="date" id="startDate">
+    </label>
+    <label>Days
+      <input type="number" id="numDays" value="7" min="1" max="365">
+    </label>
+    <button id="showBtn" type="button">Show</button>
+    <button id="eatViewBtn" type="button">What To Eat</button>
+  </div>
+
+  <script type="module" src="whatToCookWhen.js"></script>
+</body>
+</html>
