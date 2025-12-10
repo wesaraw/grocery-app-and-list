@@ -11,6 +11,21 @@ const showAllToggle = document.getElementById('showAllToggle');
 const searchInput = document.getElementById('search');
 const openLegacy = document.getElementById('openLegacy');
 
+function applyThumbnail(container, imageUrl, label, fallbackIcon = '🛒') {
+  const fallback = container.querySelector('.image-thumb__fallback');
+  const displayLabel = label?.trim() || fallbackIcon;
+
+  if (imageUrl) {
+    container.style.backgroundImage = `url("${imageUrl}")`;
+    container.classList.add('has-image');
+    if (fallback) fallback.textContent = displayLabel.charAt(0).toUpperCase();
+  } else {
+    container.style.removeProperty('background-image');
+    container.classList.remove('has-image');
+    if (fallback) fallback.textContent = displayLabel.charAt(0).toUpperCase();
+  }
+}
+
 function createCategoryCard(category) {
   const fragment = categoryTemplate.content.cloneNode(true);
   const wrapper = fragment.querySelector('.category-block');
@@ -39,11 +54,9 @@ function createCategoryCard(category) {
     }
   });
 
+  const icon = card.querySelector('.category-card__icon');
   const topImage = category.items.find(item => item.productImage);
-  if (topImage?.productImage) {
-    const icon = card.querySelector('.category-card__icon');
-    icon.innerHTML = `<img src="${topImage.productImage}" alt="${category.name}" />`;
-  }
+  applyThumbnail(icon, topImage?.productImage, category.name, '🏷️');
 
   const grid = children;
   grid.classList.toggle('show-zero', showAllToggle.checked);
@@ -67,7 +80,7 @@ function createPurchaseCard(item) {
   const need = card.querySelector('.purchase-card__need');
   const amount = card.querySelector('.recommended-amount');
   const stores = card.querySelector('.store-list');
-  const image = card.querySelector('.purchase-card__image img');
+  const image = card.querySelector('.purchase-card__image');
 
   title.textContent = item.name;
   subtitle.textContent = item.homeUnit ? `Tracked in ${item.homeUnit}` : 'Tracked item';
@@ -76,13 +89,7 @@ function createPurchaseCard(item) {
   amount.textContent = item.needLabel;
   stores.textContent = item.stores.length ? item.stores.join(', ') : 'Not set';
 
-  if (item.productImage) {
-    image.src = item.productImage;
-    image.alt = item.name;
-  } else {
-    image.removeAttribute('src');
-    image.alt = '';
-  }
+  applyThumbnail(image, item.productImage, item.name, '🛒');
 
   const viewBtn = card.querySelector('.view-item');
   viewBtn.addEventListener('click', () => {

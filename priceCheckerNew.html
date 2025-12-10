@@ -35,7 +35,9 @@
   <template id="categoryCardTemplate">
     <div class="category-block is-open">
       <div class="category-card price-checker collapsible" role="button" tabindex="0" aria-expanded="true">
-        <div class="category-card__icon">🏷️</div>
+        <div class="category-card__icon image-thumb image-thumb--sm" aria-hidden="true">
+          <span class="image-thumb__fallback">🏷️</span>
+        </div>
         <div class="category-card__meta">
           <div class="category-card__title"></div>
           <div class="category-card__counts">
@@ -52,8 +54,8 @@
   <template id="purchaseCardTemplate">
     <article class="purchase-card">
       <div class="purchase-card__header">
-        <div class="purchase-card__image" aria-hidden="true">
-          <img alt="" />
+        <div class="purchase-card__image image-thumb image-thumb--lg" aria-hidden="true">
+          <span class="image-thumb__fallback">🛒</span>
         </div>
         <div class="purchase-card__meta">
           <div class="purchase-card__title"></div>
