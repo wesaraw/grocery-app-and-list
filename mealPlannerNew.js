@@ -108,10 +108,7 @@ function wireActions() {
     btn.addEventListener('click', () => triggerBackend(action));
   });
 
-  const openLegacyButtons = [
-    document.getElementById('openLegacy'),
-    document.getElementById('openLegacyInline'),
-  ].filter(Boolean);
+  const openLegacyButtons = [document.getElementById('openLegacy')].filter(Boolean);
 
   openLegacyButtons.forEach(btn => {
     btn.addEventListener('click', () => openOrFocusWindow('mealPlanner.html'));
@@ -199,7 +196,7 @@ function syncMealimeStatusFromBackend() {
   const backendDoc = getBackendDocument();
   const statusEl = backendDoc?.getElementById('mealimeStatus');
   if (!statusEl) {
-    setStatusBlock(mealimeStatusBlock, 'Mealime status unavailable from legacy importer.', 'danger');
+    setStatusBlock(mealimeStatusBlock, 'Mealime status unavailable from the importer.', 'danger');
     return;
   }
 
@@ -276,8 +273,8 @@ function closeImportModal() {
 async function openImportModal() {
   if (!importModal) return;
   importModal.hidden = false;
-  setStatusBlock(importStatus, 'Connecting to legacy importer…');
-  setStatusBlock(mealimeStatusBlock, 'Connecting to legacy importer…');
+  setStatusBlock(importStatus, 'Connecting to importer…');
+  setStatusBlock(mealimeStatusBlock, 'Connecting to importer…');
 
   try {
     await waitForBackendReady();
@@ -290,7 +287,7 @@ async function openImportModal() {
 
   const categoriesLoaded = syncMealimeCategoriesFromBackend();
   if (!categoriesLoaded) {
-    setStatusBlock(mealimeStatusBlock, 'Unable to load Mealime categories from legacy importer.', 'danger');
+    setStatusBlock(mealimeStatusBlock, 'Unable to load Mealime categories from the importer.', 'danger');
   }
 
   observeImportProgress();
@@ -327,7 +324,7 @@ async function handleMealimeFetch() {
 
   const pushed = pushMealimeFieldsToBackend();
   if (!pushed) {
-    setStatusBlock(mealimeStatusBlock, 'Unable to sync Mealime form to legacy importer.', 'danger');
+    setStatusBlock(mealimeStatusBlock, 'Unable to sync Mealime form to the importer.', 'danger');
     return;
   }
 
@@ -353,7 +350,7 @@ async function handleMealimeConfirm() {
 
   const pushed = pushMealimeFieldsToBackend();
   if (!pushed) {
-    setStatusBlock(mealimeStatusBlock, 'Unable to sync Mealime form to legacy importer.', 'danger');
+    setStatusBlock(mealimeStatusBlock, 'Unable to sync Mealime form to the importer.', 'danger');
     return;
   }
 

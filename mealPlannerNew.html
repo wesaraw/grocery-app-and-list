@@ -24,7 +24,7 @@
       <div class="hero-card__content">
         <p class="eyebrow">Weekly roadmap</p>
         <h1>Plan meals with confidence</h1>
-        <p class="body-text">Use curated lists, schedule cooking days, and keep the calendar aligned—all backed by the classic planner logic.</p>
+        <p class="body-text">Use curated lists, schedule cooking days, and keep the calendar aligned—all from a streamlined surface.</p>
         <div class="hero-card__actions">
           <button type="button" class="btn btn-primary" data-backend-action="openCalendar">Open calendar</button>
         </div>
@@ -39,7 +39,6 @@
         </div>
         <ul class="hero-list">
           <li>One-click calendar and cooking day access</li>
-          <li>Legacy Mealime and XML import flows preserved</li>
         </ul>
       </div>
     </section>
@@ -47,7 +46,6 @@
     <section class="section-card">
       <div class="section-title">
         <span>Planning shortcuts</span>
-        <span class="chip">Powered by legacy backend</span>
       </div>
       <div class="feature-grid">
         <article class="feature-card">
@@ -76,7 +74,7 @@
           <div class="feature-card__icon" aria-hidden="true">⬇️</div>
           <div class="feature-card__content">
             <h3>Import meals</h3>
-            <p>Trigger XML or Mealime imports through the preserved backend workflow.</p>
+            <p>Trigger XML or Mealime imports through the streamlined workflow.</p>
           </div>
           <div class="feature-card__actions">
             <button type="button" class="btn btn-primary" id="openImport">Import meals</button>
@@ -85,16 +83,6 @@
       </div>
     </section>
 
-    <section class="section-card helper-card">
-      <div>
-        <p class="eyebrow">Need the classic view?</p>
-        <h3 class="helper-card__title">Open the legacy Meal Planner anytime</h3>
-        <p class="body-text">The legacy window continues to run silently in the background to process imports and calendar updates. Launch it directly if you need the original controls.</p>
-      </div>
-      <div class="helper-card__actions">
-        <button type="button" class="btn btn-secondary" id="openLegacyInline">Launch legacy planner</button>
-      </div>
-    </section>
   </main>
 
   <iframe id="legacyMealPlannerBackend" class="legacy-backend" src="mealPlanner.html" title="Legacy meal planner backend" tabindex="-1"></iframe>
@@ -116,7 +104,7 @@
           <div>
             <p class="eyebrow">XML &amp; images</p>
             <h3>Upload meal files</h3>
-            <p class="body-text">Launch the legacy XML importer. Progress updates stream here while the background window handles the upload.</p>
+            <p class="body-text">Launch the XML importer. Progress updates stream here while the background window handles the upload.</p>
           </div>
           <div class="import-card__actions">
             <button type="button" class="btn btn-primary" id="triggerFileImport">Upload files</button>
@@ -129,9 +117,8 @@
             <div>
               <p class="eyebrow">Mealime</p>
               <h3>Fetch from Mealime</h3>
-              <p class="body-text">Paste a Mealime recipe link or ID, then add it to your meals using the preserved logic.</p>
+              <p class="body-text">Paste a Mealime recipe link or ID, then add it to your meals without leaving the planner.</p>
             </div>
-            <div class="chip">Backend powered</div>
           </div>
 
           <label for="mealimeUrlInput">Recipe link or ID</label>
@@ -146,7 +133,7 @@
             <button type="button" class="btn btn-ghost" data-close-import>Close</button>
           </div>
 
-          <div id="mealimeStatusBlock" class="status-block" role="status">Waiting to connect to the legacy importer…</div>
+          <div id="mealimeStatusBlock" class="status-block" role="status">Waiting to connect to the importer…</div>
 
           <div id="mealimeSummaryCard" class="import-summary" hidden>
             <div class="import-summary__title" id="mealimeSummaryTitle"></div>
@@ -157,7 +144,7 @@
       </div>
 
       <footer class="modal__footer">
-        <p class="helper-text">Both XML uploads and Mealime fetches use the classic backend for processing.</p>
+        <p class="helper-text">Both XML uploads and Mealime fetches run in the background while you keep planning.</p>
         <button type="button" class="btn btn-ghost" data-close-import>Cancel</button>
       </footer>
     </div>
