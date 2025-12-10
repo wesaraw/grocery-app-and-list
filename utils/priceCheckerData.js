@@ -323,12 +323,37 @@ export async function fetchFinalSelection(itemName) {
   return { store, product };
 }
 
-export async function loadPriceCheckerSnapshot({
-  includeZero = false,
-  searchText = '',
-  includeItems = true,
-  categoryNames = null
-} = {}) {
+function normalizeSearchText(searchText = '') {
+  return searchText
+    .toString()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function buildSearchTokens(name, category, storeTokens = []) {
+  return [name, category, ...storeTokens]
+    .filter(Boolean)
+    .map(str =>
+      str
+        .toString()
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+    )
+    .filter(Boolean);
+}
+
+const baseSnapshotState = {
+  promise: null,
+  data: null
+};
+
+const metadataCache = new Map();
+const categoryItemsCache = new Map();
+
+async function computeBaseSnapshot() {
   await initUomTable();
   const {
     needs,
@@ -399,65 +424,144 @@ export async function loadPriceCheckerSnapshot({
     densityMap,
     isoDate
   );
+
   const normalizedPurchaseInfo = normalizeEntriesByName(purchaseInfo);
   const displayNeeds = mergeNeedsWithPurchases(normalizedNeeds, normalizedPurchaseInfo);
   const purchaseMap = mapByResolvedName(normalizedPurchaseInfo);
   const sortedNeeds = sortItemsByCategory(displayNeeds);
-  const search = searchText.trim().toLowerCase();
 
-  const categories = [];
-  const allowedCategories = categoryNames ? new Set(categoryNames) : null;
-  let current = null;
+  const categoryMetaMap = new Map();
+  const itemsByCategory = new Map();
+
   sortedNeeds.forEach(item => {
     const category = item.category || 'Other';
-    const isAllowedCategory = !allowedCategories || allowedCategories.has(category);
-    if (!current || current.name !== category) {
-      current = { name: category, items: [], itemCount: 0, needCount: 0, searchTokens: new Set() };
-      categories.push(current);
-    }
-    const needInfo = lookupByNameOrId(purchaseMap, item.name);
-    const needAmt = needInfo ? Math.round(needInfo.toBuy) : null;
-    const matchesSearch = !search || item.name.toLowerCase().includes(search);
-    current.itemCount += 1;
-    if (needAmt > 0) current.needCount += 1;
+    const meta = categoryMetaMap.get(category) || {
+      name: category,
+      itemCount: 0,
+      needCount: 0,
+      searchTokens: new Set()
+    };
 
     const storeTokens = getStoreNamesForItem(item.name) || [];
-    const tokens = [item.name, category, ...storeTokens]
-      .filter(Boolean)
-      .map(str =>
-        str
-          .toString()
-          .toLowerCase()
-          .replace(/[^a-z0-9\s]+/g, ' ')
-          .replace(/\s+/g, ' ')
-          .trim()
-      )
-      .filter(Boolean);
-    tokens.forEach(token => current.searchTokens.add(token));
-
-    if (!passesNeedFilter(needAmt, includeZero) || !matchesSearch) return;
-    if (!isAllowedCategory || !includeItems) return;
-
+    const tokens = buildSearchTokens(item.name, category, storeTokens);
+    const needInfo = lookupByNameOrId(purchaseMap, item.name);
+    const needAmt = needInfo ? Math.round(needInfo.toBuy) : null;
     const needLevel = buildNeedLevel(needAmt);
-    current.items.push({
+
+    meta.itemCount += 1;
+    if (needAmt > 0) meta.needCount += 1;
+    tokens.forEach(token => meta.searchTokens.add(token));
+
+    const baseItem = {
       name: item.name,
       category,
       homeUnit: item.home_unit,
       needAmount: needAmt,
       needLevel,
       needLabel: buildNeedLabel(needAmt, item.home_unit),
-      stores: storeTokens
-    });
-  });
-  categories.forEach(category => {
-    category.searchHaystack = Array.from(category.searchTokens).join(' ');
-    delete category.searchTokens;
-    if (!includeItems || (allowedCategories && !allowedCategories.has(category.name))) {
-      delete category.items;
-    }
+      stores: storeTokens,
+      searchHaystack: tokens.join(' ')
+    };
+
+    const list = itemsByCategory.get(category) || [];
+    list.push(baseItem);
+    itemsByCategory.set(category, list);
+    categoryMetaMap.set(category, meta);
   });
 
-  return { categories, generatedAt: new Date() };
+  const categories = Array.from(categoryMetaMap.values()).map(cat => ({
+    name: cat.name,
+    itemCount: cat.itemCount,
+    needCount: cat.needCount,
+    searchHaystack: Array.from(cat.searchTokens).join(' ')
+  }));
+
+  return {
+    generatedAt: new Date(),
+    categories,
+    itemsByCategory
+  };
+}
+
+async function getBaseSnapshot() {
+  if (baseSnapshotState.data) return baseSnapshotState.data;
+  if (baseSnapshotState.promise) return baseSnapshotState.promise;
+  baseSnapshotState.promise = computeBaseSnapshot().then(data => {
+    baseSnapshotState.data = data;
+    baseSnapshotState.promise = null;
+    return data;
+  });
+  return baseSnapshotState.promise;
+}
+
+function buildCacheKey(includeZero, searchText) {
+  return `${includeZero ? 'all' : 'need'}|${normalizeSearchText(searchText)}`;
+}
+
+async function getMetadataView(includeZero, searchText) {
+  const key = buildCacheKey(includeZero, searchText);
+  if (metadataCache.has(key)) return metadataCache.get(key);
+  const base = await getBaseSnapshot();
+  const view = {
+    generatedAt: base.generatedAt,
+    categories: base.categories.map(cat => ({ ...cat }))
+  };
+  metadataCache.set(key, view);
+  return view;
+}
+
+async function getItemsForCategory({ cacheKey, categoryName, includeZero, searchText }) {
+  const normalizedSearch = normalizeSearchText(searchText);
+  const base = await getBaseSnapshot();
+  const perKeyCache = categoryItemsCache.get(cacheKey) || new Map();
+  if (perKeyCache.has(categoryName)) return perKeyCache.get(categoryName);
+
+  const sourceItems = base.itemsByCategory.get(categoryName) || [];
+  const filtered = sourceItems
+    .filter(item => {
+      if (!passesNeedFilter(item.needAmount, includeZero)) return false;
+      if (!normalizedSearch) return true;
+      return item.searchHaystack.includes(normalizedSearch);
+    })
+    .map(item => ({ ...item }));
+
+  perKeyCache.set(categoryName, filtered);
+  categoryItemsCache.set(cacheKey, perKeyCache);
+  return filtered;
+}
+
+export async function loadPriceCheckerSnapshot({
+  includeZero = false,
+  searchText = '',
+  includeItems = true,
+  categoryNames = null
+} = {}) {
+  const normalizedSearch = normalizeSearchText(searchText);
+  const cacheKey = buildCacheKey(includeZero, normalizedSearch);
+  const metadata = await getMetadataView(includeZero, normalizedSearch);
+  let categories = metadata.categories.map(cat => ({ ...cat }));
+
+  const allowedCategories = categoryNames ? new Set(categoryNames) : null;
+  if (allowedCategories) {
+    categories = categories.filter(cat => allowedCategories.has(cat.name));
+  }
+
+  if (!includeItems) {
+    return { categories, generatedAt: metadata.generatedAt };
+  }
+
+  await Promise.all(
+    categories.map(async category => {
+      category.items = await getItemsForCategory({
+        cacheKey,
+        categoryName: category.name,
+        includeZero,
+        searchText: normalizedSearch
+      });
+    })
+  );
+
+  return { categories, generatedAt: metadata.generatedAt };
 }
 
 export async function loadPriceCheckerState({ searchText = '' } = {}) {

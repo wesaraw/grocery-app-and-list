@@ -24,14 +24,16 @@ function deriveCategoryThumbnail(items = [], fallback = null) {
   return fallback;
 }
 
-async function fetchCategoryItems(categoryName) {
-  if (categoryItemsCache.has(categoryName)) {
-    return categoryItemsCache.get(categoryName);
+async function fetchCategoryItems(categoryName, { includeZero, searchText }) {
+  const normalizedSearch = normalizeSearchText(searchText);
+  const cacheKey = `${categoryName}|${includeZero ? 'all' : 'need'}|${normalizedSearch}`;
+  if (categoryItemsCache.has(cacheKey)) {
+    return categoryItemsCache.get(cacheKey);
   }
 
   const { categories } = await loadPriceCheckerSnapshot({
-    includeZero: true,
-    searchText: '',
+    includeZero,
+    searchText: normalizedSearch,
     includeItems: true,
     categoryNames: [categoryName]
   });
@@ -41,7 +43,7 @@ async function fetchCategoryItems(categoryName) {
     ...item,
     searchHaystack: buildSearchHaystack(item)
   }));
-  categoryItemsCache.set(categoryName, items);
+  categoryItemsCache.set(cacheKey, items);
   return items;
 }
 
@@ -92,7 +94,7 @@ function createCategoryCard(category) {
     const renderKey = `${includeZero}|${search}`;
     if (lastRenderKey === renderKey) return;
 
-    const baseItems = await fetchCategoryItems(category.name);
+    const baseItems = await fetchCategoryItems(category.name, { includeZero, searchText: search });
     const filtered = baseItems.filter(item => {
       if (!includeZero && !(item.needAmount > 0)) return false;
       if (!search) return true;
@@ -233,8 +235,8 @@ function renderFromCache() {
 async function loadSnapshot() {
   categoryStack.innerHTML = '<p class="body-text">Loading recommendations…</p>';
   const snapshot = await loadPriceCheckerSnapshot({
-    includeZero: true,
-    searchText: '',
+    includeZero: showAllToggle.checked,
+    searchText: normalizeSearchText(searchInput.value),
     includeItems: false
   });
   cachedSnapshot = {
