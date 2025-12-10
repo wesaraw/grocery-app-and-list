@@ -1,27 +1,20 @@
-import { loadJSON } from './utils/dataLoader.js';
-import { calculatePurchaseNeeds } from './utils/purchaseCalculator.js';
 import { initUomTable, convert } from './utils/uomConverter.js';
-import { loadDensityMap, convertWithDensity } from './utils/unitNormalize.js';
+import { convertWithDensity } from './utils/unitNormalize.js';
+import { calculatePurchaseNeeds } from './utils/purchaseCalculator.js';
 import { openOrFocusWindow } from './utils/windowUtils.js';
-import { MEAL_TYPES, initializeMealCategories, loadCookingDays } from './utils/mealData.js';
-import { loadGlobalProduceMeasures } from './utils/unitResolver.js';
 import {
-  sortItemsByCategory,
   renderItemsWithCategoryHeaders
 } from './utils/sortByCategory.js';
 import { parseUnitPrice, getPriceUnitInfo, sheetSqFtFor } from "./utils/priceUtils.js";
-import { loadPurchases } from './utils/purchaseStorage.js';
-import { getIngredientMap, updateIngredient } from './utils/ingredientStorage.js';
-import {
-  loadArray as loadItemArray,
-  convertArrayToNames,
-  getItemId,
-  getItemNameMap
-} from './utils/itemStorage.js';
+import { getItemId } from './utils/itemStorage.js';
 import { resolveNextPrepWindow } from './utils/calendarUtils.js';
 import { formatQuantity, roundQuantity } from './utils/quantityFormat.js';
 import { getStoreNamesForItem } from './utils/storeCatalog.js';
 import { hydrateAverageEachWeights } from './utils/eachWeight.js';
+import {
+  fetchFinalSelection,
+  loadPriceCheckerState
+} from './utils/priceCheckerData.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -332,20 +325,6 @@ let resolveInit;
 const initReady = new Promise(resolve => {
   resolveInit = resolve;
 });
-
-function getFinal(itemName) {
-  const key = `final_${encodeURIComponent(itemName)}`;
-  return new Promise(resolve => {
-    chrome.storage.local.get([key], data => resolve(data[key]));
-  });
-}
-
-function getFinalProduct(itemName) {
-  const key = `final_product_${encodeURIComponent(itemName)}`;
-  return new Promise(resolve => {
-    chrome.storage.local.get([key], data => resolve(data[key]));
-  });
-}
 
 function storageKey(type, item, store) {
   return `${type}_${encodeURIComponent(item)}_${encodeURIComponent(store)}`;
@@ -749,145 +728,7 @@ function updateFinalInfo(itemName, span, img, store, product, map = weightPackMa
 async function init() {
   await initUomTable();
   chrome.storage.local.remove('storeSelections');
-  const {
-    needs,
-    consumption,
-    stock,
-    expiration,
-    consumed,
-    purchases,
-    mealYear,
-    mealMonth,
-    calendar,
-    mealsByCategory,
-    density,
-    cookingDays,
-    ingredientMap,
-    globalProduceMeasures
-  } = await getData();
-  const nameMap = await getItemNameMap();
-  itemNameToIdMap = nameMap || {};
-  itemIdToNameMap = {};
-  Object.entries(itemNameToIdMap).forEach(([name, id]) => {
-    if (id != null) {
-      itemIdToNameMap[String(id)] = name;
-    }
-  });
-  const normalizedNeeds = normalizeEntriesByName(needs);
-  densityMap = density;
-  ingredientMapData = ingredientMap || {};
-  globalProduceMeasuresData = globalProduceMeasures || {};
-  await hydrateAverageEachWeights(normalizedNeeds, {
-    ingredientMap: ingredientMapData,
-    densityMap,
-    globalProduceMeasures: globalProduceMeasuresData
-  }, { updateIngredient });
-  const consMap = mapByResolvedName(consumption, (c, key) =>
-    key === c.name ? c : { ...c, name: key }
-  );
-  const hasCalendar = calendar && Object.keys(calendar).length > 0;
-  mealMonthMap = mapByResolvedName(mealMonth, m => m.monthly_consumption);
-  mealPlanMonthMap = mapByResolvedName(mealMonth, m => m.monthly_consumption);
-  if (!hasCalendar) {
-    (mealMonth || []).forEach(m => {
-      const rec = lookupByNameOrId(consMap, m.name);
-      if (rec) rec.monthly_consumption += m.monthly_consumption;
-      else {
-        const key = resolvedNameKey(m.name);
-        if (!key) return;
-        consMap.set(key, {
-          name: key,
-          monthly_consumption: m.monthly_consumption
-        });
-      }
-    });
-  }
-  consumptionData = Array.from(consMap.values());
-  consumptionMap = consMap;
-  expirationData = expiration;
-  stockData = stock;
-  consumedYearData = consumed;
-  mealYearData = mealYear;
-  purchasesData = purchases;
-  calendarData = calendar;
-  mealsByCategoryData = mealsByCategory;
-  cookingDaysData = cookingDays || {};
-  const { week, isoDate } = getCurrentWeek();
-  const purchaseInfo = await calculatePurchaseNeeds(
-    needs,
-    consumption,
-    stock,
-    expiration,
-    consumed,
-    mealYear,
-    purchases,
-    week,
-    calendar,
-    mealsByCategory,
-    !hasCalendar,
-    densityMap,
-    isoDate
-  );
-  const normalizedPurchaseInfo = normalizeEntriesByName(purchaseInfo);
-  const displayNeeds = mergeNeedsWithPurchases(normalizedNeeds, normalizedPurchaseInfo);
-  needsData = displayNeeds;
-  const sortedNeeds = sortItemsByCategory(displayNeeds);
-  const purchaseMap = mapByResolvedName(normalizedPurchaseInfo);
-  const itemsContainer = document.getElementById('items');
-
-  renderItemsWithCategoryHeaders(sortedNeeds, itemsContainer, item => {
-    const li = document.createElement('li');
-    const needInfo = lookupByNameOrId(purchaseMap, item.name);
-    const needAmt = needInfo ? Math.round(needInfo.toBuy) : null;
-    const amountText =
-      needInfo && !isNaN(needAmt) ? needText(item.name, needAmt) : '';
-    const btn = document.createElement('button');
-    btn.textContent = item.name + amountText;
-    btn.addEventListener('click', () => {
-      openOrFocusWindow(`item.html?item=${encodeURIComponent(item.name)}`);
-    });
-    li.appendChild(btn);
-    const finalSpan = document.createElement('span');
-    const finalImg = document.createElement('img');
-    finalImg.className = 'final-product-img';
-    finalImg.width = 50;
-    finalImg.height = 50;
-    finalImg.style.display = 'none';
-    const hiddenByFilter = !passesNeedFilter(needAmt);
-    setFilterHidden(li, hiddenByFilter);
-    const rec = { li, btn, span: finalSpan, img: finalImg, needAmt, product: null, weightMap: null };
-    finalMap.set(item.name, rec);
-    getFinal(item.name).then(async store => {
-      const product = await getFinalProduct(item.name);
-      const stores = storeNamesForItem(item.name);
-      const weightMap = await buildWeightPackMap(item.name, stores);
-      if (product) {
-        const pInfo = getPackInfo(product, weightMap, item.name);
-        if (pInfo.count > 1) {
-          const wKey = weightKey(product, item.name);
-          if (
-            wKey &&
-            (!weightMap.has(wKey) || weightMap.get(wKey).count < pInfo.count)
-          ) {
-            weightMap.set(wKey, pInfo);
-          }
-        }
-      }
-      rec.product = product;
-      rec.weightMap = weightMap;
-      const amountText =
-        rec.needAmt != null && !isNaN(rec.needAmt)
-          ? needText(item.name, rec.needAmt, rec.product, rec.weightMap)
-          : '';
-      btn.textContent = item.name + amountText;
-      updateFinalInfo(item.name, finalSpan, finalImg, store, product, weightMap);
-    });
-    li.appendChild(finalSpan);
-    li.appendChild(finalImg);
-    // rec already stored in finalMap
-    return li;
-  }, headerState, { applyVisibility: applyRowVisibility });
-
+  await rerenderAll();
   resolveInit();
 }
 
@@ -927,130 +768,38 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   }
 });
 
-async function refreshNeeds(stock = stockData, consumed = consumedYearData) {
-  stockData = stock;
-  const hasCalendar = calendarData && Object.keys(calendarData).length > 0;
-  const { week, isoDate } = getCurrentWeek();
-  const purchaseInfo = await calculatePurchaseNeeds(
-    needsData,
-    consumptionData,
-    stock,
-    expirationData,
-    consumed,
-    mealYearData,
-    purchasesData,
-    week,
-    calendarData,
-    mealsByCategoryData,
-    !hasCalendar,
-    densityMap,
-    isoDate
-  );
-  const normalizedPurchaseInfo = normalizeEntriesByName(purchaseInfo);
-  const purchaseMap = mapByResolvedName(normalizedPurchaseInfo);
-  const text = filterText.trim().toLowerCase();
-  needsData.forEach(item => {
-    const rec = finalMap.get(item.name);
-    if (rec && rec.btn) {
-      const needInfo = lookupByNameOrId(purchaseMap, item.name);
-      const needAmt = needInfo ? Math.round(needInfo.toBuy) : null;
-      rec.needAmt = needAmt;
-      const amountText =
-        needInfo && !isNaN(needAmt)
-          ? needText(item.name, needAmt, rec.product, rec.weightMap)
-          : '';
-      rec.btn.textContent = item.name + amountText;
-      const match = !text || item.name.toLowerCase().includes(text);
-      const shouldShow = match && passesNeedFilter(needAmt);
-      const hiddenByFilter = !shouldShow;
-      setFilterHidden(rec.li, hiddenByFilter);
-    }
-  });
+async function refreshNeeds() {
+  await rerenderAll();
 }
 
 async function rerenderAll() {
   const scrollTop = window.scrollY;
-  const {
-    needs,
-    consumption,
-    stock,
-    expiration,
-    consumed,
-    purchases,
-    mealYear,
-    mealMonth,
-    calendar,
-    mealsByCategory,
-    cookingDays,
-    density,
-    ingredientMap,
-    globalProduceMeasures
-  } = await getData();
-  const normalizedNeeds = normalizeEntriesByName(needs);
-  densityMap = density || densityMap || {};
-  ingredientMapData = ingredientMap || ingredientMapData || {};
-  globalProduceMeasuresData = globalProduceMeasures || globalProduceMeasuresData || {};
-  await hydrateAverageEachWeights(normalizedNeeds, {
-    ingredientMap: ingredientMapData,
+  const state = await loadPriceCheckerState({ searchText: filterText });
+  ({
+    needsData,
+    consumptionData,
+    stockData,
+    expirationData,
+    consumedYearData,
+    mealYearData,
+    purchasesData,
+    calendarData,
+    mealsByCategoryData,
+    cookingDaysData,
     densityMap,
-    globalProduceMeasures: globalProduceMeasuresData
-  }, { updateIngredient });
-  const consMap = mapByResolvedName(consumption, (c, key) =>
-    key === c.name ? c : { ...c, name: key }
-  );
-  const hasCalendar = calendar && Object.keys(calendar).length > 0;
-  mealMonthMap = mapByResolvedName(mealMonth, m => m.monthly_consumption);
-  mealPlanMonthMap = mapByResolvedName(mealMonth, m => m.monthly_consumption);
-  if (!hasCalendar) {
-    (mealMonth || []).forEach(m => {
-      const rec = lookupByNameOrId(consMap, m.name);
-      if (rec) rec.monthly_consumption += m.monthly_consumption;
-      else {
-        const key = resolvedNameKey(m.name);
-        if (!key) return;
-        consMap.set(key, {
-          name: key,
-          monthly_consumption: m.monthly_consumption
-        });
-      }
-    });
-  }
-  consumptionData = Array.from(consMap.values());
-  consumptionMap = consMap;
-  expirationData = expiration;
-  stockData = stock;
-  consumedYearData = consumed;
-  mealYearData = mealYear;
-  purchasesData = purchases;
-  calendarData = calendar;
-  mealsByCategoryData = mealsByCategory;
-  cookingDaysData = cookingDays || {};
-  const { week, isoDate } = getCurrentWeek();
-  const purchaseInfo = await calculatePurchaseNeeds(
-    needs,
-    consumption,
-    stock,
-    expiration,
-    consumed,
-    mealYear,
-    purchases,
-    week,
-    calendar,
-    mealsByCategory,
-    !hasCalendar,
-    densityMap,
-    isoDate
-  );
-  const normalizedPurchaseInfo = normalizeEntriesByName(purchaseInfo);
-  const displayNeeds = mergeNeedsWithPurchases(normalizedNeeds, normalizedPurchaseInfo);
-  needsData = displayNeeds;
-  const sortedNeeds = sortItemsByCategory(displayNeeds);
-  const purchaseMap = mapByResolvedName(normalizedPurchaseInfo);
-  const text = filterText.trim().toLowerCase();
+    ingredientMapData,
+    globalProduceMeasuresData,
+    consumptionMap,
+    mealPlanMonthMap,
+    itemNameToIdMap,
+    itemIdToNameMap
+  } = state);
+
+  const purchaseMap = state.purchaseMap;
   const itemsContainer = document.getElementById('items');
   itemsContainer.innerHTML = '';
   finalMap.clear();
-  renderItemsWithCategoryHeaders(sortedNeeds, itemsContainer, item => {
+  renderItemsWithCategoryHeaders(state.sortedNeeds, itemsContainer, item => {
     const li = document.createElement('li');
     const needInfo = lookupByNameOrId(purchaseMap, item.name);
     const needAmt = needInfo ? Math.round(needInfo.toBuy) : null;
@@ -1068,14 +817,13 @@ async function rerenderAll() {
     finalImg.width = 50;
     finalImg.height = 50;
     finalImg.style.display = 'none';
-    const match = !text || item.name.toLowerCase().includes(text);
+    const match = !filterText || item.name.toLowerCase().includes(filterText.toLowerCase());
     const shouldShow = match && passesNeedFilter(needAmt);
     const hiddenByFilter = !shouldShow;
     setFilterHidden(li, hiddenByFilter);
     const rec = { li, btn, span: finalSpan, img: finalImg, needAmt, product: null, weightMap: null };
     finalMap.set(item.name, rec);
-    getFinal(item.name).then(async store => {
-      const product = await getFinalProduct(item.name);
+    fetchFinalSelection(item.name).then(async ({ store, product }) => {
       const stores = storeNamesForItem(item.name);
       const weightMap = await buildWeightPackMap(item.name, stores);
       if (product) {
@@ -1101,7 +849,6 @@ async function rerenderAll() {
     });
     li.appendChild(finalSpan);
     li.appendChild(finalImg);
-    // rec already stored in finalMap
     return li;
   }, headerState, { applyVisibility: applyRowVisibility });
   window.scrollTo(0, scrollTop);
@@ -1127,10 +874,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
       const rec = finalMap.get(item);
       if (rec) {
         initReady.then(() =>
-          Promise.all([
-            getFinal(item),
-            getFinalProduct(item)
-          ]).then(async ([store, product]) => {
+          fetchFinalSelection(item).then(async ({ store, product }) => {
             const { span, img, btn } = rec;
             const stores = storeNamesForItem(item);
             const weightMap = await buildWeightPackMap(item, stores);
@@ -1165,11 +909,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 
 async function loadCommitData(itemName) {
-  const [store, product] = await Promise.all([
-    getFinal(itemName),
-    getFinalProduct(itemName)
-  ]);
-  return { store, product };
+  return fetchFinalSelection(itemName);
 }
 
 
