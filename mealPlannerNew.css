@@ -29,8 +29,8 @@
 .hero-card__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--spacing-3);
-  margin-top: var(--spacing-4);
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-3);
 }
 
 .hero-card__panel {
