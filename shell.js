@@ -3,7 +3,6 @@ const tabs = [
   { id: 'inventory-timeline', label: 'Inventory Timeline', short: 'IT', src: 'inventoryTimelineNew.html' },
   { id: 'meal-planner', label: 'Meal Planner', short: 'MP', src: 'mealPlannerNew.html' },
   { id: 'calendar', label: 'Calendar', short: 'CA', src: 'whatToEatCalendar.html' },
-  { id: 'pack-count-repair', label: 'Pack Count Repair', short: 'PR', src: 'packCountRepair.html' },
 ];
 
 const LAST_TAB_KEY = 'shell:lastActiveTab';
