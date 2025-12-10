@@ -642,17 +642,12 @@ export async function loadPriceCheckerState({ searchText = '' } = {}) {
   const sortedNeeds = sortItemsByCategory(displayNeeds);
   const text = searchText.trim().toLowerCase();
 
-  const filteredNeeds = sortedNeeds
-    .map(category => ({
-      ...category,
-      items: category.items.filter(item => {
-        const needInfo = lookupByNameOrId(purchaseMap, item.name);
-        const needAmt = needInfo ? Math.round(needInfo.toBuy) : null;
-        const matchesSearch = !text || item.name.toLowerCase().includes(text);
-        return matchesSearch && passesNeedFilter(needAmt, false);
-      })
-    }))
-    .filter(cat => cat.items.length > 0);
+  const filteredNeeds = sortedNeeds.filter(item => {
+    const needInfo = lookupByNameOrId(purchaseMap, item.name);
+    const needAmt = needInfo ? Math.round(needInfo.toBuy) : null;
+    const matchesSearch = !text || item.name.toLowerCase().includes(text);
+    return matchesSearch && passesNeedFilter(needAmt, false);
+  });
 
   return {
     needsData: displayNeeds,
