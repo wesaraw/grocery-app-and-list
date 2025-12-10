@@ -1172,7 +1172,7 @@ document
   .addEventListener('click', openStoreTotals);
 
 function openEatCalendar() {
-  openOrFocusWindow('whatToEatCalendar.html');
+  openOrFocusWindow('whatToEatCalendarNew.html');
 }
 
 document

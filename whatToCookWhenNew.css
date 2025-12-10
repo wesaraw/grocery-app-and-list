@@ -1,0 +1,309 @@
+.cook-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-6);
+}
+
+.controls-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.section-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+}
+
+.control-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--spacing-4);
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-weight: 600;
+  color: var(--color-gray-700);
+}
+
+.input {
+  padding: 10px 12px;
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--radius-md);
+  background: white;
+  color: var(--color-gray-800);
+}
+
+.input:focus {
+  outline: 2px solid rgba(37, 99, 235, 0.3);
+  outline-offset: 2px;
+}
+
+.control-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--color-gray-100);
+  border: 1px dashed var(--color-gray-300);
+  border-radius: var(--radius-md);
+  color: var(--color-gray-700);
+}
+
+.plan-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.plan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--spacing-4);
+}
+
+.day-card {
+  background: white;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  padding: var(--spacing-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.day-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+}
+
+.day-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-gray-900);
+}
+
+.day-label {
+  padding: 6px 10px;
+  background: var(--color-blue-100);
+  color: var(--color-blue-600);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  border-radius: 999px;
+  font-size: var(--text-small);
+  font-weight: 600;
+}
+
+.day-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.meal-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.meal-section h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--color-gray-800);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-chip {
+  background: var(--color-gray-100);
+  color: var(--color-gray-700);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  padding: 4px 10px;
+  font-size: var(--text-small);
+  font-weight: 600;
+}
+
+.meal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--spacing-3);
+}
+
+.meal-block {
+  background: var(--color-gray-50);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  height: 100%;
+}
+
+.meal-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.meal-title {
+  font-weight: 700;
+  color: var(--color-gray-900);
+  margin: 0;
+}
+
+.meal-instructions-btn {
+  font-size: var(--text-small);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-blue-100);
+  background: var(--color-blue-100);
+  color: var(--color-blue-600);
+  cursor: pointer;
+}
+
+.meal-instructions-btn:hover {
+  background: #cfe1ff;
+}
+
+.meal-instructions-btn--empty {
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.leftover-detail {
+  font-size: var(--text-small);
+  color: var(--color-gray-600);
+  margin: 0;
+}
+
+.meal-part-label {
+  font-size: var(--text-small);
+  font-weight: 700;
+  color: var(--color-gray-800);
+}
+
+.ingredient-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.ingredient-entry {
+  background: white;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.ingredient-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+}
+
+.ingredient-name {
+  font-weight: 700;
+  color: var(--color-gray-900);
+}
+
+.ingredient-amount {
+  font-weight: 600;
+  color: var(--color-gray-800);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.user-breakdown {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.user-breakdown-item {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  font-size: var(--text-small);
+  color: var(--color-gray-700);
+}
+
+.user-name {
+  font-weight: 600;
+}
+
+.user-amount {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.no-ingredients,
+.empty-group {
+  font-size: var(--text-body);
+  color: var(--color-gray-500);
+}
+
+.helper-text {
+  color: var(--color-gray-600);
+}
+
+.legacy-backend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media print {
+  body {
+    background: white;
+  }
+
+  .app-header,
+  .controls-card,
+  #printBtn,
+  #showBtn,
+  #eatViewBtn,
+  .helper-text {
+    display: none !important;
+  }
+
+  .plan-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .day-card,
+  .meal-block,
+  .ingredient-entry {
+    box-shadow: none;
+    border-color: var(--color-gray-300);
+  }
+}

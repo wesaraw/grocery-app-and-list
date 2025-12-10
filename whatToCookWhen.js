@@ -1163,7 +1163,7 @@ function openEatView() {
   const days = document.getElementById('numDays').value;
   if (start) params.set('start', start);
   if (days) params.set('days', days);
-  const url = 'whatToEatCalendar.html' + (params.toString() ? '?' + params.toString() : '');
+  const url = 'whatToEatCalendarNew.html' + (params.toString() ? '?' + params.toString() : '');
   if (chrome.runtime?.getURL) {
     openOrFocusWindow(url);
   } else {

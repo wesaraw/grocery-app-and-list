@@ -461,7 +461,7 @@ document.getElementById('openCooking').addEventListener('click', () => {
 });
 
 document.getElementById('openCalendar').addEventListener('click', () => {
-  openOrFocusWindow('whatToEatCalendar.html');
+  openOrFocusWindow('whatToEatCalendarNew.html');
 });
 
 document.getElementById('importMeals').addEventListener('click', () => {

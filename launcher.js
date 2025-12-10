@@ -23,5 +23,5 @@ document.getElementById('open-meal-planner').addEventListener('click', () => {
 });
 
 document.getElementById('open-calendar').addEventListener('click', () => {
-  openWindow('whatToEatCalendar.html');
+  openWindow('whatToEatCalendarNew.html');
 });

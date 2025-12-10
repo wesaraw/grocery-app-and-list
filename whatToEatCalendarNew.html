@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>What To Eat Calendar (Redesigned)</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="whatToEatCalendarNew.css">
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <p class="eyebrow">Meals &amp; planning</p>
+      <div class="app-header__title">What To Eat calendar</div>
+      <p class="body-text helper-text">Modern calendar surface powered by the existing meal planner backend.</p>
+    </div>
+    <div class="app-header__actions">
+      <button type="button" class="btn btn-secondary" id="openLegacy">Open legacy view</button>
+    </div>
+  </header>
+
+  <main class="page calendar-page">
+    <section class="section-card controls-card">
+      <div class="section-title">
+        <span>Calendar inputs</span>
+        <div class="section-actions">
+          <button type="button" class="btn btn-primary" id="showBtn">Refresh calendar</button>
+          <button type="button" class="btn btn-secondary" id="cookViewBtn">What to cook when</button>
+        </div>
+      </div>
+
+      <div class="control-grid">
+        <label class="form-field">
+          <span class="form-label">User</span>
+          <select id="userSelect" class="input"></select>
+        </label>
+        <label class="form-field">
+          <span class="form-label">Start date</span>
+          <input id="startDate" type="date" class="input" />
+        </label>
+        <label class="form-field">
+          <span class="form-label">Number of days</span>
+          <input id="numDays" type="number" class="input" value="7" min="1" max="365" />
+        </label>
+      </div>
+
+      <div class="control-note">
+        <span>Use the buttons to pull fresh meals from storage and pivot to the cooking schedule without leaving this view.</span>
+      </div>
+    </section>
+
+    <section class="section-card">
+      <div class="section-title">
+        <span>Calendar</span>
+      </div>
+      <div class="table-wrapper">
+        <table class="calendar-table">
+          <thead id="tableHead"></thead>
+          <tbody id="calendarBody"></tbody>
+        </table>
+      </div>
+      <div class="calendar-actions">
+        <div class="helper-text">Use the header arrows to reorder columns, then save to persist your layout.</div>
+        <button type="button" class="btn btn-secondary" id="reorderBtn">Reorder columns</button>
+        <button type="button" class="btn btn-primary hidden" id="saveOrderBtn">Save order</button>
+      </div>
+    </section>
+  </main>
+
+  <iframe id="legacyWhatToEatBackend" class="legacy-backend" src="whatToEatCalendar.html" title="Legacy What To Eat calendar backend" tabindex="-1"></iframe>
+
+  <script type="module">
+    import { openOrFocusWindow } from './utils/windowUtils.js';
+    const legacyBtn = document.getElementById('openLegacy');
+    if (legacyBtn) {
+      legacyBtn.addEventListener('click', () => openOrFocusWindow('whatToEatCalendar.html'));
+    }
+  </script>
+  <script type="module" src="whatToEatCalendar.js"></script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>What To Cook Now (Redesigned)</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="whatToCookWhenNew.css">
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <p class="eyebrow">Meals &amp; prep</p>
+      <div class="app-header__title">What To Cook Now</div>
+      <p class="body-text helper-text">Front-end refresh powered by the existing cooking plan backend.</p>
+    </div>
+    <div class="app-header__actions">
+      <button type="button" class="btn btn-secondary" id="openLegacy">Open legacy view</button>
+    </div>
+  </header>
+
+  <main class="page cook-page">
+    <section class="section-card controls-card">
+      <div class="section-title">
+        <span>Plan inputs</span>
+        <div class="section-actions">
+          <button type="button" class="btn btn-primary" id="showBtn">Show plan</button>
+          <button type="button" class="btn btn-secondary" id="printBtn">Print plan</button>
+          <button type="button" class="btn btn-secondary" id="eatViewBtn">What to eat calendar</button>
+        </div>
+      </div>
+
+      <p class="helper-text">Choose your starting date and range, then generate a cook-now schedule that keeps prep, leftovers, and servings aligned.</p>
+
+      <div class="control-grid">
+        <label class="form-field">
+          <span class="form-label">Start date</span>
+          <input type="date" id="startDate" class="input" />
+        </label>
+        <label class="form-field">
+          <span class="form-label">Number of days</span>
+          <input type="number" id="numDays" class="input" value="7" min="1" max="365" />
+        </label>
+      </div>
+
+      <div class="control-note">
+        <span>Refresh to pull the latest plan data. Print keeps the same layout but hides the controls.</span>
+      </div>
+    </section>
+
+    <section class="section-card plan-card">
+      <div class="section-title">
+        <span>Cooking plan</span>
+      </div>
+      <p class="helper-text">Each day groups prep-ahead items and day-of cooking with ingredient breakdowns by person.</p>
+      <div id="planList" class="plan-grid" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <iframe id="legacyWhatToCookBackend" class="legacy-backend" src="whatToCookWhen.html" title="Legacy What To Cook backend" tabindex="-1"></iframe>
+
+  <script type="module">
+    import { openOrFocusWindow } from './utils/windowUtils.js';
+    const legacyBtn = document.getElementById('openLegacy');
+    if (legacyBtn) {
+      legacyBtn.addEventListener('click', () => openOrFocusWindow('whatToCookWhen.html'));
+    }
+  </script>
+  <script type="module" src="whatToCookWhen.js"></script>
+</body>
+</html>

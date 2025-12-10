@@ -1,0 +1,175 @@
+.calendar-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-6);
+}
+
+.controls-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-5);
+}
+
+.section-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+}
+
+.control-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: var(--spacing-4);
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-weight: 600;
+  color: var(--color-gray-700);
+}
+
+.control-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--color-gray-100);
+  border: 1px dashed var(--color-gray-300);
+  border-radius: var(--radius-md);
+  color: var(--color-gray-700);
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-lg);
+}
+
+.calendar-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+  background: white;
+}
+
+.calendar-table thead th {
+  text-align: left;
+  padding: 12px 14px;
+  font-weight: 700;
+  color: var(--color-gray-800);
+  border-bottom: 1px solid var(--color-gray-200);
+  background: var(--color-gray-50);
+}
+
+.calendar-table tbody td {
+  padding: 12px 14px;
+  vertical-align: top;
+  border-bottom: 1px solid var(--color-gray-100);
+}
+
+.calendar-table tbody tr:hover td {
+  background: #f8fbff;
+}
+
+.calendar-table .leftover-slot {
+  background: rgba(37, 99, 235, 0.06);
+}
+
+.calendar-table .cook-with-leftover {
+  color: var(--color-gray-600);
+  font-style: italic;
+}
+
+.meal-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.95rem;
+}
+
+.meal-img {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-gray-200);
+  background: var(--color-gray-100);
+  display: block;
+}
+
+.nutrient-points {
+  align-self: flex-start;
+  background: rgba(37, 99, 235, 0.12);
+  border-radius: 16px;
+  color: var(--color-blue-600);
+  font-size: var(--text-small);
+  font-weight: 700;
+  padding: 4px 10px;
+}
+
+.nutrient-toggle {
+  margin-top: 8px;
+  padding: 6px 10px;
+  font-size: var(--text-small);
+  background: white;
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--radius-md);
+  color: var(--color-gray-700);
+  cursor: pointer;
+}
+
+.nutrient-breakdown-row td {
+  background: var(--color-gray-50);
+}
+
+.nutrient-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  font-size: var(--text-small);
+  line-height: 1.45;
+}
+
+.nutrient-line {
+  min-width: 180px;
+}
+
+.nutrient-label {
+  font-weight: 700;
+  color: var(--color-gray-800);
+}
+
+.nutrient-value {
+  color: var(--color-gray-600);
+}
+
+.calendar-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-4);
+}
+
+.helper-text {
+  color: var(--color-gray-600);
+}
+
+.hidden {
+  display: none !important;
+}
+
+.legacy-backend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}

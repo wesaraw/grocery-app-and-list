@@ -645,7 +645,7 @@ function openCookView() {
   const days = document.getElementById('numDays').value;
   if (start) params.set('start', start);
   if (days) params.set('days', days);
-  const url = 'whatToCookWhen.html' + (params.toString() ? '?' + params.toString() : '');
+  const url = 'whatToCookWhenNew.html' + (params.toString() ? '?' + params.toString() : '');
   if (chrome.runtime?.getURL) {
     openOrFocusWindow(url);
   } else {

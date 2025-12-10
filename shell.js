@@ -2,7 +2,7 @@ const tabs = [
   { id: 'price-checker', label: 'Price Checker', short: 'PC', src: 'priceCheckerNew.html' },
   { id: 'inventory-timeline', label: 'Inventory Timeline', short: 'IT', src: 'inventoryTimelineNew.html' },
   { id: 'meal-planner', label: 'Meal Planner', short: 'MP', src: 'mealPlannerNew.html' },
-  { id: 'calendar', label: 'Calendar', short: 'CA', src: 'whatToEatCalendar.html' },
+  { id: 'calendar', label: 'Calendar', short: 'CA', src: 'whatToEatCalendarNew.html' },
 ];
 
 const LAST_TAB_KEY = 'shell:lastActiveTab';
