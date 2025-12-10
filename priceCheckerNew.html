@@ -39,8 +39,8 @@
   </section>
 
   <template id="categoryCardTemplate">
-    <div class="category-block is-open">
-      <div class="category-card price-checker collapsible" role="button" tabindex="0" aria-expanded="true">
+    <div class="category-block is-collapsed">
+      <div class="category-card price-checker collapsible" role="button" tabindex="0" aria-expanded="false">
         <div class="category-card__icon image-thumb image-thumb--sm" aria-hidden="true">
           <span class="image-thumb__fallback">🏷️</span>
         </div>
@@ -53,7 +53,7 @@
         </div>
         <div class="category-card__chevron">⌄</div>
       </div>
-      <div class="category-card__children purchase-grid"></div>
+      <div class="category-card__children purchase-grid is-collapsed"></div>
     </div>
   </template>
 

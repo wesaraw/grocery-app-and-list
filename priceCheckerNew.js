@@ -38,14 +38,32 @@ function createCategoryCard(category) {
   card.querySelector('.count').textContent = category.items.length;
   const needCount = category.items.filter(item => item.needAmount > 0).length;
   card.querySelector('.need-count').textContent = needCount;
+
+  let hasRenderedChildren = false;
+
+  const renderChildren = () => {
+    if (hasRenderedChildren) return;
+    children.classList.toggle('show-zero', showAllToggle.checked);
+    category.items.forEach(item => {
+      const node = createPurchaseCard(item);
+      if (node) children.appendChild(node);
+    });
+    hasRenderedChildren = true;
+  };
+
   const setOpenState = (isOpen) => {
     wrapper.classList.toggle('is-open', isOpen);
+    wrapper.classList.toggle('is-collapsed', !isOpen);
     card.classList.toggle('is-open', isOpen);
     children.classList.toggle('is-collapsed', !isOpen);
     card.setAttribute('aria-expanded', String(isOpen));
+
+    if (isOpen) {
+      renderChildren();
+    }
   };
 
-  setOpenState(true);
+  setOpenState(false);
 
   card.addEventListener('click', () => {
     setOpenState(!wrapper.classList.contains('is-open'));
@@ -60,13 +78,6 @@ function createCategoryCard(category) {
   const icon = card.querySelector('.category-card__icon');
   const topImage = category.items.find(item => item.productImage);
   applyThumbnail(icon, topImage?.productImage, category.name, '🏷️');
-
-  const grid = children;
-  grid.classList.toggle('show-zero', showAllToggle.checked);
-  category.items.forEach(item => {
-    const node = createPurchaseCard(item);
-    if (node) grid.appendChild(node);
-  });
 
   return fragment;
 }

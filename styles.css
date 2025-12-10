@@ -476,6 +476,11 @@ a:hover {
   gap: var(--spacing-3);
 }
 
+.category-card__children,
+.category-card__children.is-collapsed {
+  display: none;
+}
+
 @media (min-width: 900px) {
   .category-stack {
     gap: var(--spacing-4);
