@@ -14,10 +14,6 @@ document.getElementById('open-price-checker').addEventListener('click', () => {
   openWindow('priceCheckerNew.html');
 });
 
-document.getElementById('open-price-checker-legacy').addEventListener('click', () => {
-  openWindow('popup.html');
-});
-
 document.getElementById('open-inventory-timeline').addEventListener('click', () => {
   openWindow('inventoryTimeline.html');
 });

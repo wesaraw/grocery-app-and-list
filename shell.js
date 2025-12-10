@@ -1,11 +1,5 @@
 const tabs = [
   { id: 'price-checker', label: 'Price Checker', short: 'PC', src: 'priceCheckerNew.html' },
-  {
-    id: 'price-checker-legacy',
-    label: 'Price Checker (Legacy)',
-    short: 'PCL',
-    src: 'popup.html',
-  },
   { id: 'inventory-timeline', label: 'Inventory Timeline', short: 'IT', src: 'inventoryTimelineNew.html' },
   { id: 'meal-planner', label: 'Meal Planner', short: 'MP', src: 'mealPlanner.html' },
   { id: 'calendar', label: 'Calendar', short: 'CA', src: 'whatToEatCalendar.html' },
