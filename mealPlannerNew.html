@@ -26,8 +26,7 @@
         <h1>Plan meals with confidence</h1>
         <p class="body-text">Use curated lists, schedule cooking days, and keep the calendar aligned—all backed by the classic planner logic.</p>
         <div class="hero-card__actions">
-          <button type="button" class="btn btn-primary" data-backend-action="openLists">View meal lists</button>
-          <button type="button" class="btn btn-secondary" data-backend-action="openCalendar">Open calendar</button>
+          <button type="button" class="btn btn-primary" data-backend-action="openCalendar">Open calendar</button>
         </div>
       </div>
       <div class="hero-card__panel">
@@ -41,7 +40,6 @@
         <ul class="hero-list">
           <li>One-click calendar and cooking day access</li>
           <li>Legacy Mealime and XML import flows preserved</li>
-          <li>Users and thresholds continue to run in the background</li>
         </ul>
       </div>
     </section>
@@ -60,18 +58,6 @@
           </div>
           <div class="feature-card__actions">
             <button type="button" class="btn btn-primary" data-backend-action="openLists">Open lists</button>
-          </div>
-        </article>
-
-        <article class="feature-card">
-          <div class="feature-card__icon" aria-hidden="true">👥</div>
-          <div class="feature-card__content">
-            <h3>Users</h3>
-            <p>Jump to user settings, price thresholds, and calendar rebuild tools.</p>
-          </div>
-          <div class="feature-card__actions">
-            <button type="button" class="btn btn-secondary" data-backend-action="openUsers">Manage users</button>
-            <button type="button" class="btn btn-ghost" id="openThreshold">Price threshold</button>
           </div>
         </article>
 
@@ -173,38 +159,6 @@
       <footer class="modal__footer">
         <p class="helper-text">Both XML uploads and Mealime fetches use the classic backend for processing.</p>
         <button type="button" class="btn btn-ghost" data-close-import>Cancel</button>
-      </footer>
-    </div>
-  </div>
-
-  <div class="modal" id="thresholdModal" role="dialog" aria-modal="true" aria-labelledby="thresholdModalTitle" hidden>
-    <div class="modal__backdrop" data-close-threshold></div>
-    <div class="modal__dialog">
-      <header class="modal__header">
-        <div>
-          <p class="eyebrow">Users</p>
-          <h2 id="thresholdModalTitle">Price threshold</h2>
-          <p class="body-text">Adjust per-user thresholds and rebuild calendars using the legacy logic.</p>
-        </div>
-        <button type="button" class="btn btn-ghost" aria-label="Close" data-close-threshold>Close</button>
-      </header>
-      <div class="modal__body">
-        <label for="thresholdUserSelect">User</label>
-        <select id="thresholdUserSelect" class="input"></select>
-
-        <label for="thresholdValue">Price threshold ($)</label>
-        <input id="thresholdValue" type="number" step="0.01" min="0" class="input" />
-
-        <p class="helper-text">Changes use the existing save and calendar rebuild flows from the classic planner.</p>
-        <div id="thresholdStatus" class="status-block" role="status"></div>
-      </div>
-      <footer class="modal__footer">
-        <div class="btn-group">
-          <button type="button" class="btn btn-secondary" id="saveThreshold">Save threshold</button>
-          <button type="button" class="btn btn-ghost" id="rebuildThreshold">Rebuild calendar</button>
-          <button type="button" class="btn btn-ghost" id="resyncThreshold">Resync future days</button>
-        </div>
-        <button type="button" class="btn btn-ghost" data-close-threshold>Cancel</button>
       </footer>
     </div>
   </div>

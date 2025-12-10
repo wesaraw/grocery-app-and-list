@@ -2,10 +2,6 @@ import { openOrFocusWindow } from './utils/windowUtils.js';
 
 const backendFrame = document.getElementById('legacyMealPlannerBackend');
 const backendStatus = document.getElementById('backendStatus');
-const thresholdModal = document.getElementById('thresholdModal');
-const thresholdUserSelect = document.getElementById('thresholdUserSelect');
-const thresholdValueInput = document.getElementById('thresholdValue');
-const thresholdStatus = document.getElementById('thresholdStatus');
 const importModal = document.getElementById('importModal');
 const importStatus = document.getElementById('importStatus');
 const mealimeUrlInput = document.getElementById('mealimeUrlInput');
@@ -57,13 +53,6 @@ function waitForBackendReady() {
   });
 }
 
-function setThresholdStatus(text, tone = 'muted') {
-  if (!thresholdStatus) return;
-  const toneClass = tone === 'success' ? 'status-block--success' : tone === 'danger' ? 'status-block--danger' : '';
-  thresholdStatus.textContent = text;
-  thresholdStatus.className = `status-block ${toneClass}`.trim();
-}
-
 function setStatusBlock(el, text, tone = 'muted') {
   if (!el) return;
   const toneClass = tone === 'success' ? 'status-block--success' : tone === 'danger' ? 'status-block--danger' : '';
@@ -90,72 +79,6 @@ function triggerBackend(actionId) {
   } else {
     openOrFocusWindow('mealPlanner.html');
   }
-}
-
-function syncThresholdUsersFromBackend() {
-  const backendDoc = getBackendDocument();
-  const backendUserSelect = backendDoc?.getElementById('thresholdUser');
-  if (!backendUserSelect || !thresholdUserSelect) return false;
-
-  thresholdUserSelect.innerHTML = '';
-  Array.from(backendUserSelect.options).forEach(option => {
-    const opt = document.createElement('option');
-    opt.value = option.value;
-    opt.textContent = option.textContent;
-    thresholdUserSelect.appendChild(opt);
-  });
-
-  if (thresholdUserSelect.options.length) {
-    const active = backendUserSelect.value || thresholdUserSelect.options[0].value;
-    thresholdUserSelect.value = active;
-  }
-
-  return true;
-}
-
-function syncThresholdValueFromBackend() {
-  const backendDoc = getBackendDocument();
-  const backendUserSelect = backendDoc?.getElementById('thresholdUser');
-  const backendInput = backendDoc?.getElementById('priceThreshold');
-
-  if (!backendUserSelect || !backendInput || !thresholdUserSelect || !thresholdValueInput) return false;
-
-  backendUserSelect.value = thresholdUserSelect.value;
-  backendUserSelect.dispatchEvent(new Event('change', { bubbles: true }));
-  thresholdValueInput.value = backendInput.value || '';
-  return true;
-}
-
-function pushThresholdValueToBackend() {
-  const backendDoc = getBackendDocument();
-  const backendUserSelect = backendDoc?.getElementById('thresholdUser');
-  const backendInput = backendDoc?.getElementById('priceThreshold');
-
-  if (!backendUserSelect || !backendInput || !thresholdUserSelect || !thresholdValueInput) return false;
-
-  backendUserSelect.value = thresholdUserSelect.value;
-  backendUserSelect.dispatchEvent(new Event('change', { bubbles: true }));
-  backendInput.value = thresholdValueInput.value || '';
-  backendInput.dispatchEvent(new Event('input', { bubbles: true }));
-  return true;
-}
-
-function runThresholdAction(buttonId, successMessage) {
-  const backendDoc = getBackendDocument();
-  const button = backendDoc?.getElementById(buttonId);
-  if (!button) {
-    setThresholdStatus('Legacy threshold action unavailable.', 'danger');
-    return;
-  }
-
-  const pushed = pushThresholdValueToBackend();
-  if (!pushed) {
-    setThresholdStatus('Unable to sync values to the backend.', 'danger');
-    return;
-  }
-
-  button.click();
-  setThresholdStatus(successMessage, 'success');
 }
 
 function wireBackendStatus() {
@@ -193,69 +116,6 @@ function wireActions() {
   openLegacyButtons.forEach(btn => {
     btn.addEventListener('click', () => openOrFocusWindow('mealPlanner.html'));
   });
-}
-
-function closeThresholdModal() {
-  if (thresholdModal) thresholdModal.hidden = true;
-}
-
-async function openThresholdModal() {
-  if (!thresholdModal) return;
-  thresholdModal.hidden = false;
-  setThresholdStatus('Connecting to legacy backend…');
-
-  try {
-    await waitForBackendReady();
-  } catch (error) {
-    setThresholdStatus(error?.message || 'Legacy backend unavailable.', 'danger');
-    return;
-  }
-
-  const hasUsers = syncThresholdUsersFromBackend();
-  if (!hasUsers) {
-    setThresholdStatus('User list unavailable from legacy planner.', 'danger');
-    return;
-  }
-
-  const synced = syncThresholdValueFromBackend();
-  if (!synced) {
-    setThresholdStatus('Unable to read threshold values.', 'danger');
-    return;
-  }
-
-  setThresholdStatus('Connected to legacy backend.');
-}
-
-function wireThresholdModal() {
-  const openBtn = document.getElementById('openThreshold');
-  if (openBtn) {
-    openBtn.addEventListener('click', openThresholdModal);
-  }
-
-  thresholdUserSelect?.addEventListener('change', () => {
-    syncThresholdValueFromBackend();
-    setThresholdStatus('User selection synced to backend.');
-  });
-
-  thresholdValueInput?.addEventListener('input', () => {
-    pushThresholdValueToBackend();
-  });
-
-  document.querySelectorAll('[data-close-threshold]').forEach(btn => {
-    btn.addEventListener('click', closeThresholdModal);
-  });
-
-  document.getElementById('saveThreshold')?.addEventListener('click', () =>
-    runThresholdAction('saveThresholdBtn', 'Threshold saved via legacy planner.')
-  );
-
-  document.getElementById('rebuildThreshold')?.addEventListener('click', () =>
-    runThresholdAction('rebuildCalendarBtn', 'Calendar rebuild started in legacy planner.')
-  );
-
-  document.getElementById('resyncThreshold')?.addEventListener('click', () =>
-    runThresholdAction('resyncCalendarBtn', 'Calendar resync started in legacy planner.')
-  );
 }
 
 function updateImportStatusFromBackend() {
@@ -531,5 +391,4 @@ function wireImportModal() {
 
 wireBackendStatus();
 wireActions();
-wireThresholdModal();
 wireImportModal();
