@@ -681,6 +681,12 @@ async function init() {
   document.getElementById('cookViewBtn').addEventListener('click', openCookView);
   document.getElementById('reorderBtn').addEventListener('click', startReorder);
   document.getElementById('saveOrderBtn').addEventListener('click', saveOrder);
+
+  const legacyButton = document.getElementById('openLegacy');
+  if (legacyButton) {
+    legacyButton.addEventListener('click', () => openOrFocusWindow('whatToEatCalendar.html'));
+  }
+
   userSelect.addEventListener('change', () => {
     applySavedOrderForUser(userSelect.value);
     buildHeader(editMode);

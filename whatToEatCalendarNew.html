@@ -69,13 +69,6 @@
 
   <iframe id="legacyWhatToEatBackend" class="legacy-backend" src="whatToEatCalendar.html" title="Legacy What To Eat calendar backend" tabindex="-1"></iframe>
 
-  <script type="module">
-    import { openOrFocusWindow } from './utils/windowUtils.js';
-    const legacyBtn = document.getElementById('openLegacy');
-    if (legacyBtn) {
-      legacyBtn.addEventListener('click', () => openOrFocusWindow('whatToEatCalendar.html'));
-    }
-  </script>
   <script type="module" src="whatToEatCalendar.js"></script>
 </body>
 </html>

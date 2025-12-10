@@ -59,13 +59,6 @@
 
   <iframe id="legacyWhatToCookBackend" class="legacy-backend" src="whatToCookWhen.html" title="Legacy What To Cook backend" tabindex="-1"></iframe>
 
-  <script type="module">
-    import { openOrFocusWindow } from './utils/windowUtils.js';
-    const legacyBtn = document.getElementById('openLegacy');
-    if (legacyBtn) {
-      legacyBtn.addEventListener('click', () => openOrFocusWindow('whatToCookWhen.html'));
-    }
-  </script>
   <script type="module" src="whatToCookWhen.js"></script>
 </body>
 </html>

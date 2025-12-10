@@ -1201,6 +1201,11 @@ async function init() {
   document.getElementById('showBtn').addEventListener('click', update);
   document.getElementById('eatViewBtn').addEventListener('click', openEatView);
 
+  const legacyButton = document.getElementById('openLegacy');
+  if (legacyButton) {
+    legacyButton.addEventListener('click', () => openOrFocusWindow('whatToCookWhen.html'));
+  }
+
   if (printButton) {
     printButton.addEventListener('click', () => {
       update();
