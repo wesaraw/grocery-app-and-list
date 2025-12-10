@@ -15,14 +15,7 @@ const openLegacy = document.getElementById('openLegacy');
 let cachedSnapshot = null;
 const finalSelectionCache = new Map();
 const categoryItemsCache = new Map();
-
-function deriveCategoryThumbnail(items = [], fallback = null) {
-  for (const item of items) {
-    const image = resolveItemImage(item, fallback);
-    if (image) return image;
-  }
-  return fallback;
-}
+const categoryThumbCache = new Map();
 
 async function fetchCategoryItems(categoryName, { includeZero, searchText }) {
   const normalizedSearch = normalizeSearchText(searchText);
@@ -57,35 +50,48 @@ function createCategoryCard(category) {
   const icon = card.querySelector('.category-card__image');
   const totalCount = category.itemCount ?? 0;
   const needCount = category.needCount ?? 0;
+  let headerImage = categoryThumbCache.get(category.name) || null;
 
   card.querySelector('.category-card__title').textContent = category.name;
   card.querySelector('.count').textContent = totalCount;
   card.querySelector('.need-count').textContent = needCount;
 
   let lastRenderKey = '';
-  let hasLoadedImages = false;
 
-  const ensureImagesForItems = async items => {
-    if (hasLoadedImages) return items;
+  applyImageThumb(icon, headerImage, category.name, '🏷️');
+
+  const hydrateItemImages = async items => {
+    const imageTargets = new Map(
+      Array.from(children.querySelectorAll('.purchase-card'))
+        .map(node => [node.dataset.itemName, node.querySelector('.purchase-card__image')])
+    );
+
+    let derivedHeaderImage = headerImage;
+
     await Promise.all(
       items.map(async item => {
-        if (item.productImage) return item;
-        if (finalSelectionCache.has(item.name)) {
-          item.productImage = finalSelectionCache.get(item.name);
-          return item;
+        let image = item.productImage || finalSelectionCache.get(item.name);
+        if (!image) {
+          const { product } = await fetchFinalSelection(item.name);
+          image = product?.image || null;
+          if (image) {
+            item.productImage = image;
+            item.finalProduct = product;
+            finalSelectionCache.set(item.name, image);
+          }
         }
-        const { product } = await fetchFinalSelection(item.name);
-        const image = product?.image;
-        if (image) {
-          item.productImage = image;
-          item.finalProduct = product;
-          finalSelectionCache.set(item.name, image);
-        }
-        return item;
+
+        const target = imageTargets.get(item.name);
+        if (target) applyImageThumb(target, image, item.name, '🛒');
+        if (!derivedHeaderImage && image) derivedHeaderImage = image;
       })
     );
-    hasLoadedImages = true;
-    return items;
+
+    if (derivedHeaderImage) {
+      categoryThumbCache.set(category.name, derivedHeaderImage);
+      headerImage = derivedHeaderImage;
+      applyImageThumb(icon, headerImage, category.name, '🏷️');
+    }
   };
 
   const renderChildren = async () => {
@@ -108,15 +114,14 @@ function createCategoryCard(category) {
       return;
     }
 
-    const hydratedItems = await ensureImagesForItems(filtered);
     children.classList.toggle('show-zero', includeZero);
-    hydratedItems.forEach(item => {
+    filtered.forEach(item => {
       const node = createPurchaseCard(item);
       if (node) children.appendChild(node);
     });
-    const categoryImage = deriveCategoryThumbnail(hydratedItems);
-    applyImageThumb(icon, categoryImage, category.name, '🏷️');
     lastRenderKey = renderKey;
+
+    hydrateItemImages(filtered);
   };
 
   const setOpenState = async (isOpen) => {
@@ -150,6 +155,7 @@ function createCategoryCard(category) {
 function createPurchaseCard(item) {
   const fragment = purchaseTemplate.content.cloneNode(true);
   const card = fragment.querySelector('.purchase-card');
+  card.dataset.itemName = item.name;
   if (!(item.needAmount > 0)) {
     card.classList.add('is-zero');
   }
