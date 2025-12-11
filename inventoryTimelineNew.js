@@ -34,17 +34,26 @@ function snapshotFor(item) {
   const weeks = simulateItem(item, overrides);
   const weekIndex = Math.min(Math.max(state.currentWeek, 1), weeks.length) - 1;
   const current = weeks[weekIndex] || {};
-  const runoutIndex = weeks.findIndex((w) => w.rawQty <= 0);
-  const coverageWeeks =
-    runoutIndex === -1 ? null : Math.max(runoutIndex - weekIndex, 0);
+  const weeklyConsumption = Number(item.weekly_consumption) || 0;
+  const rawQty = current.rawQty ?? 0;
+  const expiresInWeeks = Math.min(Math.max(current.weeksToExpiration ?? 0, 0), 52);
+  const qtyCoverage = weeklyConsumption > 0 ? rawQty / weeklyConsumption : null;
+  const coverageWeeks = (() => {
+    if (weeklyConsumption <= 0) {
+      return Math.floor(expiresInWeeks);
+    }
+    const candidates = [qtyCoverage, expiresInWeeks].filter((value) => Number.isFinite(value) && value > 0);
+    if (!candidates.length) return 0;
+    return Math.max(Math.floor(Math.min(...candidates)), 0);
+  })();
   const snapshot = {
     weeks,
     status: current.cls || 'red',
     qtyLabel: current.qty || '0',
-    rawQty: current.rawQty ?? 0,
-    expiresInWeeks: current.weeksToExpiration ?? 0,
+    rawQty,
+    expiresInWeeks,
     coverageWeeks,
-    weeklyConsumption: item.weekly_consumption || 0,
+    weeklyConsumption,
   };
   state.snapshots.set(item.name, snapshot);
   return snapshot;
@@ -92,16 +101,13 @@ function renderItemCard(item, fallbackImage) {
 
   const statusMeta = deriveStatusMeta(snap);
   const statusPill = buildStatusPill(statusMeta.label, statusMeta.tone);
-  const coverageLabel = snap.coverageWeeks === null
-    ? 'Coverage n/a'
-    : `${snap.coverageWeeks} wk${snap.coverageWeeks === 1 ? '' : 's'} of cover`;
-  const coverageTone = snap.coverageWeeks === null
-    ? 'neutral'
-    : snap.coverageWeeks === 0
-      ? 'danger'
-      : snap.coverageWeeks < 3
-        ? 'warning'
-        : 'success';
+  const projectedCoverage = Number.isFinite(snap.coverageWeeks) ? Math.max(snap.coverageWeeks, 0) : 0;
+  const coverageLabel = `${projectedCoverage} wk${projectedCoverage === 1 ? '' : 's'} of cover`;
+  const coverageTone = projectedCoverage === 0
+    ? 'danger'
+    : projectedCoverage < 3
+      ? 'warning'
+      : 'success';
   const coveragePill = buildStatusPill(coverageLabel, coverageTone);
 
   const expirationTone = snap.expiresInWeeks <= 0
@@ -239,7 +245,6 @@ function matchesFilter(item) {
     return snap.rawQty > 0;
   }
   if (state.filter === 'needs-restock') {
-    if (snap.coverageWeeks === null) return false;
     const weeklyUse = snap.weeklyConsumption || 0;
     return weeklyUse > snap.coverageWeeks;
   }
