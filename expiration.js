@@ -82,27 +82,40 @@ function getWeeksForItem(name, expMap) {
   return rec ? weeksFromMonths(rec.shelf_life_months) : 52;
 }
 
+function escapeXmlAttr(value) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 function buildExportXml(items, expMap) {
-  const xmlDoc = document.implementation.createDocument('', 'expirationList', null);
-  const root = xmlDoc.documentElement;
-  const serializer = new XMLSerializer();
-  const categoryNodes = new Map();
+  const categoryItems = new Map();
 
   items.forEach(item => {
-    const cat = item.category || 'Other';
-    if (!categoryNodes.has(cat)) {
-      const catNode = xmlDoc.createElement('category');
-      catNode.setAttribute('name', cat);
-      categoryNodes.set(cat, catNode);
-      root.appendChild(catNode);
+    const category = item.category || 'Other';
+    if (!categoryItems.has(category)) {
+      categoryItems.set(category, []);
     }
-    const itemNode = xmlDoc.createElement('item');
-    itemNode.setAttribute('name', item.name);
-    itemNode.setAttribute('weeks', getWeeksForItem(item.name, expMap).toFixed(1));
-    categoryNodes.get(cat).appendChild(itemNode);
+    categoryItems.get(category).push(item);
   });
 
-  return `<?xml version="1.0" encoding="UTF-8"?>\n${serializer.serializeToString(xmlDoc)}`;
+  const lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<expirationList>'];
+
+  categoryItems.forEach((catItems, category) => {
+    lines.push('', `    <category name="${escapeXmlAttr(category)}">`);
+    catItems.forEach(item => {
+      const weeks = getWeeksForItem(item.name, expMap).toFixed(1);
+      lines.push(
+        `        <item name="${escapeXmlAttr(item.name)}" weeks="${weeks}"/>`
+      );
+    });
+    lines.push('    </category>');
+  });
+
+  lines.push('', '</expirationList>');
+  return lines.join('\n');
 }
 
 function downloadXml(xmlText) {
