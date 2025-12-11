@@ -130,8 +130,20 @@ function downloadXml(xmlText) {
 
 async function parseImportXml(text) {
   const parser = new DOMParser();
-  const doc = parser.parseFromString(text, 'application/xml');
-  if (doc.querySelector('parsererror')) {
+
+  function tryParse(xmlText) {
+    const doc = parser.parseFromString(xmlText, 'application/xml');
+    return doc.querySelector('parsererror') ? null : doc;
+  }
+
+  let doc = tryParse(text);
+
+  if (!doc) {
+    const sanitized = text.replace(/&(?!#?\w+;)/g, '&amp;');
+    doc = tryParse(sanitized);
+  }
+
+  if (!doc) {
     throw new Error('Invalid XML');
   }
 
