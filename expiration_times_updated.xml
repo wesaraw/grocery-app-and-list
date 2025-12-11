@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<expirationList>
+
+    <category name="Bread Cabinet">
+        <item name="Bagels" weeks="1.5"/>
+        <item name="Bread" weeks="1.0"/>
+        <item name="Bun" weeks="1.0"/>
+        <item name="English Muffin" weeks="2.0"/>
+        <item name="Humburger Bun" weeks="1.0"/>
+        <item name="Mini Tortilla" weeks="2.0"/>
+        <item name="Sandwich Bread Sweet Hawaiian" weeks="1.5"/>
+        <item name="Whole Grain Pitas" weeks="1.0"/>
+        <item name="Whole Grain Tortilla" weeks="2.0"/>
+    </category>
+
+    <category name="Cleaning Cabinet">
+        <item name="Paper Towels" weeks="520.0"/>
+    </category>
+
+    <category name="Coffee Bar">
+        <item name="Dunkin French Vanilla Coffee Pod" weeks="52.0"/>
+        <item name="Honey" weeks="260.0"/>
+        <item name="Tea" weeks="104.0"/>
+        <item name="Vanilla Latte" weeks="26.0"/>
+    </category>
+
+    <category name="Deli Drawer">
+        <item name="American Cheese" weeks="3.0"/>
+        <item name="Bacon" weeks="2.0"/>
+        <item name="Brie Cheese" weeks="2.0"/>
+        <item name="Cheddar Cheese, Shredded" weeks="1.5"/>
+        <item name="Cheddar Sliced" weeks="3.0"/>
+        <item name="Ham Hillshire Farm" weeks="2.0"/>
+        <item name="Hard Salami" weeks="4.0"/>
+        <item name="Mozzarella Cheese, Lowfat" weeks="1.5"/>
+        <item name="Shredded Cheese" weeks="1.5"/>
+        <item name="Shredded Cheese, Italian Blend" weeks="1.5"/>
+        <item name="Shredded Parmesan Cheese" weeks="4.0"/>
+        <item name="Sliced Turkey" weeks="1.5"/>
+        <item name="String Cheese" weeks="4.0"/>
+        <item name="Swiss Cheese, Natural" weeks="3.0"/>
+    </category>
+
+    <category name="Dish Sink">
+        <item name="Cascade Dishwasher Detergent Platinum" weeks="260.0"/>
+        <item name="Dawn Liquid Platinum Dishsoap" weeks="260.0"/>
+    </category>
+
+
+    <category name="Drink Cart">
+        <item name="Coconut Water" weeks="12.0"/>
+        <item name="Dr Pepper" weeks="52.0"/>
+        <item name="Gold Peak Tea Zero Sugar" weeks="8.0"/>
+        <item name="Monster Energy Drink" weeks="52.0"/>
+        <item name="Pepsi Zero" weeks="52.0"/>
+        <item name="Root Beer" weeks="52.0"/>
+        <item name="Yoo-hoo" weeks="26.0"/>
+    </category>
+
+    <category name="Firdge Door">
+        <item name="Oat Milk" weeks="2.0"/>
+    </category>
+
+    <category name="Freezer">
+        <item name="All-purpose Flour" weeks="104.0"/>
+        <item name="Blueberries" weeks="52.0"/>
+        <item name="Breaded Chicken Patty" weeks="12.0"/>
+        <item name="French Fries" weeks="26.0"/>
+        <item name="French Toast Sticks" weeks="26.0"/>
+        <item name="Frozen Berries" weeks="52.0"/>
+        <item name="Frozen Broccoli" weeks="52.0"/>
+        <item name="Frozen Corn" weeks="52.0"/>
+        <item name="Frozen Meal" weeks="26.0"/>
+        <item name="Frozen Peas" weeks="52.0"/>
+        <item name="Frozen Pretzel" weeks="26.0"/>
+        <item name="Frozen Skillet" weeks="26.0"/>
+        <item name="Frozen Waffles" weeks="26.0"/>
+        <item name="Frozen Zucchini" weeks="26.0"/>
+        <item name="Gold & White Corn Carrots & Asparagus" weeks="52.0"/>
+        <item name="Hot Pocket" weeks="12.0"/>
+        <item name="Ice Cream Frozen Foods" weeks="8.0"/>
+        <item name="Italian Ice" weeks="26.0"/>
+        <item name="Mac N Cheese Bites" weeks="12.0"/>
+        <item name="Microwave Breakfast Bowl" weeks="12.0"/>
+        <item name="Mixed Berry" weeks="52.0"/>
+        <item name="Popsicle" weeks="52.0"/>
+        <item name="Raspberries" weeks="52.0"/>
+        <item name="Shredded Hash Browns" weeks="26.0"/>
+        <item name="Smoothie Ice Cream" weeks="8.0"/>
+        <item name="Strawberries" weeks="52.0"/>
+        <item name="Tri-colored Pepper & Onion Medley" weeks="52.0"/>
+    </category>
+
+    <category name="Fridge Door">
+        <item name="Butter, Unsalted" weeks="8.0"/>
+        <item name="Cream Cheese Spread" weeks="3.0"/>
+        <item name="Lemon Juice" weeks="12.0"/>
+        <item name="Milk" weeks="1.0"/>
+        <item name="Salted Butter" weeks="12.0"/>
+        <item name="Whole Milk" weeks="1.0"/>
+    </category>
+
+    <category name="Fridge Shelf">
+        <item name="Alfredo Sauce" weeks="1.0"/>
+        <item name="Almonds Milk, Fortified" weeks="2.0"/>
+        <item name="Apple Cider" weeks="2.0"/>
+        <item name="Broccoli" weeks="1.0"/>
+        <item name="Broccoli Slaw" weeks="1.0"/>
+        <item name="Cabbage" weeks="3.0"/>
+        <item name="Chicken Breasts, Boneless Skinless" weeks="1.0"/>
+        <item name="Chicken Tenderloin" weeks="1.0"/>
+        <item name="Chicken Thighs, Boneless Skinless" weeks="1.0"/>
+        <item name="Chili-garlic Sauce" weeks="52.0"/>
+        <item name="Cottage Cheese" weeks="2.0"/>
+        <item name="Crumbled Feta Cheese" weeks="2.0"/>
+        <item name="Diced Yellow Onions" weeks="1.0"/>
+        <item name="Dijon Mustard" weeks="52.0"/>
+        <item name="Dill Pickle Spears" weeks="8.0"/>
+        <item name="Edamame" weeks="1.0"/>
+        <item name="Egg White" weeks="1.0"/>
+        <item name="Eggs" weeks="5.0"/>
+        <item name="Feta Cheese" weeks="4.0"/>
+        <item name="Fresh Sage" weeks="1.0"/>
+        <item name="Fresh Thyme" weeks="1.0"/>
+        <item name="Garlic" weeks="4.0"/>
+        <item name="Ginger Root" weeks="3.0"/>
+        <item name="Greek Yogurt" weeks="2.5"/>
+        <item name="Ground Beef" weeks="1.0"/>
+        <item name="Ground Pork Sausage" weeks="1.0"/>
+        <item name="Ground Turkey" weeks="1.0"/>
+        <item name="Ham Steak, Boneless" weeks="1.5"/>
+        <item name="Heavy Cream Dairy" weeks="3.0"/>
+        <item name="Honey Mustard Dressing" weeks="12.0"/>
+        <item name="Hummus" weeks="2.0"/>
+        <item name="I Can't Believe It's Not Butter! Spread" weeks="12.0"/>
+        <item name="Langostino" weeks="1.0"/>
+        <item name="Macaroni & Cheese Bob Evans" weeks="1.0"/>
+        <item name="Marinade Chicken" weeks="1.0"/>
+        <item name="Marinara Sauce" weeks="1.0"/>
+        <item name="Mashed Potatoes Idahoan" weeks="8.0"/>
+        <item name="Mayonnaise Squeeze Bottle" weeks="12.0"/>
+        <item name="Microwave Mac And Cheese" weeks="1.0"/>
+        <item name="Minced Garlic" weeks="8.0"/>
+        <item name="Minced Ginger" weeks="8.0"/>
+        <item name="Mushroom" weeks="1.0"/>
+        <item name="Orange Juice" weeks="2.0"/>
+        <item name="Pico De Gallo" weeks="1.0"/>
+        <item name="Pint Grape Tomatoes" weeks="2.0"/>
+        <item name="Pork Chops, Boneless" weeks="1.0"/>
+        <item name="Portobello Mushroom" weeks="1.0"/>
+        <item name="Pre-marinated Pork" weeks="1.0"/>
+        <item name="Pulled Pork Sauce" weeks="2.0"/>
+        <item name="Ranch Yogurt Dressing" weeks="6.0"/>
+        <item name="Red Onion" weeks="4.0"/>
+        <item name="Salsa" weeks="2.0"/>
+        <item name="Sausage" weeks="1.0"/>
+        <item name="Sour Cream" weeks="2.5"/>
+        <item name="Soy Milk, Fortified" weeks="2.0"/>
+        <item name="Soy Sauce, Low Sodium" weeks="52.0"/>
+        <item name="Stirfry Sauce" weeks="12.0"/>
+        <item name="Striploin Steak" weeks="1.0"/>
+        <item name="Stuffed Mushrooms" weeks="1.0"/>
+        <item name="Sun-dried Tomato Pesto" weeks="8.0"/>
+        <item name="Tamari Soy Sauce" weeks="52.0"/>
+        <item name="Teriyaki Sauce" weeks="12.0"/>
+        <item name="Tofu, Smoked" weeks="3.0"/>
+        <item name="Turkey Sausage" weeks="1.0"/>
+        <item name="Virgin Coconut Oil" weeks="52.0"/>
+        <item name="Yellow Mustard" weeks="52.0"/>
+    </category>
+
+
+    <category name="Fruit Bar">
+        <item name="Apple" weeks="2.0"/>
+        <item name="Banana" weeks="1.0"/>
+        <item name="Date" weeks="24.0"/>
+        <item name="Green Bell Peppers" weeks="2.0"/>
+        <item name="Kiwi Fruit" weeks="2.0"/>
+        <item name="Mandarins" weeks="3.0"/>
+        <item name="Nectarine" weeks="1.5"/>
+        <item name="Orange" weeks="4.0"/>
+        <item name="Peach" weeks="1.5"/>
+    </category>
+
+    <category name="Linen Closet">
+        <item name="Charmin Toilet Paper Strong" weeks="520.0"/>
+    </category>
+
+    <category name="Moms Room">
+        <item name="Cinnamon Candy" weeks="52.0"/>
+        <item name="Jolly Rancher" weeks="52.0"/>
+    </category>
+
+    <category name="Oil and Vinegar">
+        <item name="Apple Cider Vinegar" weeks="260.0"/>
+        <item name="Avocado Oil" weeks="52.0"/>
+        <item name="Balsamic Vinegar" weeks="260.0"/>
+        <item name="Canola Oil" weeks="52.0"/>
+        <item name="Extra Virgin Olive Oil" weeks="52.0"/>
+        <item name="Neutral Vegetable Oil" weeks="52.0"/>
+        <item name="Rice Vinegar" weeks="260.0"/>
+        <item name="Sesame Oil" weeks="26.0"/>
+        <item name="Toasted Sesame Oil" weeks="26.0"/>
+        <item name="Wheat Germ Oil" weeks="12.0"/>
+    </category>
+
+    <category name="Pantry Shelf 1">
+        <item name="Can Of Soup" weeks="104.0"/>
+        <item name="Canned Chili With Beans" weeks="104.0"/>
+        <item name="Cornbeef Hash" weeks="104.0"/>
+        <item name="Nacho Cheese" weeks="26.0"/>
+        <item name="Peanut Butter Creamy" weeks="52.0"/>
+    </category>
+
+</expirationList>
