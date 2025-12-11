@@ -15,6 +15,7 @@ import {
   fetchFinalSelection,
   loadPriceCheckerState
 } from './utils/priceCheckerData.js';
+import { WEEKS_PER_MONTH } from './utils/constants.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
@@ -277,6 +278,70 @@ function mapByResolvedName(list, transform = entry => entry) {
     map.set(key, transform(entry, key));
   });
   return map;
+}
+
+function buildStockLookup(list = []) {
+  const map = new Map();
+  list.forEach(entry => {
+    if (!entry) return;
+    const key = resolvedNameKey(entry.name);
+    if (!key) return;
+    const existing = map.get(key) || [];
+    existing.push(entry);
+    map.set(key, existing);
+  });
+  return map;
+}
+
+function normalizeStockAmount(entry, targetUnit, itemName) {
+  if (!entry || !targetUnit) return 0;
+  const amount = Number(entry.amount);
+  if (!Number.isFinite(amount) || amount <= 0) return 0;
+  const sourceUnit = entry.unit || targetUnit;
+  if (!sourceUnit || sourceUnit.toLowerCase() === targetUnit.toLowerCase()) {
+    return amount;
+  }
+  const info = densityInfoFor(itemName);
+  try {
+    const converted = convertWithDensity(amount, sourceUnit, targetUnit, {
+      convert_volume_to_weight: info.convert,
+      custom_density_ratio: info.ratio
+    });
+    if (!Number.isNaN(converted) && Number.isFinite(converted)) {
+      return converted;
+    }
+  } catch (_err) {}
+  try {
+    const converted = convert(amount).from(sourceUnit).to(targetUnit);
+    if (!Number.isNaN(converted) && Number.isFinite(converted)) {
+      return converted;
+    }
+  } catch (_err) {}
+  return amount;
+}
+
+function weeklyNeedForItem(itemName) {
+  const cons = lookupByNameOrId(consumptionMap, itemName);
+  const baseMonthly = cons?.monthly_consumption || 0;
+  const hasCalendar = calendarData && Object.keys(calendarData).length > 0;
+  const plannedMonthly = hasCalendar
+    ? lookupByNameOrId(mealPlanMonthMap, itemName) || 0
+    : 0;
+  const weekly = (baseMonthly + plannedMonthly) / WEEKS_PER_MONTH;
+  return Number.isFinite(weekly) ? weekly : null;
+}
+
+function expirationRunwayWeeks(itemName, expMap) {
+  const rec = lookupByNameOrId(expMap, itemName);
+  if (!rec) return null;
+  if (rec.runway_weeks != null) return Number(rec.runway_weeks);
+  if (rec.expiration_runway_weeks != null)
+    return Number(rec.expiration_runway_weeks);
+  if (rec.runwayWeeks != null) return Number(rec.runwayWeeks);
+  if (rec.shelf_life_weeks != null) return Number(rec.shelf_life_weeks);
+  if (rec.shelf_life_months != null)
+    return rec.shelf_life_months * WEEKS_PER_MONTH;
+  return null;
 }
 
 function normalizeEntriesByName(list) {
@@ -937,6 +1002,8 @@ async function commitSelections() {
   );
   const normalizedPurchaseInfo = normalizeEntriesByName(purchaseInfo);
   const purchaseMap = mapByResolvedName(normalizedPurchaseInfo);
+  const stockLookup = buildStockLookup(stockData);
+  const expirationLookup = mapByResolvedName(expirationData);
 
   const { prepDays, endDate: prepWindowEndDate } = resolveNextPrepWindow(
     cookingDaysData,
@@ -1002,7 +1069,29 @@ async function commitSelections() {
     }
 
     if (!perPackHomeQty || perPackHomeQty <= 0) perPackHomeQty = pack || 1;
-    const packsToBuy = Math.ceil(needRecord.toBuy / perPackHomeQty);
+    const stockEntries = lookupByNameOrId(stockLookup, item.name) || [];
+    const onHandHomeQty = stockEntries.reduce(
+      (sum, entry) => sum + normalizeStockAmount(entry, item.home_unit, item.name),
+      0
+    );
+
+    const weeklyNeed = weeklyNeedForItem(item.name);
+    const runwayWeeks = expirationRunwayWeeks(item.name, expirationLookup);
+    if (
+      runwayWeeks != null &&
+      runwayWeeks > 0 &&
+      weeklyNeed != null &&
+      weeklyNeed > 0 &&
+      onHandHomeQty >= weeklyNeed * runwayWeeks
+    ) {
+      continue;
+    }
+
+    const netNeed = Math.max(0, needRecord.toBuy - onHandHomeQty);
+    if (netNeed <= 0) continue;
+
+    const packsToBuy = Math.ceil(netNeed / perPackHomeQty);
+    if (packsToBuy <= 0) continue;
     const amount = perPackHomeQty * packsToBuy;
 
     let prepWindowAmount = hasPrepWindow ? 0 : null;
@@ -1010,7 +1099,8 @@ async function commitSelections() {
     if (hasPrepWindow) {
       const prepNeed =
         prepPurchaseMap ? lookupByNameOrId(prepPurchaseMap, item.name)?.toBuy || 0 : 0;
-      const cappedPrepNeed = Math.min(needRecord.toBuy, Math.max(0, prepNeed));
+      const prepNeedAfterStock = Math.max(0, prepNeed - onHandHomeQty);
+      const cappedPrepNeed = Math.min(netNeed, prepNeedAfterStock);
       if (cappedPrepNeed > 0) {
         prepWindowPacks = Math.ceil(cappedPrepNeed / perPackHomeQty);
         prepWindowAmount = perPackHomeQty * prepWindowPacks;
