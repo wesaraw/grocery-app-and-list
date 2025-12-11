@@ -245,6 +245,9 @@ function matchesFilter(item) {
     return snap.rawQty > 0;
   }
   if (state.filter === 'needs-restock') {
+    if (!Number.isFinite(snap.weeklyConsumption) || snap.weeklyConsumption <= 0) {
+      return false;
+    }
     const projectedCoverage = Number.isFinite(snap.coverageWeeks) ? snap.coverageWeeks : 0;
     return projectedCoverage < 1;
   }
