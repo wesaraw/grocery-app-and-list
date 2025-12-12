@@ -19,6 +19,16 @@ function sumRange(arr, start, end) {
   return total;
 }
 
+function sumMaxRange(arrA, arrB, start, end) {
+  let total = 0;
+  for (let i = start; i < end && i < arrA.length && i < arrB.length; i++) {
+    const a = arrA[i] || 0;
+    const b = arrB[i] || 0;
+    total += Math.max(a, b);
+  }
+  return total;
+}
+
 function simulateBeforeWeekVar(item, weeklyArr, week) {
   const incoming = [];
   const active = [];
@@ -274,6 +284,7 @@ export async function calculatePurchaseNeeds(
   const weeklyNeedMap = new Map();
   const weeklyUseMap = new Map();
   const scheduledMealNeedMap = new Map();
+  const effectiveNeedMap = new Map();
   mergedNeeds.forEach(item => {
     const monthlyFromConsumption = consMap.get(item.canonical) || 0;
     const monthlyFromMealPlan = (mealMap.get(item.canonical) || 0) / 12;
@@ -300,10 +311,14 @@ export async function calculatePurchaseNeeds(
     }
 
     const combinedArr = recurringArr.map((val, idx) => val + (scheduledArr[idx] || 0));
+    const effectiveArr = recurringArr.map((val, idx) =>
+      Math.max(val || 0, scheduledArr[idx] || 0)
+    );
 
     weeklyNeedMap.set(item.canonical, combinedArr);
     weeklyUseMap.set(item.canonical, recurringArr);
     scheduledMealNeedMap.set(item.canonical, scheduledArr);
+    effectiveNeedMap.set(item.canonical, effectiveArr);
   });
 
   const stockQuantityMap = new Map();
@@ -336,7 +351,7 @@ export async function calculatePurchaseNeeds(
   const stockMap = new Map();
   timelineItems.forEach(t => {
     timelineLookup.set(t.name, t);
-    const weeklyArr = weeklyNeedMap.get(t.name) || Array(MAX_WEEKS).fill(0);
+    const weeklyArr = effectiveNeedMap.get(t.name) || weeklyNeedMap.get(t.name) || Array(MAX_WEEKS).fill(0);
     const qty = simulateBeforeWeekVar(t, weeklyArr, week);
     stockMap.set(t.name, qty);
   });
@@ -368,14 +383,20 @@ export async function calculatePurchaseNeeds(
   });
 
   return mergedNeeds.map(item => {
-    const weeklyArr = weeklyNeedMap.get(item.canonical) || Array(MAX_WEEKS).fill(0);
+    const weeklyArr =
+      effectiveNeedMap.get(item.canonical) ||
+      weeklyNeedMap.get(item.canonical) ||
+      Array(MAX_WEEKS).fill(0);
     const weeklyUseArr = weeklyUseMap.get(item.canonical) || Array(MAX_WEEKS).fill(0);
     const scheduledMealArr =
       scheduledMealNeedMap.get(item.canonical) || Array(MAX_WEEKS).fill(0);
     const arrExclusiveEnd = Math.min(exclusiveEndWeek, weeklyArr.length);
-    const required =
-      sumRange(weeklyUseArr, week, arrExclusiveEnd) +
-      sumRange(scheduledMealArr, week, arrExclusiveEnd);
+    const required = sumMaxRange(
+      weeklyUseArr,
+      scheduledMealArr,
+      week,
+      arrExclusiveEnd
+    );
 
     const onHand =
       (stockMap.get(item.canonical) || 0) +
@@ -403,13 +424,12 @@ export async function calculatePurchaseNeeds(
     const purchasesWithin = purchasesWithinMap.get(item.canonical) || 0;
     const currentQty = stockMap.get(item.canonical) || 0;
     const consumedExisting = currentQty + purchasesWithin - horizonStock;
-    const capacity =
-      sumRange(weeklyUseArr, week, Math.min(cappedHorizonExclusive, weeklyArr.length)) +
-      sumRange(
-        scheduledMealArr,
-        week,
-        Math.min(cappedHorizonExclusive, weeklyArr.length)
-      );
+    const capacity = sumMaxRange(
+      weeklyUseArr,
+      scheduledMealArr,
+      week,
+      Math.min(cappedHorizonExclusive, weeklyArr.length)
+    );
     let toBuyExpiration = capacity - consumedExisting;
     if (toBuyExpiration < 0) toBuyExpiration = 0;
 
