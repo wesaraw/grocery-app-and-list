@@ -419,6 +419,7 @@ export async function calculatePurchaseNeeds(
     }
     return {
       name: item.name,
+      canonical: item.canonical,
       toBuy: toBuy > 0 ? toBuy : 0,
       home_unit: item.home_unit,
       weeklyUse: weeklyUseArr,

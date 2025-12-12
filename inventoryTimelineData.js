@@ -152,17 +152,23 @@ function buildItemMap(
     const base = baseMap[key] || 0;
     const meal = mealMap[key] || 0;
     const total = consMap[key] || 0;
+    const fallbackWeekly = total / WEEKS_PER_MONTH;
     const breakdown = mealBreakdown[key] || {};
     const demand = demandMap.get(key) || {};
-    const weeklyUseArr = demand.weeklyUse || [];
-    const scheduledArr = demand.requiredForScheduledMeals || [];
-    const weeklyRecurring = weeklyUseArr[currentWeek] ?? total / WEEKS_PER_MONTH;
+    const weeklyUseArr =
+      (Array.isArray(demand.weeklyUse) && demand.weeklyUse.length
+        ? demand.weeklyUse
+        : Array(53).fill(fallbackWeekly));
+    const scheduledArr =
+      (Array.isArray(demand.requiredForScheduledMeals) && demand.requiredForScheduledMeals.length
+        ? demand.requiredForScheduledMeals
+        : Array(53).fill(0));
+    const weeklyRecurring = weeklyUseArr[currentWeek] ?? fallbackWeekly;
     const expWeeks = expMap[key] || 52;
-    const scheduledTotal = scheduledArr.length
-      ? scheduledArr
-          .slice(currentWeek, Math.min(scheduledArr.length, currentWeek + expWeeks))
-          .reduce((sum, val) => sum + (val || 0), 0)
-      : 0;
+    const scheduledTotal = scheduledArr
+      .slice(currentWeek, Math.min(scheduledArr.length, currentWeek + expWeeks))
+      .reduce((sum, val) => sum + (val || 0), 0);
+    const scheduledWeekly = scheduledArr[currentWeek] || 0;
     return {
       name: n.name,
       category: n.category || '',
@@ -175,7 +181,7 @@ function buildItemMap(
       weekly_recurring_weeks: weeklyUseArr,
       scheduled_meal_requirements: scheduledTotal,
       scheduled_meal_requirements_weeks: scheduledArr,
-      weekly_consumption: weeklyRecurring + (scheduledArr[currentWeek] || 0),
+      weekly_consumption: weeklyRecurring + scheduledWeekly,
       expiration_weeks: expWeeks,
       starting_stock: stockMap[key] || 0,
       purchases: [],
@@ -288,11 +294,17 @@ async function loadTimelineItems() {
   );
   const demandMap = new Map();
   purchaseInfo.forEach((entry) => {
-    const key = canonicalName(entry.name);
+    const key = entry.canonical ? canonicalName(entry.canonical) : canonicalName(entry.name);
     if (!key) return;
+    const weeklyUse = Array.isArray(entry.weeklyUse) && entry.weeklyUse.length
+      ? entry.weeklyUse
+      : [];
+    const scheduledUse = Array.isArray(entry.requiredForScheduledMeals) && entry.requiredForScheduledMeals.length
+      ? entry.requiredForScheduledMeals
+      : [];
     demandMap.set(key, {
-      weeklyUse: entry.weeklyUse || [],
-      requiredForScheduledMeals: entry.requiredForScheduledMeals || [],
+      weeklyUse,
+      requiredForScheduledMeals: scheduledUse,
     });
   });
 
