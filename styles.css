@@ -888,6 +888,12 @@ a:hover {
   gap: 6px;
 }
 
+.purchase-card__metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--spacing-2);
+}
+
 .purchase-card__price-line {
   display: flex;
   justify-content: space-between;

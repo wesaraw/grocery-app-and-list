@@ -151,7 +151,7 @@ const stubNutritionSync = async (ingredient, context = {}) => {
     tracker.add(normalized);
   }
   nutritionSyncCalls[ingredient.name] = (nutritionSyncCalls[ingredient.name] || 0) + 1;
-  if (ingredient.name === 'red onion') {
+  if ((ingredient.name || '').toLowerCase() === 'red onion') {
     await setPendingMatch(ingredient.name, {
       candidates: [{ fdcId: 'test-red-onion', description: 'Red Onion' }],
       unitDefault: ingredient.unit || 'each',
@@ -178,7 +178,7 @@ if (capturedMeals.length !== 1) {
 }
 
 const savedMeal = capturedMeals[0];
-if (savedMeal.name !== 'Balsamic Chicken Wrap with Goat Cheese, Cranberries & Lemony Arugula') {
+if (savedMeal.name !== 'Balsamic Chicken Wrap With Goat Cheese, Cranberries & Lemony Arugula') {
   throw new Error('Meal name mismatch');
 }
 if (savedMeal.category !== 'snack') {
@@ -194,7 +194,8 @@ if (!Array.isArray(savedMeal.ingredients) || savedMeal.ingredients.length !== in
 if (typeof savedMeal.instructions !== 'string' || savedMeal.instructions.length < 20) {
   throw new Error('Instructions text was not captured correctly');
 }
-const saltIngredient = savedMeal.ingredients.find(entry => entry.name === 'salt');
+const saltIngredient = savedMeal.ingredients.find(entry => entry.name
+  && entry.name.toLowerCase() === 'salt');
 if (!saltIngredient) {
   throw new Error('Salt ingredient missing from saved meal');
 }
@@ -218,25 +219,25 @@ if (summary.name !== savedMeal.name || summary.totalPortions !== savedMeal.total
 if (summary.category !== 'snack') {
   throw new Error('Summary did not report the selected meal category');
 }
-const arugulaEntries = (storage.yearlyNeeds || []).filter(entry => entry.name === 'pkgsbaby arugula');
+const arugulaEntries = (storage.yearlyNeeds || []).filter(entry => (entry.name || '').toLowerCase() === 'pkgsbaby arugula');
 if (arugulaEntries.length !== 1) {
   throw new Error('Existing inventory ingredient was duplicated during import');
 }
-const redOnionEntries = (storage.yearlyNeeds || []).filter(entry => entry.name === 'red onion');
+const redOnionEntries = (storage.yearlyNeeds || []).filter(entry => (entry.name || '').toLowerCase() === 'red onion');
 if (redOnionEntries.length !== 1) {
   throw new Error('Red onion should have been added to the inventory tables');
 }
 if (redOnionEntries[0].id !== '20' || storage.itemNameMap['red onion'] !== '20') {
   throw new Error('Red onion did not reuse its serialized inventory ID');
 }
-const tortillaEntries = (storage.yearlyNeeds || []).filter(entry => entry.name === 'flour tortillas');
+const tortillaEntries = (storage.yearlyNeeds || []).filter(entry => (entry.name || '').toLowerCase() === 'flour tortillas');
 if (tortillaEntries.length !== 1) {
   throw new Error('Flour tortillas should have been added to the inventory tables');
 }
 if (tortillaEntries[0].id !== '21' || storage.itemNameMap['flour tortillas'] !== '21') {
   throw new Error('Flour tortillas did not reuse their serialized inventory ID');
 }
-const blackPepperEntry = (storage.yearlyNeeds || []).find(entry => entry.name === 'black pepper');
+const blackPepperEntry = (storage.yearlyNeeds || []).find(entry => (entry.name || '').toLowerCase() === 'black pepper');
 if (!blackPepperEntry) {
   throw new Error('New ingredients were not added to the inventory tables');
 }
@@ -244,9 +245,9 @@ if (!blackPepperEntry.id || storage.itemNameMap['black pepper'] !== blackPepperE
   throw new Error('Serialized ID for new ingredients was not persisted correctly');
 }
 const summaryHasWarning = (text) => Array.isArray(summary.warnings)
-  && summary.warnings.some(w => /inventory timeline/i.test(w) && w.includes(text));
+  && summary.warnings.some(w => /inventory timeline/i.test(w) && w.toLowerCase().includes(text.toLowerCase()));
 const mealHasWarning = (text) => Array.isArray(savedMeal.importWarnings)
-  && savedMeal.importWarnings.some(w => /inventory timeline/i.test(w) && w.includes(text));
+  && savedMeal.importWarnings.some(w => /inventory timeline/i.test(w) && w.toLowerCase().includes(text.toLowerCase()));
 ['red onion', 'flour tortillas'].forEach(name => {
   if (!summaryHasWarning(name)) {
     throw new Error(`Summary does not surface the inventory warning for ${name}`);
@@ -261,13 +262,15 @@ if (!Array.isArray(summary.warnings) || !summary.warnings.some(w => /inventory t
 if (!Array.isArray(savedMeal.importWarnings) || !savedMeal.importWarnings.some(w => /inventory timeline/i.test(w))) {
   throw new Error('Meal import warnings do not include inventory notices');
 }
-if ((nutritionSyncCalls['red onion'] || 0) !== 1) {
+const getSyncCount = (name) => Object.entries(nutritionSyncCalls || {}).reduce((count, [key, value]) =>
+  key.toLowerCase() === name.toLowerCase() ? count + value : count, 0);
+if (getSyncCount('red onion') !== 1) {
   throw new Error('Red onion should trigger nutrition sync exactly once');
 }
-if ((nutritionSyncCalls['flour tortillas'] || 0) !== 1) {
+if (getSyncCount('flour tortillas') !== 1) {
   throw new Error('Flour tortillas should trigger nutrition sync exactly once');
 }
-if (nutritionSyncCalls['pkgsbaby arugula']) {
+if (getSyncCount('pkgsbaby arugula')) {
   throw new Error('Existing inventory items should not trigger nutrition sync');
 }
 const pendingRedOnion = await getPendingMatch('red onion');

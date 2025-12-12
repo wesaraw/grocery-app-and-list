@@ -437,3 +437,34 @@
   opacity: 0;
   pointer-events: none;
 }
+
+/* Scheduled meal vs recurring use stats */
+.item-card__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-2);
+}
+
+.item-card__stat {
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  background: var(--color-gray-50);
+}
+
+.item-card__stat--scheduled {
+  background: var(--color-blue-50);
+  border-color: var(--color-blue-200);
+}
+
+.item-card__stat-label {
+  font-size: var(--text-small);
+  color: var(--color-gray-500);
+  margin-bottom: 4px;
+}
+
+.item-card__stat-value {
+  font-weight: 700;
+  color: var(--color-gray-900);
+}

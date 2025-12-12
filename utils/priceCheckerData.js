@@ -15,12 +15,21 @@ import {
 import { formatQuantity } from './quantityFormat.js';
 import { getStoreNamesForItem } from './storeCatalog.js';
 import { hydrateAverageEachWeights } from './eachWeight.js';
+import { WEEKS_PER_MONTH } from './constants.js';
 
 const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
 const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
 const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
 const CONSUMED_PATH = 'consumedThisYear';
+
+function sumRange(arr, start, end) {
+  let total = 0;
+  for (let i = start; i < end && i < arr.length; i++) {
+    total += arr[i] || 0;
+  }
+  return total;
+}
 
 async function loadArray(key, path) {
   const arr = await loadItemArray(key);
@@ -331,6 +340,49 @@ function normalizeSearchText(searchText = '') {
     .trim();
 }
 
+function buildExpirationLookup(expiration = []) {
+  const lookup = new Map();
+  expiration.forEach(entry => {
+    const key = resolvedNameKey(entry?.name);
+    if (!key) return;
+    const weeks =
+      typeof entry?.shelf_life_months === 'number'
+        ? entry.shelf_life_months * WEEKS_PER_MONTH
+        : 52;
+    lookup.set(key, weeks);
+  });
+  return lookup;
+}
+
+function annotateDemand(purchaseInfo = [], { week, expirationLookup }) {
+  return (purchaseInfo || []).map(entry => {
+    if (!entry) return entry;
+    const weeklyUseArr = entry.weeklyUse || [];
+    const scheduledArr = entry.requiredForScheduledMeals || [];
+    const key = resolvedNameKey(entry.name);
+    const expWeeks = Math.ceil(expirationLookup.get(key) || 52);
+    const projectedEnd = week + expWeeks;
+    const maxLength = Math.max(weeklyUseArr.length, scheduledArr.length);
+    const horizonEnd = Math.min(projectedEnd, maxLength || projectedEnd);
+
+    const recurringWeek = weeklyUseArr[week] || 0;
+    const scheduledWeek = scheduledArr[week] || 0;
+    const recurringHorizon = sumRange(weeklyUseArr, week, horizonEnd);
+    const scheduledHorizon = sumRange(scheduledArr, week, horizonEnd);
+
+    return {
+      ...entry,
+      recurringWeek,
+      scheduledWeek,
+      recurringHorizon,
+      scheduledHorizon,
+      dominantHorizonNeed: Math.max(recurringHorizon, scheduledHorizon),
+      weeklyUseLabel: buildNeedLabel(recurringWeek, entry.home_unit),
+      scheduledNeedLabel: buildNeedLabel(scheduledWeek, entry.home_unit)
+    };
+  });
+}
+
 function buildSearchTokens(name, category, storeTokens = []) {
   return [name, category, ...storeTokens]
     .filter(Boolean)
@@ -424,10 +476,14 @@ async function computeBaseSnapshot() {
     densityMap,
     isoDate
   );
-
+  const expirationLookup = buildExpirationLookup(expiration);
   const normalizedPurchaseInfo = normalizeEntriesByName(purchaseInfo);
-  const displayNeeds = mergeNeedsWithPurchases(normalizedNeeds, normalizedPurchaseInfo);
-  const purchaseMap = mapByResolvedName(normalizedPurchaseInfo);
+  const enrichedPurchaseInfo = annotateDemand(normalizedPurchaseInfo, {
+    week,
+    expirationLookup
+  });
+  const displayNeeds = mergeNeedsWithPurchases(normalizedNeeds, enrichedPurchaseInfo);
+  const purchaseMap = mapByResolvedName(enrichedPurchaseInfo);
   const sortedNeeds = sortItemsByCategory(displayNeeds);
 
   const categoryMetaMap = new Map();
@@ -459,6 +515,12 @@ async function computeBaseSnapshot() {
       needAmount: needAmt,
       needLevel,
       needLabel: buildNeedLabel(needAmt, item.home_unit),
+      weeklyUseLabel: needInfo?.weeklyUseLabel || buildNeedLabel(null, item.home_unit),
+      scheduledNeedLabel:
+        needInfo?.scheduledNeedLabel || buildNeedLabel(null, item.home_unit),
+      weeklyUseAmount: needInfo?.recurringWeek || 0,
+      scheduledNeedAmount: needInfo?.scheduledWeek || 0,
+      scheduledNeedHorizon: needInfo?.scheduledHorizon || 0,
       stores: storeTokens,
       searchHaystack: tokens.join(' ')
     };
@@ -636,9 +698,14 @@ export async function loadPriceCheckerState({ searchText = '' } = {}) {
     densityMap,
     isoDate
   );
+  const expirationLookup = buildExpirationLookup(expiration);
   const normalizedPurchaseInfo = normalizeEntriesByName(purchaseInfo);
-  const displayNeeds = mergeNeedsWithPurchases(normalizedNeeds, normalizedPurchaseInfo);
-  const purchaseMap = mapByResolvedName(normalizedPurchaseInfo);
+  const enrichedPurchaseInfo = annotateDemand(normalizedPurchaseInfo, {
+    week,
+    expirationLookup
+  });
+  const displayNeeds = mergeNeedsWithPurchases(normalizedNeeds, enrichedPurchaseInfo);
+  const purchaseMap = mapByResolvedName(enrichedPurchaseInfo);
   const sortedNeeds = sortItemsByCategory(displayNeeds);
   const text = searchText.trim().toLowerCase();
 
@@ -666,7 +733,7 @@ export async function loadPriceCheckerState({ searchText = '' } = {}) {
     globalProduceMeasuresData,
     mealPlanMonthMap,
     purchaseMap,
-    normalizedPurchaseInfo,
+    normalizedPurchaseInfo: enrichedPurchaseInfo,
     filteredNeeds,
     sortedNeeds,
     consumptionMap: consMap,

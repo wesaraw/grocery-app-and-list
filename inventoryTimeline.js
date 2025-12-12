@@ -29,6 +29,7 @@ import {
 
 function buildGrid(items, headerState = {}, startWeek = 1) {
   const grid = document.createElement('table');
+  const currentWeek = getCurrentWeek();
   const thead = document.createElement('thead');
   const header = document.createElement('tr');
   const imgHead = document.createElement('th');
@@ -95,7 +96,7 @@ function buildGrid(items, headerState = {}, startWeek = 1) {
     }
     const overrides = {};
     if (item.overrideWeeks) Object.assign(overrides, item.overrideWeeks);
-    const weeks = simulateItem(item, overrides);
+    const weeks = simulateItem(item, overrides, currentWeek);
     const row = document.createElement('tr');
     const imgTd = document.createElement('td');
     imgTd.className = 'item-image';
@@ -109,8 +110,31 @@ function buildGrid(items, headerState = {}, startWeek = 1) {
     const th = document.createElement('th');
     th.className = 'item-label';
     const metaDiv = document.createElement('div');
-    metaDiv.innerHTML = `${item.name}<br/><span class="exp-weeks">${item.expiration_weeks}w</span>` +
-      `<br/><span class="weekly-cons">${formatQuantity(item.weekly_consumption)}/wk</span>`;
+    metaDiv.className = 'item-meta';
+    const titleLine = document.createElement('div');
+    titleLine.textContent = item.name;
+    metaDiv.appendChild(titleLine);
+
+    const statsRow = document.createElement('div');
+    statsRow.className = 'item-stats-row';
+
+    const expBadge = document.createElement('div');
+    expBadge.className = 'stat-box stat-box--muted';
+    expBadge.innerHTML = `<div class="stat-label">Shelf life</div><div class="stat-value">${item.expiration_weeks}w</div>`;
+    statsRow.appendChild(expBadge);
+
+    const weeklyBox = document.createElement('div');
+    weeklyBox.className = 'stat-box';
+    weeklyBox.innerHTML = `<div class="stat-label">Weekly Use</div><div class="stat-value weekly-cons">${formatQuantity(item.weekly_recurring ?? item.weekly_consumption)}/wk</div>`;
+    statsRow.appendChild(weeklyBox);
+
+    const scheduledBox = document.createElement('div');
+    scheduledBox.className = 'stat-box stat-box--scheduled';
+    const scheduledVal = formatQuantity(item.scheduled_meal_requirements || 0);
+    scheduledBox.innerHTML = `<div class="stat-label">Required for Scheduled Meals</div><div class="stat-value">${scheduledVal}</div>`;
+    statsRow.appendChild(scheduledBox);
+
+    metaDiv.appendChild(statsRow);
     th.appendChild(metaDiv);
     const span = metaDiv.querySelector('.weekly-cons');
     if (span) {
@@ -120,7 +144,8 @@ function buildGrid(items, headerState = {}, startWeek = 1) {
           item: item.name,
           base: item.base_monthly_consumption ?? 0,
           meal: item.meal_monthly_consumption ?? 0,
-          weekly: item.weekly_consumption,
+          weekly: item.weekly_recurring ?? item.weekly_consumption,
+          scheduled: item.scheduled_meal_requirements ?? 0,
           wpm: WEEKS_PER_MONTH
         });
         openOrFocusWindow(`weeklyNeedDebug.html?${params.toString()}`, 320, 240);

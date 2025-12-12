@@ -272,16 +272,32 @@ export async function calculatePurchaseNeeds(
   }));
 
   const weeklyNeedMap = new Map();
+  const weeklyUseMap = new Map();
+  const scheduledMealNeedMap = new Map();
   mergedNeeds.forEach(item => {
     const baseWeekly = (consMap.get(item.canonical) || 0) / WEEKS_PER_MONTH;
-    const arr = Array(MAX_WEEKS).fill(baseWeekly);
+    const recurringArr = Array(MAX_WEEKS).fill(baseWeekly);
+    const scheduledArr = Array(MAX_WEEKS).fill(0);
+
     const mealArr = canonicalCalendarNeeds.get(item.canonical);
-    if (mealArr) {
+    const expirationWeeks =
+      (expMap.get(item.canonical)?.shelf_life_months ?? 12) * WEEKS_PER_MONTH;
+
+    if (Array.isArray(mealArr)) {
       mealArr.forEach((v, idx) => {
-        arr[idx] = (arr[idx] || 0) + v;
+        if (!v) return;
+        const mealWeek = idx;
+        if (mealWeek - expirationWeeks <= week && idx < scheduledArr.length) {
+          scheduledArr[idx] = (scheduledArr[idx] || 0) + v;
+        }
       });
     }
-    weeklyNeedMap.set(item.canonical, arr);
+
+    const combinedArr = recurringArr.map((val, idx) => val + (scheduledArr[idx] || 0));
+
+    weeklyNeedMap.set(item.canonical, combinedArr);
+    weeklyUseMap.set(item.canonical, recurringArr);
+    scheduledMealNeedMap.set(item.canonical, scheduledArr);
   });
 
   const stockQuantityMap = new Map();
@@ -347,8 +363,13 @@ export async function calculatePurchaseNeeds(
 
   return mergedNeeds.map(item => {
     const weeklyArr = weeklyNeedMap.get(item.canonical) || Array(MAX_WEEKS).fill(0);
+    const weeklyUseArr = weeklyUseMap.get(item.canonical) || Array(MAX_WEEKS).fill(0);
+    const scheduledMealArr =
+      scheduledMealNeedMap.get(item.canonical) || Array(MAX_WEEKS).fill(0);
     const arrExclusiveEnd = Math.min(exclusiveEndWeek, weeklyArr.length);
-    const required = sumRange(weeklyArr, week, arrExclusiveEnd);
+    const required =
+      sumRange(weeklyUseArr, week, arrExclusiveEnd) +
+      sumRange(scheduledMealArr, week, arrExclusiveEnd);
 
     const onHand =
       (stockMap.get(item.canonical) || 0) +
@@ -376,11 +397,13 @@ export async function calculatePurchaseNeeds(
     const purchasesWithin = purchasesWithinMap.get(item.canonical) || 0;
     const currentQty = stockMap.get(item.canonical) || 0;
     const consumedExisting = currentQty + purchasesWithin - horizonStock;
-    const capacity = sumRange(
-      weeklyArr,
-      week,
-      Math.min(cappedHorizonExclusive, weeklyArr.length)
-    );
+    const capacity =
+      sumRange(weeklyUseArr, week, Math.min(cappedHorizonExclusive, weeklyArr.length)) +
+      sumRange(
+        scheduledMealArr,
+        week,
+        Math.min(cappedHorizonExclusive, weeklyArr.length)
+      );
     let toBuyExpiration = capacity - consumedExisting;
     if (toBuyExpiration < 0) toBuyExpiration = 0;
 
@@ -391,7 +414,9 @@ export async function calculatePurchaseNeeds(
     return {
       name: item.name,
       toBuy: toBuy > 0 ? toBuy : 0,
-      home_unit: item.home_unit
+      home_unit: item.home_unit,
+      weeklyUse: weeklyUseArr,
+      requiredForScheduledMeals: scheduledMealArr
     };
   });
 }

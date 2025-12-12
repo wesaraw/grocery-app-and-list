@@ -166,13 +166,22 @@ function createPurchaseCard(item) {
   const amount = card.querySelector('.recommended-amount');
   const stores = card.querySelector('.store-list');
   const image = card.querySelector('.purchase-card__image');
+  const weeklyUse = card.querySelector('.weekly-use');
+  const scheduledNeed = card.querySelector('.scheduled-need');
 
   title.textContent = item.name;
   subtitle.textContent = item.homeUnit ? `Tracked in ${item.homeUnit}` : 'Tracked item';
   need.textContent = item.needLabel;
   need.classList.add(`need-${item.needLevel}`);
-  amount.textContent = item.needLabel;
+  const recommendedLabel =
+    item.needAmount && item.needAmount > 0
+      ? item.needLabel
+      : item.scheduledNeedLabel || item.weeklyUseLabel || item.needLabel;
+  amount.textContent = recommendedLabel;
   stores.textContent = item.stores.length ? item.stores.join(', ') : 'Not set';
+
+  weeklyUse.textContent = item.weeklyUseLabel || '—';
+  scheduledNeed.textContent = item.scheduledNeedLabel || '—';
 
   applyImageThumb(image, resolveItemImage(item), item.name, '🛒');
 

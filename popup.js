@@ -545,6 +545,56 @@ function requiredPackageMultiplier(item, product, info, needEachQty, mult) {
   return Math.ceil(needAmt / qtyPerPack);
 }
 
+function sumRange(arr, start, end) {
+  let total = 0;
+  for (let i = start; i < end && i < arr.length; i++) {
+    total += arr[i] || 0;
+  }
+  return total;
+}
+
+function expirationWeeksFor(name) {
+  const keys = aliasKeys(name);
+  const match = expirationData.find(e => keys.includes(String(e.name)));
+  const months = typeof match?.shelf_life_months === 'number' ? match.shelf_life_months : 12;
+  return Math.max(1, Math.ceil(months * 4.33));
+}
+
+function buildDemandSnapshot(needInfo, itemName, currentWeek) {
+  if (!needInfo) return null;
+  const weeklyUseArr = Array.isArray(needInfo.weeklyUse) ? needInfo.weeklyUse : [];
+  const scheduledArr = Array.isArray(needInfo.requiredForScheduledMeals)
+    ? needInfo.requiredForScheduledMeals
+    : [];
+  const expWeeks = expirationWeeksFor(itemName);
+  const projectedEnd = currentWeek + expWeeks;
+  const horizonEnd = Math.min(
+    projectedEnd,
+    Math.max(weeklyUseArr.length, scheduledArr.length, projectedEnd)
+  );
+
+  return {
+    weeklyUse: weeklyUseArr[currentWeek] ?? null,
+    scheduledThisWeek: scheduledArr[currentWeek] ?? null,
+    recurringHorizon: sumRange(weeklyUseArr, currentWeek, horizonEnd),
+    scheduledHorizon: sumRange(scheduledArr, currentWeek, horizonEnd)
+  };
+}
+
+function buildDemandTooltip(snapshot, unit) {
+  if (!snapshot) return '';
+  const parts = [];
+  if (snapshot.weeklyUse != null) {
+    parts.push(`Weekly Use: ${formatQuantity(snapshot.weeklyUse)} ${unit}`.trim());
+  }
+  if (snapshot.scheduledThisWeek != null) {
+    parts.push(
+      `Required for Scheduled Meals: ${formatQuantity(snapshot.scheduledThisWeek)} ${unit}`.trim()
+    );
+  }
+  return parts.join('\n');
+}
+
 function needText(itemName, needAmt, product = null, map = weightPackMap) {
   const item = findNeedItem(itemName);
   if (!item || needAmt == null || isNaN(needAmt)) return '';
@@ -795,6 +845,8 @@ async function rerenderAll() {
     itemIdToNameMap
   } = state);
 
+  const { week: currentWeek } = getCurrentWeek();
+
   const purchaseMap = state.purchaseMap;
   const itemsContainer = document.getElementById('items');
   itemsContainer.innerHTML = '';
@@ -803,15 +855,18 @@ async function rerenderAll() {
     const li = document.createElement('li');
     const needInfo = lookupByNameOrId(purchaseMap, item.name);
     const needAmt = needInfo ? Math.round(needInfo.toBuy) : null;
+    const demandSnapshot = buildDemandSnapshot(needInfo, item.name, currentWeek);
     const amountText =
       needInfo && !isNaN(needAmt) ? needText(item.name, needAmt) : '';
     const btn = document.createElement('button');
     btn.textContent = item.name + amountText;
+    btn.title = buildDemandTooltip(demandSnapshot, item.home_unit);
     btn.addEventListener('click', () => {
       openOrFocusWindow(`item.html?item=${encodeURIComponent(item.name)}`);
     });
     li.appendChild(btn);
     const finalSpan = document.createElement('span');
+    finalSpan.title = btn.title;
     const finalImg = document.createElement('img');
     finalImg.className = 'final-product-img';
     finalImg.width = 50;
@@ -821,7 +876,17 @@ async function rerenderAll() {
     const shouldShow = match && passesNeedFilter(needAmt);
     const hiddenByFilter = !shouldShow;
     setFilterHidden(li, hiddenByFilter);
-    const rec = { li, btn, span: finalSpan, img: finalImg, needAmt, product: null, weightMap: null };
+    const rec = {
+      li,
+      btn,
+      span: finalSpan,
+      img: finalImg,
+      needAmt,
+      product: null,
+      weightMap: null,
+      demandSnapshot,
+      unit: item.home_unit
+    };
     finalMap.set(item.name, rec);
     fetchFinalSelection(item.name).then(async ({ store, product }) => {
       const stores = storeNamesForItem(item.name);
@@ -845,6 +910,8 @@ async function rerenderAll() {
           ? needText(item.name, rec.needAmt, rec.product, rec.weightMap)
           : '';
       btn.textContent = item.name + amountText;
+      btn.title = buildDemandTooltip(rec.demandSnapshot, rec.unit);
+      finalSpan.title = btn.title;
       updateFinalInfo(item.name, finalSpan, finalImg, store, product, weightMap);
     });
     li.appendChild(finalSpan);
@@ -885,6 +952,8 @@ chrome.storage.onChanged.addListener((changes, area) => {
                 ? needText(item, rec.needAmt, rec.product, rec.weightMap)
                 : '';
             btn.textContent = item + amountText;
+            btn.title = buildDemandTooltip(rec.demandSnapshot, rec.unit);
+            span.title = btn.title;
             updateFinalInfo(item, span, img, store, product, weightMap);
           })
         );
@@ -918,6 +987,7 @@ async function loadCommitData(itemName) {
 async function commitSelections() {
   const commitItems = [];
   const { week: currentWeek, isoDate } = getCurrentWeek();
+  const demandSummary = {};
 
   const hasCalendar = calendarData && Object.keys(calendarData).length > 0;
   const purchaseInfo = await calculatePurchaseNeeds(
@@ -968,6 +1038,13 @@ async function commitSelections() {
   for (const item of needsData) {
     const needRecord = lookupByNameOrId(purchaseMap, item.name);
     if (!needRecord || needRecord.toBuy <= 0) continue;
+    const demandSnapshot = buildDemandSnapshot(needRecord, item.name, currentWeek);
+    if (demandSnapshot) {
+      demandSummary[item.name] = {
+        ...demandSnapshot,
+        home_unit: item.home_unit
+      };
+    }
     const { store, product } = await loadCommitData(item.name);
     if (!product) continue;
     const info = densityInfoFor(item.name);
@@ -1037,7 +1114,9 @@ async function commitSelections() {
       startDate: isoDate,
       prepWindowEndDate,
       prepDays,
-      generatedAt: new Date().toISOString()
+      generatedAt: new Date().toISOString(),
+      demandSummary,
+      currentWeek
     }
   });
 

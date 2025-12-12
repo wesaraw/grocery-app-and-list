@@ -42,8 +42,51 @@ thead th.item-image {
 .green { background-color: #c8e6c9; }
 .yellow { background-color: #fff9c4; }
 .red { background-color: #ffcdd2; }
-.exp-weeks { font-size: 0.8em; color: #666; }
-.weekly-cons { font-size: 0.8em; color: #666; }
+.item-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.item-stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(90px, 1fr));
+  gap: 6px;
+  align-items: stretch;
+  margin-top: 4px;
+}
+
+.stat-box {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 6px 8px;
+  background: #fafafa;
+  text-align: left;
+}
+
+.stat-box--muted {
+  background: #f4f4f4;
+  color: #555;
+}
+
+.stat-box--scheduled {
+  background: #eef6ff;
+  border-color: #c6ddff;
+}
+
+.stat-label {
+  font-size: 0.75em;
+  color: #666;
+  margin-bottom: 2px;
+}
+
+.stat-value {
+  font-size: 0.9em;
+  color: #333;
+  font-weight: 600;
+}
+
+.weekly-cons { font-size: 0.9em; color: #333; }
 .category-header {
   border-top: 1px solid #ccc;
   text-align: left;

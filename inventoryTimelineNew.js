@@ -31,10 +31,15 @@ function normalizeCategoryKey(category) {
 function snapshotFor(item) {
   if (state.snapshots.has(item.name)) return state.snapshots.get(item.name);
   const overrides = item.overrideWeeks || {};
-  const weeks = simulateItem(item, overrides);
+  const weeks = simulateItem(item, overrides, state.currentWeek);
   const weekIndex = Math.min(Math.max(state.currentWeek, 1), weeks.length) - 1;
   const current = weeks[weekIndex] || {};
-  const weeklyConsumption = Number(item.weekly_consumption) || 0;
+  const recurring = (item.weekly_recurring_weeks && item.weekly_recurring_weeks[state.currentWeek])
+    ?? item.weekly_recurring
+    ?? item.weekly_consumption
+    ?? 0;
+  const scheduled = (item.scheduled_meal_requirements_weeks || [])[state.currentWeek] || 0;
+  const weeklyConsumption = Number(recurring + scheduled) || 0;
   const rawQty = current.rawQty ?? 0;
   const expiresInWeeks = Math.min(Math.max(current.weeksToExpiration ?? 0, 0), 52);
   const qtyCoverage = weeklyConsumption > 0 ? rawQty / weeklyConsumption : null;
@@ -125,10 +130,13 @@ function renderItemCard(item, fallbackImage) {
   const stats = document.createElement('div');
   stats.className = 'item-card__stats';
 
-  const consumption = createStatRow('Weekly use', formatWeeklyConsumption(item.weekly_consumption), 'neutral');
-  const coverage = createStatRow('Projected cover', coverageLabel, coverageTone);
-  const expiration = createStatRow('Expiry runway', expirationLabel, expirationTone);
-  stats.append(consumption, coverage, expiration);
+  const weeklyConsumption = formatWeeklyConsumption(snap.weeklyConsumption);
+  const scheduledRequirement = formatScheduledRequirement(item);
+  const consumption = createStatBox('Weekly use', weeklyConsumption, 'neutral');
+  const scheduledBox = createStatBox('Required for scheduled meals', scheduledRequirement, 'scheduled');
+  const coverage = createStatBox('Projected cover', coverageLabel, coverageTone);
+  const expiration = createStatBox('Expiry runway', expirationLabel, expirationTone);
+  stats.append(consumption, scheduledBox, coverage, expiration);
 
   card.append(header, statusRow, stats);
   return card;
@@ -137,6 +145,12 @@ function renderItemCard(item, fallbackImage) {
 function formatWeeklyConsumption(value) {
   if (!Number.isFinite(value) || value === 0) return 'Not set';
   return `${value.toFixed(2)} / wk`;
+}
+
+function formatScheduledRequirement(item) {
+  const value = Number(item.scheduled_meal_requirements) || 0;
+  if (!value) return 'None';
+  return value.toFixed(2);
 }
 
 function deriveStatusMeta(snap) {
@@ -155,14 +169,15 @@ function buildStatusPill(text, tone = 'neutral') {
   return pill;
 }
 
-function createStatRow(label, value, tone = 'neutral') {
+function createStatBox(label, value, tone = 'neutral') {
   const row = document.createElement('div');
-  row.className = `stat-row stat-row--${tone}`;
+  const toneClass = tone === 'scheduled' ? 'item-card__stat--scheduled' : '';
+  row.className = `item-card__stat${toneClass ? ` ${toneClass}` : ''}`;
   const labelEl = document.createElement('div');
-  labelEl.className = 'stat-row__label';
+  labelEl.className = 'item-card__stat-label';
   labelEl.textContent = label;
   const valueEl = document.createElement('div');
-  valueEl.className = 'stat-row__value';
+  valueEl.className = 'item-card__stat-value';
   valueEl.textContent = value;
   row.append(labelEl, valueEl);
   return row;
