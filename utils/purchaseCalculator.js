@@ -275,7 +275,13 @@ export async function calculatePurchaseNeeds(
   const weeklyUseMap = new Map();
   const scheduledMealNeedMap = new Map();
   mergedNeeds.forEach(item => {
-    const baseWeekly = (consMap.get(item.canonical) || 0) / WEEKS_PER_MONTH;
+    const monthlyFromConsumption = consMap.get(item.canonical) || 0;
+    const monthlyFromMealPlan = (mealMap.get(item.canonical) || 0) / 12;
+    const monthlyTotal = monthlyFromConsumption + monthlyFromMealPlan;
+    let baseWeekly = monthlyTotal / WEEKS_PER_MONTH;
+    if (!baseWeekly && item.total_needed_year) {
+      baseWeekly = (item.total_needed_year || 0) / 52;
+    }
     const recurringArr = Array(MAX_WEEKS).fill(baseWeekly);
     const scheduledArr = Array(MAX_WEEKS).fill(0);
 
