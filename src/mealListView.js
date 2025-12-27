@@ -57,8 +57,8 @@ import {
   clearActivePendingMatchEntry
 } from './utils/nutritionMatching.js';
 
-const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
-const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
+const STOCK_PATH = 'data/required-for-grocery-app/current_stock_table.json';
+const NEEDS_PATH = 'data/required-for-grocery-app/yearly_needs_with_manual_flags.json';
 const expandedBooks = new Map();
 
 const params = new URLSearchParams(location.search);
@@ -94,7 +94,7 @@ let densityMap = {};
 let ingredientMap = {};
 let globalProduceMeasures = {};
 let nutritionTargetLookup = {};
-const UOM_PATH = 'Required for grocery app/uom_conversion_table.json';
+const UOM_PATH = 'data/required-for-grocery-app/uom_conversion_table.json';
 let units = [];
 
 const ingredientNutritionButtons = new Map();

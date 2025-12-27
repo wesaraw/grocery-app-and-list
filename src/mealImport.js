@@ -21,10 +21,10 @@ import { canonicalName, titleCaseName } from './utils/nameUtils.js';
 import { resolveIngredientAmount } from './utils/unitResolver.js';
 
 // Paths for inventory data used when adding new items
-const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
-const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
-const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
-const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
+const YEARLY_NEEDS_PATH = 'data/required-for-grocery-app/yearly_needs_with_manual_flags.json';
+const CONSUMPTION_PATH = 'data/required-for-grocery-app/monthly_consumption_table.json';
+const STOCK_PATH = 'data/required-for-grocery-app/current_stock_table.json';
+const EXPIRATION_PATH = 'data/required-for-grocery-app/expiration_times_full.json';
 
 const DEFAULT_ITEM = {
   yearly: 0,

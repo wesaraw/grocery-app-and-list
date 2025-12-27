@@ -91,8 +91,8 @@ global.chrome = {
 };
 
 const fetchMap = new Map([
-  ['Required for grocery app/uom_conversion_table.json', {}],
-  ['Required for grocery app/yearly_needs_with_manual_flags.json', []]
+  ['data/required-for-grocery-app/uom_conversion_table.json', {}],
+  ['data/required-for-grocery-app/yearly_needs_with_manual_flags.json', []]
 ]);
 
 global.fetch = async url => {

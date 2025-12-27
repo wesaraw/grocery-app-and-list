@@ -1,22 +1,22 @@
 export const MEAL_TYPES = {
   breakfast: {
     key: 'breakfastMeals',
-    path: 'Required for grocery app/breakfast_meals.json',
+    path: 'data/required-for-grocery-app/breakfast_meals.json',
     label: 'Breakfast'
   },
   lunchDinner: {
     key: 'lunchDinnerMeals',
-    path: 'Required for grocery app/lunch_dinner_meals.json',
+    path: 'data/required-for-grocery-app/lunch_dinner_meals.json',
     label: 'Lunch/Dinner'
   },
   snack: {
     key: 'snackMeals',
-    path: 'Required for grocery app/snack_meals.json',
+    path: 'data/required-for-grocery-app/snack_meals.json',
     label: 'Snack'
   },
   dessert: {
     key: 'dessertMeals',
-    path: 'Required for grocery app/dessert_meals.json',
+    path: 'data/required-for-grocery-app/dessert_meals.json',
     label: 'Dessert'
   }
 };

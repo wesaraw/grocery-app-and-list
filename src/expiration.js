@@ -6,8 +6,8 @@ import {
 import { WEEKS_PER_MONTH } from './utils/constants.js';
 import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
 
-const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
-const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
+const NEEDS_PATH = 'data/required-for-grocery-app/yearly_needs_with_manual_flags.json';
+const EXPIRATION_PATH = 'data/required-for-grocery-app/expiration_times_full.json';
 
 let filterText = '';
 const headerState = {};

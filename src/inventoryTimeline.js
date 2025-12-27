@@ -102,10 +102,10 @@ function getCurrentWeek() {
 
 async function loadData() {
   const [needs, expiration, stock, consumption, mealYear, mealMonth, mealBreakdown] = await Promise.all([
-    loadArray('yearlyNeeds', 'Required for grocery app/yearly_needs_with_manual_flags.json'),
-    loadArray('expirationData', 'Required for grocery app/expiration_times_full.json'),
-    loadArray('currentStock', 'Required for grocery app/current_stock_table.json'),
-    loadArray('monthlyConsumption', 'Required for grocery app/monthly_consumption_table.json'),
+    loadArray('yearlyNeeds', 'data/required-for-grocery-app/yearly_needs_with_manual_flags.json'),
+    loadArray('expirationData', 'data/required-for-grocery-app/expiration_times_full.json'),
+    loadArray('currentStock', 'data/required-for-grocery-app/current_stock_table.json'),
+    loadArray('monthlyConsumption', 'data/required-for-grocery-app/monthly_consumption_table.json'),
     loadStoredArray('mealPlanYearly'),
     loadStoredArray('mealPlanMonthly'),
     loadStoredObj('mealPlanMonthlyBreakdown')

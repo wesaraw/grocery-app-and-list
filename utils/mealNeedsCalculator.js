@@ -37,7 +37,7 @@ import {
 
 import { loadWeeklyMealOverrides, groupWeeklyOverridesByDateAndUser } from './weeklyMealOverrides.js';
 
-const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
+const YEARLY_NEEDS_PATH = 'data/required-for-grocery-app/yearly_needs_with_manual_flags.json';
 
 function parseQuantity(str) {
   if (!str) return { value: 0, unit: null };

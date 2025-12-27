@@ -23,10 +23,10 @@ import { formatQuantity, roundQuantity } from './utils/quantityFormat.js';
 import { getStoreNamesForItem } from './utils/storeCatalog.js';
 import { hydrateAverageEachWeights } from './utils/eachWeight.js';
 
-const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
-const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
-const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
-const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
+const YEARLY_NEEDS_PATH = 'data/required-for-grocery-app/yearly_needs_with_manual_flags.json';
+const CONSUMPTION_PATH = 'data/required-for-grocery-app/monthly_consumption_table.json';
+const STOCK_PATH = 'data/required-for-grocery-app/current_stock_table.json';
+const EXPIRATION_PATH = 'data/required-for-grocery-app/expiration_times_full.json';
 const CONSUMED_PATH = 'consumedThisYear';
 
 async function loadArray(key, path) {

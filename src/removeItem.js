@@ -6,10 +6,10 @@ import {
 import { loadPurchases, savePurchases } from './utils/purchaseStorage.js';
 import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
 
-const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
-const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
-const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
-const EXPIRATION_PATH = 'Required for grocery app/expiration_times_full.json';
+const YEARLY_NEEDS_PATH = 'data/required-for-grocery-app/yearly_needs_with_manual_flags.json';
+const CONSUMPTION_PATH = 'data/required-for-grocery-app/monthly_consumption_table.json';
+const STOCK_PATH = 'data/required-for-grocery-app/current_stock_table.json';
+const EXPIRATION_PATH = 'data/required-for-grocery-app/expiration_times_full.json';
 
 let filterText = '';
 const headerState = {};

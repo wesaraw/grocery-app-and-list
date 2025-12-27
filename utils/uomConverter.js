@@ -1,7 +1,7 @@
 import { loadJSON } from './dataLoader.js';
 import { roundQuantity } from './quantityFormat.js';
 
-const UOM_TABLE_PATH = 'Required for grocery app/uom_conversion_table.json';
+const UOM_TABLE_PATH = 'data/required-for-grocery-app/uom_conversion_table.json';
 let table = null;
 const BASE_UNIT = 'oz';
 const ALIAS_MAP = {

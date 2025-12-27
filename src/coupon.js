@@ -10,7 +10,7 @@ import {
   convertArrayToNames
 } from './utils/itemStorage.js';
 
-const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
+const NEEDS_PATH = 'data/required-for-grocery-app/yearly_needs_with_manual_flags.json';
 const NEEDS_KEY = 'yearlyNeeds';
 const COUPONS_KEY = 'coupons';
 

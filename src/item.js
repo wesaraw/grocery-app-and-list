@@ -7,8 +7,8 @@ import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemSto
 import { formatQuantity, roundQuantity } from './utils/quantityFormat.js';
 import { getStoreEntriesForItem } from './utils/storeCatalog.js';
 
-const YEARLY_NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
-const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
+const YEARLY_NEEDS_PATH = 'data/required-for-grocery-app/yearly_needs_with_manual_flags.json';
+const CONSUMPTION_PATH = 'data/required-for-grocery-app/monthly_consumption_table.json';
 
 // Grey placeholder used until real product images load
 const PLACEHOLDER_IMG =

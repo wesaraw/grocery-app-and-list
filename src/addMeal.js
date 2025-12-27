@@ -12,7 +12,7 @@ import { loadNutritionTargetLookup } from './utils/nutritionTargets.js';
 const params = new URLSearchParams(location.search);
 const mealType = params.get('type') || 'lunchDinner';
 let MEAL_KEY, MEAL_PATH, label;
-const UOM_PATH = 'Required for grocery app/uom_conversion_table.json';
+const UOM_PATH = 'data/required-for-grocery-app/uom_conversion_table.json';
 let densityMap = {};
 let ingredientMap = {};
 let globalProduceMeasures = {};

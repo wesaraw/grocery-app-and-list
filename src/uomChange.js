@@ -8,9 +8,9 @@ import { openOrFocusWindow } from './utils/windowUtils.js';
 import { parseQuantity } from './utils/calendarUtils.js';
 import { normalizeUnit } from './utils/priceUtils.js';
 
-const NEEDS_PATH = 'Required for grocery app/yearly_needs_with_manual_flags.json';
-const CONSUMPTION_PATH = 'Required for grocery app/monthly_consumption_table.json';
-const STOCK_PATH = 'Required for grocery app/current_stock_table.json';
+const NEEDS_PATH = 'data/required-for-grocery-app/yearly_needs_with_manual_flags.json';
+const CONSUMPTION_PATH = 'data/required-for-grocery-app/monthly_consumption_table.json';
+const STOCK_PATH = 'data/required-for-grocery-app/current_stock_table.json';
 
 let filterText = '';
 const headerState = {};

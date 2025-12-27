@@ -95,7 +95,7 @@ global.chrome = {
 global.fetch = async url => {
   const href = typeof url === 'string' ? url : url.href;
   const decodedHref = href.replace(/%20/g, ' ');
-  if (decodedHref.endsWith('Required for grocery app/uom_conversion_table.json')) {
+  if (decodedHref.endsWith('data/required-for-grocery-app/uom_conversion_table.json')) {
     return {
       json: async () => ({ g: 0.035274, oz: 1 })
     };
