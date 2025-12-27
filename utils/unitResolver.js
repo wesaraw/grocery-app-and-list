@@ -58,7 +58,7 @@ const VOLUME_UNITS = new Set([
   'fluidounces'
 ]);
 
-const DEFAULT_GLOBAL_PATH = 'data/globalProduceMeasures.json';
+const DEFAULT_GLOBAL_PATH = 'src/data/global/globalProduceMeasures.json';
 let globalDefaultsCache = null;
 
 function toNumber(value) {
