@@ -5,10 +5,10 @@ import beautifyPkg from 'js-beautify';
 const { html: beautify } = beautifyPkg;
 
 const mappings = [
-  { input: "Search Results toilet paper _ Shaw's.html", selector: 'product-item-al-v2', output: 'test/samples/shaws-toilet-paper.html' },
-  { input: "Search Results Dentastixs _ Shaw's.html", selector: 'product-item-al-v2', output: 'test/samples/shaws-dentastixs.html' },
-  { input: 'Bounty Paper Towels - Walmart.com.html', selector: '[data-item-id], [data-testid="list-view"]', match: /12\s*Double\s*Rolls/i, output: 'test/samples/walmart-bounty.html' },
-  { input: "'pepsi' _ Hannaford Supermarket.html", selector: '.catalog-product', match: /Pepsi Zero Sugar/i, output: 'test/samples/hannaford-pepsi.html' }
+  { input: "Search Results toilet paper _ Shaw's.html", selector: 'product-item-al-v2', output: 'test/fixtures/html/shaws-toilet-paper.html' },
+  { input: "Search Results Dentastixs _ Shaw's.html", selector: 'product-item-al-v2', output: 'test/fixtures/html/shaws-dentastixs.html' },
+  { input: 'Bounty Paper Towels - Walmart.com.html', selector: '[data-item-id], [data-testid="list-view"]', match: /12\s*Double\s*Rolls/i, output: 'test/fixtures/html/walmart-bounty.html' },
+  { input: "'pepsi' _ Hannaford Supermarket.html", selector: '.catalog-product', match: /Pepsi Zero Sugar/i, output: 'test/fixtures/html/hannaford-pepsi.html' }
 ];
 
 mappings.forEach(({ input, selector, match, output }) => {

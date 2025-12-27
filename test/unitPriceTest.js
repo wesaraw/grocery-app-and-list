@@ -13,7 +13,7 @@ import { pathToFileURL } from 'url';
 global.chrome = { runtime: { getURL: p => pathToFileURL(process.cwd() + '/' + p).href } };
 global.fetch = async url => ({ json: async () => JSON.parse(fs.readFileSync(new URL(url), 'utf8')) });
 
-const html = fs.readFileSync('test/samples/shaws-toilet-paper.html', 'utf8');
+const html = fs.readFileSync('test/fixtures/html/shaws-toilet-paper.html', 'utf8');
 const dom = new JSDOM(html);
 const tile = dom.window.document.querySelector('product-item-al-v2');
 const unitText = tile.querySelector('[data-qa="prd-itm-pprc-qty"]').textContent.trim();
@@ -148,7 +148,7 @@ if (perSheet == null || Math.abs(perSheet - 0.0225) > 0.0001) {
 }
 
 // Walmart Bounty paper towels parsing
-const walmartHtml = fs.readFileSync('test/samples/walmart-bounty.html', 'utf8');
+const walmartHtml = fs.readFileSync('test/fixtures/html/walmart-bounty.html', 'utf8');
 const walmartDom = new JSDOM(walmartHtml);
 Object.defineProperty(walmartDom.window.HTMLElement.prototype, 'innerText', {
   get() {
@@ -174,7 +174,7 @@ console.log('perSheetWalmart', perSheetWalmart);
   }
 
 // Stop & Shop plates regression
-const stopHtml = fs.readFileSync('test/samples/stopandshop-plates.html', 'utf8');
+const stopHtml = fs.readFileSync('test/fixtures/html/stopandshop-plates.html', 'utf8');
 const stopDom = new JSDOM(stopHtml);
 Object.defineProperty(stopDom.window.HTMLElement.prototype, 'innerText', {
   get() {
@@ -208,7 +208,7 @@ if (platesItem.unitType !== 'ea') {
   throw new Error(`Expected unitType "ea" but got ${platesItem.unitType}`);
 }
 
-const dogTreatsHtml = fs.readFileSync('test/samples/stopandshop-dog-treats.html', 'utf8');
+const dogTreatsHtml = fs.readFileSync('test/fixtures/html/stopandshop-dog-treats.html', 'utf8');
 const dogTreatsDom = new JSDOM(dogTreatsHtml);
 Object.defineProperty(dogTreatsDom.window.HTMLElement.prototype, 'innerText', {
   get() {
@@ -254,7 +254,7 @@ if (greeniesItem.packCount !== 30) {
   throw new Error(`Expected packCount 30 but got ${greeniesItem.packCount}`);
 }
 
-const newLayoutHtml = fs.readFileSync('test/samples/stopandshop-missing-sronly.html', 'utf8');
+const newLayoutHtml = fs.readFileSync('test/fixtures/html/stopandshop-missing-sronly.html', 'utf8');
 const newLayoutDom = new JSDOM(newLayoutHtml);
 Object.defineProperty(newLayoutDom.window.HTMLElement.prototype, 'innerText', {
   get() {
@@ -385,7 +385,7 @@ if (
 }
 
 // Shaws Dentastix parsing
-const dentHtml = fs.readFileSync('test/samples/shaws-dentastixs.html', 'utf8');
+const dentHtml = fs.readFileSync('test/fixtures/html/shaws-dentastixs.html', 'utf8');
 const dentDom = new JSDOM(dentHtml);
 Object.defineProperty(dentDom.window.HTMLElement.prototype, 'innerText', {
   get() {
@@ -564,7 +564,7 @@ if (Math.abs(ppu - 0.715) > 0.001) {
 }
 
 // Hannaford quart unit normalization
-const hannHtml = fs.readFileSync('test/samples/hannaford-pepsi.html', 'utf8');
+const hannHtml = fs.readFileSync('test/fixtures/html/hannaford-pepsi.html', 'utf8');
 const hannDom = new JSDOM(hannHtml);
 Object.defineProperty(hannDom.window.HTMLElement.prototype, 'innerText', {
   get() {
