@@ -16,6 +16,7 @@ const EXPIRATION_PATH = 'data/required-for-grocery-app/expiration_times_full.jso
 const NEEDS_PATH = 'data/required-for-grocery-app/yearly_needs_with_manual_flags.json';
 
 
+
 async function loadStock() {
   const arr = await loadItemArray('currentStock');
   if (arr.length > 0) return arr;

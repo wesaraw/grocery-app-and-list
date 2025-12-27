@@ -16,6 +16,7 @@ import {
 } from './utils/orderCapStorage.js';
 
 const NEEDS_PATH = 'data/required-for-grocery-app/yearly_needs_with_manual_flags.json';
+
 const NEEDS_KEY = 'yearlyNeeds';
 
 let filterText = '';

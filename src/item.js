@@ -10,6 +10,7 @@ import { getStoreEntriesForItem } from './utils/storeCatalog.js';
 const YEARLY_NEEDS_PATH = 'data/required-for-grocery-app/yearly_needs_with_manual_flags.json';
 const CONSUMPTION_PATH = 'data/required-for-grocery-app/monthly_consumption_table.json';
 
+
 // Grey placeholder used until real product images load
 const PLACEHOLDER_IMG =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><rect width='100%' height='100%' fill='%23ccc'/></svg>";

@@ -57,6 +57,7 @@
         "*.js",
         "*.css",
         "data/required-for-grocery-app/*"
+
       ],
       "matches": [
         "<all_urls>"

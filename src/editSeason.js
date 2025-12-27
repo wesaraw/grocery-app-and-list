@@ -4,6 +4,7 @@ import { sortItemsByCategory, renderItemsWithCategoryHeaders } from './utils/sor
 import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemStorage.js';
 
 const NEEDS_PATH = 'data/required-for-grocery-app/yearly_needs_with_manual_flags.json';
+
 const NEEDS_KEY = 'yearlyNeeds';
 
 async function loadNeeds() {

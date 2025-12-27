@@ -26,6 +26,7 @@ const CONSUMPTION_PATH = 'data/required-for-grocery-app/monthly_consumption_tabl
 const STOCK_PATH = 'data/required-for-grocery-app/current_stock_table.json';
 const EXPIRATION_PATH = 'data/required-for-grocery-app/expiration_times_full.json';
 
+
 const DEFAULT_ITEM = {
   yearly: 0,
   unit: 'oz',

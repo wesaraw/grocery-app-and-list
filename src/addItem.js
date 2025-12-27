@@ -20,6 +20,7 @@ const YEARLY_NEEDS_PATH = 'data/required-for-grocery-app/yearly_needs_with_manua
 const CONSUMPTION_PATH = 'data/required-for-grocery-app/monthly_consumption_table.json';
 const STOCK_PATH = 'data/required-for-grocery-app/current_stock_table.json';
 const EXPIRATION_PATH = 'data/required-for-grocery-app/expiration_times_full.json';
+
 const DEFAULTS = {
   yearly: 0,
   unit: 'oz',

@@ -106,6 +106,7 @@ async function loadData() {
     loadArray('expirationData', 'data/required-for-grocery-app/expiration_times_full.json'),
     loadArray('currentStock', 'data/required-for-grocery-app/current_stock_table.json'),
     loadArray('monthlyConsumption', 'data/required-for-grocery-app/monthly_consumption_table.json'),
+
     loadStoredArray('mealPlanYearly'),
     loadStoredArray('mealPlanMonthly'),
     loadStoredObj('mealPlanMonthlyBreakdown')

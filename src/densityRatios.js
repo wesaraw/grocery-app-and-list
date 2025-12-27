@@ -10,6 +10,7 @@ const NEEDS_PATH = 'data/required-for-grocery-app/yearly_needs_with_manual_flags
 const NEEDS_KEY = 'yearlyNeeds';
 const UOM_PATH = 'data/required-for-grocery-app/uom_conversion_table.json';
 
+
 let allNeeds = [];
 let densityMap = {};
 let tbody;

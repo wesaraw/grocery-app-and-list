@@ -7,6 +7,7 @@ import { formatQuantity } from './utils/quantityFormat.js';
 const NEEDS_PATH = 'data/required-for-grocery-app/yearly_needs_with_manual_flags.json';
 const CONS_PATH = 'data/required-for-grocery-app/monthly_consumption_table.json';
 
+
 let filterText = '';
 const headerState = {};
 let allNeeds = [];

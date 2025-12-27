@@ -9,6 +9,7 @@ import { loadArray as loadItemArray, convertArrayToNames } from './utils/itemSto
 const NEEDS_PATH = 'data/required-for-grocery-app/yearly_needs_with_manual_flags.json';
 const EXPIRATION_PATH = 'data/required-for-grocery-app/expiration_times_full.json';
 
+
 let filterText = '';
 const headerState = {};
 let allNeeds = [];

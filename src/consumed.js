@@ -19,6 +19,7 @@ const OVERRIDES_KEY = 'consumptionOverrides';
 
 const NEEDS_PATH = 'data/required-for-grocery-app/yearly_needs_with_manual_flags.json';
 
+
 let filterText = '';
 const headerState = {};
 let allNeeds = [];
