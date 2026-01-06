@@ -1,0 +1,8 @@
+Primary Project Repository (GitHub)
+https://github.com/<your-username>/<repo-name>
+
+Project Case Study / System Design Documentation
+https://github.com/<your-username>/<repo-name>#case-study
+
+Resume (PDF)
+https://github.com/<your-username>/<repo-name>/blob/main/techforce_application/resume_v1.pdf
