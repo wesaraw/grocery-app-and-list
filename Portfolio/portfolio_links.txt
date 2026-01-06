@@ -5,4 +5,4 @@ Project Case Study / System Design Documentation
 https://github.com/wesaraw/grocery-app-and-list/blob/main/Case%20Study%20%231.pdf
 
 Resume (PDF)
-https://github.com/wesaraw/grocery-app-and-list/blob/main/blob/main/Resume%20for%20Tech%20Force.pdf
+https://github.com/wesaraw/grocery-app-and-list/blob/main/Portfolio/Resume%20for%20Tech%20Force.pdf
